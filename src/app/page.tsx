@@ -1,20 +1,30 @@
+
 "use client";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Logo } from "@/components/Logo";
+import { useUser } from "@/firebase";
 
 export default function SplashPage() {
   const router = useRouter();
+  const { user, isLoading } = useUser();
 
   useEffect(() => {
+    // On attend la fin de l'animation du splash screen
     const timer = setTimeout(() => {
-      router.push("/login");
+      if (!isLoading) {
+        if (user) {
+          router.push("/random");
+        } else {
+          router.push("/login");
+        }
+      }
     }, 4500);
 
     return () => clearTimeout(timer);
-  }, [router]);
+  }, [router, user, isLoading]);
 
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-background">
