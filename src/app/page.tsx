@@ -1,30 +1,58 @@
 
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Logo } from "@/components/Logo";
-import { useUser } from "@/firebase";
+import { useUser, useFirestore } from "@/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 export default function SplashPage() {
   const router = useRouter();
-  const { user, isLoading } = useUser();
+  const { user, isLoading: authLoading } = useUser();
+  const db = useFirestore();
+  const [checkingPermissions, setCheckingPermissions] = useState(true);
 
   useEffect(() => {
-    // On attend la fin de l'animation du splash screen
-    const timer = setTimeout(() => {
-      if (!isLoading) {
-        if (user) {
-          router.push("/random");
-        } else {
-          router.push("/login");
-        }
-      }
-    }, 4500);
+    const checkRedirect = async () => {
+      if (authLoading) return;
 
-    return () => clearTimeout(timer);
-  }, [router, user, isLoading]);
+      if (!user) {
+        // Pas connecté -> Login
+        const timer = setTimeout(() => router.push("/login"), 3500);
+        return () => clearTimeout(timer);
+      }
+
+      try {
+        // Connecté -> Vérifier les permissions obligatoires
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        const userData = userDoc.data();
+
+        const isFullyAuthorized = 
+          userData?.cameraAuthorized === true && 
+          userData?.notificationsEnabled === true && 
+          userData?.locationAuthorized === true;
+
+        const timer = setTimeout(() => {
+          if (isFullyAuthorized) {
+            router.push("/random");
+          } else {
+            router.push("/autoriser");
+          }
+        }, 3500);
+        
+        return () => clearTimeout(timer);
+      } catch (error) {
+        console.error("Error checking permissions:", error);
+        router.push("/random"); // Fallback en cas d'erreur
+      } finally {
+        setCheckingPermissions(false);
+      }
+    };
+
+    checkRedirect();
+  }, [authLoading, user, router, db]);
 
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-background">

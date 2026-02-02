@@ -65,17 +65,14 @@ export default function LoginPage() {
   const waveIcon = placeholderImages.placeholderImages.find(img => img.id === "wave-icon")?.imageUrl;
   const civFlag = placeholderImages.placeholderImages.find(img => img.id === "flag-civ")?.imageUrl;
 
-  // Rediriger si déjà connecté
   useEffect(() => {
     if (!isAuthLoading && user) {
-      router.push("/random");
+      router.push("/"); // Splash screen gérera la redirection intelligente
     }
   }, [user, isAuthLoading, router]);
 
-  // Vérification du nom d'utilisateur
   useEffect(() => {
     if (step !== 1) return;
-    
     const checkUsername = async () => {
       const name = formData.username.trim().toLowerCase();
       if (name.length < 3) {
@@ -93,18 +90,15 @@ export default function LoginPage() {
         setCheckingUsername(false);
       }
     };
-
     const timeoutId = setTimeout(checkUsername, 500);
     return () => clearTimeout(timeoutId);
   }, [formData.username, db, step]);
 
-  // Vérification du code de parrainage
   useEffect(() => {
     if (step !== 5 || !hasReferral) {
       setReferralStatus('idle');
       return;
     }
-    
     const checkReferral = async () => {
       const code = formData.referredBy.trim().toUpperCase();
       if (code.length !== 6) {
@@ -122,7 +116,6 @@ export default function LoginPage() {
         setCheckingReferral(false);
       }
     };
-
     const timeoutId = setTimeout(checkReferral, 500);
     return () => clearTimeout(timeoutId);
   }, [formData.referredBy, db, step, hasReferral]);
@@ -134,26 +127,11 @@ export default function LoginPage() {
   };
 
   const handleNextStep = () => {
-    if (step === 1 && usernameStatus !== 'available') {
-      toast({ variant: "destructive", title: "Action requise", description: "Veuillez choisir un nom d'utilisateur valide et disponible." });
-      return;
-    }
-    if (step === 2 && !formData.gender) {
-      toast({ variant: "destructive", title: "Action requise", description: "Veuillez sélectionner votre genre." });
-      return;
-    }
-    if (step === 3 && !isValidPhoneNumber(formData.phoneNumber)) {
-      toast({ variant: "destructive", title: "Numéro invalide", description: "Le numéro doit comporter 10 chiffres et commencer par 01, 05 ou 07." });
-      return;
-    }
-    if (step === 4 && !formData.acceptedTerms) {
-      toast({ variant: "destructive", title: "Action requise", description: "Vous devez accepter les conditions." });
-      return;
-    }
-    if (step === 5 && hasReferral && referralStatus !== 'valid') {
-      toast({ variant: "destructive", title: "Code invalide", description: "Le code de parrainage saisi n'existe pas dans notre base." });
-      return;
-    }
+    if (step === 1 && usernameStatus !== 'available') return;
+    if (step === 2 && !formData.gender) return;
+    if (step === 3 && !isValidPhoneNumber(formData.phoneNumber)) return;
+    if (step === 4 && !formData.acceptedTerms) return;
+    if (step === 5 && hasReferral && referralStatus !== 'valid') return;
     setStep(prev => prev + 1);
   };
 
@@ -174,14 +152,18 @@ export default function LoginPage() {
         acceptedTerms: formData.acceptedTerms,
         referredBy: hasReferral ? formData.referredBy.toUpperCase().trim() : null,
         referralCode: myReferralCode,
+        cameraAuthorized: false,
+        notificationsEnabled: false,
+        locationAuthorized: false,
+        biometricEnabled: false,
         createdAt: serverTimestamp(),
       });
 
-      toast({ title: "Bienvenue dans Citation", description: "Votre profil a été créé avec succès." });
+      toast({ title: "Bienvenue", description: "Votre compte est prêt." });
       router.push("/autoriser");
     } catch (error) {
       console.error("Registration error:", error);
-      toast({ variant: "destructive", title: "Échec de l'inscription", description: "Une erreur est survenue." });
+      toast({ variant: "destructive", title: "Erreur", description: "Inscription impossible." });
     } finally {
       setLoading(false);
     }
@@ -193,25 +175,18 @@ export default function LoginPage() {
     exit: (direction: number) => ({ zIndex: 0, x: direction < 0 ? 50 : -50, opacity: 0, filter: "blur(10px)", transition: { x: { type: "spring", stiffness: 300, damping: 30 }, opacity: { duration: 0.4 } } })
   };
 
-  if (isAuthLoading) {
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-background">
-        <Loader2 className="h-10 w-10 animate-spin opacity-20" />
-      </div>
-    );
-  }
+  if (isAuthLoading) return null;
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background px-4 sm:px-6 py-8 sm:py-12 overflow-hidden relative">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background px-4 py-8 overflow-hidden relative">
       <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-primary/5 blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-primary/5 blur-[120px]" />
       </div>
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-lg z-10">
         <div className="flex flex-col items-center mb-10">
           <Logo className="mb-4 scale-75" />
-          <p className="text-muted-foreground text-[10px] font-bold tracking-[0.4em] uppercase opacity-40">L'excellence de la pensée</p>
+          <p className="text-muted-foreground text-[10px] font-bold tracking-[0.4em] uppercase opacity-40">Pensée & Éveil</p>
         </div>
 
         <div className="flex justify-center gap-2 mb-8">
@@ -226,22 +201,22 @@ export default function LoginPage() {
               <Card className="border-none shadow-2xl bg-card/40 backdrop-blur-2xl">
                 {step === 1 && (
                   <>
-                    <CardHeader className="p-4 sm:p-6">
+                    <CardHeader className="p-6">
                       <div className="flex items-center gap-3 mb-2 text-primary">
                         <UserIcon className="h-5 w-5" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">Identité numérique</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Identité</span>
                       </div>
-                      <CardTitle className="text-xl sm:text-2xl">Votre nom de plume</CardTitle>
+                      <CardTitle className="text-2xl">Votre nom de plume</CardTitle>
                       <CardDescription>Choisissez un pseudonyme unique.</CardDescription>
                     </CardHeader>
-                    <CardContent className="p-4 sm:p-6">
+                    <CardContent className="p-6">
                       <div className="space-y-4">
                         <div className="relative">
                           <Input 
-                            placeholder="ex: aristote_moderne" 
+                            placeholder="ex: aristote" 
                             value={formData.username}
                             onChange={(e) => setFormData({...formData, username: e.target.value.replace(/\s/g, '').toLowerCase()})}
-                            className="h-12 sm:h-14 bg-background/50 border-primary/10 pl-5 pr-12"
+                            className="h-14 bg-background/50 pl-5 pr-12"
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2">
                             {checkingUsername ? <Loader2 className="h-5 w-5 animate-spin" /> : (
@@ -252,29 +227,24 @@ export default function LoginPage() {
                             )}
                           </div>
                         </div>
-                        <p className="text-[10px] font-black uppercase tracking-widest opacity-60 px-1">
-                          {usernameStatus === 'available' && <span className="text-green-500">Pseudonyme libre</span>}
-                          {usernameStatus === 'taken' && <span className="text-red-500">Déjà réservé</span>}
-                          {usernameStatus === 'invalid' && <span className="text-muted-foreground">Minimum 3 caractères</span>}
-                        </p>
                       </div>
                     </CardContent>
-                    <CardFooter className="p-4 sm:p-6">
-                      <Button onClick={handleNextStep} className="w-full h-12 sm:h-14 font-bold" disabled={usernameStatus !== 'available' || checkingUsername}>Continuer</Button>
+                    <CardFooter className="p-6">
+                      <Button onClick={handleNextStep} className="w-full h-14 font-bold" disabled={usernameStatus !== 'available' || checkingUsername}>Continuer</Button>
                     </CardFooter>
                   </>
                 )}
 
                 {step === 2 && (
                   <>
-                    <CardHeader className="p-4 sm:p-6">
+                    <CardHeader className="p-6">
                       <div className="flex items-center gap-3 mb-2 text-primary">
                         <Users className="h-5 w-5" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">Nature de l'esprit</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Nature</span>
                       </div>
-                      <CardTitle className="text-xl sm:text-2xl">Quel est votre genre ?</CardTitle>
+                      <CardTitle className="text-2xl">Quel est votre genre ?</CardTitle>
                     </CardHeader>
-                    <CardContent className="p-4 sm:p-6">
+                    <CardContent className="p-6">
                       <RadioGroup value={formData.gender} onValueChange={(val) => setFormData({...formData, gender: val})} className="grid gap-4">
                         {[{ id: "masculin", label: "Homme" }, { id: "féminin", label: "Femme" }, { id: "non-binaire", label: "Autre" }].map((option) => (
                           <div key={option.id}>
@@ -284,136 +254,123 @@ export default function LoginPage() {
                         ))}
                       </RadioGroup>
                     </CardContent>
-                    <CardFooter className="flex gap-4 p-4 sm:p-6">
-                      <Button variant="ghost" onClick={handleBackStep} className="h-12 sm:h-14 flex-1">Retour</Button>
-                      <Button onClick={handleNextStep} className="h-12 sm:h-14 flex-1" disabled={!formData.gender}>Suivant</Button>
+                    <CardFooter className="flex gap-4 p-6">
+                      <Button variant="ghost" onClick={handleBackStep} className="h-14 flex-1">Retour</Button>
+                      <Button onClick={handleNextStep} className="h-14 flex-1" disabled={!formData.gender}>Suivant</Button>
                     </CardFooter>
                   </>
                 )}
 
                 {step === 3 && (
                   <>
-                    <CardHeader className="p-4 sm:p-6">
+                    <CardHeader className="p-6">
                       <div className="flex items-center gap-3 mb-2 text-primary">
                         <div className="relative h-6 w-6 rounded-full overflow-hidden">{waveIcon && <Image src={waveIcon} alt="Wave" fill className="object-cover" />}</div>
-                        <span className="text-[10px] font-bold uppercase tracking-widest">Contact Wave</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Liaison Wave</span>
                       </div>
-                      <CardTitle className="text-xl sm:text-2xl">Liez votre compte Wave</CardTitle>
+                      <CardTitle className="text-2xl">Numéro de contact</CardTitle>
                     </CardHeader>
-                    <CardContent className="p-4 sm:p-6 space-y-4">
+                    <CardContent className="p-6 space-y-4">
                       <div className="flex gap-3">
-                        <div className="relative w-[100px] sm:w-[120px]">
+                        <div className="relative w-[120px]">
                           <div className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-8 rounded overflow-hidden shadow-sm">{civFlag && <Image src={civFlag} alt="CIV" fill className="object-cover" />}</div>
-                          <Input readOnly value={formData.countryCode} className="h-12 sm:h-14 bg-muted/50 pl-14 font-bold opacity-80" />
+                          <Input readOnly value={formData.countryCode} className="h-14 bg-muted/50 pl-14 font-bold opacity-80" />
                         </div>
-                        <Input type="tel" placeholder="07..." value={formData.phoneNumber} onChange={(e) => setFormData({...formData, phoneNumber: e.target.value.replace(/\D/g, '').slice(0, 10)})} className="h-12 sm:h-14 flex-1 text-lg" autoFocus />
+                        <Input type="tel" placeholder="07..." value={formData.phoneNumber} onChange={(e) => setFormData({...formData, phoneNumber: e.target.value.replace(/\D/g, '').slice(0, 10)})} className="h-14 flex-1 text-lg" autoFocus />
                       </div>
-                      <p className="text-[10px] font-black uppercase tracking-widest opacity-60 px-1">
-                        {isValidPhoneNumber(formData.phoneNumber) ? <span className="text-green-500">Format valide</span> : <span className="text-muted-foreground">Doit commencer par 01, 05 ou 07</span>}
-                      </p>
                     </CardContent>
-                    <CardFooter className="flex gap-4 p-4 sm:p-6">
-                      <Button variant="ghost" onClick={handleBackStep} className="h-12 sm:h-14 flex-1">Retour</Button>
-                      <Button onClick={handleNextStep} className="h-12 sm:h-14 flex-1" disabled={!isValidPhoneNumber(formData.phoneNumber)}>Suivant</Button>
+                    <CardFooter className="flex gap-4 p-6">
+                      <Button variant="ghost" onClick={handleBackStep} className="h-14 flex-1">Retour</Button>
+                      <Button onClick={handleNextStep} className="h-14 flex-1" disabled={!isValidPhoneNumber(formData.phoneNumber)}>Suivant</Button>
                     </CardFooter>
                   </>
                 )}
 
                 {step === 4 && (
                   <>
-                    <CardHeader className="p-4 sm:p-6">
+                    <CardHeader className="p-6">
                       <div className="flex items-center gap-3 mb-2 text-primary">
                         <ShieldCheck className="h-5 w-5" />
                         <span className="text-[10px] font-bold uppercase tracking-widest">Légalité</span>
                       </div>
-                      <CardTitle className="text-xl sm:text-2xl">Engagement éthique</CardTitle>
+                      <CardTitle className="text-2xl">Conditions</CardTitle>
                     </CardHeader>
-                    <CardContent className="p-4 sm:p-6 space-y-6">
-                      <div className="p-4 sm:p-5 bg-muted/40 rounded-2xl text-xs sm:text-sm leading-relaxed max-h-40 sm:max-h-48 overflow-y-auto border border-primary/5">
-                        <p><strong>Article 1 :</strong> Respect mutuel dans les échanges.</p>
-                        <p><strong>Article 2 :</strong> Protection stricte de vos pensées.</p>
+                    <CardContent className="p-6 space-y-6">
+                      <div className="p-5 bg-muted/40 rounded-2xl text-sm leading-relaxed max-h-48 overflow-y-auto border border-primary/5">
+                        <p><strong>Article 1 :</strong> Respect et authenticité.</p>
+                        <p><strong>Article 2 :</strong> Sécurité de vos données.</p>
                       </div>
                       <div className="flex items-center space-x-3 p-4 bg-primary/5 rounded-xl border border-primary/10 cursor-pointer" onClick={() => setFormData({...formData, acceptedTerms: !formData.acceptedTerms})}>
                         <Checkbox checked={formData.acceptedTerms} />
                         <Label className="text-sm font-medium cursor-pointer">J'accepte les conditions</Label>
                       </div>
                     </CardContent>
-                    <CardFooter className="flex gap-4 p-4 sm:p-6">
-                      <Button variant="ghost" onClick={handleBackStep} className="h-12 sm:h-14 flex-1">Retour</Button>
-                      <Button onClick={handleNextStep} className="h-12 sm:h-14 flex-1" disabled={!formData.acceptedTerms}>Suivant</Button>
+                    <CardFooter className="flex gap-4 p-6">
+                      <Button variant="ghost" onClick={handleBackStep} className="h-14 flex-1">Retour</Button>
+                      <Button onClick={handleNextStep} className="h-14 flex-1" disabled={!formData.acceptedTerms}>Suivant</Button>
                     </CardFooter>
                   </>
                 )}
 
                 {step === 5 && (
                   <>
-                    <CardHeader className="p-4 sm:p-6">
+                    <CardHeader className="p-6">
                       <div className="flex items-center gap-3 mb-2 text-primary">
                         <Gift className="h-5 w-5" />
                         <span className="text-[10px] font-bold uppercase tracking-widest">Parrainage</span>
                       </div>
-                      <CardTitle className="text-xl sm:text-2xl">Avez-vous un code ?</CardTitle>
-                      <CardDescription>Vérification automatique de l'authenticité.</CardDescription>
+                      <CardTitle className="text-2xl">Code d'invitation</CardTitle>
                     </CardHeader>
-                    <CardContent className="p-4 sm:p-6 space-y-6">
+                    <CardContent className="p-6 space-y-6">
                       <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/10">
-                        <Label className="text-sm font-bold">Code d'invitation</Label>
+                        <Label className="text-sm font-bold">J'ai un code</Label>
                         <Switch checked={hasReferral} onCheckedChange={setHasReferral} />
                       </div>
-                      <AnimatePresence>
-                        {hasReferral && (
-                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-2 overflow-hidden">
-                            <div className="relative">
-                              <Input 
-                                placeholder="CODE6X" 
-                                value={formData.referredBy}
-                                onChange={(e) => setFormData({...formData, referredBy: e.target.value.toUpperCase()})}
-                                maxLength={6}
-                                className="h-12 sm:h-14 text-center text-xl font-black tracking-widest bg-background/50 border-primary/10"
-                              />
-                              <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                                {checkingReferral ? <Loader2 className="h-5 w-5 animate-spin" /> : (
-                                  <>
-                                    {referralStatus === 'valid' && <CheckCircle className="h-5 w-5 text-green-500" />}
-                                    {referralStatus === 'invalid' && formData.referredBy.length === 6 && <XCircle className="h-5 w-5 text-red-500" />}
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                            {referralStatus === 'invalid' && formData.referredBy.length === 6 && (
-                              <p className="text-[10px] text-red-500 font-bold uppercase text-center tracking-widest">Code inconnu dans l'univers Citation</p>
+                      {hasReferral && (
+                        <div className="relative">
+                          <Input 
+                            placeholder="CODE6X" 
+                            value={formData.referredBy}
+                            onChange={(e) => setFormData({...formData, referredBy: e.target.value.toUpperCase()})}
+                            maxLength={6}
+                            className="h-14 text-center text-xl font-black tracking-widest"
+                          />
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                            {checkingReferral ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+                              <>
+                                {referralStatus === 'valid' && <CheckCircle className="h-5 w-5 text-green-500" />}
+                                {referralStatus === 'invalid' && formData.referredBy.length === 6 && <XCircle className="h-5 w-5 text-red-500" />}
+                              </>
                             )}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
-                    <CardFooter className="flex gap-4 p-4 sm:p-6">
-                      <Button variant="ghost" onClick={handleBackStep} className="h-12 sm:h-14 flex-1">Retour</Button>
-                      <Button onClick={handleNextStep} className="h-12 sm:h-14 flex-1" disabled={hasReferral && (referralStatus !== 'valid' || checkingReferral)}>Vérifier</Button>
+                    <CardFooter className="flex gap-4 p-6">
+                      <Button variant="ghost" onClick={handleBackStep} className="h-14 flex-1">Retour</Button>
+                      <Button onClick={handleNextStep} className="h-14 flex-1" disabled={hasReferral && (referralStatus !== 'valid' || checkingReferral)}>Vérifier</Button>
                     </CardFooter>
                   </>
                 )}
 
                 {step === 6 && (
                   <>
-                    <CardHeader className="p-4 sm:p-6">
+                    <CardHeader className="p-6">
                       <div className="flex items-center gap-3 mb-2 text-primary">
                         <CheckCircle2 className="h-5 w-5" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">Sceau final</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Confirmation</span>
                       </div>
-                      <CardTitle className="text-xl sm:text-2xl">Prêt pour l'éveil ?</CardTitle>
+                      <CardTitle className="text-2xl">Prêt ?</CardTitle>
                     </CardHeader>
-                    <CardContent className="p-4 sm:p-6">
-                      <div className="space-y-4 p-4 sm:p-6 bg-muted/30 rounded-2xl border border-primary/5">
-                        <div className="flex flex-col"><span className="text-[10px] font-black uppercase opacity-40">Pseudonyme</span><span className="text-lg sm:text-xl font-bold">@{formData.username}</span></div>
-                        <div className="flex flex-col"><span className="text-[10px] font-black uppercase opacity-40">Genre</span><span className="text-lg sm:text-xl font-bold capitalize">{formData.gender}</span></div>
-                        <div className="flex flex-col"><span className="text-[10px] font-black uppercase opacity-40">Liaison Wave</span><span className="text-lg sm:text-xl font-bold">{formData.countryCode} {formData.phoneNumber}</span></div>
-                        {hasReferral && <div className="flex flex-col"><span className="text-[10px] font-black uppercase opacity-40">Invité par</span><span className="text-lg sm:text-xl font-bold text-primary">{formData.referredBy}</span></div>}
+                    <CardContent className="p-6">
+                      <div className="space-y-4 p-6 bg-muted/30 rounded-2xl border border-primary/5">
+                        <div className="flex flex-col"><span className="text-[10px] font-black uppercase opacity-40">Pseudonyme</span><span className="text-xl font-bold">@{formData.username}</span></div>
+                        <div className="flex flex-col"><span className="text-[10px] font-black uppercase opacity-40">Genre</span><span className="text-xl font-bold capitalize">{formData.gender}</span></div>
                       </div>
                     </CardContent>
-                    <CardFooter className="flex gap-4 p-4 sm:p-6">
-                      <Button variant="ghost" onClick={handleBackStep} className="h-12 sm:h-14 flex-1">Modifier</Button>
-                      <Button onClick={handleRegister} className="h-12 sm:h-14 flex-1 font-bold shadow-lg shadow-primary/20" disabled={loading}>{loading ? <Loader2 className="animate-spin" /> : "S'éveiller"}</Button>
+                    <CardFooter className="flex gap-4 p-6">
+                      <Button variant="ghost" onClick={handleBackStep} className="h-14 flex-1">Modifier</Button>
+                      <Button onClick={handleRegister} className="h-14 flex-1 font-bold" disabled={loading}>{loading ? <Loader2 className="animate-spin" /> : "S'éveiller"}</Button>
                     </CardFooter>
                   </>
                 )}
