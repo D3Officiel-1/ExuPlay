@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Fingerprint, Loader2, ShieldCheck, Lock, Check } from "lucide-react";
+import { Fingerprint, Loader2, ShieldCheck, Lock, Check, Smartphone } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useToast } from "@/hooks/use-toast";
 
@@ -15,10 +15,21 @@ interface BiometricLockProps {
 export function BiometricLock({ onSuccess }: BiometricLockProps) {
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [os, setOs] = useState<'ios' | 'android' | 'windows' | 'other'>('other');
   const { toast } = useToast();
+
+  useEffect(() => {
+    const ua = window.navigator.userAgent.toLowerCase();
+    if (/iphone|ipad|ipod/.test(ua)) setOs('ios');
+    else if (/android/.test(ua)) setOs('android');
+    else if (/windows/.test(ua)) setOs('windows');
+  }, []);
 
   const handleBiometricAuth = async () => {
     setLoading(true);
+    // On notifie le PrivacyShield que la biométrie système va s'afficher
+    window.dispatchEvent(new CustomEvent("citation-biometric-active", { detail: { active: true } }));
+    
     try {
       const challenge = new Uint8Array(32);
       window.crypto.getRandomValues(challenge);
@@ -35,7 +46,6 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
       
       if (assertion) {
         setIsSuccess(true);
-        // Animation de succès ultra-stylisée avant redirection
         setTimeout(() => {
           onSuccess();
         }, 1500);
@@ -45,10 +55,30 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
       toast({
         variant: "destructive",
         title: "Échec d'authentification",
-        description: "Nous n'avons pas pu valider votre identité biométrique.",
+        description: "Nous n'avons pas pu valider votre identité.",
       });
     } finally {
       setLoading(false);
+      // On relâche l'état une fois fini
+      window.dispatchEvent(new CustomEvent("citation-biometric-active", { detail: { active: false } }));
+    }
+  };
+
+  const getIcon = () => {
+    switch (os) {
+      case 'ios': return <ShieldCheck className="h-12 w-12 text-primary" />; // Simbolise FaceID
+      case 'android': return <Fingerprint className="h-12 w-12 text-primary" />;
+      case 'windows': return <Smartphone className="h-12 w-12 text-primary" />; // Simbolise Hello
+      default: return <Fingerprint className="h-12 w-12 text-primary" />;
+    }
+  };
+
+  const getLabel = () => {
+    switch (os) {
+      case 'ios': return "Face ID";
+      case 'android': return "Empreinte";
+      case 'windows': return "Windows Hello";
+      default: return "Biométrie";
     }
   };
 
@@ -59,7 +89,6 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
       exit={{ opacity: 0, scale: 1.1, filter: "blur(20px)" }}
       className="fixed inset-0 z-[200] bg-background flex flex-col items-center justify-center p-6"
     >
-      {/* Background Decorative Elements */}
       <div className="absolute inset-0 pointer-events-none opacity-20 overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-primary/10 blur-[120px]" />
       </div>
@@ -85,16 +114,16 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
                   transition={{ duration: 4, repeat: Infinity }}
                   className="absolute inset-0 bg-primary/20 rounded-[2.5rem] blur-xl"
                 />
-                <div className="relative h-full w-full bg-card border border-primary/10 rounded-[2.5rem] flex items-center justify-center shadow-2xl overflow-visible">
-                  <Lock className="h-10 w-10 text-primary/40 absolute -top-2 -right-2 bg-background p-1.5 rounded-full border border-primary/5" />
-                  <Fingerprint className="h-12 w-12 text-primary" />
+                <div className="relative h-full w-full bg-card border border-primary/10 rounded-[2.5rem] flex items-center justify-center shadow-2xl">
+                  <Lock className="h-6 w-6 text-primary/40 absolute -top-2 -right-2 bg-background p-1 rounded-full border border-primary/5" />
+                  {getIcon()}
                 </div>
               </div>
 
               <div className="space-y-2">
                 <h2 className="text-3xl font-black tracking-tight">Accès Protégé</h2>
                 <p className="text-sm text-muted-foreground font-medium px-8 leading-relaxed opacity-60">
-                  Votre identité est requise pour déverrouiller l'expérience Citation.
+                  Utilisez {getLabel()} pour déverrouiller l'expérience Citation.
                 </p>
               </div>
             </div>
@@ -105,10 +134,10 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
                 disabled={loading}
                 className="w-full h-20 rounded-3xl font-black text-lg gap-4 shadow-xl active:scale-95 transition-all"
               >
-                {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
+                {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Smartphone className="h-6 w-6" />}
                 DÉVERROUILLER
               </Button>
-              <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.3em] opacity-30">Sécurité Matérielle Active</p>
+              <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.3em] opacity-30">Sécurité Matérielle Native</p>
             </div>
           </motion.div>
         ) : (
@@ -136,14 +165,6 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
               <h2 className="text-2xl font-black tracking-[0.2em] uppercase">Reconnu</h2>
               <p className="text-sm font-medium opacity-40">Accès autorisé à l'éveil</p>
             </motion.div>
-
-            {/* Expansive ripple animation */}
-            <motion.div 
-              initial={{ scale: 0, opacity: 1 }}
-              animate={{ scale: 10, opacity: 0 }}
-              transition={{ duration: 1.5, ease: "easeOut" }}
-              className="absolute h-40 w-40 bg-primary/20 rounded-full -z-10"
-            />
           </motion.div>
         )}
       </AnimatePresence>

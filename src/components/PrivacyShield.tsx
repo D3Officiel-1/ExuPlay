@@ -8,16 +8,23 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export function PrivacyShield() {
   const [shouldShield, setShouldShield] = useState(false);
+  const [isBiometricPromptActive, setIsBiometricPromptActive] = useState(false);
   const { user } = useUser();
   const db = useFirestore();
   const [biometricEnabled, setBiometricEnabled] = useState(false);
 
   useEffect(() => {
-    // Vérification rapide via localStorage
+    // Détection de l'activation de la biométrie système via un événement personnalisé
+    const handleBiometricActive = (e: any) => {
+      setIsBiometricPromptActive(e.detail.active);
+    };
+
+    window.addEventListener("citation-biometric-active", handleBiometricActive);
+
+    // Vérification de la configuration biométrique
     const localBiometric = localStorage.getItem("citation_biometric_enabled") === "true";
     setBiometricEnabled(localBiometric);
 
-    // Synchronisation Firestore pour plus de fiabilité
     if (user) {
       getDoc(doc(db, "users", user.uid)).then((snap) => {
         if (snap.exists() && snap.data().biometricEnabled) {
@@ -29,16 +36,19 @@ export function PrivacyShield() {
     const handleVisibilityChange = () => {
       if (!biometricEnabled) return;
 
-      if (document.visibilityState === "hidden") {
+      // Si le système demande la biométrie, on ne met pas le voile
+      if (document.visibilityState === "hidden" && !isBiometricPromptActive) {
         setShouldShield(true);
       } else {
-        // On laisse un petit délai pour que le système de lock puisse prendre le relais si nécessaire
         setTimeout(() => setShouldShield(false), 500);
       }
     };
 
     const handleBlur = () => {
-      if (biometricEnabled) setShouldShield(true);
+      // On n'affiche le voile au blur que si la biométrie n'est pas en train de s'afficher
+      if (biometricEnabled && !isBiometricPromptActive) {
+        setShouldShield(true);
+      }
     };
 
     const handleFocus = () => {
@@ -50,11 +60,12 @@ export function PrivacyShield() {
     window.addEventListener("focus", handleFocus);
 
     return () => {
+      window.removeEventListener("citation-biometric-active", handleBiometricActive);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("blur", handleBlur);
       window.removeEventListener("focus", handleFocus);
     };
-  }, [biometricEnabled, user, db]);
+  }, [biometricEnabled, user, db, isBiometricPromptActive]);
 
   return (
     <AnimatePresence>
@@ -63,7 +74,7 @@ export function PrivacyShield() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.1 }}
+          transition={{ duration: 0.2 }}
           className="fixed inset-0 z-[9999] bg-background pointer-events-none"
         />
       )}
