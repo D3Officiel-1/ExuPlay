@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Metadata, Viewport } from "next";
@@ -5,10 +6,10 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { FirebaseClientProvider } from "@/firebase";
 import { Toaster } from "@/components/ui/toaster";
-import Script from "next/script";
 import { useEffect, useState } from "react";
 import { WifiOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { PrivacyShield } from "@/components/PrivacyShield";
 
 export default function RootLayout({
   children,
@@ -62,6 +63,7 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
+            <PrivacyShield />
             <AnimatePresence>
               {isOffline && (
                 <motion.div 
