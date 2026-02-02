@@ -23,15 +23,31 @@
         "addedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["quoteId", "addedAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Profil utilisateur avec informations personnelles",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "acceptedTerms": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["username", "phoneNumber", "acceptedTerms"]
     }
   },
   "auth": {
-    "providers": ["google.com", "password"]
+    "providers": ["google.com", "password", "anonymous"]
   },
   "firestore": {
     "/quotes/{quoteId}": {
       "schema": "Quote",
       "description": "Collection globale de citations"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Profil de l'utilisateur"
     },
     "/users/{userId}/favorites/{favoriteId}": {
       "schema": "UserFavorite",
