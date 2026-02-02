@@ -23,12 +23,9 @@ export function Logo({ className }: LogoProps) {
       </div>
 
       {/* Text Container */}
-      <div className="flex flex-col -space-y-1">
+      <div className="flex flex-col justify-center">
         <span className="text-4xl font-black tracking-tighter text-foreground font-serif italic">
           Philo<span className="text-foreground/30 group-hover:text-foreground transition-colors duration-500">.</span>
-        </span>
-        <span className="text-[11px] uppercase tracking-[0.4em] font-bold text-foreground/40 ml-1 group-hover:text-foreground/70 transition-colors">
-          Modern Wisdom
         </span>
       </div>
     </div>
