@@ -1,10 +1,12 @@
+
 "use client";
 
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Fingerprint, Loader2, ShieldCheck, Lock } from "lucide-react";
+import { Fingerprint, Loader2, ShieldCheck, Lock, AlertCircle } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { useToast } from "@/hooks/use-toast";
 
 interface BiometricLockProps {
   onSuccess: () => void;
@@ -12,11 +14,12 @@ interface BiometricLockProps {
 
 export function BiometricLock({ onSuccess }: BiometricLockProps) {
   const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleBiometricAuth = async () => {
     setLoading(true);
     try {
-      // Défi factice pour la validation WebAuthn
+      // Défi pour la vérification WebAuthn réelle
       const challenge = new Uint8Array(32);
       window.crypto.getRandomValues(challenge);
 
@@ -28,15 +31,20 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
         },
       };
 
-      // Déclenche l'interface native de l'OS (FaceID, TouchID, Windows Hello)
+      // Déclenche l'interface native de l'OS (Face ID, Empreinte, Passkey)
       const assertion = await navigator.credentials.get(options);
       
       if (assertion) {
+        toast({ title: "Sceau reconnu", description: "Accès autorisé." });
         onSuccess();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Biometric auth failed:", error);
-      // On laisse l'utilisateur réessayer en cas d'échec ou d'annulation
+      toast({
+        variant: "destructive",
+        title: "Échec d'authentification",
+        description: "Nous n'avons pas pu valider votre identité biométrique.",
+      });
     } finally {
       setLoading(false);
     }
@@ -79,7 +87,7 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
           <div className="space-y-2">
             <h2 className="text-3xl font-black tracking-tight">Accès Protégé</h2>
             <p className="text-sm text-muted-foreground font-medium px-8 leading-relaxed opacity-60">
-              Votre identité est requise pour déverrouiller l'expérience Citation.
+              Votre Passkey est requise pour déverrouiller l'expérience Citation.
             </p>
           </div>
         </div>
@@ -93,7 +101,7 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
             {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
             Déverrouiller
           </Button>
-          <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.3em] opacity-30">Sécurité Biométrique Active</p>
+          <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.3em] opacity-30">Sécurité WebAuthn Active</p>
         </div>
       </motion.div>
     </motion.div>

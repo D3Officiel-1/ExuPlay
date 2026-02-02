@@ -27,17 +27,16 @@ export default function AutoriserPage() {
   const db = useFirestore();
   const app = useFirebaseApp();
 
-  // Fonction pour déterminer la prochaine étape nécessaire
   const determineNextStep = (data: DocumentData | undefined) => {
     if (!data) return 1;
     if (!data.cameraAuthorized) return 1;
     if (!data.notificationsEnabled) return 2;
     if (!data.locationAuthorized) return 3;
-    if (!data.biometricEnabled && !localStorage.getItem("citation_biometric_enabled")) return 4;
-    return 5; // Tout est fini
+    const isBiometricDone = data.biometricEnabled === true || localStorage.getItem("citation_biometric_enabled") === "true";
+    if (!isBiometricDone) return 4;
+    return 5;
   };
 
-  // Détecter l'étape actuelle au chargement
   useEffect(() => {
     const detectStartStep = async () => {
       if (!user) return;
@@ -131,10 +130,8 @@ export default function AutoriserPage() {
           console.error("FCM Token error:", fcmError);
           if (user) await updateDoc(doc(db, "users", user.uid), { notificationsEnabled: true });
         }
-
         toast({ title: "Notifications activées", description: "Le lien est établi." });
       } else {
-        // Même si refusé, on marque comme "vu" pour avancer si l'utilisateur a fait un choix
         if (user) await updateDoc(doc(db, "users", user.uid), { notificationsEnabled: true });
       }
       refreshUserDataAndStep();
@@ -164,7 +161,7 @@ export default function AutoriserPage() {
         toast({ variant: "destructive", title: "Localisation refusée", description: "Certaines fonctions seront limitées." });
         if (user) {
           await updateDoc(doc(db, "users", user.uid), {
-            locationAuthorized: true, // On marque comme "traité" même si refusé pour avancer
+            locationAuthorized: true,
             updatedAt: serverTimestamp()
           });
         }
@@ -179,7 +176,11 @@ export default function AutoriserPage() {
     try {
       const available = await window.PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable();
       
-      if (!available) throw new Error("Non supporté");
+      if (!available) {
+        toast({ title: "Non supporté", description: "Votre appareil ne supporte pas la biométrie Web." });
+        router.push("/random");
+        return;
+      }
 
       const challenge = new Uint8Array(32);
       window.crypto.getRandomValues(challenge);
@@ -204,13 +205,18 @@ export default function AutoriserPage() {
 
       if (credential) {
         localStorage.setItem("citation_biometric_enabled", "true");
-        if (user) await updateDoc(doc(db, "users", user.uid), { biometricEnabled: true });
-        toast({ title: "Sceau biométrique activé", description: "Identité sécurisée." });
+        if (user) {
+          await updateDoc(doc(db, "users", user.uid), { 
+            biometricEnabled: true,
+            updatedAt: serverTimestamp() 
+          });
+        }
+        toast({ title: "Sceau biométrique activé", description: "Identité sécurisée avec succès." });
         router.push("/random");
       }
     } catch (error: any) {
-      console.error('Biometric error:', error);
-      toast({ title: "Étape ignorée", description: "La biométrie pourra être activée plus tard." });
+      console.error('Biometric creation error:', error);
+      toast({ title: "Étape ignorée", description: "La biométrie pourra être activée plus tard dans vos réglages." });
       router.push("/random");
     } finally {
       setLoading(false);
@@ -360,19 +366,19 @@ export default function AutoriserPage() {
                     </motion.div>
                     <div className="space-y-2">
                       <CardTitle className="text-3xl font-black tracking-tight">Sceau Final</CardTitle>
-                      <CardDescription className="text-base font-medium opacity-60 px-4">Sécurisez votre identité avec votre biométrie (Optionnel).</CardDescription>
+                      <CardDescription className="text-base font-medium opacity-60 px-4">Sécurisez votre identité avec votre biométrie (Passkey).</CardDescription>
                     </div>
                   </CardHeader>
                   <CardContent className="py-12 px-8">
                     <div className="p-8 bg-primary/5 rounded-[2.5rem] border border-primary/10 text-center relative overflow-hidden">
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mb-3">Sécurité Biométrique</p>
-                      <p className="text-sm font-semibold leading-relaxed">Activez Face ID ou votre empreinte pour une connexion instantanée.</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mb-3">Passkey WebAuthn</p>
+                      <p className="text-sm font-semibold leading-relaxed">Utilisez Face ID, votre empreinte ou le code de votre appareil pour un accès instantané et sécurisé.</p>
                     </div>
                   </CardContent>
                   <CardFooter className="pb-12 px-8 flex flex-col gap-3">
                     <Button onClick={handleRequestPasskey} disabled={loading} className="w-full h-16 rounded-2xl font-black text-lg bg-primary text-primary-foreground">
                       {loading ? <Loader2 className="animate-spin mr-2" /> : <Fingerprint className="mr-3 h-6 w-6" />}
-                      Activer la Biométrie
+                      Créer ma Passkey
                     </Button>
                     <Button variant="ghost" onClick={() => router.push("/random")} className="w-full h-12 text-muted-foreground font-bold tracking-widest text-[10px] uppercase">Passer cette étape</Button>
                   </CardFooter>
