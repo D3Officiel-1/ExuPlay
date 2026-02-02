@@ -1,4 +1,3 @@
-
 "use client"
 
 import { BookOpen } from 'lucide-react';
@@ -24,8 +23,8 @@ export function Logo({ className }: LogoProps) {
 
       {/* Text Container */}
       <div className="flex flex-col justify-center">
-        <span className="text-4xl font-black tracking-tighter text-foreground font-sans">
-          Philo<span className="text-foreground/30 group-hover:text-foreground transition-colors duration-500">.</span>
+        <span className="text-4xl font-black tracking-tighter text-foreground font-sans uppercase">
+          Citation<span className="text-foreground/30 group-hover:text-foreground transition-colors duration-500">.</span>
         </span>
       </div>
     </div>

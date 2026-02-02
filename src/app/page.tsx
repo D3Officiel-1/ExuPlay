@@ -1,18 +1,17 @@
-
 "use client";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Logo } from "@/components/Logo";
 
-export default function Home() {
+export default function SplashPage() {
   const router = useRouter();
 
   useEffect(() => {
     const timer = setTimeout(() => {
       router.push("/home");
-    }, 4500);
+    }, 4000);
     return () => clearTimeout(timer);
   }, [router]);
 

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from 'react';
@@ -9,8 +8,8 @@ export function useFavorites() {
   const [history, setHistory] = useState<string[]>([]);
 
   useEffect(() => {
-    const savedFavs = localStorage.getItem('philo_favorites');
-    const savedHistory = localStorage.getItem('philo_history');
+    const savedFavs = localStorage.getItem('citation_favorites');
+    const savedHistory = localStorage.getItem('citation_history');
     if (savedFavs) setFavorites(JSON.parse(savedFavs));
     if (savedHistory) setHistory(JSON.parse(savedHistory));
   }, []);
@@ -24,13 +23,13 @@ export function useFavorites() {
       newFavs = [...favorites, quote];
     }
     setFavorites(newFavs);
-    localStorage.setItem('philo_favorites', JSON.stringify(newFavs));
+    localStorage.setItem('citation_favorites', JSON.stringify(newFavs));
   };
 
   const addToHistory = (entry: string) => {
     const newHistory = Array.from(new Set([entry, ...history])).slice(0, 10);
     setHistory(newHistory);
-    localStorage.setItem('philo_history', JSON.stringify(newHistory));
+    localStorage.setItem('citation_history', JSON.stringify(newHistory));
   };
 
   const isFavorite = (quoteId: string) => {

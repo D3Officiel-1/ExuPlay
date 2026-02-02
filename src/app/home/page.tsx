@@ -1,4 +1,3 @@
-
 "use client";
 
 import { motion } from "framer-motion";
@@ -31,7 +30,7 @@ export default function HomePage() {
           >
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-foreground/5 border border-foreground/10 text-[10px] font-bold uppercase tracking-widest">
               <Sparkles className="h-3 w-3" />
-              Citation du moment
+              Inspiration
             </div>
             <h2 className="text-4xl md:text-7xl font-bold leading-[1.1] tracking-tight max-w-4xl">
               "{featuredQuote.text}"
@@ -46,7 +45,7 @@ export default function HomePage() {
               <Link href="/random">
                 <Button size="lg" className="rounded-full h-14 px-8 font-bold gap-2">
                   <Zap className="h-4 w-4 fill-current" />
-                  Nouvelle inspiration
+                  Aléatoire
                 </Button>
               </Link>
               <Button variant="outline" size="lg" className="rounded-full h-14 px-8 font-bold gap-2">
@@ -60,7 +59,7 @@ export default function HomePage() {
         {/* Categories Grid */}
         <section className="space-y-8">
           <div className="flex justify-between items-end">
-            <h3 className="text-2xl font-black tracking-tighter uppercase">Parcourir les thèmes</h3>
+            <h3 className="text-2xl font-black tracking-tighter uppercase">Thématiques</h3>
             <Link href="/themes" className="text-xs font-bold uppercase tracking-widest opacity-50 hover:opacity-100 transition-opacity flex items-center gap-2">
               Tout voir <ArrowRight className="h-3 w-3" />
             </Link>
@@ -93,20 +92,20 @@ export default function HomePage() {
               <BookOpen className="h-32 w-32" />
             </div>
             <CardContent className="p-10 space-y-6 relative z-10">
-              <h3 className="text-3xl font-black tracking-tighter leading-tight uppercase">Les Grands <br /> Philosophes</h3>
-              <p className="opacity-70 text-sm max-w-xs">Plongez dans les pensées des plus grands esprits de l'histoire, de Socrate à Sartre.</p>
+              <h3 className="text-3xl font-black tracking-tighter leading-tight uppercase">Les Auteurs</h3>
+              <p className="opacity-70 text-sm max-w-xs">Découvrez les pensées des esprits les plus brillants.</p>
               <Link href="/philosophes">
-                <Button variant="secondary" className="rounded-full font-bold">Découvrir</Button>
+                <Button variant="secondary" className="rounded-full font-bold">Explorer</Button>
               </Link>
             </CardContent>
           </Card>
 
           <Card className="border-2 border-foreground/5 overflow-hidden relative group">
              <CardContent className="p-10 space-y-6">
-              <h3 className="text-3xl font-black tracking-tighter leading-tight uppercase">Vos <br /> Favoris</h3>
-              <p className="opacity-70 text-sm max-w-xs">Retrouvez toutes les citations qui vous ont marqué et créez votre propre recueil de sagesse.</p>
+              <h3 className="text-3xl font-black tracking-tighter leading-tight uppercase">Collection</h3>
+              <p className="opacity-70 text-sm max-w-xs">Vos citations favorites réunies en un seul endroit.</p>
               <Link href="/favoris">
-                <Button variant="outline" className="rounded-full font-bold">Voir ma collection</Button>
+                <Button variant="outline" className="rounded-full font-bold">Ma Bibliothèque</Button>
               </Link>
             </CardContent>
           </Card>
@@ -115,7 +114,7 @@ export default function HomePage() {
 
       <footer className="mt-20 py-12 border-t border-foreground/5 text-center px-6">
         <p className="text-[10px] font-bold uppercase tracking-[0.5em] opacity-30">
-          Philo — Modern Wisdom Experience © 2024
+          Citation — L'art de la pensée © 2024
         </p>
       </footer>
     </div>
