@@ -33,7 +33,7 @@ export default function HomePage() {
               <Sparkles className="h-3 w-3" />
               Citation du moment
             </div>
-            <h2 className="text-4xl md:text-7xl font-serif italic font-medium leading-[1.1] tracking-tight max-w-4xl">
+            <h2 className="text-4xl md:text-7xl font-bold leading-[1.1] tracking-tight max-w-4xl">
               "{featuredQuote.text}"
             </h2>
             <div className="flex flex-col gap-1">
@@ -113,7 +113,6 @@ export default function HomePage() {
         </section>
       </main>
 
-      {/* Fixed bottom navigation for mobile if needed, or simple footer */}
       <footer className="mt-20 py-12 border-t border-foreground/5 text-center px-6">
         <p className="text-[10px] font-bold uppercase tracking-[0.5em] opacity-30">
           Philo — Modern Wisdom Experience © 2024
