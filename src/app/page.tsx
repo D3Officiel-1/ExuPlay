@@ -1,31 +1,40 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Logo } from "@/components/Logo";
 import { useUser, useFirestore } from "@/firebase";
 import { doc, getDoc } from "firebase/firestore";
+import { BiometricLock } from "@/components/BiometricLock";
 
 export default function SplashPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useUser();
   const db = useFirestore();
   const [checkingPermissions, setCheckingPermissions] = useState(true);
+  const [showBiometric, setShowBiometric] = useState(false);
+  const [targetPath, setTargetPath] = useState<string | null>(null);
+  const [splashDone, setSplashDone] = useState(false);
+
+  useEffect(() => {
+    const splashTimer = setTimeout(() => {
+      setSplashDone(true);
+    }, 3500);
+    return () => clearTimeout(splashTimer);
+  }, []);
 
   useEffect(() => {
     const checkRedirect = async () => {
-      if (authLoading) return;
+      // On attend que le splash et l'auth soient prêts
+      if (authLoading || !splashDone) return;
 
       if (!user) {
-        // Pas connecté -> Login
-        const timer = setTimeout(() => router.push("/login"), 3500);
-        return () => clearTimeout(timer);
+        router.push("/login");
+        return;
       }
 
       try {
-        // Connecté -> Vérifier les permissions obligatoires
         const userDoc = await getDoc(doc(db, "users", user.uid));
         const userData = userDoc.data();
 
@@ -34,28 +43,43 @@ export default function SplashPage() {
           userData?.notificationsEnabled === true && 
           userData?.locationAuthorized === true;
 
-        const timer = setTimeout(() => {
-          if (isFullyAuthorized) {
-            router.push("/random");
-          } else {
-            router.push("/autoriser");
-          }
-        }, 3500);
-        
-        return () => clearTimeout(timer);
+        const nextPath = isFullyAuthorized ? "/random" : "/autoriser";
+
+        // Vérifier si la biométrie est activée
+        const biometricEnabled = userData?.biometricEnabled === true || localStorage.getItem("citation_biometric_enabled") === "true";
+
+        if (biometricEnabled) {
+          setTargetPath(nextPath);
+          setShowBiometric(true);
+        } else {
+          router.push(nextPath);
+        }
       } catch (error) {
         console.error("Error checking permissions:", error);
-        router.push("/random"); // Fallback en cas d'erreur
+        router.push("/random");
       } finally {
         setCheckingPermissions(false);
       }
     };
 
     checkRedirect();
-  }, [authLoading, user, router, db]);
+  }, [authLoading, user, router, db, splashDone]);
+
+  const handleUnlockSuccess = () => {
+    setShowBiometric(false);
+    if (targetPath) {
+      router.push(targetPath);
+    }
+  };
 
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-background">
+      <AnimatePresence>
+        {showBiometric && (
+          <BiometricLock onSuccess={handleUnlockSuccess} />
+        )}
+      </AnimatePresence>
+
       {/* Background Decorative Elements */}
       <motion.div 
         initial={{ opacity: 0 }}
