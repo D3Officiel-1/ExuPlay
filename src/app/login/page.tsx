@@ -22,15 +22,27 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/Logo";
-import { Loader2, ChevronRight, ChevronLeft, CheckCircle2, User as UserIcon, ShieldCheck, Sparkles, XCircle, CheckCircle, Users } from "lucide-react";
+import { Loader2, ChevronRight, ChevronLeft, CheckCircle2, User as UserIcon, ShieldCheck, Sparkles, XCircle, CheckCircle, Users, Gift } from "lucide-react";
 import placeholderImages from "@/app/lib/placeholder-images.json";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
+
+// Fonction utilitaire pour générer un code de parrainage unique de 6 caractères
+const generateReferralCode = () => {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let code = "";
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+};
 
 export default function LoginPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'available' | 'taken' | 'invalid'>('idle');
+  const [hasReferral, setHasReferral] = useState(false);
   
   const [formData, setFormData] = useState({
     username: "",
@@ -38,6 +50,7 @@ export default function LoginPage() {
     countryCode: "+225",
     phoneNumber: "",
     acceptedTerms: false,
+    referredBy: "",
   });
   
   const router = useRouter();
@@ -99,26 +112,22 @@ export default function LoginPage() {
       }
     }
 
-    if (step === 2) {
-      if (!formData.gender) {
-        toast({
-          variant: "destructive",
-          title: "Action requise",
-          description: "Veuillez sélectionner votre genre.",
-        });
-        return;
-      }
+    if (step === 2 && !formData.gender) {
+      toast({
+        variant: "destructive",
+        title: "Action requise",
+        description: "Veuillez sélectionner votre genre.",
+      });
+      return;
     }
 
-    if (step === 3) {
-      if (!isValidPhoneNumber(formData.phoneNumber)) {
-        toast({
-          variant: "destructive",
-          title: "Numéro invalide",
-          description: "Le numéro doit comporter 10 chiffres et commencer par 01, 05 ou 07.",
-        });
-        return;
-      }
+    if (step === 3 && !isValidPhoneNumber(formData.phoneNumber)) {
+      toast({
+        variant: "destructive",
+        title: "Numéro invalide",
+        description: "Le numéro doit comporter 10 chiffres et commencer par 01, 05 ou 07.",
+      });
+      return;
     }
 
     if (step === 4 && !formData.acceptedTerms) {
@@ -144,12 +153,15 @@ export default function LoginPage() {
       const user = userCredential.user;
 
       const fullPhoneNumber = `${formData.countryCode}${formData.phoneNumber}`;
+      const myReferralCode = generateReferralCode();
 
       await setDoc(doc(db, "users", user.uid), {
         username: formData.username.toLowerCase().trim(),
         gender: formData.gender,
         phoneNumber: fullPhoneNumber,
         acceptedTerms: formData.acceptedTerms,
+        referredBy: hasReferral ? formData.referredBy.toUpperCase().trim() : null,
+        referralCode: myReferralCode,
         createdAt: serverTimestamp(),
       });
 
@@ -222,7 +234,7 @@ export default function LoginPage() {
         </div>
 
         <div className="flex justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
-          {[1, 2, 3, 4, 5].map((s) => (
+          {[1, 2, 3, 4, 5, 6].map((s) => (
             <motion.div
               key={s}
               initial={false}
@@ -282,7 +294,6 @@ export default function LoginPage() {
                             </div>
                           </div>
                         </div>
-
                         <div className="flex items-center gap-2 min-h-[16px]">
                           <AnimatePresence mode="wait">
                             {usernameStatus === 'available' && (
@@ -339,11 +350,7 @@ export default function LoginPage() {
                           { id: "non-binaire", label: "Non-binaire / Autre" }
                         ].map((option) => (
                           <div key={option.id}>
-                            <RadioGroupItem
-                              value={option.id}
-                              id={option.id}
-                              className="peer sr-only"
-                            />
+                            <RadioGroupItem value={option.id} id={option.id} className="peer sr-only" />
                             <Label
                               htmlFor={option.id}
                               className="flex flex-1 items-center justify-between rounded-xl border-2 border-muted bg-background/50 p-3 sm:p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary transition-all cursor-pointer"
@@ -359,11 +366,7 @@ export default function LoginPage() {
                       <Button variant="ghost" onClick={handleBackStep} className="h-12 sm:h-14 flex-1 font-bold rounded-xl text-sm sm:text-base">
                         <ChevronLeft className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" /> Retour
                       </Button>
-                      <Button 
-                        onClick={handleNextStep} 
-                        className="h-12 sm:h-14 flex-1 font-bold rounded-xl text-sm sm:text-base"
-                        disabled={!formData.gender}
-                      >
+                      <Button onClick={handleNextStep} className="h-12 sm:h-14 flex-1 font-bold rounded-xl text-sm sm:text-base" disabled={!formData.gender}>
                         Suivant <ChevronRight className="ml-1 sm:ml-2 h-4 w-4 sm:h-5 sm:w-5" />
                       </Button>
                     </CardFooter>
@@ -375,12 +378,7 @@ export default function LoginPage() {
                     <CardHeader className="pt-6 sm:pt-8 px-5 sm:px-8">
                       <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2 text-primary">
                         <div className="relative h-5 w-5 sm:h-6 sm:w-6 rounded-full overflow-hidden border border-primary/20">
-                          {waveIcon && <Image 
-                            src={waveIcon} 
-                            alt="Wave Icon"
-                            fill
-                            className="object-cover"
-                          />}
+                          {waveIcon && <Image src={waveIcon} alt="Wave Icon" fill className="object-cover" />}
                         </div>
                         <span className="text-[10px] font-bold uppercase tracking-widest">Contact Wave</span>
                       </div>
@@ -418,9 +416,7 @@ export default function LoginPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           {formData.phoneNumber.length > 0 && !isValidPhoneNumber(formData.phoneNumber) && (
-                            <p className="text-[8px] sm:text-[10px] text-red-400 font-bold uppercase tracking-widest">
-                              Format invalide
-                            </p>
+                            <p className="text-[8px] sm:text-[10px] text-red-400 font-bold uppercase tracking-widest">Format invalide</p>
                           )}
                           {isValidPhoneNumber(formData.phoneNumber) && (
                             <p className="text-[8px] sm:text-[10px] text-green-500 font-bold uppercase tracking-widest flex items-center gap-1">
@@ -434,11 +430,7 @@ export default function LoginPage() {
                       <Button variant="ghost" onClick={handleBackStep} className="h-12 sm:h-14 flex-1 font-bold rounded-xl text-sm sm:text-base">
                         <ChevronLeft className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" /> Retour
                       </Button>
-                      <Button 
-                        onClick={handleNextStep} 
-                        className="h-12 sm:h-14 flex-1 font-bold rounded-xl text-sm sm:text-base"
-                        disabled={!isValidPhoneNumber(formData.phoneNumber)}
-                      >
+                      <Button onClick={handleNextStep} className="h-12 sm:h-14 flex-1 font-bold rounded-xl text-sm sm:text-base" disabled={!isValidPhoneNumber(formData.phoneNumber)}>
                         Suivant <ChevronRight className="ml-1 sm:ml-2 h-4 w-4 sm:h-5 sm:w-5" />
                       </Button>
                     </CardFooter>
@@ -462,14 +454,8 @@ export default function LoginPage() {
                         <p><strong>Article 3 :</strong> Tout abus entraînera une suspension.</p>
                       </div>
                       <div className="flex items-center space-x-3 p-3 sm:p-4 bg-primary/5 rounded-xl border border-primary/10 transition-all hover:bg-primary/10 cursor-pointer" onClick={() => setFormData({...formData, acceptedTerms: !formData.acceptedTerms})}>
-                        <Checkbox 
-                          id="terms" 
-                          checked={formData.acceptedTerms} 
-                          className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                        />
-                        <Label htmlFor="terms" className="text-xs sm:text-sm font-medium cursor-pointer">
-                          J'accepte les conditions d'utilisation
-                        </Label>
+                        <Checkbox id="terms" checked={formData.acceptedTerms} className="data-[state=checked]:bg-primary data-[state=checked]:border-primary" />
+                        <Label htmlFor="terms" className="text-xs sm:text-sm font-medium cursor-pointer">J'accepte les conditions d'utilisation</Label>
                       </div>
                     </CardContent>
                     <CardFooter className="px-5 sm:px-8 pb-6 sm:pb-8 flex gap-3 sm:gap-4">
@@ -484,6 +470,54 @@ export default function LoginPage() {
                 )}
 
                 {step === 5 && (
+                  <>
+                    <CardHeader className="pt-6 sm:pt-8 px-5 sm:px-8">
+                      <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2 text-primary">
+                        <Gift className="h-4 w-4 sm:h-5 sm:w-5" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Parrainage</span>
+                      </div>
+                      <CardTitle className="text-xl sm:text-2xl font-bold tracking-tight">Avez-vous un code ?</CardTitle>
+                      <CardDescription className="text-sm sm:text-base">Si un ami vous a invité, saisissez son code ici.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="px-5 sm:px-8 pb-6 sm:pb-8 space-y-6">
+                      <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/10">
+                        <Label htmlFor="has-referral" className="text-sm font-bold">J'ai un code de parrainage</Label>
+                        <Switch id="has-referral" checked={hasReferral} onCheckedChange={setHasReferral} />
+                      </div>
+                      
+                      <AnimatePresence>
+                        {hasReferral && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="space-y-2 overflow-hidden"
+                          >
+                            <Label htmlFor="referredBy" className="text-[10px] uppercase tracking-widest opacity-70">Code de parrainage</Label>
+                            <Input 
+                              id="referredBy" 
+                              placeholder="ex: FR33XM" 
+                              value={formData.referredBy}
+                              onChange={(e) => setFormData({...formData, referredBy: e.target.value.toUpperCase()})}
+                              maxLength={6}
+                              className="h-12 sm:h-14 bg-background/50 border-primary/10 focus:border-primary transition-all text-center text-lg font-black tracking-widest"
+                            />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </CardContent>
+                    <CardFooter className="px-5 sm:px-8 pb-6 sm:pb-8 flex gap-3 sm:gap-4">
+                      <Button variant="ghost" onClick={handleBackStep} className="h-12 sm:h-14 flex-1 font-bold rounded-xl text-sm sm:text-base">
+                        <ChevronLeft className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" /> Retour
+                      </Button>
+                      <Button onClick={handleNextStep} className="h-12 sm:h-14 flex-1 font-bold rounded-xl text-sm sm:text-base">
+                        Continuer <ChevronRight className="ml-1 sm:ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+                      </Button>
+                    </CardFooter>
+                  </>
+                )}
+
+                {step === 6 && (
                   <>
                     <CardHeader className="pt-6 sm:pt-8 px-5 sm:px-8">
                       <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2 text-primary">
@@ -509,6 +543,15 @@ export default function LoginPage() {
                           <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest opacity-40">Liaison Wave</span>
                           <span className="text-lg sm:text-xl font-bold">{formData.countryCode} {formData.phoneNumber}</span>
                         </div>
+                        {hasReferral && formData.referredBy && (
+                          <>
+                            <div className="h-px bg-primary/5 w-full" />
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest opacity-40">Parrain</span>
+                              <span className="text-lg sm:text-xl font-bold text-primary">{formData.referredBy}</span>
+                            </div>
+                          </>
+                        )}
                         <div className="h-px bg-primary/5 w-full" />
                         <div className="flex items-center gap-2">
                           <div className="h-2 w-2 rounded-full bg-green-500" />
@@ -533,12 +576,7 @@ export default function LoginPage() {
         </div>
       </motion.div>
       
-      <motion.p 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.3 }}
-        transition={{ delay: 1, duration: 1 }}
-        className="mt-8 sm:mt-12 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.3em] text-center"
-      >
+      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 0.3 }} transition={{ delay: 1, duration: 1 }} className="mt-8 sm:mt-12 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.3em] text-center">
         Mise à jour v2.0 • L'art de la pensée
       </motion.p>
     </div>

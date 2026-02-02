@@ -25,16 +25,18 @@
     },
     "UserProfile": {
       "title": "UserProfile",
-      "description": "Profil utilisateur avec informations personnelles",
+      "description": "Profil utilisateur avec informations personnelles et parrainage",
       "type": "object",
       "properties": {
         "username": { "type": "string" },
         "phoneNumber": { "type": "string" },
         "gender": { "type": "string", "enum": ["masculin", "féminin", "non-binaire"] },
         "acceptedTerms": { "type": "boolean" },
+        "referralCode": { "type": "string", "description": "Code unique de parrainage de l'utilisateur" },
+        "referredBy": { "type": "string", "description": "Code du parrain si applicable" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["username", "phoneNumber", "acceptedTerms", "gender"]
+      "required": ["username", "phoneNumber", "acceptedTerms", "gender", "referralCode"]
     }
   },
   "auth": {
