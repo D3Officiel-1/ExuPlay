@@ -1,12 +1,25 @@
+
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Logo } from "@/components/Logo";
 
 export default function SplashPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      router.push("/login");
+    }, 4500);
+
+    return () => clearTimeout(timer);
+  }, [router]);
+
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-background">
-      {/* Background Decorative Elements - Subtle Pulse */}
+      {/* Background Decorative Elements */}
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: [0, 0.05, 0.02] }}
