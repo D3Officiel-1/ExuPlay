@@ -40,6 +40,7 @@ export function PrivacyShield() {
       if (document.visibilityState === "hidden" && !isBiometricPromptActive) {
         setShouldShield(true);
       } else {
+        // Petit délai pour éviter le flash blanc si on revient vite
         setTimeout(() => setShouldShield(false), 500);
       }
     };
