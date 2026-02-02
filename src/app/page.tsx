@@ -12,7 +12,7 @@ export default function Home() {
   useEffect(() => {
     const timer = setTimeout(() => {
       router.push("/home");
-    }, 4000); // Réduction légère du temps d'attente pour plus de fluidité
+    }, 4000);
     return () => clearTimeout(timer);
   }, [router]);
 
@@ -29,13 +29,13 @@ export default function Home() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-foreground blur-[120px]" />
       </motion.div>
 
-      <div className="z-10 flex flex-col items-center gap-12 px-6">
-        {/* Logo Animation - Plus central et imposant */}
+      {/* Main Logo and Animation */}
+      <div className="z-10 flex flex-col items-center px-6">
         <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
+          animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
           transition={{ 
-            duration: 1.5, 
+            duration: 2, 
             ease: [0.22, 1, 0.36, 1] 
           }}
         >
@@ -43,9 +43,9 @@ export default function Home() {
         </motion.div>
       </div>
 
-      {/* Floating Particle Elements */}
+      {/* Floating Particle Elements for the "Ultra Stylé" look */}
       <div className="absolute inset-0 pointer-events-none opacity-20">
-        {[...Array(20)].map((_, i) => (
+        {[...Array(15)].map((_, i) => (
           <motion.div
             key={i}
             className="absolute h-1 w-1 bg-foreground rounded-full"
@@ -55,27 +55,17 @@ export default function Home() {
               opacity: Math.random()
             }}
             animate={{ 
-              y: [null, "-60px", "60px", null],
-              opacity: [0.1, 0.4, 0.1]
+              y: [null, "-40px", "40px", null],
+              opacity: [0.1, 0.3, 0.1]
             }}
             transition={{ 
-              duration: 5 + Math.random() * 5, 
+              duration: 4 + Math.random() * 4, 
               repeat: Infinity,
               ease: "easeInOut"
             }}
           />
         ))}
       </div>
-
-      {/* Version Badge - Très discret */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.15 }}
-        transition={{ delay: 2 }}
-        className="absolute bottom-8 text-[9px] font-bold tracking-[0.6em] uppercase"
-      >
-        Philo v2.0
-      </motion.div>
     </div>
   );
 }
