@@ -1,8 +1,10 @@
+
 import type { Metadata } from "next";
 import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
-  title: "Nouvelle App",
+  title: "Philo v2.0",
   description: "Généré par Firebase Studio",
 };
 
@@ -12,9 +14,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr">
-      <body className="antialiased">
-        {children}
+    <html lang="fr" suppressHydrationWarning>
+      <body className="antialiased font-serif">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
