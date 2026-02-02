@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -21,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { Logo } from "@/components/Logo";
 import { Loader2, ChevronRight, ChevronLeft, CheckCircle2, Phone, User as UserIcon, ShieldCheck, Sparkles } from "lucide-react";
 
 export default function LoginPage() {
@@ -181,19 +181,9 @@ export default function LoginPage() {
         variants={containerVariants}
         className="w-full max-w-lg z-10"
       >
-        <div className="text-center mb-10">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.8 }}
-            className="inline-flex items-center justify-center p-3 rounded-2xl bg-primary text-background mb-6"
-          >
-            <Sparkles className="h-6 w-6" />
-          </motion.div>
-          <h1 className="text-4xl font-black tracking-tighter uppercase mb-2">
-            Citation<span className="opacity-20">.</span>
-          </h1>
-          <p className="text-muted-foreground text-sm font-medium tracking-widest uppercase opacity-50">
+        <div className="flex flex-col items-center mb-10">
+          <Logo className="mb-4 scale-75" />
+          <p className="text-muted-foreground text-[10px] font-bold tracking-[0.4em] uppercase opacity-40">
             L'excellence de la pensée
           </p>
         </div>
