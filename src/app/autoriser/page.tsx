@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/Logo";
-import { Camera, Bell, MapPin, Fingerprint, ChevronRight, Loader2, Sparkles, CheckCircle2 } from "lucide-react";
-import { useAuth, useUser, useFirestore, useFirebaseApp } from "@/firebase";
+import { Camera, Bell, MapPin, Fingerprint, ChevronRight, Loader2, Lock } from "lucide-react";
+import { useUser, useFirestore, useFirebaseApp } from "@/firebase";
 import { getMessaging, getToken } from "firebase/messaging";
 import { doc, updateDoc, serverTimestamp, getDoc, DocumentData } from "firebase/firestore";
 
@@ -19,7 +19,6 @@ export default function AutoriserPage() {
   const [step, setStep] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
-  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const router = useRouter();
   const { toast } = useToast();
@@ -51,7 +50,6 @@ export default function AutoriserPage() {
           setStep(nextStep);
         }
       } catch (error) {
-        console.error("Error detecting permissions:", error);
         setStep(1);
       } finally {
         setInitializing(false);
@@ -75,10 +73,7 @@ export default function AutoriserPage() {
     setLoading(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      setHasCameraPermission(true);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
+      if (videoRef.current) videoRef.current.srcObject = stream;
 
       if (user) {
         await updateDoc(doc(db, "users", user.uid), {
@@ -87,19 +82,10 @@ export default function AutoriserPage() {
         });
       }
 
-      toast({
-        title: "Caméra autorisée",
-        description: "Votre vue est désormais claire.",
-      });
+      toast({ title: "Caméra autorisée", description: "Votre vue est désormais claire." });
       setTimeout(() => refreshUserDataAndStep(), 1500);
     } catch (error) {
-      console.error('Error accessing camera:', error);
-      setHasCameraPermission(false);
-      toast({
-        variant: 'destructive',
-        title: 'Accès refusé',
-        description: 'Veuillez activer la caméra dans les réglages.',
-      });
+      toast({ variant: 'destructive', title: 'Accès refusé', description: 'Veuillez activer la caméra dans les réglages.' });
     } finally {
       setLoading(false);
     }
@@ -108,35 +94,23 @@ export default function AutoriserPage() {
   const handleRequestNotifications = async () => {
     setLoading(true);
     try {
-      if (!('Notification' in window)) {
-        throw new Error("Les notifications ne sont pas supportées.");
-      }
-
       const permission = await Notification.requestPermission();
-      
       if (permission === "granted") {
-        try {
-          const messaging = getMessaging(app);
-          const token = await getToken(messaging, { vapidKey: VAPID_KEY });
-          
-          if (user) {
-            await updateDoc(doc(db, "users", user.uid), {
-              fcmToken: token || null,
-              notificationsEnabled: true,
-              updatedAt: serverTimestamp()
-            });
-          }
-        } catch (fcmError) {
-          console.error("FCM Token error:", fcmError);
-          if (user) await updateDoc(doc(db, "users", user.uid), { notificationsEnabled: true });
+        const messaging = getMessaging(app);
+        const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+        if (user) {
+          await updateDoc(doc(db, "users", user.uid), {
+            fcmToken: token || null,
+            notificationsEnabled: true,
+            updatedAt: serverTimestamp()
+          });
         }
         toast({ title: "Notifications activées", description: "Le lien est établi." });
       } else {
         if (user) await updateDoc(doc(db, "users", user.uid), { notificationsEnabled: true });
       }
       refreshUserDataAndStep();
-    } catch (error: any) {
-      console.error("Notification error:", error);
+    } catch (error) {
       refreshUserDataAndStep();
     } finally {
       setLoading(false);
@@ -158,30 +132,16 @@ export default function AutoriserPage() {
         setLoading(false);
       },
       async () => {
-        toast({ variant: "destructive", title: "Localisation refusée", description: "Certaines fonctions seront limitées." });
-        if (user) {
-          await updateDoc(doc(db, "users", user.uid), {
-            locationAuthorized: true,
-            updatedAt: serverTimestamp()
-          });
-        }
+        if (user) await updateDoc(doc(db, "users", user.uid), { locationAuthorized: true });
         refreshUserDataAndStep();
         setLoading(false);
       }
     );
   };
 
-  const handleRequestPasskey = async () => {
+  const handleCreatePasskey = async () => {
     setLoading(true);
     try {
-      const available = await window.PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable();
-      
-      if (!available) {
-        toast({ title: "Non supporté", description: "Votre appareil ne supporte pas la biométrie Web." });
-        router.push("/random");
-        return;
-      }
-
       const challenge = new Uint8Array(32);
       window.crypto.getRandomValues(challenge);
 
@@ -194,10 +154,14 @@ export default function AutoriserPage() {
         user: {
           id: Uint8Array.from(userId, c => c.charCodeAt(0)),
           name: userEmail,
-          displayName: user?.displayName || "Plume Citation",
+          displayName: user?.displayName || "Utilisateur Citation",
         },
-        pubKeyCredParams: [{ alg: -7, type: "public-key" }],
-        authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+        pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
+        authenticatorSelection: { 
+          authenticatorAttachment: "platform", 
+          userVerification: "required",
+          residentKey: "required"
+        },
         timeout: 60000,
       };
 
@@ -215,8 +179,8 @@ export default function AutoriserPage() {
         router.push("/random");
       }
     } catch (error: any) {
-      console.error('Biometric creation error:', error);
-      toast({ title: "Étape ignorée", description: "La biométrie pourra être activée plus tard dans vos réglages." });
+      console.error('Passkey creation error:', error);
+      toast({ title: "Étape ignorée", description: "La biométrie pourra être activée plus tard." });
       router.push("/random");
     } finally {
       setLoading(false);
@@ -233,20 +197,8 @@ export default function AutoriserPage() {
 
   const stepVariants = {
     enter: { opacity: 0, y: 30, scale: 0.95, filter: "blur(15px)" },
-    center: { 
-      opacity: 1, 
-      y: 0, 
-      scale: 1, 
-      filter: "blur(0px)",
-      transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] }
-    },
-    exit: { 
-      opacity: 0, 
-      y: -30, 
-      scale: 0.95, 
-      filter: "blur(15px)",
-      transition: { duration: 0.4, ease: "easeIn" }
-    }
+    center: { opacity: 1, y: 0, scale: 1, filter: "blur(0px)", transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } },
+    exit: { opacity: 0, y: -30, scale: 0.95, filter: "blur(15px)", transition: { duration: 0.4, ease: "easeIn" } }
   };
 
   return (
@@ -255,39 +207,28 @@ export default function AutoriserPage() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] bg-[radial-gradient(circle_at_50%_50%,rgba(var(--primary-rgb),0.03),transparent_50%)]" />
       </div>
 
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="w-full max-w-lg z-10"
-      >
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-lg z-10">
         <div className="flex justify-center mb-16">
           <Logo className="scale-75" />
         </div>
 
         <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            variants={stepVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-          >
-            <Card className="border-none shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] bg-card/40 backdrop-blur-3xl overflow-hidden rounded-[2.5rem]">
+          <motion.div key={step} variants={stepVariants} initial="enter" animate="center" exit="exit">
+            <Card className="border-none shadow-2xl bg-card/40 backdrop-blur-3xl overflow-hidden rounded-[2.5rem]">
               {step === 1 && (
                 <>
                   <CardHeader className="text-center pt-12 space-y-4">
-                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="mx-auto w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-2">
+                    <div className="mx-auto w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-2">
                       <Camera className="h-10 w-10 text-primary" />
-                    </motion.div>
+                    </div>
                     <div className="space-y-2">
                       <CardTitle className="text-3xl font-black tracking-tight">Perception</CardTitle>
-                      <CardDescription className="text-base font-medium opacity-60 px-4">L'accès à la caméra est requis pour l'expérience immersive.</CardDescription>
+                      <CardDescription className="text-base font-medium opacity-60">L'accès à la caméra est requis pour l'expérience immersive.</CardDescription>
                     </div>
                   </CardHeader>
                   <CardContent className="px-8 pb-4">
                     <div className="relative w-full aspect-video rounded-3xl overflow-hidden bg-black/40 border border-white/5 group shadow-inner">
                       <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                     </div>
                   </CardContent>
                   <CardFooter className="pb-12 px-8">
@@ -302,18 +243,18 @@ export default function AutoriserPage() {
               {step === 2 && (
                 <>
                   <CardHeader className="text-center pt-12 space-y-4">
-                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="mx-auto w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-2">
+                    <div className="mx-auto w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-2">
                       <Bell className="h-10 w-10 text-primary" />
-                    </motion.div>
+                    </div>
                     <div className="space-y-2">
                       <CardTitle className="text-3xl font-black tracking-tight">Résonance</CardTitle>
-                      <CardDescription className="text-base font-medium opacity-60 px-4">Recevez une pensée choisie chaque matin pour nourrir votre esprit.</CardDescription>
+                      <CardDescription className="text-base font-medium opacity-60">Recevez une pensée choisie chaque matin pour nourrir votre esprit.</CardDescription>
                     </div>
                   </CardHeader>
                   <CardContent className="py-12 px-10">
-                    <div className="space-y-4">
+                    <div className="space-y-4 opacity-20">
                       {[1, 2].map(i => (
-                        <div key={i} className="flex items-center gap-5 p-5 bg-primary/[0.03] rounded-3xl border border-primary/5">
+                        <div key={i} className="flex items-center gap-5 p-5 bg-primary/5 rounded-3xl border border-primary/5">
                           <div className="h-10 w-10 rounded-2xl bg-primary/10" />
                           <div className="flex-1 space-y-2">
                             <div className="h-2 w-20 bg-primary/20 rounded-full" />
@@ -334,19 +275,19 @@ export default function AutoriserPage() {
               {step === 3 && (
                 <>
                   <CardHeader className="text-center pt-12 space-y-4">
-                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="mx-auto w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-2">
+                    <div className="mx-auto w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-2">
                       <MapPin className="h-10 w-10 text-primary" />
-                    </motion.div>
+                    </div>
                     <div className="space-y-2">
                       <CardTitle className="text-3xl font-black tracking-tight">Ancrage</CardTitle>
-                      <CardDescription className="text-base font-medium opacity-60 px-4">Nous adaptons les thèmes philosophiques selon votre environnement.</CardDescription>
+                      <CardDescription className="text-base font-medium opacity-60">Nous adaptons les thèmes philosophiques selon votre environnement.</CardDescription>
                     </div>
                   </CardHeader>
                   <CardContent className="py-16 flex justify-center">
                     <div className="relative h-40 w-40">
                       <motion.div animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }} transition={{ duration: 3, repeat: Infinity }} className="absolute inset-0 rounded-full border-2 border-primary/20" />
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <MapPin className="h-12 w-12 text-primary animate-bounce" />
+                        <MapPin className="h-12 w-12 text-primary" />
                       </div>
                     </div>
                   </CardContent>
@@ -361,26 +302,26 @@ export default function AutoriserPage() {
               {step === 4 && (
                 <>
                   <CardHeader className="text-center pt-12 space-y-4">
-                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="mx-auto w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-2">
+                    <div className="mx-auto w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-2">
                       <Fingerprint className="h-10 w-10 text-primary" />
-                    </motion.div>
+                    </div>
                     <div className="space-y-2">
                       <CardTitle className="text-3xl font-black tracking-tight">Sceau Final</CardTitle>
-                      <CardDescription className="text-base font-medium opacity-60 px-4">Sécurisez votre identité avec votre biométrie (Passkey).</CardDescription>
+                      <CardDescription className="text-base font-medium opacity-60">Sécurisez votre expérience avec votre biométrie native (Passkey).</CardDescription>
                     </div>
                   </CardHeader>
                   <CardContent className="py-12 px-8">
-                    <div className="p-8 bg-primary/5 rounded-[2.5rem] border border-primary/10 text-center relative overflow-hidden">
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mb-3">Passkey WebAuthn</p>
-                      <p className="text-sm font-semibold leading-relaxed">Utilisez Face ID, votre empreinte ou le code de votre appareil pour un accès instantané et sécurisé.</p>
+                    <div className="p-8 bg-primary/5 rounded-[2.5rem] border border-primary/10 text-center">
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mb-3">Sécurité Matérielle</p>
+                      <p className="text-sm font-semibold leading-relaxed">Face ID, Touch ID ou Windows Hello. Votre identité reste dans votre appareil.</p>
                     </div>
                   </CardContent>
                   <CardFooter className="pb-12 px-8 flex flex-col gap-3">
-                    <Button onClick={handleRequestPasskey} disabled={loading} className="w-full h-16 rounded-2xl font-black text-lg bg-primary text-primary-foreground">
-                      {loading ? <Loader2 className="animate-spin mr-2" /> : <Fingerprint className="mr-3 h-6 w-6" />}
-                      Créer ma Passkey
+                    <Button onClick={handleCreatePasskey} disabled={loading} className="w-full h-16 rounded-2xl font-black text-lg">
+                      {loading ? <Loader2 className="animate-spin mr-2" /> : <Lock className="mr-3 h-6 w-6" />}
+                      Activer ma Passkey
                     </Button>
-                    <Button variant="ghost" onClick={() => router.push("/random")} className="w-full h-12 text-muted-foreground font-bold tracking-widest text-[10px] uppercase">Passer cette étape</Button>
+                    <Button variant="ghost" onClick={() => router.push("/random")} className="w-full h-12 text-muted-foreground font-bold text-[10px] uppercase tracking-widest">Plus tard</Button>
                   </CardFooter>
                 </>
               )}
@@ -392,10 +333,7 @@ export default function AutoriserPage() {
           {[1, 2, 3, 4].map(i => (
             <motion.div 
               key={i} 
-              animate={{ 
-                width: step === i ? 40 : 10,
-                backgroundColor: step === i ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.1)"
-              }}
+              animate={{ width: step === i ? 40 : 10, backgroundColor: step === i ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.1)" }}
               className="h-1.5 rounded-full transition-all duration-500" 
             />
           ))}

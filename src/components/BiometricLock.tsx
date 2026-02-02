@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Fingerprint, Loader2, ShieldCheck, Lock, AlertCircle } from "lucide-react";
+import { Fingerprint, Loader2, ShieldCheck, Lock } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useToast } from "@/hooks/use-toast";
 
@@ -32,6 +32,7 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
       };
 
       // Déclenche l'interface native de l'OS (Face ID, Empreinte, Passkey)
+      // navigator.credentials.get sollicite le matériel pour une signature
       const assertion = await navigator.credentials.get(options);
       
       if (assertion) {
@@ -87,7 +88,7 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
           <div className="space-y-2">
             <h2 className="text-3xl font-black tracking-tight">Accès Protégé</h2>
             <p className="text-sm text-muted-foreground font-medium px-8 leading-relaxed opacity-60">
-              Votre Passkey est requise pour déverrouiller l'expérience Citation.
+              Votre Passkey matérielle est requise pour déverrouiller l'expérience Citation.
             </p>
           </div>
         </div>
@@ -96,12 +97,12 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
           <Button 
             onClick={handleBiometricAuth} 
             disabled={loading}
-            className="w-full h-20 rounded-3xl font-black text-lg gap-4 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)] hover:shadow-none transition-all active:scale-95"
+            className="w-full h-20 rounded-3xl font-black text-lg gap-4 shadow-xl active:scale-95 transition-all"
           >
             {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
             Déverrouiller
           </Button>
-          <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.3em] opacity-30">Sécurité WebAuthn Active</p>
+          <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.3em] opacity-30">Sécurité Matérielle Active</p>
         </div>
       </motion.div>
     </motion.div>
