@@ -24,7 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/Logo";
-import { Loader2, ChevronRight, ChevronLeft, CheckCircle2, User as UserIcon, ShieldCheck, Sparkles, XCircle, CheckCircle, Users, Gift } from "lucide-react";
+import { Loader2, ChevronRight, ChevronLeft, CheckCircle2, User as UserIcon, ShieldCheck, Sparkles, XCircle, CheckCircle, Users, Gift, Phone } from "lucide-react";
 import placeholderImages from "@/app/lib/placeholder-images.json";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
@@ -67,7 +67,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isAuthLoading && user) {
-      router.push("/"); // Splash screen gérera la redirection intelligente
+      router.push("/");
     }
   }, [user, isAuthLoading, router]);
 
@@ -366,6 +366,7 @@ export default function LoginPage() {
                       <div className="space-y-4 p-6 bg-muted/30 rounded-2xl border border-primary/5">
                         <div className="flex flex-col"><span className="text-[10px] font-black uppercase opacity-40">Pseudonyme</span><span className="text-xl font-bold">@{formData.username}</span></div>
                         <div className="flex flex-col"><span className="text-[10px] font-black uppercase opacity-40">Genre</span><span className="text-xl font-bold capitalize">{formData.gender}</span></div>
+                        <div className="flex flex-col"><span className="text-[10px] font-black uppercase opacity-40">Liaison Wave</span><span className="text-xl font-bold">{formData.countryCode} {formData.phoneNumber}</span></div>
                       </div>
                     </CardContent>
                     <CardFooter className="flex gap-4 p-6">
