@@ -5,7 +5,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  getFirestore, 
   collection, 
   query, 
   where, 
@@ -22,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ChevronRight, ChevronLeft, CheckCircle2, Phone, User as UserIcon, ShieldCheck } from "lucide-react";
+import { Loader2, ChevronRight, ChevronLeft, CheckCircle2, Phone, User as UserIcon, ShieldCheck, Sparkles } from "lucide-react";
 
 export default function LoginPage() {
   const [step, setStep] = useState(1);
@@ -43,8 +42,8 @@ export default function LoginPage() {
       if (!formData.username || formData.username.length < 3) {
         toast({
           variant: "destructive",
-          title: "Erreur",
-          description: "Le nom d'utilisateur doit faire au moins 3 caractères.",
+          title: "Format invalide",
+          description: "Le nom d'utilisateur doit contenir au moins 3 caractères.",
         });
         return;
       }
@@ -56,8 +55,8 @@ export default function LoginPage() {
         if (!querySnapshot.empty) {
           toast({
             variant: "destructive",
-            title: "Indisponible",
-            description: "Ce nom d'utilisateur est déjà utilisé.",
+            title: "Nom indisponible",
+            description: "Désolé, ce nom d'utilisateur est déjà réservé par un autre esprit.",
           });
           setLoading(false);
           return;
@@ -71,8 +70,8 @@ export default function LoginPage() {
     if (step === 2 && !formData.phoneNumber) {
       toast({
         variant: "destructive",
-        title: "Erreur",
-        description: "Veuillez fournir un numéro de téléphone valide.",
+        title: "Champ requis",
+        description: "Veuillez fournir un numéro de téléphone pour les interactions Wave.",
       });
       return;
     }
@@ -80,8 +79,8 @@ export default function LoginPage() {
     if (step === 3 && !formData.acceptedTerms) {
       toast({
         variant: "destructive",
-        title: "Erreur",
-        description: "Vous devez accepter les conditions d'utilisation.",
+        title: "Action requise",
+        description: "Vous devez accepter les conditions pour rejoindre l'expérience.",
       });
       return;
     }
@@ -107,8 +106,8 @@ export default function LoginPage() {
       });
 
       toast({
-        title: "Succès !",
-        description: "Votre compte Citation a été créé.",
+        title: "Bienvenue dans l'expérience",
+        description: "Votre profil a été créé avec succès.",
       });
       
       router.push("/random");
@@ -116,176 +115,274 @@ export default function LoginPage() {
       console.error("Registration error:", error);
       toast({
         variant: "destructive",
-        title: "Erreur d'inscription",
-        description: "Une erreur est survenue lors de la création de votre compte.",
+        title: "Échec de l'inscription",
+        description: "Une erreur inattendue est survenue. Veuillez réessayer.",
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const stepsVariants = {
-    initial: { opacity: 0, x: 20 },
-    animate: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: -20 },
+  const containerVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] }
+    },
+    exit: { 
+      opacity: 0, 
+      y: -20,
+      transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] }
+    }
+  };
+
+  const stepVariants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? 50 : -50,
+      opacity: 0,
+      filter: "blur(10px)",
+    }),
+    center: {
+      zIndex: 1,
+      x: 0,
+      opacity: 1,
+      filter: "blur(0px)",
+      transition: {
+        x: { type: "spring", stiffness: 300, damping: 30 },
+        opacity: { duration: 0.4 },
+        filter: { duration: 0.4 }
+      }
+    },
+    exit: (direction: number) => ({
+      zIndex: 0,
+      x: direction < 0 ? 50 : -50,
+      opacity: 0,
+      filter: "blur(10px)",
+      transition: {
+        x: { type: "spring", stiffness: 300, damping: 30 },
+        opacity: { duration: 0.4 },
+        filter: { duration: 0.4 }
+      }
+    })
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-background p-6">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <motion.h1 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-3xl font-bold tracking-tighter uppercase"
+    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background px-6 py-12 overflow-hidden relative">
+      {/* Background Orbs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-primary/5 blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-primary/5 blur-[120px]" />
+      </div>
+
+      <motion.div 
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
+        className="w-full max-w-lg z-10"
+      >
+        <div className="text-center mb-10">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.8 }}
+            className="inline-flex items-center justify-center p-3 rounded-2xl bg-primary text-background mb-6"
           >
-            Citation<span className="text-foreground/20">.</span>
-          </motion.h1>
-          <div className="mt-4 flex justify-center gap-2">
-            {[1, 2, 3, 4].map((s) => (
-              <div 
-                key={s} 
-                className={`h-1 w-8 rounded-full transition-colors duration-500 ${step >= s ? "bg-foreground" : "bg-foreground/10"}`} 
-              />
-            ))}
-          </div>
+            <Sparkles className="h-6 w-6" />
+          </motion.div>
+          <h1 className="text-4xl font-black tracking-tighter uppercase mb-2">
+            Citation<span className="opacity-20">.</span>
+          </h1>
+          <p className="text-muted-foreground text-sm font-medium tracking-widest uppercase opacity-50">
+            L'excellence de la pensée
+          </p>
         </div>
 
-        <Card className="border-none shadow-2xl bg-card/50 backdrop-blur-xl">
-          <AnimatePresence mode="wait">
-            {step === 1 && (
-              <motion.div key="step1" {...stepsVariants}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <UserIcon className="h-5 w-5" /> Identité
-                  </CardTitle>
-                  <CardDescription>Choisissez un nom d'utilisateur unique pour votre expérience.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="username">Nom d'utilisateur</Label>
-                    <Input 
-                      id="username" 
-                      placeholder="ex: socrate_99" 
-                      value={formData.username}
-                      onChange={(e) => setFormData({...formData, username: e.target.value.toLowerCase().trim()})}
-                      className="bg-background/50"
-                    />
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button onClick={handleNextStep} className="w-full" disabled={loading}>
-                    {loading ? <Loader2 className="animate-spin" /> : "Vérifier la disponibilité"}
-                    {!loading && <ChevronRight className="ml-2 h-4 w-4" />}
-                  </Button>
-                </CardFooter>
-              </motion.div>
-            )}
+        {/* Progress Dots */}
+        <div className="flex justify-center gap-3 mb-8">
+          {[1, 2, 3, 4].map((s) => (
+            <motion.div
+              key={s}
+              initial={false}
+              animate={{
+                width: step === s ? 32 : 8,
+                backgroundColor: step >= s ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.1)"
+              }}
+              className="h-1.5 rounded-full transition-colors duration-500"
+            />
+          ))}
+        </div>
 
-            {step === 2 && (
-              <motion.div key="step2" {...stepsVariants}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Phone className="h-5 w-5" /> Contact Wave
-                  </CardTitle>
-                  <CardDescription>Votre numéro de téléphone pour les interactions Wave.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Numéro de téléphone</Label>
-                    <Input 
-                      id="phone" 
-                      type="tel"
-                      placeholder="77 000 00 00" 
-                      value={formData.phoneNumber}
-                      onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
-                      className="bg-background/50"
-                    />
-                  </div>
-                </CardContent>
-                <CardFooter className="flex gap-4">
-                  <Button variant="outline" onClick={handleBackStep} className="flex-1">
-                    Retour
-                  </Button>
-                  <Button onClick={handleNextStep} className="flex-1">
-                    Suivant <ChevronRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </CardFooter>
-              </motion.div>
-            )}
+        <div className="relative">
+          <AnimatePresence mode="wait" custom={step}>
+            <motion.div
+              key={step}
+              custom={step}
+              variants={stepVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              className="w-full"
+            >
+              <Card className="border-none shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] dark:shadow-[0_32px_64px_-16px_rgba(255,255,255,0.05)] bg-card/40 backdrop-blur-2xl">
+                {step === 1 && (
+                  <>
+                    <CardHeader className="pt-8 px-8">
+                      <div className="flex items-center gap-3 mb-2 text-primary">
+                        <UserIcon className="h-5 w-5" />
+                        <span className="text-xs font-bold uppercase tracking-widest">Identité numérique</span>
+                      </div>
+                      <CardTitle className="text-2xl font-bold tracking-tight">Comment devons-nous vous appeler ?</CardTitle>
+                      <CardDescription>Choisissez un pseudonyme unique qui signera vos futures contributions.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="px-8 pb-8">
+                      <div className="space-y-2">
+                        <Label htmlFor="username" className="text-xs uppercase tracking-widest opacity-70">Nom d'utilisateur</Label>
+                        <div className="relative">
+                          <Input 
+                            id="username" 
+                            placeholder="ex: aristote_moderne" 
+                            value={formData.username}
+                            onChange={(e) => setFormData({...formData, username: e.target.value.toLowerCase().trim()})}
+                            className="h-14 bg-background/50 border-primary/10 focus:border-primary transition-all text-lg pl-5"
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="px-8 pb-8">
+                      <Button onClick={handleNextStep} className="w-full h-14 text-base font-bold rounded-xl" disabled={loading}>
+                        {loading ? <Loader2 className="animate-spin mr-2" /> : "Vérifier l'unicité"}
+                        {!loading && <ChevronRight className="ml-2 h-5 w-5" />}
+                      </Button>
+                    </CardFooter>
+                  </>
+                )}
 
-            {step === 3 && (
-              <motion.div key="step3" {...stepsVariants}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <ShieldCheck className="h-5 w-5" /> Légalité
-                  </CardTitle>
-                  <CardDescription>Veuillez accepter nos conditions d'utilisation pour continuer.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="p-4 bg-muted/50 rounded-lg text-xs leading-relaxed max-h-40 overflow-y-auto">
-                    En utilisant Citation, vous acceptez de respecter nos règles de conduite. Nous protégeons vos données personnelles et ne les partageons jamais avec des tiers. Citation est un espace de réflexion et de partage.
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="terms" 
-                      checked={formData.acceptedTerms} 
-                      onCheckedChange={(checked) => setFormData({...formData, acceptedTerms: !!checked})}
-                    />
-                    <Label htmlFor="terms" className="text-sm font-normal">
-                      J'accepte les conditions d'utilisation
-                    </Label>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex gap-4">
-                  <Button variant="outline" onClick={handleBackStep} className="flex-1">
-                    Retour
-                  </Button>
-                  <Button onClick={handleNextStep} className="flex-1">
-                    Suivant <ChevronRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </CardFooter>
-              </motion.div>
-            )}
+                {step === 2 && (
+                  <>
+                    <CardHeader className="pt-8 px-8">
+                      <div className="flex items-center gap-3 mb-2 text-primary">
+                        <Phone className="h-5 w-5" />
+                        <span className="text-xs font-bold uppercase tracking-widest">Contact Wave</span>
+                      </div>
+                      <CardTitle className="text-2xl font-bold tracking-tight">Liez votre compte Wave</CardTitle>
+                      <CardDescription>Votre numéro est nécessaire pour les interactions et récompenses de la plateforme.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="px-8 pb-8">
+                      <div className="space-y-2">
+                        <Label htmlFor="phone" className="text-xs uppercase tracking-widest opacity-70">Numéro de téléphone</Label>
+                        <Input 
+                          id="phone" 
+                          type="tel"
+                          placeholder="77 000 00 00" 
+                          value={formData.phoneNumber}
+                          onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
+                          className="h-14 bg-background/50 border-primary/10 focus:border-primary transition-all text-lg pl-5"
+                        />
+                      </div>
+                    </CardContent>
+                    <CardFooter className="px-8 pb-8 flex gap-4">
+                      <Button variant="ghost" onClick={handleBackStep} className="h-14 flex-1 font-bold rounded-xl">
+                        <ChevronLeft className="mr-2 h-5 w-5" /> Retour
+                      </Button>
+                      <Button onClick={handleNextStep} className="h-14 flex-1 font-bold rounded-xl">
+                        Suivant <ChevronRight className="ml-2 h-5 w-5" />
+                      </Button>
+                    </CardFooter>
+                  </>
+                )}
 
-            {step === 4 && (
-              <motion.div key="step4" {...stepsVariants}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5" /> Récapitulatif
-                  </CardTitle>
-                  <CardDescription>Vérifiez vos informations avant de commencer l'aventure.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Utilisateur</span>
-                      <span className="font-medium">@{formData.username}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Téléphone (Wave)</span>
-                      <span className="font-medium">{formData.phoneNumber}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Méthode</span>
-                      <span className="font-medium text-xs bg-foreground/10 px-2 py-0.5 rounded">Invité</span>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex gap-4">
-                  <Button variant="outline" onClick={handleBackStep} className="flex-1" disabled={loading}>
-                    Retour
-                  </Button>
-                  <Button onClick={handleRegister} className="flex-1" disabled={loading}>
-                    {loading ? <Loader2 className="animate-spin mr-2" /> : null}
-                    S'inscrire
-                  </Button>
-                </CardFooter>
-              </motion.div>
-            )}
+                {step === 3 && (
+                  <>
+                    <CardHeader className="pt-8 px-8">
+                      <div className="flex items-center gap-3 mb-2 text-primary">
+                        <ShieldCheck className="h-5 w-5" />
+                        <span className="text-xs font-bold uppercase tracking-widest">Légalité & Éthique</span>
+                      </div>
+                      <CardTitle className="text-2xl font-bold tracking-tight">Engagement de l'esprit</CardTitle>
+                      <CardDescription>En rejoignant Citation, vous vous engagez à respecter notre charte éthique.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="px-8 pb-8 space-y-6">
+                      <div className="p-5 bg-muted/40 rounded-2xl text-sm leading-relaxed max-h-48 overflow-y-auto border border-primary/5">
+                        <p className="mb-4"><strong>Article 1 :</strong> Citation est un espace de respect mutuel et de réflexion profonde.</p>
+                        <p className="mb-4"><strong>Article 2 :</strong> Vos données sont cryptées et utilisées uniquement pour améliorer votre expérience.</p>
+                        <p><strong>Article 3 :</strong> Tout abus ou comportement toxique entraînera une suspension immédiate du profil.</p>
+                      </div>
+                      <div className="flex items-center space-x-3 p-4 bg-primary/5 rounded-xl border border-primary/10 transition-all hover:bg-primary/10 cursor-pointer" onClick={() => setFormData({...formData, acceptedTerms: !formData.acceptedTerms})}>
+                        <Checkbox 
+                          id="terms" 
+                          checked={formData.acceptedTerms} 
+                          className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                        />
+                        <Label htmlFor="terms" className="text-sm font-medium cursor-pointer">
+                          J'accepte sans réserve les conditions d'utilisation
+                        </Label>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="px-8 pb-8 flex gap-4">
+                      <Button variant="ghost" onClick={handleBackStep} className="h-14 flex-1 font-bold rounded-xl">
+                        <ChevronLeft className="mr-2 h-5 w-5" /> Retour
+                      </Button>
+                      <Button onClick={handleNextStep} className="h-14 flex-1 font-bold rounded-xl">
+                        Accepter <ChevronRight className="ml-2 h-5 w-5" />
+                      </Button>
+                    </CardFooter>
+                  </>
+                )}
+
+                {step === 4 && (
+                  <>
+                    <CardHeader className="pt-8 px-8">
+                      <div className="flex items-center gap-3 mb-2 text-primary">
+                        <CheckCircle2 className="h-5 w-5" />
+                        <span className="text-xs font-bold uppercase tracking-widest">Confirmation</span>
+                      </div>
+                      <CardTitle className="text-2xl font-bold tracking-tight">Prêt pour l'aventure ?</CardTitle>
+                      <CardDescription>Vérifiez une dernière fois vos informations avant de commencer.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="px-8 pb-8">
+                      <div className="space-y-4 p-6 bg-muted/30 rounded-2xl border border-primary/5">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Nom de plume</span>
+                          <span className="text-xl font-bold">@{formData.username}</span>
+                        </div>
+                        <div className="h-px bg-primary/5 w-full" />
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Liaison Wave</span>
+                          <span className="text-xl font-bold">{formData.phoneNumber}</span>
+                        </div>
+                        <div className="h-px bg-primary/5 w-full" />
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-green-500" />
+                          <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Status : Prêt pour l'initiation</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="px-8 pb-8 flex gap-4">
+                      <Button variant="ghost" onClick={handleBackStep} className="h-14 flex-1 font-bold rounded-xl" disabled={loading}>
+                        Modifier
+                      </Button>
+                      <Button onClick={handleRegister} className="h-14 flex-1 font-bold rounded-xl shadow-lg shadow-primary/20" disabled={loading}>
+                        {loading ? <Loader2 className="animate-spin mr-2" /> : "S'inscrire"}
+                        {!loading && <Sparkles className="ml-2 h-5 w-5" />}
+                      </Button>
+                    </CardFooter>
+                  </>
+                )}
+              </Card>
+            </motion.div>
           </AnimatePresence>
-        </Card>
-      </div>
+        </div>
+      </motion.div>
+      
+      <motion.p 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.3 }}
+        transition={{ delay: 1, duration: 1 }}
+        className="mt-12 text-[10px] font-black uppercase tracking-[0.3em] text-center"
+      >
+        Mise à jour v2.0 • L'art de la pensée
+      </motion.p>
     </div>
   );
 }
