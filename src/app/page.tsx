@@ -12,7 +12,7 @@ export default function Home() {
   useEffect(() => {
     const timer = setTimeout(() => {
       router.push("/home");
-    }, 4500); // Durée du splash screen avant redirection
+    }, 4000); // Réduction légère du temps d'attente pour plus de fluidité
     return () => clearTimeout(timer);
   }, [router]);
 
@@ -30,50 +30,22 @@ export default function Home() {
       </motion.div>
 
       <div className="z-10 flex flex-col items-center gap-12 px-6">
-        {/* Logo Animation */}
+        {/* Logo Animation - Plus central et imposant */}
         <motion.div
-          initial={{ opacity: 0, y: 40, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
           transition={{ 
-            duration: 1.2, 
+            duration: 1.5, 
             ease: [0.22, 1, 0.36, 1] 
           }}
         >
-          <Logo className="scale-125 md:scale-[1.8]" />
+          <Logo className="scale-150 md:scale-[2]" />
         </motion.div>
-
-        {/* Text Reveal */}
-        <div className="flex flex-col items-center text-center space-y-4 max-w-2xl">
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8, duration: 1 }}
-            className="text-4xl md:text-6xl font-black tracking-tighter leading-none"
-          >
-            LA SAGESSE <br /> RÉINVENTÉE.
-          </motion.h1>
-          
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: "60px" }}
-            transition={{ delay: 1.5, duration: 1 }}
-            className="h-px bg-foreground/20"
-          />
-
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.5 }}
-            transition={{ delay: 1.8, duration: 1 }}
-            className="text-[10px] md:text-xs font-bold tracking-[0.4em] uppercase"
-          >
-            Initialisation de l'expérience...
-          </motion.p>
-        </div>
       </div>
 
       {/* Floating Particle Elements */}
       <div className="absolute inset-0 pointer-events-none opacity-20">
-        {[...Array(15)].map((_, i) => (
+        {[...Array(20)].map((_, i) => (
           <motion.div
             key={i}
             className="absolute h-1 w-1 bg-foreground rounded-full"
@@ -83,11 +55,11 @@ export default function Home() {
               opacity: Math.random()
             }}
             animate={{ 
-              y: [null, "-40px", "40px", null],
+              y: [null, "-60px", "60px", null],
               opacity: [0.1, 0.4, 0.1]
             }}
             transition={{ 
-              duration: 4 + Math.random() * 4, 
+              duration: 5 + Math.random() * 5, 
               repeat: Infinity,
               ease: "easeInOut"
             }}
@@ -95,14 +67,14 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Version Badge */}
+      {/* Version Badge - Très discret */}
       <motion.div
         initial={{ opacity: 0 }}
-        animate={{ opacity: 0.2 }}
-        transition={{ delay: 2.5 }}
+        animate={{ opacity: 0.15 }}
+        transition={{ delay: 2 }}
         className="absolute bottom-8 text-[9px] font-bold tracking-[0.6em] uppercase"
       >
-        Philo Engine v2.0.4
+        Philo v2.0
       </motion.div>
     </div>
   );
