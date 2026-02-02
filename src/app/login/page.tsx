@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -21,11 +21,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/Logo";
-import { Loader2, ChevronRight, ChevronLeft, CheckCircle2, Phone, User as UserIcon, ShieldCheck, Sparkles } from "lucide-react";
+import { Loader2, ChevronRight, ChevronLeft, CheckCircle2, Phone, User as UserIcon, ShieldCheck, Sparkles, XCircle, CheckCircle } from "lucide-react";
 
 export default function LoginPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'available' | 'taken' | 'invalid'>('idle');
+  
   const [formData, setFormData] = useState({
     username: "",
     phoneNumber: "",
@@ -37,34 +40,50 @@ export default function LoginPage() {
   const auth = getAuth(useFirebaseApp());
   const { toast } = useToast();
 
-  const handleNextStep = async () => {
-    if (step === 1) {
-      if (!formData.username || formData.username.length < 3) {
-        toast({
-          variant: "destructive",
-          title: "Format invalide",
-          description: "Le nom d'utilisateur doit contenir au moins 3 caractères.",
-        });
+  // Real-time username validation with debounce
+  useEffect(() => {
+    if (step !== 1) return;
+    
+    const checkUsername = async () => {
+      const name = formData.username.trim().toLowerCase();
+      
+      if (name.length < 3) {
+        setUsernameStatus(name.length > 0 ? 'invalid' : 'idle');
         return;
       }
-      
-      setLoading(true);
+
+      setCheckingUsername(true);
       try {
-        const q = query(collection(db, "users"), where("username", "==", formData.username));
+        const q = query(collection(db, "users"), where("username", "==", name));
         const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-          toast({
-            variant: "destructive",
-            title: "Nom indisponible",
-            description: "Désolé, ce nom d'utilisateur est déjà réservé par un autre esprit.",
-          });
-          setLoading(false);
-          return;
+        if (querySnapshot.empty) {
+          setUsernameStatus('available');
+        } else {
+          setUsernameStatus('taken');
         }
       } catch (error) {
         console.error("Error checking username:", error);
+      } finally {
+        setCheckingUsername(false);
       }
-      setLoading(false);
+    };
+
+    const timeoutId = setTimeout(checkUsername, 500);
+    return () => clearTimeout(timeoutId);
+  }, [formData.username, db, step]);
+
+  const handleNextStep = () => {
+    if (step === 1) {
+      if (usernameStatus !== 'available') {
+        toast({
+          variant: "destructive",
+          title: "Action requise",
+          description: usernameStatus === 'taken' 
+            ? "Ce nom d'utilisateur est déjà utilisé." 
+            : "Veuillez choisir un nom valide (min. 3 caractères).",
+        });
+        return;
+      }
     }
 
     if (step === 2 && !formData.phoneNumber) {
@@ -99,7 +118,7 @@ export default function LoginPage() {
       const user = userCredential.user;
 
       await setDoc(doc(db, "users", user.uid), {
-        username: formData.username,
+        username: formData.username.toLowerCase().trim(),
         phoneNumber: formData.phoneNumber,
         acceptedTerms: formData.acceptedTerms,
         createdAt: serverTimestamp(),
@@ -129,11 +148,6 @@ export default function LoginPage() {
       opacity: 1, 
       y: 0,
       transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] }
-    },
-    exit: { 
-      opacity: 0, 
-      y: -20,
-      transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] }
     }
   };
 
@@ -169,7 +183,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background px-6 py-12 overflow-hidden relative">
-      {/* Background Orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-primary/5 blur-[120px]" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-primary/5 blur-[120px]" />
@@ -188,7 +201,6 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Progress Dots */}
         <div className="flex justify-center gap-3 mb-8">
           {[1, 2, 3, 4].map((s) => (
             <motion.div
@@ -226,23 +238,60 @@ export default function LoginPage() {
                       <CardDescription>Choisissez un pseudonyme unique qui signera vos futures contributions.</CardDescription>
                     </CardHeader>
                     <CardContent className="px-8 pb-8">
-                      <div className="space-y-2">
-                        <Label htmlFor="username" className="text-xs uppercase tracking-widest opacity-70">Nom d'utilisateur</Label>
-                        <div className="relative">
-                          <Input 
-                            id="username" 
-                            placeholder="ex: aristote_moderne" 
-                            value={formData.username}
-                            onChange={(e) => setFormData({...formData, username: e.target.value.toLowerCase().trim()})}
-                            className="h-14 bg-background/50 border-primary/10 focus:border-primary transition-all text-lg pl-5"
-                          />
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="username" className="text-xs uppercase tracking-widest opacity-70">Nom d'utilisateur</Label>
+                          <div className="relative">
+                            <Input 
+                              id="username" 
+                              placeholder="ex: aristote_moderne" 
+                              value={formData.username}
+                              onChange={(e) => setFormData({...formData, username: e.target.value.replace(/\s/g, '').toLowerCase()})}
+                              className="h-14 bg-background/50 border-primary/10 focus:border-primary transition-all text-lg pl-5 pr-12"
+                            />
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                              {checkingUsername ? (
+                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                              ) : (
+                                <>
+                                  {usernameStatus === 'available' && <CheckCircle className="h-5 w-5 text-green-500" />}
+                                  {usernameStatus === 'taken' && <XCircle className="h-5 w-5 text-red-500" />}
+                                  {usernameStatus === 'invalid' && <XCircle className="h-5 w-5 text-red-300" />}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 min-h-[20px]">
+                          <AnimatePresence mode="wait">
+                            {usernameStatus === 'available' && (
+                              <motion.span initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="text-[10px] font-bold text-green-500 uppercase tracking-widest">
+                                Ce nom est libre pour vous
+                              </motion.span>
+                            )}
+                            {usernameStatus === 'taken' && (
+                              <motion.span initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="text-[10px] font-bold text-red-500 uppercase tracking-widest">
+                                Déjà réservé par un autre esprit
+                              </motion.span>
+                            )}
+                            {usernameStatus === 'invalid' && (
+                              <motion.span initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="text-[10px] font-bold text-red-300 uppercase tracking-widest">
+                                Minimum 3 caractères
+                              </motion.span>
+                            )}
+                          </AnimatePresence>
                         </div>
                       </div>
                     </CardContent>
                     <CardFooter className="px-8 pb-8">
-                      <Button onClick={handleNextStep} className="w-full h-14 text-base font-bold rounded-xl" disabled={loading}>
-                        {loading ? <Loader2 className="animate-spin mr-2" /> : "Vérifier l'unicité"}
-                        {!loading && <ChevronRight className="ml-2 h-5 w-5" />}
+                      <Button 
+                        onClick={handleNextStep} 
+                        className="w-full h-14 text-base font-bold rounded-xl" 
+                        disabled={usernameStatus !== 'available' || checkingUsername}
+                      >
+                        Continuer
+                        <ChevronRight className="ml-2 h-5 w-5" />
                       </Button>
                     </CardFooter>
                   </>
