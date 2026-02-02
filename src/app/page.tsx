@@ -1,8 +1,14 @@
+import { Logo } from '@/components/Logo';
+
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <h1 className="text-4xl font-bold">Nouvelle Application</h1>
-      <p className="mt-4 text-muted-foreground">Prêt pour un nouveau départ.</p>
+    <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-background">
+      <div className="group">
+        <Logo className="text-4xl scale-125" />
+      </div>
+      <p className="mt-8 text-muted-foreground font-serif italic text-lg">
+        "La sagesse commence dans l'émerveillement."
+      </p>
     </main>
   );
 }
