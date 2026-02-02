@@ -22,8 +22,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/Logo";
-import { Loader2, ChevronRight, ChevronLeft, CheckCircle2, User as UserIcon, ShieldCheck, Sparkles, XCircle, CheckCircle } from "lucide-react";
+import { Loader2, ChevronRight, ChevronLeft, CheckCircle2, User as UserIcon, ShieldCheck, Sparkles, XCircle, CheckCircle, Users } from "lucide-react";
 import placeholderImages from "@/app/lib/placeholder-images.json";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export default function LoginPage() {
   const [step, setStep] = useState(1);
@@ -33,6 +34,7 @@ export default function LoginPage() {
   
   const [formData, setFormData] = useState({
     username: "",
+    gender: "",
     countryCode: "+225",
     phoneNumber: "",
     acceptedTerms: false,
@@ -98,6 +100,17 @@ export default function LoginPage() {
     }
 
     if (step === 2) {
+      if (!formData.gender) {
+        toast({
+          variant: "destructive",
+          title: "Action requise",
+          description: "Veuillez sélectionner votre genre.",
+        });
+        return;
+      }
+    }
+
+    if (step === 3) {
       if (!isValidPhoneNumber(formData.phoneNumber)) {
         toast({
           variant: "destructive",
@@ -108,7 +121,7 @@ export default function LoginPage() {
       }
     }
 
-    if (step === 3 && !formData.acceptedTerms) {
+    if (step === 4 && !formData.acceptedTerms) {
       toast({
         variant: "destructive",
         title: "Action requise",
@@ -134,6 +147,7 @@ export default function LoginPage() {
 
       await setDoc(doc(db, "users", user.uid), {
         username: formData.username.toLowerCase().trim(),
+        gender: formData.gender,
         phoneNumber: fullPhoneNumber,
         acceptedTerms: formData.acceptedTerms,
         createdAt: serverTimestamp(),
@@ -208,7 +222,7 @@ export default function LoginPage() {
         </div>
 
         <div className="flex justify-center gap-3 mb-8">
-          {[1, 2, 3, 4].map((s) => (
+          {[1, 2, 3, 4, 5].map((s) => (
             <motion.div
               key={s}
               initial={false}
@@ -307,6 +321,59 @@ export default function LoginPage() {
                   <>
                     <CardHeader className="pt-8 px-8">
                       <div className="flex items-center gap-3 mb-2 text-primary">
+                        <Users className="h-5 w-5" />
+                        <span className="text-xs font-bold uppercase tracking-widest">Nature de l'esprit</span>
+                      </div>
+                      <CardTitle className="text-2xl font-bold tracking-tight">Quel est votre genre ?</CardTitle>
+                      <CardDescription>Cette information nous aide à personnaliser votre expérience philosophique.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="px-8 pb-8">
+                      <RadioGroup 
+                        value={formData.gender} 
+                        onValueChange={(val) => setFormData({...formData, gender: val})}
+                        className="grid grid-cols-1 gap-4"
+                      >
+                        {[
+                          { id: "masculin", label: "Homme" },
+                          { id: "féminin", label: "Femme" },
+                          { id: "non-binaire", label: "Non-binaire / Autre" }
+                        ].map((option) => (
+                          <div key={option.id}>
+                            <RadioGroupItem
+                              value={option.id}
+                              id={option.id}
+                              className="peer sr-only"
+                            />
+                            <Label
+                              htmlFor={option.id}
+                              className="flex flex-1 items-center justify-between rounded-xl border-2 border-muted bg-background/50 p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary transition-all cursor-pointer"
+                            >
+                              <span className="text-base font-bold">{option.label}</span>
+                              <div className="h-2 w-2 rounded-full bg-primary opacity-0 peer-data-[state=checked]:opacity-100 transition-opacity" />
+                            </Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    </CardContent>
+                    <CardFooter className="px-8 pb-8 flex gap-4">
+                      <Button variant="ghost" onClick={handleBackStep} className="h-14 flex-1 font-bold rounded-xl">
+                        <ChevronLeft className="mr-2 h-5 w-5" /> Retour
+                      </Button>
+                      <Button 
+                        onClick={handleNextStep} 
+                        className="h-14 flex-1 font-bold rounded-xl"
+                        disabled={!formData.gender}
+                      >
+                        Suivant <ChevronRight className="ml-2 h-5 w-5" />
+                      </Button>
+                    </CardFooter>
+                  </>
+                )}
+
+                {step === 3 && (
+                  <>
+                    <CardHeader className="pt-8 px-8">
+                      <div className="flex items-center gap-3 mb-2 text-primary">
                         <div className="relative h-6 w-6 rounded-full overflow-hidden border border-primary/20">
                           {waveIcon && <Image 
                             src={waveIcon} 
@@ -378,7 +445,7 @@ export default function LoginPage() {
                   </>
                 )}
 
-                {step === 3 && (
+                {step === 4 && (
                   <>
                     <CardHeader className="pt-8 px-8">
                       <div className="flex items-center gap-3 mb-2 text-primary">
@@ -416,7 +483,7 @@ export default function LoginPage() {
                   </>
                 )}
 
-                {step === 4 && (
+                {step === 5 && (
                   <>
                     <CardHeader className="pt-8 px-8">
                       <div className="flex items-center gap-3 mb-2 text-primary">
@@ -431,6 +498,11 @@ export default function LoginPage() {
                         <div className="flex flex-col gap-1">
                           <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Nom de plume</span>
                           <span className="text-xl font-bold">@{formData.username}</span>
+                        </div>
+                        <div className="h-px bg-primary/5 w-full" />
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Genre</span>
+                          <span className="text-xl font-bold capitalize">{formData.gender}</span>
                         </div>
                         <div className="h-px bg-primary/5 w-full" />
                         <div className="flex flex-col gap-1">
