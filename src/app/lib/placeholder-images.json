@@ -1,0 +1,29 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "philosophy-hero",
+      "description": "An elegant library or marble statues",
+      "imageUrl": "https://picsum.photos/seed/philosophy/1200/600",
+      "imageHint": "ancient library marble"
+    },
+    {
+      "id": "theme-existence",
+      "description": "Starry sky or deep space",
+      "imageUrl": "https://picsum.photos/seed/existence/400/300",
+      "imageHint": "starry night"
+    },
+    {
+      "id": "theme-morale",
+      "description": "Scales of justice or ancient stone carvings",
+      "imageUrl": "https://picsum.photos/seed/morality/400/300",
+      "imageHint": "scales justice"
+    },
+    {
+      "id": "theme-liberte",
+      "description": "Open window or bird flying",
+      "imageUrl": "https://picsum.photos/seed/freedom/400/300",
+      "imageHint": "flying bird"
+    }
+  ]
+}
