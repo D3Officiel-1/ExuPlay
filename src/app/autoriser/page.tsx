@@ -208,8 +208,18 @@ export default function AutoriserPage() {
       </div>
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-lg z-10">
-        <div className="flex justify-center mb-16">
+        <div className="flex justify-center mb-10">
           <Logo className="scale-75" />
+        </div>
+
+        <div className="mb-12 flex justify-center gap-3">
+          {[1, 2, 3, 4].map(i => (
+            <motion.div 
+              key={i} 
+              animate={{ width: step === i ? 40 : 10, backgroundColor: step === i ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.1)" }}
+              className="h-1.5 rounded-full transition-all duration-500" 
+            />
+          ))}
         </div>
 
         <AnimatePresence mode="wait">
@@ -328,16 +338,6 @@ export default function AutoriserPage() {
             </Card>
           </motion.div>
         </AnimatePresence>
-
-        <div className="mt-12 flex justify-center gap-3">
-          {[1, 2, 3, 4].map(i => (
-            <motion.div 
-              key={i} 
-              animate={{ width: step === i ? 40 : 10, backgroundColor: step === i ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.1)" }}
-              className="h-1.5 rounded-full transition-all duration-500" 
-            />
-          ))}
-        </div>
       </motion.div>
     </div>
   );
