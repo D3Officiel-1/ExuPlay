@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -20,13 +21,12 @@ export default function SplashPage() {
   useEffect(() => {
     const splashTimer = setTimeout(() => {
       setSplashDone(true);
-    }, 3500);
+    }, 3000); // 3 secondes de splash cinématographique
     return () => clearTimeout(splashTimer);
   }, []);
 
   useEffect(() => {
     const checkRedirect = async () => {
-      // On attend que le splash et l'auth soient prêts
       if (authLoading || !splashDone) return;
 
       if (!user) {
@@ -38,6 +38,7 @@ export default function SplashPage() {
         const userDoc = await getDoc(doc(db, "users", user.uid));
         const userData = userDoc.data();
 
+        // Caméra, Notifications et Localisation sont MANDATOIRES
         const isFullyAuthorized = 
           userData?.cameraAuthorized === true && 
           userData?.notificationsEnabled === true && 
@@ -45,7 +46,7 @@ export default function SplashPage() {
 
         const nextPath = isFullyAuthorized ? "/random" : "/autoriser";
 
-        // Vérifier si la biométrie est activée
+        // Vérifier si la biométrie est activée (optionnelle mais verrouille l'accès si ON)
         const biometricEnabled = userData?.biometricEnabled === true || localStorage.getItem("citation_biometric_enabled") === "true";
 
         if (biometricEnabled) {
@@ -56,7 +57,7 @@ export default function SplashPage() {
         }
       } catch (error) {
         console.error("Error checking permissions:", error);
-        router.push("/random");
+        router.push("/login");
       } finally {
         setCheckingPermissions(false);
       }
@@ -66,7 +67,7 @@ export default function SplashPage() {
   }, [authLoading, user, router, db, splashDone]);
 
   const handleUnlockSuccess = () => {
-    setShowBiometric(false);
+    // L'animation est déjà gérée dans le composant BiometricLock
     if (targetPath) {
       router.push(targetPath);
     }
@@ -131,14 +132,14 @@ export default function SplashPage() {
             className="absolute inset-0 bg-foreground"
             initial={{ x: "-100%" }}
             animate={{ x: "0%" }}
-            transition={{ duration: 3, ease: "easeInOut", delay: 1 }}
+            transition={{ duration: 2.5, ease: "easeInOut", delay: 0.5 }}
           />
         </motion.div>
       </div>
 
       {/* Floating Modern Particles */}
       <div className="absolute inset-0 pointer-events-none">
-        {[...Array(20)].map((_, i) => (
+        {[...Array(15)].map((_, i) => (
           <motion.div
             key={i}
             className="absolute h-[1px] w-[1px] bg-foreground rounded-full"
@@ -149,12 +150,12 @@ export default function SplashPage() {
               scale: 0
             }}
             animate={{ 
-              opacity: [0, 0.4, 0],
+              opacity: [0, 0.3, 0],
               scale: [0, 1.5, 0],
-              y: ["0%", "-10%"]
+              y: ["0%", "-15%"]
             }}
             transition={{ 
-              duration: 3 + Math.random() * 3, 
+              duration: 4 + Math.random() * 4, 
               repeat: Infinity,
               ease: "linear",
               delay: Math.random() * 2
