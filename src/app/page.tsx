@@ -3,7 +3,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Logo } from "@/components/Logo";
 
 export default function Home() {
@@ -12,60 +12,102 @@ export default function Home() {
   useEffect(() => {
     const timer = setTimeout(() => {
       router.push("/home");
-    }, 4000);
+    }, 4500);
     return () => clearTimeout(timer);
   }, [router]);
 
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-background">
-      {/* Background Decorative Elements */}
+      {/* Background Decorative Elements - Subtle Pulse */}
       <motion.div 
         initial={{ opacity: 0 }}
-        animate={{ opacity: 0.05 }}
-        transition={{ duration: 2 }}
+        animate={{ opacity: [0, 0.05, 0.02] }}
+        transition={{ duration: 4, times: [0, 0.5, 1], ease: "easeInOut" }}
         className="absolute inset-0 pointer-events-none"
       >
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-foreground blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-foreground blur-[120px]" />
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-foreground blur-[150px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-foreground blur-[150px]" />
       </motion.div>
 
-      {/* Main Logo and Animation */}
+      {/* Content Container */}
       <div className="z-10 flex flex-col items-center px-6">
         <motion.div
-          initial={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
-          animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+          initial={{ opacity: 0, scale: 0.7, filter: "blur(20px)" }}
+          animate={{ 
+            opacity: 1, 
+            scale: 1, 
+            filter: "blur(0px)",
+          }}
           transition={{ 
-            duration: 2, 
-            ease: [0.22, 1, 0.36, 1] 
+            duration: 2.5, 
+            ease: [0.22, 1, 0.36, 1],
+            delay: 0.5
           }}
         >
-          <Logo className="scale-150 md:scale-[2]" />
+          <motion.div
+            animate={{ 
+              y: [0, -10, 0],
+            }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          >
+            <Logo className="scale-150 md:scale-[2.5]" />
+          </motion.div>
+        </motion.div>
+
+        {/* Progress Bar Decorator */}
+        <motion.div 
+          className="mt-24 w-48 h-[1px] bg-foreground/10 relative overflow-hidden"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.5, duration: 1 }}
+        >
+          <motion.div 
+            className="absolute inset-0 bg-foreground"
+            initial={{ x: "-100%" }}
+            animate={{ x: "0%" }}
+            transition={{ duration: 3, ease: "easeInOut", delay: 1 }}
+          />
         </motion.div>
       </div>
 
-      {/* Floating Particle Elements for the "Ultra Stylé" look */}
-      <div className="absolute inset-0 pointer-events-none opacity-20">
-        {[...Array(15)].map((_, i) => (
+      {/* Floating Modern Particles */}
+      <div className="absolute inset-0 pointer-events-none">
+        {[...Array(20)].map((_, i) => (
           <motion.div
             key={i}
-            className="absolute h-1 w-1 bg-foreground rounded-full"
+            className="absolute h-[1px] w-[1px] bg-foreground rounded-full"
             initial={{ 
               x: Math.random() * 100 + "%", 
               y: Math.random() * 100 + "%",
-              opacity: Math.random()
+              opacity: 0,
+              scale: 0
             }}
             animate={{ 
-              y: [null, "-40px", "40px", null],
-              opacity: [0.1, 0.3, 0.1]
+              opacity: [0, 0.4, 0],
+              scale: [0, 1.5, 0],
+              y: ["0%", "-10%"]
             }}
             transition={{ 
-              duration: 4 + Math.random() * 4, 
+              duration: 3 + Math.random() * 3, 
               repeat: Infinity,
-              ease: "easeInOut"
+              ease: "linear",
+              delay: Math.random() * 2
             }}
           />
         ))}
       </div>
+
+      {/* Final Exit Flash */}
+      <motion.div 
+        className="fixed inset-0 bg-background z-[100] pointer-events-none"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 0, 1] }}
+        transition={{ duration: 4.5, times: [0, 0.9, 1] }}
+      />
     </div>
   );
 }
