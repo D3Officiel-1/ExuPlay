@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/Logo";
 import { Camera, Bell, MapPin, Fingerprint, ChevronRight, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import { useAuth, useUser } from "@/firebase";
 
 export default function AutoriserPage() {
   const [step, setStep] = useState(1);
@@ -16,6 +17,8 @@ export default function AutoriserPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useUser();
+  const auth = useAuth();
 
   const handleRequestCamera = async () => {
     setLoading(true);
@@ -81,15 +84,59 @@ export default function AutoriserPage() {
   const handleRequestPasskey = async () => {
     setLoading(true);
     try {
-      // Simulation d'un délai pour l'interaction utilisateur biométrique
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      toast({
-        title: "Sceau biométrique activé",
-        description: "Votre accès est désormais unique.",
+      // Vérifier si la biométrie est disponible
+      const available = await window.PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable();
+      
+      if (!available) {
+        throw new Error("La biométrie n'est pas disponible ou supportée sur cet appareil.");
+      }
+
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+
+      const userId = user?.uid || "anonymous";
+      const userEmail = user?.email || `${userId}@citation.app`;
+
+      const createCredentialOptions: PublicKeyCredentialCreationOptions = {
+        challenge,
+        rp: {
+          name: "Citation App",
+          id: window.location.hostname,
+        },
+        user: {
+          id: Uint8Array.from(userId, c => c.charCodeAt(0)),
+          name: userEmail,
+          displayName: user?.displayName || "Utilisateur Citation",
+        },
+        pubKeyCredParams: [{ alg: -7, type: "public-key" }], // ES256
+        authenticatorSelection: {
+          authenticatorAttachment: "platform",
+          userVerification: "required",
+        },
+        timeout: 60000,
+      };
+
+      const credential = await navigator.credentials.create({
+        publicKey: createCredentialOptions,
       });
-      router.push("/random");
-    } catch (error) {
-      router.push("/random");
+
+      if (credential) {
+        localStorage.setItem("citation_biometric_enabled", "true");
+        toast({
+          title: "Sceau biométrique activé",
+          description: "Votre identité est désormais liée à cet appareil.",
+        });
+        router.push("/random");
+      }
+    } catch (error: any) {
+      console.error('Biometric error:', error);
+      toast({
+        variant: 'destructive',
+        title: "Échec de l'activation",
+        description: error.message || "L'authentification a été annulée ou a échoué.",
+      });
+      // On redirige quand même pour ne pas bloquer l'utilisateur
+      setTimeout(() => router.push("/random"), 2000);
     } finally {
       setLoading(false);
     }
@@ -271,14 +318,14 @@ export default function AutoriserPage() {
                   <CardContent className="py-12 px-8">
                     <div className="p-8 bg-primary/5 rounded-[2.5rem] border border-primary/10 text-center relative overflow-hidden">
                       <div className="absolute top-0 right-0 p-4 opacity-10"><Sparkles className="h-12 w-12" /></div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mb-3">Sécurité Passkey</p>
-                      <p className="text-sm font-semibold leading-relaxed">Remplacez vos accès par une signature biométrique invisible et infaillible.</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mb-3">Sécurité Biométrique</p>
+                      <p className="text-sm font-semibold leading-relaxed">Activez Face ID, Fingerprint ou Windows Hello pour une connexion instantanée et sécurisée.</p>
                     </div>
                   </CardContent>
                   <CardFooter className="pb-12 px-8 flex flex-col gap-3">
                     <Button onClick={handleRequestPasskey} disabled={loading} className="w-full h-16 rounded-2xl font-black text-lg shadow-2xl shadow-primary/20 bg-primary text-primary-foreground">
                       {loading ? <Loader2 className="animate-spin mr-2" /> : <Fingerprint className="mr-3 h-6 w-6" />}
-                      {loading ? "Chiffrement..." : "Activer la Passkey"}
+                      {loading ? "Authentification..." : "Activer la Biométrie"}
                     </Button>
                     <Button variant="ghost" onClick={() => router.push("/random")} className="w-full h-12 text-muted-foreground font-bold tracking-widest text-[10px] uppercase">Finir plus tard</Button>
                   </CardFooter>
