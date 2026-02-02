@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Fingerprint, Loader2, ShieldCheck, Lock, Check, Smartphone } from "lucide-react";
@@ -25,9 +25,10 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
     else if (/windows/.test(ua)) setOs('windows');
   }, []);
 
-  const handleBiometricAuth = async () => {
+  const handleBiometricAuth = useCallback(async () => {
+    if (loading || isSuccess) return;
+    
     setLoading(true);
-    // On notifie le PrivacyShield que la biométrie système va s'afficher
     window.dispatchEvent(new CustomEvent("citation-biometric-active", { detail: { active: true } }));
     
     try {
@@ -48,27 +49,30 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
         setIsSuccess(true);
         setTimeout(() => {
           onSuccess();
-        }, 1500);
+        }, 1200);
       }
     } catch (error: any) {
       console.error("Biometric auth failed:", error);
-      toast({
-        variant: "destructive",
-        title: "Échec d'authentification",
-        description: "Nous n'avons pas pu valider votre identité.",
-      });
+      // On ne montre pas de toast d'erreur auto pour ne pas polluer si l'utilisateur annule juste
     } finally {
       setLoading(false);
-      // On relâche l'état une fois fini
       window.dispatchEvent(new CustomEvent("citation-biometric-active", { detail: { active: false } }));
     }
-  };
+  }, [loading, isSuccess, onSuccess]);
+
+  // Déclenchement automatique au montage
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleBiometricAuth();
+    }, 600); // Délai pour laisser l'animation d'entrée se finir
+    return () => clearTimeout(timer);
+  }, [handleBiometricAuth]);
 
   const getIcon = () => {
     switch (os) {
-      case 'ios': return <ShieldCheck className="h-12 w-12 text-primary" />; // Simbolise FaceID
+      case 'ios': return <ShieldCheck className="h-12 w-12 text-primary" />;
       case 'android': return <Fingerprint className="h-12 w-12 text-primary" />;
-      case 'windows': return <Smartphone className="h-12 w-12 text-primary" />; // Simbolise Hello
+      case 'windows': return <Smartphone className="h-12 w-12 text-primary" />;
       default: return <Fingerprint className="h-12 w-12 text-primary" />;
     }
   };
@@ -86,7 +90,7 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 1.1, filter: "blur(20px)" }}
+      exit={{ opacity: 0, scale: 1.05, filter: "blur(20px)" }}
       className="fixed inset-0 z-[200] bg-background flex flex-col items-center justify-center p-6"
     >
       <div className="absolute inset-0 pointer-events-none opacity-20 overflow-hidden">
@@ -123,7 +127,7 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
               <div className="space-y-2">
                 <h2 className="text-3xl font-black tracking-tight">Accès Protégé</h2>
                 <p className="text-sm text-muted-foreground font-medium px-8 leading-relaxed opacity-60">
-                  Utilisez {getLabel()} pour déverrouiller l'expérience Citation.
+                  Vérification {getLabel()} en cours...
                 </p>
               </div>
             </div>
@@ -132,10 +136,10 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
               <Button 
                 onClick={handleBiometricAuth} 
                 disabled={loading}
-                className="w-full h-20 rounded-3xl font-black text-lg gap-4 shadow-xl active:scale-95 transition-all"
+                className="w-full h-20 rounded-3xl font-black text-lg gap-4 shadow-xl active:scale-95 transition-all bg-primary/5 text-primary hover:bg-primary/10 border-none"
               >
                 {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Smartphone className="h-6 w-6" />}
-                DÉVERROUILLER
+                {loading ? "AUTHENTIFICATION..." : "REESSAYER"}
               </Button>
               <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.3em] opacity-30">Sécurité Matérielle Native</p>
             </div>

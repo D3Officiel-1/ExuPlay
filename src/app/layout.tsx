@@ -1,50 +1,98 @@
 
 "use client";
 
-import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { FirebaseClientProvider } from "@/firebase";
+import { FirebaseClientProvider, useUser, useFirestore } from "@/firebase";
 import { Toaster } from "@/components/ui/toaster";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { WifiOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PrivacyShield } from "@/components/PrivacyShield";
+import { BiometricLock } from "@/components/BiometricLock";
+import { doc, getDoc } from "firebase/firestore";
+
+function SecurityWrapper({ children }: { children: React.ReactNode }) {
+  const [isOffline, setIsOffline] = useState(false);
+  const [isAppLocked, setIsAppLocked] = useState(false);
+  const { user } = useUser();
+  const db = useFirestore();
+
+  const checkLockRequirement = useCallback(async () => {
+    if (!user) return;
+    const isBiometricLocal = localStorage.getItem("citation_biometric_enabled") === "true";
+    if (isBiometricLocal) {
+      setIsAppLocked(true);
+    } else {
+      const snap = await getDoc(doc(db, "users", user.uid));
+      if (snap.exists() && snap.data().biometricEnabled) {
+        localStorage.setItem("citation_biometric_enabled", "true");
+        setIsAppLocked(true);
+      }
+    }
+  }, [user, db]);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    setIsOffline(!navigator.onLine);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkLockRequirement();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [checkLockRequirement]);
+
+  return (
+    <>
+      <PrivacyShield />
+      <AnimatePresence>
+        {isAppLocked && (
+          <BiometricLock onSuccess={() => setIsAppLocked(false)} />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {isOffline && (
+          <motion.div 
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -50, opacity: 0 }}
+            className="fixed top-0 left-0 right-0 z-[100] bg-destructive text-destructive-foreground py-2 px-4 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest"
+          >
+            <WifiOff className="h-4 w-4" />
+            Mode Hors Ligne activé
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {children}
+    </>
+  );
+}
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [isOffline, setIsOffline] = useState(false);
-
   useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    // Initial check
-    setIsOffline(!navigator.onLine);
-
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
         navigator.serviceWorker.register('/sw.js').then(
-          function(registration) {
-            console.log('ServiceWorker registration successful with scope: ', registration.scope);
-          },
-          function(err) {
-            console.log('ServiceWorker registration failed: ', err);
-          }
+          (reg) => console.log('SW registered'),
+          (err) => console.log('SW failed', err)
         );
       });
     }
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
   }, []);
 
   return (
@@ -63,21 +111,9 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <PrivacyShield />
-            <AnimatePresence>
-              {isOffline && (
-                <motion.div 
-                  initial={{ y: -50, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -50, opacity: 0 }}
-                  className="fixed top-0 left-0 right-0 z-[100] bg-destructive text-destructive-foreground py-2 px-4 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest"
-                >
-                  <WifiOff className="h-4 w-4" />
-                  Mode Hors Ligne activé
-                </motion.div>
-              )}
-            </AnimatePresence>
-            {children}
+            <SecurityWrapper>
+              {children}
+            </SecurityWrapper>
             <Toaster />
           </ThemeProvider>
         </FirebaseClientProvider>
