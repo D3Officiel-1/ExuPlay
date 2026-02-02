@@ -77,6 +77,12 @@ export default function LoginPage() {
     return () => clearTimeout(timeoutId);
   }, [formData.username, db, step]);
 
+  const isValidPhoneNumber = (num: string) => {
+    if (num.length !== 10) return false;
+    const validPrefixes = ["01", "05", "07"];
+    return validPrefixes.some(prefix => num.startsWith(prefix));
+  };
+
   const handleNextStep = () => {
     if (step === 1) {
       if (usernameStatus !== 'available') {
@@ -92,33 +98,11 @@ export default function LoginPage() {
     }
 
     if (step === 2) {
-      const num = formData.phoneNumber;
-      if (!num) {
-        toast({
-          variant: "destructive",
-          title: "Champ requis",
-          description: "Veuillez fournir votre numéro de téléphone.",
-        });
-        return;
-      }
-      
-      if (num.length !== 10) {
+      if (!isValidPhoneNumber(formData.phoneNumber)) {
         toast({
           variant: "destructive",
           title: "Numéro invalide",
-          description: "Le numéro doit comporter exactement 10 chiffres.",
-        });
-        return;
-      }
-
-      const validPrefixes = ["01", "05", "07"];
-      const hasValidPrefix = validPrefixes.some(prefix => num.startsWith(prefix));
-      
-      if (!hasValidPrefix) {
-        toast({
-          variant: "destructive",
-          title: "Opérateur non supporté",
-          description: "Le numéro doit commencer par 01, 05 ou 07.",
+          description: "Le numéro doit comporter 10 chiffres et commencer par 01, 05 ou 07.",
         });
         return;
       }
@@ -365,16 +349,29 @@ export default function LoginPage() {
                             />
                           </div>
                         </div>
-                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest opacity-60">
-                          Format attendu : 10 chiffres (ex: 0707070707)
-                        </p>
+                        <div className="flex items-center gap-2">
+                          {formData.phoneNumber.length > 0 && !isValidPhoneNumber(formData.phoneNumber) && (
+                            <p className="text-[10px] text-red-400 font-bold uppercase tracking-widest">
+                              Format invalide (10 chiffres, débute par 01, 05, 07)
+                            </p>
+                          )}
+                          {isValidPhoneNumber(formData.phoneNumber) && (
+                            <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest flex items-center gap-1">
+                              <CheckCircle className="h-3 w-3" /> Numéro valide
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </CardContent>
                     <CardFooter className="px-8 pb-8 flex gap-4">
                       <Button variant="ghost" onClick={handleBackStep} className="h-14 flex-1 font-bold rounded-xl">
                         <ChevronLeft className="mr-2 h-5 w-5" /> Retour
                       </Button>
-                      <Button onClick={handleNextStep} className="h-14 flex-1 font-bold rounded-xl">
+                      <Button 
+                        onClick={handleNextStep} 
+                        className="h-14 flex-1 font-bold rounded-xl"
+                        disabled={!isValidPhoneNumber(formData.phoneNumber)}
+                      >
                         Suivant <ChevronRight className="ml-2 h-5 w-5" />
                       </Button>
                     </CardFooter>
@@ -412,7 +409,7 @@ export default function LoginPage() {
                       <Button variant="ghost" onClick={handleBackStep} className="h-14 flex-1 font-bold rounded-xl">
                         <ChevronLeft className="mr-2 h-5 w-5" /> Retour
                       </Button>
-                      <Button onClick={handleNextStep} className="h-14 flex-1 font-bold rounded-xl">
+                      <Button onClick={handleNextStep} className="h-14 flex-1 font-bold rounded-xl" disabled={!formData.acceptedTerms}>
                         Accepter <ChevronRight className="ml-2 h-5 w-5" />
                       </Button>
                     </CardFooter>
