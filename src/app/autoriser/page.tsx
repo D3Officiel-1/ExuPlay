@@ -11,12 +11,12 @@ import { Logo } from "@/components/Logo";
 import { Camera, Bell, MapPin, Fingerprint, ChevronRight, Loader2, Sparkles, CheckCircle2 } from "lucide-react";
 import { useAuth, useUser, useFirestore, useFirebaseApp } from "@/firebase";
 import { getMessaging, getToken } from "firebase/messaging";
-import { doc, updateDoc, serverTimestamp, getDoc } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, getDoc, DocumentData } from "firebase/firestore";
 
 const VAPID_KEY = "BObUKqFfm64Lm6SdchRcx9JQinmdU826lgSXhTvGkjMlLEmMxF9ijrABI5YSJTAqXmzLpbFNgGDhjdbjlnt2c5k";
 
 export default function AutoriserPage() {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
@@ -27,6 +27,16 @@ export default function AutoriserPage() {
   const db = useFirestore();
   const app = useFirebaseApp();
 
+  // Fonction pour déterminer la prochaine étape nécessaire
+  const determineNextStep = (data: DocumentData | undefined) => {
+    if (!data) return 1;
+    if (!data.cameraAuthorized) return 1;
+    if (!data.notificationsEnabled) return 2;
+    if (!data.locationAuthorized) return 3;
+    if (!data.biometricEnabled && !localStorage.getItem("citation_biometric_enabled")) return 4;
+    return 5; // Tout est fini
+  };
+
   // Détecter l'étape actuelle au chargement
   useEffect(() => {
     const detectStartStep = async () => {
@@ -34,19 +44,33 @@ export default function AutoriserPage() {
       try {
         const userDoc = await getDoc(doc(db, "users", user.uid));
         const data = userDoc.data();
+        const nextStep = determineNextStep(data);
         
-        if (!data?.cameraAuthorized) setStep(1);
-        else if (!data?.notificationsEnabled) setStep(2);
-        else if (!data?.locationAuthorized) setStep(3);
-        else setStep(4); // Biométrie optionnelle
+        if (nextStep === 5) {
+          router.push("/random");
+        } else {
+          setStep(nextStep);
+        }
       } catch (error) {
         console.error("Error detecting permissions:", error);
+        setStep(1);
       } finally {
         setInitializing(false);
       }
     };
     detectStartStep();
-  }, [user, db]);
+  }, [user, db, router]);
+
+  const refreshUserDataAndStep = async () => {
+    if (!user) return;
+    const userDoc = await getDoc(doc(db, "users", user.uid));
+    const nextStep = determineNextStep(userDoc.data());
+    if (nextStep === 5) {
+      router.push("/random");
+    } else {
+      setStep(nextStep);
+    }
+  };
 
   const handleRequestCamera = async () => {
     setLoading(true);
@@ -68,7 +92,7 @@ export default function AutoriserPage() {
         title: "Caméra autorisée",
         description: "Votre vue est désormais claire.",
       });
-      setTimeout(() => setStep(2), 1500);
+      setTimeout(() => refreshUserDataAndStep(), 1500);
     } catch (error) {
       console.error('Error accessing camera:', error);
       setHasCameraPermission(false);
@@ -109,11 +133,14 @@ export default function AutoriserPage() {
         }
 
         toast({ title: "Notifications activées", description: "Le lien est établi." });
+      } else {
+        // Même si refusé, on marque comme "vu" pour avancer si l'utilisateur a fait un choix
+        if (user) await updateDoc(doc(db, "users", user.uid), { notificationsEnabled: true });
       }
-      setStep(3);
+      refreshUserDataAndStep();
     } catch (error: any) {
       console.error("Notification error:", error);
-      setStep(3);
+      refreshUserDataAndStep();
     } finally {
       setLoading(false);
     }
@@ -130,12 +157,18 @@ export default function AutoriserPage() {
           });
         }
         toast({ title: "Position partagée", description: "Ancrage réussi." });
-        setStep(4);
+        refreshUserDataAndStep();
         setLoading(false);
       },
-      () => {
+      async () => {
         toast({ variant: "destructive", title: "Localisation refusée", description: "Certaines fonctions seront limitées." });
-        setStep(4);
+        if (user) {
+          await updateDoc(doc(db, "users", user.uid), {
+            locationAuthorized: true, // On marque comme "traité" même si refusé pour avancer
+            updatedAt: serverTimestamp()
+          });
+        }
+        refreshUserDataAndStep();
         setLoading(false);
       }
     );
@@ -184,7 +217,7 @@ export default function AutoriserPage() {
     }
   };
 
-  if (initializing) {
+  if (initializing || step === null) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin opacity-20" />
