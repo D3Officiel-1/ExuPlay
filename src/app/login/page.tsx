@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/Logo";
 import { Loader2, ChevronRight, ChevronLeft, CheckCircle2, User as UserIcon, ShieldCheck, Sparkles, XCircle, CheckCircle } from "lucide-react";
+import placeholderImages from "@/app/lib/placeholder-images.json";
 
 export default function LoginPage() {
   const [step, setStep] = useState(1);
@@ -32,7 +33,7 @@ export default function LoginPage() {
   
   const [formData, setFormData] = useState({
     username: "",
-    countryCode: "+221",
+    countryCode: "+225",
     phoneNumber: "",
     acceptedTerms: false,
   });
@@ -41,6 +42,9 @@ export default function LoginPage() {
   const db = useFirestore();
   const auth = getAuth(useFirebaseApp());
   const { toast } = useToast();
+
+  const waveIcon = placeholderImages.placeholderImages.find(img => img.id === "wave-icon")?.imageUrl;
+  const civFlag = placeholderImages.placeholderImages.find(img => img.id === "flag-civ")?.imageUrl;
 
   useEffect(() => {
     if (step !== 1) return;
@@ -87,11 +91,11 @@ export default function LoginPage() {
       }
     }
 
-    if (step === 2 && (!formData.phoneNumber || !formData.countryCode)) {
+    if (step === 2 && (!formData.phoneNumber)) {
       toast({
         variant: "destructive",
         title: "Champ requis",
-        description: "Veuillez fournir un numéro de téléphone complet pour les interactions Wave.",
+        description: "Veuillez fournir votre numéro de téléphone.",
       });
       return;
     }
@@ -145,15 +149,6 @@ export default function LoginPage() {
     }
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] }
-    }
-  };
-
   const stepVariants = {
     enter: (direction: number) => ({
       x: direction > 0 ? 50 : -50,
@@ -192,9 +187,9 @@ export default function LoginPage() {
       </div>
 
       <motion.div 
-        initial="hidden"
-        animate="visible"
-        variants={containerVariants}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         className="w-full max-w-lg z-10"
       >
         <div className="flex flex-col items-center mb-10">
@@ -305,12 +300,12 @@ export default function LoginPage() {
                     <CardHeader className="pt-8 px-8">
                       <div className="flex items-center gap-3 mb-2 text-primary">
                         <div className="relative h-6 w-6 rounded-full overflow-hidden border border-primary/20">
-                          <Image 
-                            src="https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/90/ac/fd/90acfd52-a2cc-c418-ad15-f4c15d75fe77/Placeholder.mill/400x400bb-75.webp" 
+                          {waveIcon && <Image 
+                            src={waveIcon} 
                             alt="Wave Icon"
                             fill
                             className="object-cover"
-                          />
+                          />}
                         </div>
                         <span className="text-xs font-bold uppercase tracking-widest">Contact Wave</span>
                       </div>
@@ -321,22 +316,25 @@ export default function LoginPage() {
                       <div className="space-y-4">
                         <Label htmlFor="phone" className="text-xs uppercase tracking-widest opacity-70">Numéro de téléphone</Label>
                         <div className="flex gap-3">
-                          <div className="w-[100px]">
+                          <div className="relative w-[120px]">
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-8 rounded overflow-hidden shadow-sm">
+                              {civFlag && <Image src={civFlag} alt="CIV Flag" fill className="object-cover" />}
+                            </div>
                             <Input 
-                              placeholder="+221" 
+                              readOnly
                               value={formData.countryCode}
-                              onChange={(e) => setFormData({...formData, countryCode: e.target.value})}
-                              className="h-14 bg-background/50 border-primary/10 focus:border-primary transition-all text-lg px-4 text-center"
+                              className="h-14 bg-muted/50 border-primary/10 text-lg pl-14 pr-2 font-bold cursor-not-allowed opacity-80"
                             />
                           </div>
                           <div className="flex-1">
                             <Input 
                               id="phone" 
                               type="tel"
-                              placeholder="77 000 00 00" 
+                              placeholder="07 00 00 00 00" 
                               value={formData.phoneNumber}
-                              onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
+                              onChange={(e) => setFormData({...formData, phoneNumber: e.target.value.replace(/\D/g, '')})}
                               className="h-14 bg-background/50 border-primary/10 focus:border-primary transition-all text-lg pl-5"
+                              autoFocus
                             />
                           </div>
                         </div>
