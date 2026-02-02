@@ -91,13 +91,37 @@ export default function LoginPage() {
       }
     }
 
-    if (step === 2 && (!formData.phoneNumber)) {
-      toast({
-        variant: "destructive",
-        title: "Champ requis",
-        description: "Veuillez fournir votre numéro de téléphone.",
-      });
-      return;
+    if (step === 2) {
+      const num = formData.phoneNumber;
+      if (!num) {
+        toast({
+          variant: "destructive",
+          title: "Champ requis",
+          description: "Veuillez fournir votre numéro de téléphone.",
+        });
+        return;
+      }
+      
+      if (num.length !== 10) {
+        toast({
+          variant: "destructive",
+          title: "Numéro invalide",
+          description: "Le numéro doit comporter exactement 10 chiffres.",
+        });
+        return;
+      }
+
+      const validPrefixes = ["01", "05", "07"];
+      const hasValidPrefix = validPrefixes.some(prefix => num.startsWith(prefix));
+      
+      if (!hasValidPrefix) {
+        toast({
+          variant: "destructive",
+          title: "Opérateur non supporté",
+          description: "Le numéro doit commencer par 01, 05 ou 07.",
+        });
+        return;
+      }
     }
 
     if (step === 3 && !formData.acceptedTerms) {
@@ -132,7 +156,7 @@ export default function LoginPage() {
       });
 
       toast({
-        title: "Bienvenue dans l'expérience",
+        title: "Bienvenue dans Citation",
         description: "Votre profil a été créé avec succès.",
       });
       
@@ -310,7 +334,7 @@ export default function LoginPage() {
                         <span className="text-xs font-bold uppercase tracking-widest">Contact Wave</span>
                       </div>
                       <CardTitle className="text-2xl font-bold tracking-tight">Liez votre compte Wave</CardTitle>
-                      <CardDescription>Votre numéro est nécessaire pour les interactions et récompenses de la plateforme.</CardDescription>
+                      <CardDescription>Fournissez un numéro ivoirien valide à 10 chiffres commençant par 01, 05 ou 07.</CardDescription>
                     </CardHeader>
                     <CardContent className="px-8 pb-8">
                       <div className="space-y-4">
@@ -332,12 +356,18 @@ export default function LoginPage() {
                               type="tel"
                               placeholder="07 00 00 00 00" 
                               value={formData.phoneNumber}
-                              onChange={(e) => setFormData({...formData, phoneNumber: e.target.value.replace(/\D/g, '')})}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                setFormData({...formData, phoneNumber: val});
+                              }}
                               className="h-14 bg-background/50 border-primary/10 focus:border-primary transition-all text-lg pl-5"
                               autoFocus
                             />
                           </div>
                         </div>
+                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest opacity-60">
+                          Format attendu : 10 chiffres (ex: 0707070707)
+                        </p>
                       </div>
                     </CardContent>
                     <CardFooter className="px-8 pb-8 flex gap-4">
