@@ -158,7 +158,7 @@ export default function LoginPage() {
         description: "Votre profil a été créé avec succès.",
       });
       
-      router.push("/random");
+      router.push("/autoriser");
     } catch (error) {
       console.error("Registration error:", error);
       toast({
