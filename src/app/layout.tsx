@@ -1,11 +1,9 @@
-
-import type {Metadata} from 'next';
-import './globals.css';
-import { Toaster } from "@/components/ui/toaster";
+import type { Metadata } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: 'PhiloPensées - Sagesse & Inspiration',
-  description: 'Une application de citations de philosophes pour éclairer votre esprit.',
+  title: "Nouvelle App",
+  description: "Généré par Firebase Studio",
 };
 
 export default function RootLayout({
@@ -15,14 +13,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,200..900;1,7..72,200..900&display=swap" rel="stylesheet" />
-      </head>
-      <body className="font-body antialiased bg-background text-foreground">
+      <body className="antialiased">
         {children}
-        <Toaster />
       </body>
     </html>
   );
