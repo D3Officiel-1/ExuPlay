@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   collection, 
@@ -21,7 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/Logo";
-import { Loader2, ChevronRight, ChevronLeft, CheckCircle2, Phone, User as UserIcon, ShieldCheck, Sparkles, XCircle, CheckCircle } from "lucide-react";
+import { Loader2, ChevronRight, ChevronLeft, CheckCircle2, User as UserIcon, ShieldCheck, Sparkles, XCircle, CheckCircle } from "lucide-react";
 
 export default function LoginPage() {
   const [step, setStep] = useState(1);
@@ -31,6 +32,7 @@ export default function LoginPage() {
   
   const [formData, setFormData] = useState({
     username: "",
+    countryCode: "+221",
     phoneNumber: "",
     acceptedTerms: false,
   });
@@ -40,7 +42,6 @@ export default function LoginPage() {
   const auth = getAuth(useFirebaseApp());
   const { toast } = useToast();
 
-  // Real-time username validation with debounce
   useEffect(() => {
     if (step !== 1) return;
     
@@ -86,11 +87,11 @@ export default function LoginPage() {
       }
     }
 
-    if (step === 2 && !formData.phoneNumber) {
+    if (step === 2 && (!formData.phoneNumber || !formData.countryCode)) {
       toast({
         variant: "destructive",
         title: "Champ requis",
-        description: "Veuillez fournir un numéro de téléphone pour les interactions Wave.",
+        description: "Veuillez fournir un numéro de téléphone complet pour les interactions Wave.",
       });
       return;
     }
@@ -117,9 +118,11 @@ export default function LoginPage() {
       const userCredential = await signInAnonymously(auth);
       const user = userCredential.user;
 
+      const fullPhoneNumber = `${formData.countryCode}${formData.phoneNumber}`;
+
       await setDoc(doc(db, "users", user.uid), {
         username: formData.username.toLowerCase().trim(),
-        phoneNumber: formData.phoneNumber,
+        phoneNumber: fullPhoneNumber,
         acceptedTerms: formData.acceptedTerms,
         createdAt: serverTimestamp(),
       });
@@ -301,23 +304,42 @@ export default function LoginPage() {
                   <>
                     <CardHeader className="pt-8 px-8">
                       <div className="flex items-center gap-3 mb-2 text-primary">
-                        <Phone className="h-5 w-5" />
+                        <div className="relative h-6 w-6 rounded-full overflow-hidden border border-primary/20">
+                          <Image 
+                            src="https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/90/ac/fd/90acfd52-a2cc-c418-ad15-f4c15d75fe77/Placeholder.mill/400x400bb-75.webp" 
+                            alt="Wave Icon"
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
                         <span className="text-xs font-bold uppercase tracking-widest">Contact Wave</span>
                       </div>
                       <CardTitle className="text-2xl font-bold tracking-tight">Liez votre compte Wave</CardTitle>
                       <CardDescription>Votre numéro est nécessaire pour les interactions et récompenses de la plateforme.</CardDescription>
                     </CardHeader>
                     <CardContent className="px-8 pb-8">
-                      <div className="space-y-2">
+                      <div className="space-y-4">
                         <Label htmlFor="phone" className="text-xs uppercase tracking-widest opacity-70">Numéro de téléphone</Label>
-                        <Input 
-                          id="phone" 
-                          type="tel"
-                          placeholder="77 000 00 00" 
-                          value={formData.phoneNumber}
-                          onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
-                          className="h-14 bg-background/50 border-primary/10 focus:border-primary transition-all text-lg pl-5"
-                        />
+                        <div className="flex gap-3">
+                          <div className="w-[100px]">
+                            <Input 
+                              placeholder="+221" 
+                              value={formData.countryCode}
+                              onChange={(e) => setFormData({...formData, countryCode: e.target.value})}
+                              className="h-14 bg-background/50 border-primary/10 focus:border-primary transition-all text-lg px-4 text-center"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <Input 
+                              id="phone" 
+                              type="tel"
+                              placeholder="77 000 00 00" 
+                              value={formData.phoneNumber}
+                              onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
+                              className="h-14 bg-background/50 border-primary/10 focus:border-primary transition-all text-lg pl-5"
+                            />
+                          </div>
+                        </div>
                       </div>
                     </CardContent>
                     <CardFooter className="px-8 pb-8 flex gap-4">
@@ -388,7 +410,7 @@ export default function LoginPage() {
                         <div className="h-px bg-primary/5 w-full" />
                         <div className="flex flex-col gap-1">
                           <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Liaison Wave</span>
-                          <span className="text-xl font-bold">{formData.phoneNumber}</span>
+                          <span className="text-xl font-bold">{formData.countryCode} {formData.phoneNumber}</span>
                         </div>
                         <div className="h-px bg-primary/5 w-full" />
                         <div className="flex items-center gap-2">
