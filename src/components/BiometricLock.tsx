@@ -48,12 +48,14 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
       
       if (assertion) {
         setIsSuccess(true);
+        // On attend que l'animation de succès se termine (environ 1.5s pour un effet complet)
         setTimeout(() => {
           onSuccess();
-        }, 1200);
+        }, 1500);
       }
     } catch (error: any) {
       console.error("Biometric auth failed:", error);
+      // En cas d'annulation ou d'erreur, on ne bloque pas indéfiniment mais on laisse l'utilisateur réessayer
     } finally {
       setLoading(false);
       // On notifie que la biométrie système est terminée
@@ -150,21 +152,28 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
             key="success-ui"
             initial={{ scale: 0.8, opacity: 0, filter: "blur(20px)" }}
             animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
             className="flex flex-col items-center justify-center gap-6 sm:gap-8"
           >
             <motion.div 
-              initial={{ scale: 0 }}
-              animate={{ scale: [0, 1.2, 1] }}
-              transition={{ duration: 0.6, ease: "backOut" }}
-              className="w-24 h-24 sm:w-32 sm:h-32 bg-primary rounded-full flex items-center justify-center shadow-[0_0_80px_rgba(var(--primary-rgb),0.4)]"
+              initial={{ scale: 0, rotate: -45 }}
+              animate={{ scale: [0, 1.2, 1], rotate: 0 }}
+              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              className="w-24 h-24 sm:w-32 sm:h-32 bg-primary rounded-full flex items-center justify-center shadow-[0_0_80px_rgba(var(--primary-rgb),0.5)]"
             >
-              <Check className="h-12 w-12 sm:h-16 sm:w-16 text-background stroke-[4]" />
+              <motion.div
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+              >
+                <Check className="h-12 w-12 sm:h-16 sm:w-16 text-background stroke-[4]" />
+              </motion.div>
             </motion.div>
             
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
+              transition={{ delay: 0.4 }}
               className="text-center"
             >
               <h2 className="text-xl sm:text-2xl font-black tracking-[0.2em] uppercase">Reconnu</h2>
