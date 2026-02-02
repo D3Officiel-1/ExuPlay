@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -7,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
 const LINKS = [
-  { name: "Accueil", href: "/home" },
   { name: "Explorer", href: "/random" },
   { name: "Esprits", href: "/philosophes" },
   { name: "Thèmes", href: "/themes" },

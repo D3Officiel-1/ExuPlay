@@ -1,20 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Logo } from "@/components/Logo";
 
 export default function SplashPage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      router.push("/home");
-    }, 4000);
-    return () => clearTimeout(timer);
-  }, [router]);
-
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-background">
       {/* Background Decorative Elements - Subtle Pulse */}
@@ -99,14 +88,6 @@ export default function SplashPage() {
           />
         ))}
       </div>
-
-      {/* Final Exit Flash */}
-      <motion.div 
-        className="fixed inset-0 bg-background z-[100] pointer-events-none"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: [0, 0, 1] }}
-        transition={{ duration: 4.5, times: [0, 0.9, 1] }}
-      />
     </div>
   );
 }
