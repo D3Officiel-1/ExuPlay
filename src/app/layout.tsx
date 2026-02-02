@@ -46,6 +46,11 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
+    // Initial check on mount
+    if (document.visibilityState === 'visible') {
+      checkLockRequirement();
+    }
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
@@ -102,6 +107,9 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Citation" />
+        {/* Adaptive Theme Color Meta Tags */}
+        <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
       </head>
       <body className="antialiased font-sans">
         <FirebaseClientProvider>
