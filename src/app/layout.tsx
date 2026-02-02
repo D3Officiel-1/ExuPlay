@@ -3,10 +3,12 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { FirebaseClientProvider } from "@/firebase";
 import { Toaster } from "@/components/ui/toaster";
+import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "Citation v2.0",
   description: "L'art de la pensée, réinventé.",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -32,6 +34,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" suppressHydrationWarning>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+      </head>
       <body className="antialiased font-sans">
         <FirebaseClientProvider>
           <ThemeProvider
@@ -44,6 +49,19 @@ export default function RootLayout({
             <Toaster />
           </ThemeProvider>
         </FirebaseClientProvider>
+        <Script id="register-sw" strategy="afterInteractive">
+          {`
+            if ('serviceWorker' in navigator) {
+              window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                  console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }, function(err) {
+                  console.log('ServiceWorker registration failed: ', err);
+                });
+              });
+            }
+          `}
+        </Script>
       </body>
     </html>
   );
