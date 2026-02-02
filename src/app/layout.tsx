@@ -10,11 +10,13 @@ import { WifiOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PrivacyShield } from "@/components/PrivacyShield";
 import { BiometricLock } from "@/components/BiometricLock";
+import { InstallPwa } from "@/components/InstallPwa";
 import { doc, getDoc } from "firebase/firestore";
 
 function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const [isOffline, setIsOffline] = useState(false);
   const [isAppLocked, setIsAppLocked] = useState(false);
+  const [showPwaPrompt, setShowPwaPrompt] = useState(false);
   const { user } = useUser();
   const db = useFirestore();
 
@@ -46,7 +48,6 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // Initial check on mount
     if (document.visibilityState === 'visible') {
       checkLockRequirement();
     }
@@ -58,13 +59,21 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     };
   }, [checkLockRequirement]);
 
+  const handleUnlockSuccess = () => {
+    setIsAppLocked(false);
+    // On n'affiche le prompt PWA que si la biométrie était active (gage de confiance)
+    setShowPwaPrompt(true);
+  };
+
   return (
     <>
       <PrivacyShield />
-      <AnimatePresence>
-        {isAppLocked && (
-          <BiometricLock onSuccess={() => setIsAppLocked(false)} />
-        )}
+      <AnimatePresence mode="wait">
+        {isAppLocked ? (
+          <BiometricLock key="lock" onSuccess={handleUnlockSuccess} />
+        ) : showPwaPrompt ? (
+          <InstallPwa key="pwa-prompt" />
+        ) : null}
       </AnimatePresence>
       <AnimatePresence>
         {isOffline && (
@@ -107,7 +116,6 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Citation" />
-        {/* Adaptive Theme Color Meta Tags */}
         <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
       </head>
