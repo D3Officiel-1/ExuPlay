@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Citation v2.0',
+    name: 'Citation',
     short_name: 'Citation',
     description: 'L\'art de la pensée, réinventé.',
     start_url: '/',
