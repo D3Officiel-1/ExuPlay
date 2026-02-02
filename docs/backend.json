@@ -1,0 +1,41 @@
+
+{
+  "entities": {
+    "Quote": {
+      "title": "Quote",
+      "description": "Une citation philosophique",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "author": { "type": "string" },
+        "theme": { "type": "string" },
+        "work": { "type": "string" }
+      },
+      "required": ["text", "author"]
+    },
+    "UserFavorite": {
+      "title": "UserFavorite",
+      "description": "Favoris d'un utilisateur",
+      "type": "object",
+      "properties": {
+        "quoteId": { "type": "string" },
+        "addedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["quoteId", "addedAt"]
+    }
+  },
+  "auth": {
+    "providers": ["google.com", "password"]
+  },
+  "firestore": {
+    "/quotes/{quoteId}": {
+      "schema": "Quote",
+      "description": "Collection globale de citations"
+    },
+    "/users/{userId}/favorites/{favoriteId}": {
+      "schema": "UserFavorite",
+      "description": "Citations favorites de l'utilisateur"
+    }
+  }
+}
