@@ -1,0 +1,25 @@
+import { MetadataRoute } from 'next';
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: 'Citation v2.0',
+    short_name: 'Citation',
+    description: 'L\'art de la pensée, réinventé.',
+    start_url: '/',
+    display: 'standalone',
+    background_color: '#000000',
+    theme_color: '#000000',
+    icons: [
+      {
+        src: '/icon?size=192',
+        sizes: '192x192',
+        type: 'image/png',
+      },
+      {
+        src: '/icon?size=512',
+        sizes: '512x512',
+        type: 'image/png',
+      },
+    ],
+  };
+}
