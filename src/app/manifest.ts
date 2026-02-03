@@ -38,5 +38,25 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: 'any',
       },
     ],
+    shortcuts: [
+      {
+        name: 'Défis Mentaux',
+        url: '/home',
+        description: 'Accéder directement aux quiz',
+        icons: [{ src: '/manifest/play.svg', sizes: '192x192', type: 'image/svg+xml' }]
+      },
+      {
+        name: 'Mon Profil',
+        url: '/profil',
+        description: 'Voir ma progression',
+        icons: [{ src: '/manifest/profile.svg', sizes: '192x192', type: 'image/svg+xml' }]
+      },
+      {
+        name: 'Paramètres',
+        url: '/parametres',
+        description: 'Ajuster mes réglages',
+        icons: [{ src: '/manifest/settings.svg', sizes: '192x192', type: 'image/svg+xml' }]
+      }
+    ]
   };
 }
