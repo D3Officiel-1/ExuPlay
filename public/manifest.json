@@ -1,45 +1,46 @@
 {
   "name": "Exu Play",
   "short_name": "Exu Play",
-  "description": "L'art de la pensée, réinventé. Plateforme d'éveil philosophique et de défis mentaux.",
+  "description": "L'art de la pensée, réinventé.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
+  "background_color": "#ffffff",
   "theme_color": "#000000",
-  "orientation": "portrait",
-  "scope": "/",
   "icons": [
     {
-      "src": "/app-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/app-icon.svg",
+      "src": "/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [
     {
-      "name": "Défis Mentaux",
+      "name": "Défis",
+      "short_name": "Défis",
+      "description": "Relever les défis du jour",
       "url": "/home",
-      "description": "Accéder directement aux quiz",
-      "icons": [{ "src": "/manifest/play.svg", "sizes": "any", "type": "image/svg+xml" }]
+      "icons": [{ "src": "/manifest/quizzes.svg", "sizes": "96x96" }]
     },
     {
-      "name": "Mon Profil",
+      "name": "Profil",
+      "short_name": "Profil",
+      "description": "Voir mon éveil",
       "url": "/profil",
-      "description": "Voir ma progression",
-      "icons": [{ "src": "/manifest/profile.svg", "sizes": "any", "type": "image/svg+xml" }]
+      "icons": [{ "src": "/manifest/profil.svg", "sizes": "96x96" }]
     },
     {
       "name": "Paramètres",
+      "short_name": "Réglages",
+      "description": "Configurer l'expérience",
       "url": "/parametres",
-      "description": "Ajuster mes réglages",
-      "icons": [{ "src": "/manifest/settings.svg", "sizes": "any", "type": "image/svg+xml" }]
+      "icons": [{ "src": "/manifest/parametres.svg", "sizes": "96x96" }]
     }
   ]
 }

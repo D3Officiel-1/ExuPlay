@@ -1,5 +1,5 @@
-const CACHE_NAME = 'exu-play-cache-v2';
-const urlsToCache = [
+const CACHE_NAME = 'exu-play-v2';
+const ASSETS_TO_CACHE = [
   '/',
   '/login',
   '/autoriser',
@@ -7,19 +7,16 @@ const urlsToCache = [
   '/profil',
   '/parametres',
   '/manifest.json',
-  '/app-icon.svg',
-  '/manifest/play.svg',
-  '/manifest/profile.svg',
-  '/manifest/settings.svg'
+  '/icon.svg'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        return cache.addAll(urlsToCache);
-      })
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS_TO_CACHE);
+    })
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -34,28 +31,30 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
+  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        if (response) {
-          return response;
+    caches.match(event.request).then((cachedResponse) => {
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
         }
-        return fetch(event.request).then(
-          (response) => {
-            if(!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-            return response;
-          }
-        );
-      })
+        return networkResponse;
+      }).catch(() => {
+        // Fallback pour la navigation si hors ligne
+        if (event.request.mode === 'navigate') {
+          return caches.match('/');
+        }
+      });
+
+      return cachedResponse || fetchPromise;
+    })
   );
 });
