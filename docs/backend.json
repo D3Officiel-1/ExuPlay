@@ -38,9 +38,10 @@
         "totalPoints": { "type": "integer", "description": "Points totaux accumulés par l'utilisateur", "default": 0 },
         "profileImage": { "type": "string", "description": "Image de profil en format Base64" },
         "theme": { "type": "string", "description": "Préférence de thème de l'utilisateur", "enum": ["light", "dark", "system"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "role": { "type": "string", "description": "Rôle de l'utilisateur", "default": "user" }
       },
-      "required": ["username", "phoneNumber", "acceptedTerms", "gender", "referralCode"]
+      "required": ["username", "phoneNumber", "acceptedTerms", "gender", "referralCode", "role"]
     }
   },
   "auth": {

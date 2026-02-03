@@ -119,11 +119,6 @@ function LoginContent() {
         const querySnapshot = await getDocs(q);
         const isValid = !querySnapshot.empty;
         setReferralStatus(isValid ? 'valid' : 'invalid');
-        
-        if (isValid && isMagicReferral && step === 4) {
-          // Si c'est un lien magique valide, on pourrait vouloir notifier l'utilisateur
-          // mais on ne change pas encore le step ici pour éviter les effets de bord
-        }
       } catch (error) {
         console.error("Error checking referral:", error);
       } finally {
@@ -179,6 +174,7 @@ function LoginContent() {
         acceptedTerms: formData.acceptedTerms,
         referredBy: (hasReferral && referralStatus === 'valid') ? formData.referredBy.toUpperCase().trim() : null,
         referralCode: myReferralCode,
+        role: "user",
         cameraAuthorized: false,
         notificationsEnabled: false,
         locationAuthorized: false,
