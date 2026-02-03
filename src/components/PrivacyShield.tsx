@@ -14,21 +14,20 @@ export function PrivacyShield() {
   const [biometricEnabled, setBiometricEnabled] = useState(false);
 
   useEffect(() => {
-    // Détection de l'activation de la biométrie système via un événement personnalisé
     const handleBiometricActive = (e: any) => {
       setIsBiometricPromptActive(e.detail.active);
     };
 
-    window.addEventListener("citation-biometric-active", handleBiometricActive);
+    window.addEventListener("exu-biometric-active", handleBiometricActive);
 
-    // Vérification de la configuration biométrique
-    const localBiometric = localStorage.getItem("citation_biometric_enabled") === "true";
+    const localBiometric = localStorage.getItem("exu_biometric_enabled") === "true";
     setBiometricEnabled(localBiometric);
 
     if (user) {
       getDoc(doc(db, "users", user.uid)).then((snap) => {
         if (snap.exists() && snap.data().biometricEnabled) {
           setBiometricEnabled(true);
+          localStorage.setItem("exu_biometric_enabled", "true");
         }
       });
     }
@@ -36,17 +35,14 @@ export function PrivacyShield() {
     const handleVisibilityChange = () => {
       if (!biometricEnabled) return;
 
-      // Si le système demande la biométrie, on ne met pas le voile
       if (document.visibilityState === "hidden" && !isBiometricPromptActive) {
         setShouldShield(true);
       } else {
-        // Petit délai pour éviter le flash blanc si on revient vite
         setTimeout(() => setShouldShield(false), 500);
       }
     };
 
     const handleBlur = () => {
-      // On n'affiche le voile au blur que si la biométrie n'est pas en train de s'afficher
       if (biometricEnabled && !isBiometricPromptActive) {
         setShouldShield(true);
       }
@@ -61,7 +57,7 @@ export function PrivacyShield() {
     window.addEventListener("focus", handleFocus);
 
     return () => {
-      window.removeEventListener("citation-biometric-active", handleBiometricActive);
+      window.removeEventListener("exu-biometric-active", handleBiometricActive);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("blur", handleBlur);
       window.removeEventListener("focus", handleFocus);

@@ -30,7 +30,7 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
     
     setLoading(true);
     // On notifie le PrivacyShield que la biométrie système est active
-    window.dispatchEvent(new CustomEvent("citation-biometric-active", { detail: { active: true } }));
+    window.dispatchEvent(new CustomEvent("exu-biometric-active", { detail: { active: true } }));
     
     try {
       const challenge = new Uint8Array(32);
@@ -48,18 +48,16 @@ export function BiometricLock({ onSuccess }: BiometricLockProps) {
       
       if (assertion) {
         setIsSuccess(true);
-        // On attend que l'animation de succès se termine (environ 1.5s pour un effet complet)
         setTimeout(() => {
           onSuccess();
         }, 1500);
       }
     } catch (error: any) {
       console.error("Biometric auth failed:", error);
-      // En cas d'annulation ou d'erreur, on ne bloque pas indéfiniment mais on laisse l'utilisateur réessayer
     } finally {
       setLoading(false);
       // On notifie que la biométrie système est terminée
-      window.dispatchEvent(new CustomEvent("citation-biometric-active", { detail: { active: false } }));
+      window.dispatchEvent(new CustomEvent("exu-biometric-active", { detail: { active: false } }));
     }
   }, [loading, isSuccess, onSuccess]);
 
