@@ -15,33 +15,31 @@ export function Logo({ className, layout = 'vertical' }: LogoProps) {
   return (
     <div className={cn(
       "group relative flex select-none cursor-default", 
-      isHorizontal ? "flex-row items-center gap-5" : "flex-col items-center gap-4",
+      isHorizontal ? "flex-row items-center gap-3 sm:gap-4" : "flex-col items-center gap-4",
       className
     )}>
       <div className="relative">
-        {/* Aura réactive au survol */}
         <motion.div
           animate={{ 
-            scale: [1, 1.3, 1], 
-            opacity: [0.1, 0.3, 0.1],
-            rotate: [0, 5, -5, 0]
+            scale: [1, 1.2, 1], 
+            opacity: [0.1, 0.2, 0.1],
+            rotate: [0, 3, -3, 0]
           }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 bg-primary rounded-full blur-2xl group-hover:bg-primary/40 transition-colors"
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute inset-0 bg-primary rounded-full blur-xl group-hover:bg-primary/30 transition-colors"
         />
         
         <motion.div 
-          whileHover={{ scale: 1.15, rotate: -2 }}
-          transition={{ type: "spring", stiffness: 400, damping: 10 }}
+          whileHover={{ scale: 1.1, rotate: -1 }}
+          transition={{ type: "spring", stiffness: 400, damping: 15 }}
           className="relative text-foreground"
         >
           <svg 
             viewBox="0 0 24 24" 
             fill="currentColor" 
             stroke="none"
-            className={cn(isHorizontal ? "h-9 w-9" : "h-12 w-12")}
+            className={cn(isHorizontal ? "h-6 w-6 sm:h-8 sm:w-8" : "h-12 w-12")}
           >
-            {/* L'avion - Design Minimaliste */}
             <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
           </svg>
         </motion.div>
@@ -49,17 +47,17 @@ export function Logo({ className, layout = 'vertical' }: LogoProps) {
 
       <div className="flex flex-col items-start overflow-hidden">
         <motion.span 
-          initial={isHorizontal ? { x: -20, opacity: 0 } : { y: 10, opacity: 0 }}
+          initial={isHorizontal ? { x: -15, opacity: 0 } : { y: 10, opacity: 0 }}
           animate={{ x: 0, y: 0, opacity: 1 }}
-          transition={{ duration: 0.6, delay: 1.1 }}
+          transition={{ duration: 0.6, delay: 0.8 }}
           className={cn(
             "font-black tracking-tighter text-foreground font-sans uppercase leading-none",
-            isHorizontal ? "text-2xl sm:text-3xl" : "text-3xl"
+            isHorizontal ? "text-lg sm:text-2xl" : "text-3xl"
           )}
         >
           Exu Play<motion.span 
-            animate={{ opacity: [1, 0.4, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
+            animate={{ opacity: [1, 0.3, 1] }}
+            transition={{ duration: 2.5, repeat: Infinity }}
             className="text-primary"
           >.</motion.span>
         </motion.span>
