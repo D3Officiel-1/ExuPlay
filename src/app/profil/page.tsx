@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
@@ -13,7 +14,6 @@ import {
   getDocs, 
   limit 
 } from "firebase/firestore";
-import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
@@ -24,7 +24,6 @@ import {
   User as UserIcon, 
   Phone, 
   Gift, 
-  LogOut, 
   Copy, 
   Trophy, 
   Calendar,
@@ -108,19 +107,6 @@ export default function ProfilPage() {
     const timeoutId = setTimeout(checkUsername, 500);
     return () => clearTimeout(timeoutId);
   }, [editedUsername, db, isEditingName, profile?.username]);
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      router.push("/login");
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Impossible de se déconnecter."
-      });
-    }
-  };
 
   const copyMagicLink = async () => {
     if (profile?.referralCode) {
@@ -575,22 +561,6 @@ export default function ProfilPage() {
               </p>
             </CardContent>
           </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="pt-4"
-        >
-          <Button 
-            variant="ghost" 
-            onClick={handleLogout}
-            className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-[0.3em] gap-3 text-destructive hover:text-destructive hover:bg-destructive/5"
-          >
-            <LogOut className="h-4 w-4" />
-            Déconnexion
-          </Button>
         </motion.div>
       </main>
 
