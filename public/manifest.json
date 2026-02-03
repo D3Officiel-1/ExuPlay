@@ -1,14 +1,11 @@
-
 {
   "name": "Exu Play",
   "short_name": "Exu Play",
-  "description": "L'éveil par la pensée philosophique",
+  "description": "L'art de la pensée, réinventé.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
-  "orientation": "portrait",
-  "scope": "/",
   "icons": [
     {
       "src": "/icon.svg",
@@ -27,23 +24,20 @@
     {
       "name": "Défis",
       "short_name": "Défis",
-      "description": "Accéder aux quiz quotidiens",
       "url": "/home",
-      "icons": [{ "src": "/manifest/challenges.svg", "sizes": "any", "type": "image/svg+xml" }]
+      "icons": [{ "src": "/manifest/quiz.svg", "sizes": "any" }]
     },
     {
       "name": "Profil",
       "short_name": "Profil",
-      "description": "Voir ma progression",
       "url": "/profil",
-      "icons": [{ "src": "/manifest/profile.svg", "sizes": "any", "type": "image/svg+xml" }]
+      "icons": [{ "src": "/manifest/profil.svg", "sizes": "any" }]
     },
     {
-      "name": "Paramètres",
+      "name": "Réglages",
       "short_name": "Réglages",
-      "description": "Configurer l'application",
       "url": "/parametres",
-      "icons": [{ "src": "/manifest/settings.svg", "sizes": "any", "type": "image/svg+xml" }]
+      "icons": [{ "src": "/manifest/settings.svg", "sizes": "any" }]
     }
   ]
 }

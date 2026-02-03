@@ -1,24 +1,19 @@
-
-const CACHE_NAME = 'exu-play-cache-v3';
-const ASSETS_TO_CACHE = [
+const CACHE_NAME = 'exu-play-v2';
+const OFFLINE_URLS = [
   '/',
   '/login',
+  '/autoriser',
   '/home',
   '/profil',
   '/parametres',
-  '/autoriser',
-  '/conditions',
   '/manifest.json',
-  '/icon.svg',
-  '/manifest/challenges.svg',
-  '/manifest/profile.svg',
-  '/manifest/settings.svg'
+  '/icon.svg'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      return cache.addAll(OFFLINE_URLS);
     })
   );
   self.skipWaiting();
@@ -28,7 +23,11 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.filter((name) => name !== CACHE_NAME).map((name) => caches.delete(name))
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
       );
     })
   );
@@ -36,31 +35,26 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Ignorer les requêtes vers Firebase et les méthodes non-GET
-  if (
-    event.request.method !== 'GET' || 
-    event.request.url.includes('firestore.googleapis.com') || 
-    event.request.url.includes('identitytoolkit.googleapis.com') ||
-    event.request.url.includes('google.com')
-  ) {
-    return;
-  }
-
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+  // Stratégie Stale-While-Revalidate pour les pages et les assets statiques
+  if (event.request.mode === 'navigate' || 
+      event.request.destination === 'style' || 
+      event.request.destination === 'script' || 
+      event.request.destination === 'image') {
+    
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) => {
+        return cache.match(event.request).then((response) => {
+          const fetchPromise = fetch(event.request).then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              cache.put(event.request, networkResponse.clone());
+            }
+            return networkResponse;
+          }).catch(() => {
+            // Si réseau échoue, le cache est déjà retourné par match()
           });
-        }
-        return networkResponse;
-      }).catch(() => {
-        // En cas d'échec réseau, on reste sur le cache
-      });
-
-      return cachedResponse || fetchPromise;
-    })
-  );
+          return response || fetchPromise;
+        });
+      })
+    );
+  }
 });
