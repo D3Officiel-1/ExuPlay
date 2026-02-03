@@ -28,17 +28,37 @@ export function BottomNav() {
           {NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
+            const isQuiz = item.name === "Quiz";
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className="relative flex-1 group"
+                className={cn(
+                  "relative flex-1 group",
+                  isQuiz && "flex-[1.2]" // Plus d'espace pour le quiz
+                )}
               >
                 <div className={cn(
-                  "flex flex-col items-center justify-center py-4 px-2 rounded-[2rem] transition-colors duration-500",
-                  isActive ? "text-primary-foreground" : "text-foreground/30 hover:text-foreground/60"
+                  "relative flex flex-col items-center justify-center py-4 px-2 rounded-[2rem] transition-all duration-500",
+                  isActive ? "text-primary-foreground" : "text-foreground/30 hover:text-foreground/60",
+                  isQuiz && !isActive && "text-primary opacity-90 scale-105" // Le quiz reste visible même inactif
                 )}>
+                  {/* Effet d'aura pulsante pour le Quiz uniquement */}
+                  {isQuiz && (
+                    <motion.div 
+                      animate={{ 
+                        scale: [1, 1.15, 1],
+                        opacity: isActive ? [0.4, 0.2, 0.4] : [0.2, 0, 0.2]
+                      }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                      className={cn(
+                        "absolute inset-0 rounded-[2rem] blur-xl -z-10",
+                        isActive ? "bg-primary/40" : "bg-primary/20"
+                      )}
+                    />
+                  )}
+
                   <motion.div
                     whileHover={{ scale: 1.15 }}
                     whileTap={{ scale: 0.9 }}
@@ -47,12 +67,16 @@ export function BottomNav() {
                   >
                     <Icon className={cn(
                       "h-6 w-6 mb-1.5 transition-all duration-300",
-                      isActive ? "stroke-[2.5]" : "stroke-2"
+                      isActive ? "stroke-[2.5]" : (isQuiz ? "stroke-[2.2]" : "stroke-2"),
+                      isQuiz && !isActive && "text-primary"
                     )} />
                   </motion.div>
                   
                   <motion.span 
-                    className="relative z-10 text-[9px] font-black uppercase tracking-[0.25em] leading-none"
+                    className={cn(
+                      "relative z-10 text-[9px] font-black uppercase tracking-[0.25em] leading-none",
+                      isQuiz && !isActive && "text-primary"
+                    )}
                   >
                     {item.name}
                   </motion.span>
@@ -60,13 +84,25 @@ export function BottomNav() {
                   {isActive && (
                     <motion.div
                       layoutId="nav-pill"
-                      className="absolute inset-0 bg-primary rounded-[2rem] shadow-[0_8px_24px_rgba(var(--primary-rgb),0.3)]"
+                      className={cn(
+                        "absolute inset-0 bg-primary rounded-[2rem] shadow-[0_8px_24px_rgba(var(--primary-rgb),0.3)]",
+                        isQuiz && "shadow-[0_0_30px_rgba(var(--primary-rgb),0.5)]"
+                      )}
                       transition={{ 
                         type: "spring", 
                         bounce: 0.25, 
                         duration: 0.6,
                         layout: { duration: 0.4 }
                       }}
+                    />
+                  )}
+
+                  {/* Animation de respiration discrète pour le Quiz */}
+                  {isQuiz && !isActive && (
+                    <motion.div
+                      animate={{ scale: [1, 1.02, 1] }}
+                      transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                      className="absolute inset-0 border border-primary/10 rounded-[2rem] pointer-events-none"
                     />
                   )}
                 </div>
