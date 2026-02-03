@@ -10,7 +10,8 @@ import {
   orderBy,
   setDoc,
   addDoc,
-  deleteDoc
+  deleteDoc,
+  updateDoc
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
@@ -45,7 +46,9 @@ import {
   Settings2,
   Plus,
   Trash2,
-  Brain
+  Brain,
+  Edit3,
+  Eye
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -64,7 +67,12 @@ export default function AdminPage() {
     points: 100
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  
+  // État pour la visualisation/modification
+  const [selectedQuiz, setSelectedQuiz] = useState<any>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -145,7 +153,7 @@ export default function AdminPage() {
         correctIndex: 0,
         points: 100
       });
-      setIsDialogOpen(false);
+      setIsAddDialogOpen(false);
       toast({ title: "Défi ajouté", description: "La question a été publiée." });
     } catch (error) {
       console.error(error);
@@ -154,7 +162,37 @@ export default function AdminPage() {
     }
   };
 
-  const handleDeleteQuiz = async (id: string) => {
+  const handleUpdateQuiz = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!db || !selectedQuiz || isSubmitting) return;
+
+    setIsSubmitting(true);
+    const quizRef = doc(db, "quizzes", selectedQuiz.id);
+    
+    updateDoc(quizRef, {
+      question: selectedQuiz.question,
+      options: selectedQuiz.options,
+      correctIndex: selectedQuiz.correctIndex,
+      points: selectedQuiz.points,
+      updatedAt: serverTimestamp()
+    }).then(() => {
+      toast({ title: "Défi mis à jour" });
+      setIsViewDialogOpen(false);
+      setIsEditMode(false);
+    }).catch((error) => {
+      const permissionError = new FirestorePermissionError({
+        path: quizRef.path,
+        operation: 'update',
+        requestResourceData: selectedQuiz,
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    }).finally(() => {
+      setIsSubmitting(false);
+    });
+  };
+
+  const handleDeleteQuiz = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!db) return;
     try {
       await deleteDoc(doc(db, "quizzes", id));
@@ -162,6 +200,12 @@ export default function AdminPage() {
     } catch (error) {
       console.error(error);
     }
+  };
+
+  const openQuizDetails = (quiz: any) => {
+    setSelectedQuiz({...quiz});
+    setIsEditMode(false);
+    setIsViewDialogOpen(true);
   };
 
   if (authLoading || profileLoading || profile?.role !== 'admin') {
@@ -244,7 +288,7 @@ export default function AdminPage() {
             <div className="flex justify-between items-center px-1">
               <h3 className="text-[8px] md:text-xs font-black uppercase tracking-widest opacity-40">Base de Données</h3>
               
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="h-8 md:h-14 px-4 md:px-8 rounded-xl md:rounded-2xl font-black text-[8px] md:text-xs uppercase tracking-widest gap-2 md:gap-3 shadow-lg shadow-primary/10">
                     <Plus className="h-3 w-3 md:h-5 md:w-5" />
@@ -322,20 +366,26 @@ export default function AdminPage() {
               ) : (
                 <div className="grid gap-2 md:gap-4">
                   {quizzes?.map(q => (
-                    <Card key={q.id} className="border-none bg-card/20 backdrop-blur-3xl rounded-xl md:rounded-3xl overflow-hidden group hover:bg-card/40 transition-all">
+                    <Card 
+                      key={q.id} 
+                      onClick={() => openQuizDetails(q)}
+                      className="border-none bg-card/20 backdrop-blur-3xl rounded-xl md:rounded-3xl overflow-hidden group hover:bg-card/40 transition-all cursor-pointer"
+                    >
                       <CardContent className="p-3 md:p-6 flex items-center justify-between gap-3 md:gap-6">
                         <div className="space-y-0.5 md:space-y-1 flex-1 overflow-hidden">
                           <p className="text-[10px] md:text-base font-black leading-tight truncate">{q.question}</p>
                           <p className="text-[6px] md:text-xs font-bold opacity-30 uppercase tracking-widest">{q.points} PTS • {q.options.length} OPTIONS</p>
                         </div>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleDeleteQuiz(q.id)}
-                          className="h-7 w-7 md:h-12 md:w-12 text-destructive hover:bg-destructive/10 rounded-lg md:rounded-2xl shrink-0"
-                        >
-                          <Trash2 className="h-3 w-3 md:h-6 md:w-6" />
-                        </Button>
+                        <div className="flex gap-1 md:gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={(e) => handleDeleteQuiz(q.id, e)}
+                            className="h-7 w-7 md:h-12 md:w-12 text-destructive hover:bg-destructive/10 rounded-lg md:rounded-2xl shrink-0"
+                          >
+                            <Trash2 className="h-3 w-3 md:h-6 md:w-6" />
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
@@ -405,6 +455,117 @@ export default function AdminPage() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Dialogue de Visualisation / Modification */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="sm:max-w-[500px] bg-card/95 backdrop-blur-2xl border-primary/5 rounded-[2rem] md:rounded-[3rem] p-6 md:p-10">
+          <DialogHeader>
+            <DialogTitle className="text-lg md:text-3xl font-black tracking-tight">
+              {isEditMode ? "Modifier le Défi" : "Détails du Défi"}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedQuiz && (
+            <form onSubmit={handleUpdateQuiz} className="space-y-4 md:space-y-6 pt-4 md:pt-8">
+              <div className="space-y-1.5 md:space-y-2">
+                <Label className="text-[9px] md:text-xs font-black uppercase tracking-widest opacity-40">La Question</Label>
+                {isEditMode ? (
+                  <Input 
+                    placeholder="Ex: Quelle est l'essence du désir ?" 
+                    className="h-10 md:h-14 text-xs md:text-lg font-bold rounded-xl md:rounded-2xl" 
+                    value={selectedQuiz.question} 
+                    onChange={e => setSelectedQuiz({...selectedQuiz, question: e.target.value})}
+                  />
+                ) : (
+                  <p className="text-xs md:text-lg font-bold p-3 bg-primary/5 rounded-xl">{selectedQuiz.question}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 md:gap-4">
+                {selectedQuiz.options.map((opt: string, idx: number) => (
+                  <div key={idx} className="space-y-1 md:space-y-2">
+                    <div className="flex justify-between items-center">
+                      <Label className="text-[8px] md:text-xs font-black uppercase tracking-widest opacity-40">Option {idx + 1}</Label>
+                      {isEditMode && (
+                        <input 
+                          type="radio" 
+                          name="edit-correct" 
+                          className="accent-primary h-3 w-3 md:h-5 md:w-5"
+                          checked={selectedQuiz.correctIndex === idx} 
+                          onChange={() => setSelectedQuiz({...selectedQuiz, correctIndex: idx})}
+                        />
+                      )}
+                    </div>
+                    {isEditMode ? (
+                      <Input 
+                        placeholder={`Réponse ${idx + 1}`} 
+                        className="h-8 md:h-12 text-[9px] md:text-sm font-medium rounded-lg md:rounded-xl" 
+                        value={opt} 
+                        onChange={e => {
+                          const newOpts = [...selectedQuiz.options];
+                          newOpts[idx] = e.target.value;
+                          setSelectedQuiz({...selectedQuiz, options: newOpts});
+                        }}
+                      />
+                    ) : (
+                      <div className={`p-2 rounded-lg text-[10px] md:text-sm font-medium border ${selectedQuiz.correctIndex === idx ? 'bg-green-500/10 border-green-500/50 text-green-600' : 'bg-primary/5 border-transparent opacity-60'}`}>
+                        {opt}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="flex-1 space-y-1.5 md:space-y-2">
+                  <Label className="text-[9px] md:text-xs font-black uppercase tracking-widest opacity-40">Récompense (PTS)</Label>
+                  {isEditMode ? (
+                    <Input 
+                      type="number" 
+                      className="h-8 md:h-12 text-[10px] md:text-sm rounded-lg md:rounded-xl" 
+                      value={selectedQuiz.points} 
+                      onChange={e => setSelectedQuiz({...selectedQuiz, points: parseInt(e.target.value) || 0})}
+                    />
+                  ) : (
+                    <p className="text-xs md:text-lg font-black">{selectedQuiz.points} PTS</p>
+                  )}
+                </div>
+              </div>
+
+              <DialogFooter className="pt-4 md:pt-8 gap-2">
+                {isEditMode ? (
+                  <>
+                    <Button 
+                      type="button" 
+                      variant="ghost"
+                      onClick={() => setIsEditMode(false)}
+                      className="flex-1 h-12 md:h-16 rounded-2xl md:rounded-3xl font-black text-[10px] md:text-sm uppercase tracking-widest"
+                    >
+                      Annuler
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={isSubmitting} 
+                      className="flex-1 h-12 md:h-16 rounded-2xl md:rounded-3xl font-black text-[10px] md:text-sm uppercase tracking-widest"
+                    >
+                      {isSubmitting ? <Loader2 className="h-4 w-4 md:h-6 md:w-6 animate-spin" /> : "Enregistrer"}
+                    </Button>
+                  </>
+                ) : (
+                  <Button 
+                    type="button" 
+                    onClick={() => setIsEditMode(true)}
+                    className="w-full h-12 md:h-16 rounded-2xl md:rounded-3xl font-black text-[10px] md:text-sm uppercase tracking-widest gap-2"
+                  >
+                    <Edit3 className="h-4 w-4 md:h-5 md:w-5" />
+                    Modifier ce défi
+                  </Button>
+                )}
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <BottomNav />
     </div>
