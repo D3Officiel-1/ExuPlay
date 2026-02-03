@@ -4,7 +4,7 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { useUser, useFirestore, useDoc, useAuth } from "@/firebase";
-import { doc } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export default function ProfilPage() {
   const { user } = useUser();
@@ -33,7 +35,7 @@ export default function ProfilPage() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [localProfileImage, setLocalProfileImage] = useState<string | null>(null);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -42,10 +44,11 @@ export default function ProfilPage() {
 
   const { data: profile, loading } = useDoc(userDocRef);
 
+  // Fallback sur le localStorage si Firestore n'a pas encore l'image (optimistic UI)
   useEffect(() => {
     const savedImage = localStorage.getItem("exu_profile_image");
     if (savedImage) {
-      setProfileImage(savedImage);
+      setLocalProfileImage(savedImage);
     }
   }, []);
 
@@ -79,23 +82,42 @@ export default function ProfilPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+      if (file.size > 1 * 1024 * 1024) { // 1MB limit for Base64 in Firestore documents
         toast({
           variant: "destructive",
           title: "Fichier trop lourd",
-          description: "Veuillez choisir une image de moins de 2 Mo."
+          description: "Veuillez choisir une image de moins de 1 Mo pour la synchronisation."
         });
         return;
       }
 
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const base64String = reader.result as string;
-        setProfileImage(base64String);
+        
+        // Mise à jour locale immédiate
+        setLocalProfileImage(base64String);
         localStorage.setItem("exu_profile_image", base64String);
+
+        // Synchronisation Firestore
+        if (user?.uid && db) {
+          const userRef = doc(db, "users", user.uid);
+          updateDoc(userRef, {
+            profileImage: base64String,
+            updatedAt: serverTimestamp()
+          }).catch(async (error) => {
+            const permissionError = new FirestorePermissionError({
+              path: userRef.path,
+              operation: 'update',
+              requestResourceData: { profileImage: base64String.substring(0, 50) + "..." },
+            } satisfies SecurityRuleContext);
+            errorEmitter.emit('permission-error', permissionError);
+          });
+        }
+
         toast({
-          title: "Image mise à jour",
-          description: "Votre avatar a été enregistré localement."
+          title: "Image synchronisée",
+          description: "Votre avatar a été sauvegardé sur votre compte."
         });
       };
       reader.readAsDataURL(file);
@@ -114,6 +136,9 @@ export default function ProfilPage() {
     );
   }
 
+  // Priorité à l'image venant de Firestore (synchronisée), sinon localStorage
+  const currentImage = profile?.profileImage || localProfileImage;
+
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
       <Header />
@@ -131,9 +156,9 @@ export default function ProfilPage() {
               onClick={handleImageClick}
               className="relative h-24 w-24 bg-card rounded-[2rem] flex items-center justify-center border border-primary/10 shadow-2xl mx-auto overflow-hidden group transition-transform active:scale-95"
             >
-              {profileImage ? (
+              {currentImage ? (
                 <Image 
-                  src={profileImage} 
+                  src={currentImage} 
                   alt="Profil" 
                   fill 
                   className="object-cover transition-opacity group-hover:opacity-60"
