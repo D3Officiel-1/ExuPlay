@@ -1,3 +1,4 @@
+
 "use client";
 
 import "./globals.css";
@@ -12,6 +13,29 @@ import { BiometricLock } from "@/components/BiometricLock";
 import { InstallPwa } from "@/components/InstallPwa";
 import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
 import { doc, getDoc } from "firebase/firestore";
+import { useTheme } from "next-themes";
+
+function ThemeSync() {
+  const { user } = useUser();
+  const db = useFirestore();
+  const { theme, setTheme } = useTheme();
+
+  useEffect(() => {
+    if (!user) return;
+    const syncTheme = async () => {
+      const snap = await getDoc(doc(db, "users", user.uid));
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.theme && data.theme !== theme) {
+          setTheme(data.theme);
+        }
+      }
+    };
+    syncTheme();
+  }, [user, db, setTheme, theme]);
+
+  return null;
+}
 
 function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const [isOffline, setIsOffline] = useState(false);
@@ -89,6 +113,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
           </motion.div>
         )}
       </AnimatePresence>
+      <ThemeSync />
       {children}
     </>
   );

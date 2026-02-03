@@ -1,14 +1,14 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
 import { useUser, useFirestore, useDoc } from "@/firebase";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -39,6 +39,23 @@ export default function ParametresPage() {
   }, [db, user?.uid]);
 
   const { data: profile } = useDoc(userDocRef);
+
+  const handleThemeChange = (newTheme: string) => {
+    setTheme(newTheme);
+    if (!userDocRef) return;
+    
+    updateDoc(userDocRef, {
+      theme: newTheme,
+      updatedAt: serverTimestamp()
+    }).catch(async (error) => {
+      const permissionError = new FirestorePermissionError({
+        path: userDocRef.path,
+        operation: 'update',
+        requestResourceData: { theme: newTheme },
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    });
+  };
 
   const handleToggleNotifications = (enabled: boolean) => {
     if (!userDocRef) return;
@@ -101,7 +118,7 @@ export default function ParametresPage() {
               <CardContent className="p-6">
                 <RadioGroup 
                   value={theme} 
-                  onValueChange={setTheme}
+                  onValueChange={handleThemeChange}
                   className="grid grid-cols-3 gap-3"
                 >
                   {[
