@@ -1,13 +1,18 @@
-const CACHE_NAME = 'exu-play-v2';
+
+const CACHE_NAME = 'exu-play-cache-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/login',
-  '/autoriser',
   '/home',
   '/profil',
   '/parametres',
+  '/autoriser',
+  '/conditions',
   '/manifest.json',
-  '/icon.svg'
+  '/icon.svg',
+  '/manifest/challenges.svg',
+  '/manifest/profile.svg',
+  '/manifest/settings.svg'
 ];
 
 self.addEventListener('install', (event) => {
@@ -23,11 +28,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
+        cacheNames.filter((name) => name !== CACHE_NAME).map((name) => caches.delete(name))
       );
     })
   );
@@ -35,7 +36,15 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
+  // Ignorer les requêtes vers Firebase et les méthodes non-GET
+  if (
+    event.request.method !== 'GET' || 
+    event.request.url.includes('firestore.googleapis.com') || 
+    event.request.url.includes('identitytoolkit.googleapis.com') ||
+    event.request.url.includes('google.com')
+  ) {
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
@@ -48,10 +57,7 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       }).catch(() => {
-        // Fallback pour la navigation si hors ligne
-        if (event.request.mode === 'navigate') {
-          return caches.match('/');
-        }
+        // En cas d'échec réseau, on reste sur le cache
       });
 
       return cachedResponse || fetchPromise;
