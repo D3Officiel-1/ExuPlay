@@ -32,7 +32,9 @@ import {
   Edit2,
   Check,
   X,
-  Share2
+  Share2,
+  ShieldAlert,
+  ChevronRight
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
@@ -400,6 +402,36 @@ export default function ProfilPage() {
             )}
           </div>
         </motion.div>
+
+        {/* Section Administration pour les Admin */}
+        {profile?.role === 'admin' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4"
+          >
+            <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 pl-2">Maître de l'Éveil</h2>
+            <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden border border-primary/10">
+              <CardContent className="p-2">
+                <button 
+                  onClick={() => router.push("/admin")}
+                  className="w-full flex items-center justify-between p-4 hover:bg-primary/5 transition-colors rounded-2xl group text-left"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
+                      <ShieldAlert className="h-5 w-5 text-primary opacity-60" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">Console d'Administration</p>
+                      <p className="text-[10px] opacity-40 font-medium">Gestion du savoir et des esprits</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 opacity-20 group-hover:opacity-60 transition-opacity" />
+                </button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <motion.div

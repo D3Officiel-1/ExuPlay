@@ -22,9 +22,7 @@ import {
   Scale,
   Settings,
   Zap,
-  Fingerprint,
-  ShieldAlert,
-  GanttChart
+  Fingerprint
 } from "lucide-react";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
@@ -94,35 +92,6 @@ export default function ParametresPage() {
           animate="visible"
           className="space-y-8"
         >
-          {/* Section Administration (Conditionnelle) */}
-          {profile?.role === 'admin' && (
-            <motion.section variants={itemVariants} className="space-y-4">
-              <div className="flex items-center gap-3 pl-2">
-                <ShieldAlert className="h-4 w-4 text-primary opacity-60" />
-                <h2 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Administration</h2>
-              </div>
-              <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden border border-primary/10">
-                <CardContent className="p-2">
-                  <button 
-                    onClick={() => router.push("/admin")}
-                    className="w-full flex items-center justify-between p-4 hover:bg-primary/5 transition-colors rounded-2xl group text-left"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
-                        <GanttChart className="h-5 w-5 text-primary opacity-60" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold">Console d'Éveil</p>
-                        <p className="text-[10px] opacity-40 font-medium">Accès Restreint : Maître de l'Éveil</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="h-4 w-4 opacity-20 group-hover:opacity-60 transition-opacity" />
-                  </button>
-                </CardContent>
-              </Card>
-            </motion.section>
-          )}
-
           {/* Section Thème */}
           <motion.section variants={itemVariants} className="space-y-4">
             <div className="flex items-center gap-3 pl-2">
