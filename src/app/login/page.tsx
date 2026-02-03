@@ -338,14 +338,34 @@ function LoginContent() {
                         <p><strong>Article 1 :</strong> Respect et authenticité.</p>
                         <p><strong>Article 2 :</strong> Sécurité de vos données.</p>
                       </div>
-                      <div className="flex items-center space-x-3 p-4 bg-primary/5 rounded-xl border border-primary/10 cursor-pointer" onClick={() => setFormData({...formData, acceptedTerms: !formData.acceptedTerms})}>
-                        <Checkbox checked={formData.acceptedTerms} />
-                        <Label className="text-sm font-medium cursor-pointer">J'accepte les conditions</Label>
-                      </div>
+                      <motion.div 
+                        whileTap={{ scale: 0.98 }}
+                        animate={{ 
+                          backgroundColor: formData.acceptedTerms ? "hsl(var(--primary) / 0.1)" : "hsl(var(--primary) / 0.05)",
+                          borderColor: formData.acceptedTerms ? "hsl(var(--primary) / 0.3)" : "hsl(var(--primary) / 0.1)"
+                        }}
+                        className="flex items-center space-x-3 p-5 rounded-2xl border transition-colors cursor-pointer" 
+                        onClick={() => setFormData({...formData, acceptedTerms: !formData.acceptedTerms})}
+                      >
+                        <div className="relative flex items-center justify-center">
+                          <Checkbox checked={formData.acceptedTerms} className="h-5 w-5 rounded-md" />
+                          <AnimatePresence>
+                            {formData.acceptedTerms && (
+                              <motion.div 
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1.5, opacity: 0.2 }}
+                                exit={{ scale: 0, opacity: 0 }}
+                                className="absolute h-full w-full bg-primary rounded-full blur-md pointer-events-none"
+                              />
+                            )}
+                          </AnimatePresence>
+                        </div>
+                        <Label className="text-sm font-bold cursor-pointer select-none">J'accepte les conditions de l'Éveil</Label>
+                      </motion.div>
                     </CardContent>
                     <CardFooter className="flex gap-4 p-6">
                       <Button variant="ghost" onClick={handleBackStep} className="h-14 flex-1">Retour</Button>
-                      <Button onClick={handleNextStep} className="h-14 flex-1" disabled={!formData.acceptedTerms}>
+                      <Button onClick={handleNextStep} className="h-14 flex-1 font-bold" disabled={!formData.acceptedTerms}>
                         {isMagicReferral && referralStatus === 'valid' ? "Terminer" : "Suivant"}
                       </Button>
                     </CardFooter>
