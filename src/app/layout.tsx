@@ -180,7 +180,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const isStandardUser = profile?.role === 'user';
   const showMaintenance = isMaintenanceActive && isStandardUser;
   
-  const canShowPwa = showPwaPrompt && pathname !== "/";
+  const canShowPwa = showPwaPrompt && pathname !== "/" && pathname !== "/login";
 
   const isProtectedPath = pathname !== "/" && pathname !== "/login";
   if (isAuthLoading && isProtectedPath) {
