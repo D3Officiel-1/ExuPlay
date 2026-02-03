@@ -1,4 +1,3 @@
-
 "use client";
 
 import "./globals.css";
@@ -11,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { PrivacyShield } from "@/components/PrivacyShield";
 import { BiometricLock } from "@/components/BiometricLock";
 import { InstallPwa } from "@/components/InstallPwa";
+import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
 import { doc, getDoc } from "firebase/firestore";
 
 function SecurityWrapper({ children }: { children: React.ReactNode }) {
@@ -82,8 +82,10 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
             exit={{ y: -50, opacity: 0 }}
             className="fixed top-0 left-0 right-0 z-[100] bg-destructive text-destructive-foreground py-2 px-4 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest"
           >
-            <WifiOff className="h-4 w-4" />
-            Mode Hors Ligne activé
+            <div className="flex items-center gap-2">
+              <WifiOff className="h-4 w-4" />
+              <span>Mode Hors Ligne activé</span>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -126,6 +128,7 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
+            <FirebaseErrorListener />
             <SecurityWrapper>
               {children}
             </SecurityWrapper>
