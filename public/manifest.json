@@ -1,11 +1,13 @@
+
 {
   "name": "Exu Play",
   "short_name": "Exu Play",
-  "description": "L'art de la pensée, réinventé.",
+  "description": "L'art de la pensée réinventé. Défis philosophiques et éveil spirituel.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "/icon.svg",
@@ -24,18 +26,21 @@
     {
       "name": "Défis",
       "short_name": "Défis",
+      "description": "Accéder aux quiz quotidiens",
       "url": "/home",
       "icons": [{ "src": "/manifest/quiz.svg", "sizes": "any" }]
     },
     {
       "name": "Profil",
       "short_name": "Profil",
+      "description": "Voir mon éveil",
       "url": "/profil",
-      "icons": [{ "src": "/manifest/profil.svg", "sizes": "any" }]
+      "icons": [{ "src": "/manifest/profile.svg", "sizes": "any" }]
     },
     {
       "name": "Réglages",
       "short_name": "Réglages",
+      "description": "Paramètres de l'app",
       "url": "/parametres",
       "icons": [{ "src": "/manifest/settings.svg", "sizes": "any" }]
     }
