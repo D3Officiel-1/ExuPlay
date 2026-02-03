@@ -48,7 +48,6 @@ export function Header() {
           <Logo layout="horizontal" className="relative z-10 scale-[0.8] sm:scale-100 origin-left" />
         </motion.div>
 
-        {/* Mini carte des points optimisée */}
         <motion.div 
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -64,8 +63,7 @@ export function Header() {
                 className="absolute inset-0 bg-primary/20 rounded-full blur-sm"
               />
             </div>
-            <div className="flex flex-col items-start leading-none gap-0.5">
-              <span className="text-[7px] sm:text-[9px] font-black tracking-[0.2em] uppercase opacity-40">Score</span>
+            <div className="flex items-center leading-none">
               <span className="text-[10px] sm:text-xs font-black tracking-tight">{totalPoints.toLocaleString()} PTS</span>
             </div>
           </div>
