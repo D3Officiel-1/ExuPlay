@@ -44,11 +44,9 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 export default function ProfilPage() {
   const { user } = useUser();
   const db = useFirestore();
-  const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   
   const [localProfileImage, setLocalProfileImage] = useState<string | null>(null);
   
@@ -63,9 +61,6 @@ export default function ProfilPage() {
   const [isSavingPhone, setIsSavingPhone] = useState(false);
 
   const { scrollY } = useScroll();
-  
-  const headerOpacity = useTransform(scrollY, [180, 240], [0, 1]);
-  const headerY = useTransform(scrollY, [180, 240], [10, 0]);
   const mainProfileOpacity = useTransform(scrollY, [0, 180], [1, 0]);
   const mainProfileScale = useTransform(scrollY, [0, 180], [1, 0.9]);
 
@@ -85,7 +80,7 @@ export default function ProfilPage() {
 
   useEffect(() => {
     if (!isEditingName || editedUsername.length < 3 || editedUsername === profile?.username) {
-      setUsernameStatus(editedUsername === profile?.username ? 'idle' : 'idle');
+      setUsernameStatus('idle');
       return;
     }
 
@@ -279,22 +274,6 @@ export default function ProfilPage() {
     <div className="min-h-screen bg-background flex flex-col pb-32">
       <Header />
       
-      <motion.div 
-        style={{ opacity: headerOpacity, y: headerY }}
-        className="fixed top-0 left-0 right-0 h-20 z-[60] flex items-center justify-center pointer-events-none"
-      >
-        <div className="flex items-center gap-3 bg-card/60 backdrop-blur-3xl px-4 py-1.5 rounded-2xl border border-primary/5 shadow-2xl">
-          <div className="relative h-7 w-7 rounded-full overflow-hidden border border-primary/10">
-            {currentImage ? (
-              <Image src={currentImage} alt="Profile" fill className="object-cover" />
-            ) : (
-              <UserIcon className="h-4 w-4 text-primary m-auto absolute inset-0" />
-            )}
-          </div>
-          <span className="text-sm font-black tracking-tight">@{profile?.username}</span>
-        </div>
-      </motion.div>
-
       <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
         <motion.div 
           style={{ opacity: mainProfileOpacity, scale: mainProfileScale }}
