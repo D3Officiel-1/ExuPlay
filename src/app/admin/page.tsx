@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -177,113 +176,113 @@ export default function AdminPage() {
     <div className="min-h-screen bg-background flex flex-col pb-24">
       <Header />
       
-      <main className="flex-1 p-4 pt-20 space-y-4 max-w-3xl mx-auto w-full">
-        <div className="flex items-center gap-2">
+      <main className="flex-1 p-4 pt-20 space-y-4 md:space-y-8 max-w-4xl mx-auto w-full">
+        <div className="flex items-center gap-2 md:gap-4">
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={() => router.push("/profil")}
-            className="rounded-full h-8 w-8 hover:bg-primary/5"
+            className="rounded-full h-8 w-8 md:h-12 md:w-12 hover:bg-primary/5"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4 md:h-6 md:w-6" />
           </Button>
           <div className="space-y-0">
-            <p className="text-[7px] font-black uppercase tracking-[0.3em] opacity-40">Console</p>
-            <h1 className="text-sm font-black tracking-tight">Espace Maître</h1>
+            <p className="text-[7px] md:text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Console</p>
+            <h1 className="text-sm md:text-2xl font-black tracking-tight">Espace Maître</h1>
           </div>
         </div>
 
-        <Tabs defaultValue="stats" className="space-y-4">
-          <TabsList className="bg-card/40 backdrop-blur-3xl border border-primary/5 p-1 h-9 rounded-xl grid grid-cols-4">
-            <TabsTrigger value="stats" className="rounded-lg font-black text-[7px] uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <BarChart3 className="h-3 w-3 mr-1" />
+        <Tabs defaultValue="stats" className="space-y-4 md:space-y-8">
+          <TabsList className="bg-card/40 backdrop-blur-3xl border border-primary/5 p-1 h-9 md:h-14 rounded-xl md:rounded-2xl grid grid-cols-4">
+            <TabsTrigger value="stats" className="rounded-lg md:rounded-xl font-black text-[7px] md:text-xs uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">
+              <BarChart3 className="h-3 w-3 md:h-5 md:w-5 mr-1 md:mr-2" />
               Stats
             </TabsTrigger>
-            <TabsTrigger value="quizzes" className="rounded-lg font-black text-[7px] uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Plus className="h-3 w-3 mr-1" />
+            <TabsTrigger value="quizzes" className="rounded-lg md:rounded-xl font-black text-[7px] md:text-xs uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">
+              <Plus className="h-3 w-3 md:h-5 md:w-5 mr-1 md:mr-2" />
               Défis
             </TabsTrigger>
-            <TabsTrigger value="system" className="rounded-lg font-black text-[7px] uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Settings2 className="h-3 w-3 mr-1" />
+            <TabsTrigger value="system" className="rounded-lg md:rounded-xl font-black text-[7px] md:text-xs uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">
+              <Settings2 className="h-3 w-3 md:h-5 md:w-5 mr-1 md:mr-2" />
               Système
             </TabsTrigger>
-            <TabsTrigger value="users" className="rounded-lg font-black text-[7px] uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Users className="h-3 w-3 mr-1" />
+            <TabsTrigger value="users" className="rounded-lg md:rounded-xl font-black text-[7px] md:text-xs uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">
+              <Users className="h-3 w-3 md:h-5 md:w-5 mr-1 md:mr-2" />
               Esprits
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="stats" className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-lg rounded-2xl">
-                <CardHeader className="p-3 pb-1">
-                  <CardTitle className="text-[7px] font-black uppercase tracking-widest opacity-40">Joueurs</CardTitle>
+          <TabsContent value="stats" className="space-y-3 md:space-y-6">
+            <div className="grid grid-cols-2 gap-3 md:gap-6">
+              <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-lg rounded-2xl md:rounded-[2rem]">
+                <CardHeader className="p-3 pb-1 md:p-6 md:pb-2">
+                  <CardTitle className="text-[7px] md:text-[10px] font-black uppercase tracking-widest opacity-40">Joueurs</CardTitle>
                 </CardHeader>
-                <CardContent className="p-3 pt-0">
-                  <div className="flex items-end gap-1">
-                    <p className="text-xl font-black">{users?.length || 0}</p>
-                    <p className="text-[6px] font-bold opacity-30 mb-0.5 uppercase">Actifs</p>
+                <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+                  <div className="flex items-end gap-1 md:gap-2">
+                    <p className="text-xl md:text-5xl font-black">{users?.length || 0}</p>
+                    <p className="text-[6px] md:text-[10px] font-bold opacity-30 mb-0.5 md:mb-1.5 uppercase tracking-tighter">Actifs</p>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-lg rounded-2xl">
-                <CardHeader className="p-3 pb-1">
-                  <CardTitle className="text-[7px] font-black uppercase tracking-widest opacity-40">Défis</CardTitle>
+              <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-lg rounded-2xl md:rounded-[2rem]">
+                <CardHeader className="p-3 pb-1 md:p-6 md:pb-2">
+                  <CardTitle className="text-[7px] md:text-[10px] font-black uppercase tracking-widest opacity-40">Défis</CardTitle>
                 </CardHeader>
-                <CardContent className="p-3 pt-0">
-                  <div className="flex items-end gap-1">
-                    <p className="text-xl font-black">{quizzes?.length || 0}</p>
-                    <p className="text-[6px] font-bold opacity-30 mb-0.5 uppercase">En Ligne</p>
+                <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+                  <div className="flex items-end gap-1 md:gap-2">
+                    <p className="text-xl md:text-5xl font-black">{quizzes?.length || 0}</p>
+                    <p className="text-[6px] md:text-[10px] font-bold opacity-30 mb-0.5 md:mb-1.5 uppercase tracking-tighter">En Ligne</p>
                   </div>
                 </CardContent>
               </Card>
             </div>
           </TabsContent>
 
-          <TabsContent value="quizzes" className="space-y-4">
+          <TabsContent value="quizzes" className="space-y-4 md:space-y-8">
             <div className="flex justify-between items-center px-1">
-              <h3 className="text-[8px] font-black uppercase tracking-widest opacity-40">Base de Données</h3>
+              <h3 className="text-[8px] md:text-xs font-black uppercase tracking-widest opacity-40">Base de Données</h3>
               
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button className="h-8 px-4 rounded-xl font-black text-[8px] uppercase tracking-widest gap-2">
-                    <Plus className="h-3 w-3" />
+                  <Button className="h-8 md:h-14 px-4 md:px-8 rounded-xl md:rounded-2xl font-black text-[8px] md:text-xs uppercase tracking-widest gap-2 md:gap-3 shadow-lg shadow-primary/10">
+                    <Plus className="h-3 w-3 md:h-5 md:w-5" />
                     Ajouter un défi
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px] bg-card/95 backdrop-blur-2xl border-primary/5 rounded-[2rem]">
+                <DialogContent className="sm:max-w-[500px] bg-card/95 backdrop-blur-2xl border-primary/5 rounded-[2rem] md:rounded-[3rem] p-6 md:p-10">
                   <DialogHeader>
-                    <DialogTitle className="text-lg font-black tracking-tight">Nouveau Défi</DialogTitle>
-                    <p className="text-[10px] font-medium opacity-60">Créez une nouvelle épreuve pour les esprits.</p>
+                    <DialogTitle className="text-lg md:text-3xl font-black tracking-tight">Nouveau Défi</DialogTitle>
+                    <p className="text-[10px] md:text-sm font-medium opacity-60">Créez une nouvelle épreuve pour les esprits.</p>
                   </DialogHeader>
-                  <form onSubmit={handleAddQuiz} className="space-y-4 pt-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-black uppercase tracking-widest opacity-40">La Question</Label>
+                  <form onSubmit={handleAddQuiz} className="space-y-4 md:space-y-6 pt-4 md:pt-8">
+                    <div className="space-y-1.5 md:space-y-2">
+                      <Label className="text-[9px] md:text-xs font-black uppercase tracking-widest opacity-40">La Question</Label>
                       <Input 
                         placeholder="Ex: Quelle est l'essence du désir ?" 
-                        className="h-10 text-xs font-bold rounded-xl" 
+                        className="h-10 md:h-14 text-xs md:text-lg font-bold rounded-xl md:rounded-2xl" 
                         value={newQuiz.question} 
                         onChange={e => setNewQuiz({...newQuiz, question: e.target.value})}
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-2 md:gap-4">
                       {newQuiz.options.map((opt, idx) => (
-                        <div key={idx} className="space-y-1">
+                        <div key={idx} className="space-y-1 md:space-y-2">
                           <div className="flex justify-between items-center">
-                            <Label className="text-[8px] font-black uppercase tracking-widest opacity-40">Option {idx + 1}</Label>
+                            <Label className="text-[8px] md:text-xs font-black uppercase tracking-widest opacity-40">Option {idx + 1}</Label>
                             <input 
                               type="radio" 
                               name="correct" 
-                              className="accent-primary h-3 w-3"
+                              className="accent-primary h-3 w-3 md:h-5 md:w-5"
                               checked={newQuiz.correctIndex === idx} 
                               onChange={() => setNewQuiz({...newQuiz, correctIndex: idx})}
                             />
                           </div>
                           <Input 
                             placeholder={`Réponse ${idx + 1}`} 
-                            className="h-8 text-[9px] font-medium rounded-lg" 
+                            className="h-8 md:h-12 text-[9px] md:text-sm font-medium rounded-lg md:rounded-xl" 
                             value={opt} 
                             onChange={e => {
                               const newOpts = [...newQuiz.options];
@@ -296,20 +295,20 @@ export default function AdminPage() {
                     </div>
 
                     <div className="flex items-center gap-4">
-                      <div className="flex-1 space-y-1.5">
-                        <Label className="text-[9px] font-black uppercase tracking-widest opacity-40">Récompense (PTS)</Label>
+                      <div className="flex-1 space-y-1.5 md:space-y-2">
+                        <Label className="text-[9px] md:text-xs font-black uppercase tracking-widest opacity-40">Récompense (PTS)</Label>
                         <Input 
                           type="number" 
-                          className="h-8 text-[10px] rounded-lg" 
+                          className="h-8 md:h-12 text-[10px] md:text-sm rounded-lg md:rounded-xl" 
                           value={newQuiz.points} 
                           onChange={e => setNewQuiz({...newQuiz, points: parseInt(e.target.value) || 0})}
                         />
                       </div>
                     </div>
 
-                    <DialogFooter className="pt-4">
-                      <Button type="submit" disabled={isSubmitting} className="w-full h-12 rounded-2xl font-black text-[10px] uppercase tracking-widest">
-                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Publier le défi"}
+                    <DialogFooter className="pt-4 md:pt-8">
+                      <Button type="submit" disabled={isSubmitting} className="w-full h-12 md:h-16 rounded-2xl md:rounded-3xl font-black text-[10px] md:text-sm uppercase tracking-widest">
+                        {isSubmitting ? <Loader2 className="h-4 w-4 md:h-6 md:w-6 animate-spin" /> : "Publier le défi"}
                       </Button>
                     </DialogFooter>
                   </form>
@@ -317,33 +316,33 @@ export default function AdminPage() {
               </Dialog>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 md:space-y-4">
               {quizzesLoading ? (
-                <div className="flex justify-center p-8"><Loader2 className="h-5 w-5 animate-spin opacity-20" /></div>
+                <div className="flex justify-center p-8 md:p-16"><Loader2 className="h-5 w-5 md:h-10 md:w-10 animate-spin opacity-20" /></div>
               ) : (
-                <div className="grid gap-2">
+                <div className="grid gap-2 md:gap-4">
                   {quizzes?.map(q => (
-                    <Card key={q.id} className="border-none bg-card/20 backdrop-blur-3xl rounded-xl overflow-hidden group">
-                      <CardContent className="p-3 flex items-center justify-between gap-3">
-                        <div className="space-y-0.5 flex-1 overflow-hidden">
-                          <p className="text-[10px] font-black leading-tight truncate">{q.question}</p>
-                          <p className="text-[6px] font-bold opacity-30 uppercase tracking-widest">{q.points} PTS • {q.options.length} OPTIONS</p>
+                    <Card key={q.id} className="border-none bg-card/20 backdrop-blur-3xl rounded-xl md:rounded-3xl overflow-hidden group hover:bg-card/40 transition-all">
+                      <CardContent className="p-3 md:p-6 flex items-center justify-between gap-3 md:gap-6">
+                        <div className="space-y-0.5 md:space-y-1 flex-1 overflow-hidden">
+                          <p className="text-[10px] md:text-base font-black leading-tight truncate">{q.question}</p>
+                          <p className="text-[6px] md:text-xs font-bold opacity-30 uppercase tracking-widest">{q.points} PTS • {q.options.length} OPTIONS</p>
                         </div>
                         <Button 
                           variant="ghost" 
                           size="icon" 
                           onClick={() => handleDeleteQuiz(q.id)}
-                          className="h-7 w-7 text-destructive hover:bg-destructive/10 rounded-lg shrink-0"
+                          className="h-7 w-7 md:h-12 md:w-12 text-destructive hover:bg-destructive/10 rounded-lg md:rounded-2xl shrink-0"
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Trash2 className="h-3 w-3 md:h-6 md:w-6" />
                         </Button>
                       </CardContent>
                     </Card>
                   ))}
                   {quizzes?.length === 0 && (
-                    <div className="text-center py-10 opacity-20">
-                      <Brain className="h-8 w-8 mx-auto mb-2" />
-                      <p className="text-[8px] font-black uppercase tracking-widest">Aucun défi actif</p>
+                    <div className="text-center py-10 md:py-20 opacity-20">
+                      <Brain className="h-8 w-8 md:h-16 md:w-16 mx-auto mb-2 md:mb-4" />
+                      <p className="text-[8px] md:text-sm font-black uppercase tracking-widest">Aucun défi actif</p>
                     </div>
                   )}
                 </div>
@@ -351,51 +350,51 @@ export default function AdminPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="system" className="space-y-3">
-            <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-lg rounded-2xl overflow-hidden">
-              <CardHeader className="p-4 pb-2">
-                <CardTitle className="text-xs font-black">Sécurité Globale</CardTitle>
-                <CardDescription className="text-[8px]">Gérez l'accès des esprits au système.</CardDescription>
+          <TabsContent value="system" className="space-y-3 md:space-y-6">
+            <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-lg rounded-2xl md:rounded-[2rem] overflow-hidden">
+              <CardHeader className="p-4 pb-2 md:p-8 md:pb-4">
+                <CardTitle className="text-xs md:text-2xl font-black">Sécurité Globale</CardTitle>
+                <CardDescription className="text-[8px] md:text-sm">Gérez l'accès des esprits au système.</CardDescription>
               </CardHeader>
-              <CardContent className="p-4 pt-0">
-                <div className="flex items-center justify-between p-3 bg-background/50 rounded-xl border border-primary/5">
-                  <div className="space-y-0.5">
-                    <p className="font-black text-[8px] uppercase tracking-widest">Mode Maintenance</p>
-                    <p className="text-[7px] opacity-40 font-medium italic">"Éveil en pause..."</p>
+              <CardContent className="p-4 pt-0 md:p-8 md:pt-0">
+                <div className="flex items-center justify-between p-3 md:p-6 bg-background/50 rounded-xl md:rounded-3xl border border-primary/5">
+                  <div className="space-y-0.5 md:space-y-1">
+                    <p className="font-black text-[8px] md:text-base uppercase tracking-widest">Mode Maintenance</p>
+                    <p className="text-[7px] md:text-xs opacity-40 font-medium italic">"Éveil en pause..."</p>
                   </div>
                   <Switch 
                     checked={appStatus?.maintenanceMode || false} 
                     onCheckedChange={handleToggleMaintenance}
-                    className="data-[state=checked]:bg-red-500 scale-75"
+                    className="data-[state=checked]:bg-red-500 scale-75 md:scale-125 transition-transform"
                   />
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="users" className="space-y-3">
-            <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-lg rounded-2xl overflow-hidden">
+          <TabsContent value="users" className="space-y-3 md:space-y-6">
+            <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-lg rounded-2xl md:rounded-[2rem] overflow-hidden">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent border-primary/5">
-                      <TableHead className="font-black text-[7px] uppercase tracking-widest opacity-40 h-8 px-3">Esprit</TableHead>
-                      <TableHead className="font-black text-[7px] uppercase tracking-widest opacity-40 h-8 px-3 text-right">Lumière</TableHead>
+                      <TableHead className="font-black text-[7px] md:text-xs uppercase tracking-widest opacity-40 h-8 md:h-14 px-3 md:px-6">Esprit</TableHead>
+                      <TableHead className="font-black text-[7px] md:text-xs uppercase tracking-widest opacity-40 h-8 md:h-14 px-3 md:px-6 text-right">Lumière</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {users?.map((u) => (
                       <TableRow key={u.id} className="border-primary/5 hover:bg-primary/5 transition-colors">
-                        <TableCell className="py-2 px-3">
+                        <TableCell className="py-2 md:py-4 px-3 md:px-6">
                           <div className="flex flex-col">
-                            <span className="font-black text-[9px] tracking-tight">@{u.username}</span>
-                            <span className="text-[6px] opacity-30 uppercase tracking-widest">
+                            <span className="font-black text-[9px] md:text-base tracking-tight">@{u.username}</span>
+                            <span className="text-[6px] md:text-[10px] opacity-30 uppercase tracking-widest">
                               {u.phoneNumber}
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="py-2 px-3 text-right font-black text-[9px] tabular-nums">
-                          {u.totalPoints?.toLocaleString() || 0} <span className="text-[6px] opacity-20">PTS</span>
+                        <TableCell className="py-2 md:py-4 px-3 md:px-6 text-right font-black text-[9px] md:text-base tabular-nums">
+                          {u.totalPoints?.toLocaleString() || 0} <span className="text-[6px] md:text-[10px] opacity-20">PTS</span>
                         </TableCell>
                       </TableRow>
                     ))}
