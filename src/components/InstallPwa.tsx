@@ -40,19 +40,17 @@ export function InstallPwa() {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       
-      const hasBeenDismissed = localStorage.getItem("exu_pwa_dismissed");
-      if (!isStandaloneMode && !hasBeenDismissed && !isIosDevice) {
+      // On affiche si on n'est pas en mode autonome (toujours afficher si pas installé)
+      if (!isStandaloneMode && !isIosDevice) {
         setIsVisible(true);
       }
     };
 
     window.addEventListener("beforeinstallprompt", handler);
 
-    // Pour iOS, on affiche les instructions manuellement après un délai
-    const hasBeenDismissed = localStorage.getItem("exu_pwa_dismissed");
-    if (isIosDevice && !isStandaloneMode && !hasBeenDismissed) {
-      const timer = setTimeout(() => setIsVisible(true), 3000);
-      return () => clearTimeout(timer);
+    // Pour iOS, on affiche les instructions manuellement si pas en mode autonome
+    if (isIosDevice && !isStandaloneMode) {
+      setIsVisible(true);
     }
 
     return () => window.removeEventListener("beforeinstallprompt", handler);
@@ -78,7 +76,6 @@ export function InstallPwa() {
 
   const handleDismiss = () => {
     setIsVisible(false);
-    localStorage.setItem("exu_pwa_dismissed", "true");
   };
 
   if (isStandalone || !isVisible) return null;

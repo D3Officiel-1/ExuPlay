@@ -1,3 +1,4 @@
+
 "use client";
 
 import "./globals.css";
@@ -14,6 +15,7 @@ import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
 import { doc, getDoc } from "firebase/firestore";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/Logo";
+import { usePathname } from "next/navigation";
 
 function ThemeSync() {
   const { user } = useUser();
@@ -100,6 +102,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const [showPwaPrompt, setShowPwaPrompt] = useState(false);
   const { user } = useUser();
   const db = useFirestore();
+  const pathname = usePathname();
 
   const appConfigRef = useMemo(() => {
     if (!db) return null;
@@ -111,19 +114,22 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     return doc(db, "users", user.uid);
   }, [db, user?.uid]);
 
-  const { data: profile, loading: profileLoading } = useDoc(userDocRef);
-  const { data: appStatus, loading: appStatusLoading } = useDoc(appConfigRef);
+  const { data: profile } = useDoc(userDocRef);
+  const { data: appStatus } = useDoc(appConfigRef);
 
   const checkLockRequirement = useCallback(async () => {
     if (!user) return;
-    const isBiometricLocal = localStorage.getItem("citation_biometric_enabled") === "true";
+    const isBiometricLocal = localStorage.getItem("exu_biometric_enabled") === "true";
     if (isBiometricLocal) {
       setIsAppLocked(true);
     } else {
       const snap = await getDoc(doc(db, "users", user.uid));
       if (snap.exists() && snap.data().biometricEnabled) {
-        localStorage.setItem("citation_biometric_enabled", "true");
+        localStorage.setItem("exu_biometric_enabled", "true");
         setIsAppLocked(true);
+      } else {
+        // Pas de verrouillage requis, on peut envisager le PWA
+        setShowPwaPrompt(true);
       }
     }
   }, [user, db]);
@@ -161,6 +167,9 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const isMaintenanceActive = appStatus?.maintenanceMode === true;
   const isStandardUser = profile?.role === 'user';
   const showMaintenance = isMaintenanceActive && isStandardUser;
+  
+  // On ne montre pas le PWA sur la page splash (/)
+  const canShowPwa = showPwaPrompt && pathname !== "/";
 
   return (
     <>
@@ -170,7 +179,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
           <MaintenanceOverlay key="maintenance" />
         ) : isAppLocked ? (
           <BiometricLock key="lock" onSuccess={handleUnlockSuccess} />
-        ) : showPwaPrompt ? (
+        ) : canShowPwa ? (
           <InstallPwa key="pwa-prompt" />
         ) : null}
       </AnimatePresence>
