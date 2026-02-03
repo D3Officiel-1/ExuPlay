@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
@@ -68,8 +67,6 @@ export default function ProfilPage() {
   const { scrollY } = useScroll();
   
   // Calculs pour l'animation vers le header
-  // On commence à animer quand on approche du haut (ex: après 80px)
-  // Et on finit quand le profil principal est caché (ex: 180px)
   const headerOpacity = useTransform(scrollY, [140, 200], [0, 1]);
   const headerY = useTransform(scrollY, [140, 200], [10, 0]);
   const mainProfileOpacity = useTransform(scrollY, [0, 150], [1, 0]);
@@ -125,14 +122,42 @@ export default function ProfilPage() {
     }
   };
 
-  const copyMagicLink = () => {
+  const copyMagicLink = async () => {
     if (profile?.referralCode) {
       const magicLink = `${window.location.origin}/login?ref=${profile.referralCode}`;
-      navigator.clipboard.writeText(magicLink);
-      toast({
-        title: "Lien magique copié",
-        description: "Partagez ce lien pour parrainer automatiquement vos amis."
-      });
+      
+      // Tentative de partage natif
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        try {
+          await navigator.share({
+            title: 'Rejoins-moi sur Exu Play !',
+            text: `Découvre l'art de la pensée, réinventé. Utilise mon lien pour un éveil immédiat :`,
+            url: magicLink,
+          });
+          return;
+        } catch (error) {
+          if ((error as Error).name !== 'AbortError') {
+            console.error('Error sharing:', error);
+          } else {
+            return; // L'utilisateur a annulé, on ne fait rien
+          }
+        }
+      }
+
+      // Fallback: Copie dans le presse-papier
+      try {
+        await navigator.clipboard.writeText(magicLink);
+        toast({
+          title: "Lien magique copié",
+          description: "Partagez ce lien pour parrainer automatiquement vos amis."
+        });
+      } catch (err) {
+        toast({
+          variant: "destructive",
+          title: "Erreur",
+          description: "Impossible de copier le lien."
+        });
+      }
     }
   };
 
@@ -527,14 +552,17 @@ export default function ProfilPage() {
                     className="flex-1 h-12 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2"
                   >
                     <Share2 className="h-4 w-4" />
-                    Lien Magique
+                    Partager le Lien Magique
                   </Button>
                   <Button 
                     variant="secondary" 
                     size="icon" 
-                    onClick={() => {
-                      navigator.clipboard.writeText(profile?.referralCode || "");
-                      toast({ title: "Code copié" });
+                    onClick={async () => {
+                      if (profile?.referralCode) {
+                        const magicLink = `${window.location.origin}/login?ref=${profile.referralCode}`;
+                        await navigator.clipboard.writeText(magicLink);
+                        toast({ title: "Lien copié" });
+                      }
                     }}
                     className="h-12 w-12 rounded-2xl"
                   >
