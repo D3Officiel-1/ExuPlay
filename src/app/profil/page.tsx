@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { useUser, useFirestore, useDoc, useAuth } from "@/firebase";
 import { doc } from "firebase/firestore";
@@ -16,14 +16,14 @@ import {
   Phone, 
   Gift, 
   LogOut, 
-  ChevronRight, 
   Copy, 
   Trophy, 
   Calendar,
-  GenderMale,
-  HandMetal
+  Camera,
+  Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import Image from "next/image";
 
 export default function ProfilPage() {
   const { user } = useUser();
@@ -31,6 +31,9 @@ export default function ProfilPage() {
   const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [profileImage, setProfileImage] = useState<string | null>(null);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -38,6 +41,13 @@ export default function ProfilPage() {
   }, [db, user?.uid]);
 
   const { data: profile, loading } = useDoc(userDocRef);
+
+  useEffect(() => {
+    const savedImage = localStorage.getItem("exu_profile_image");
+    if (savedImage) {
+      setProfileImage(savedImage);
+    }
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -59,6 +69,36 @@ export default function ProfilPage() {
         title: "Code copié",
         description: "Votre code de parrainage est prêt à être partagé."
       });
+    }
+  };
+
+  const handleImageClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        toast({
+          variant: "destructive",
+          title: "Fichier trop lourd",
+          description: "Veuillez choisir une image de moins de 2 Mo."
+        });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setProfileImage(base64String);
+        localStorage.setItem("exu_profile_image", base64String);
+        toast({
+          title: "Image mise à jour",
+          description: "Votre avatar a été enregistré localement."
+        });
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -87,9 +127,31 @@ export default function ProfilPage() {
         >
           <div className="relative inline-block">
             <div className="absolute inset-0 bg-primary/10 blur-3xl rounded-full scale-150" />
-            <div className="relative h-24 w-24 bg-card rounded-[2rem] flex items-center justify-center border border-primary/10 shadow-2xl mx-auto">
-              <UserIcon className="h-10 w-10 text-primary" />
-            </div>
+            <button 
+              onClick={handleImageClick}
+              className="relative h-24 w-24 bg-card rounded-[2rem] flex items-center justify-center border border-primary/10 shadow-2xl mx-auto overflow-hidden group transition-transform active:scale-95"
+            >
+              {profileImage ? (
+                <Image 
+                  src={profileImage} 
+                  alt="Profil" 
+                  fill 
+                  className="object-cover transition-opacity group-hover:opacity-60"
+                />
+              ) : (
+                <UserIcon className="h-10 w-10 text-primary transition-opacity group-hover:opacity-40" />
+              )}
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                <Camera className="h-6 w-6 text-white" />
+              </div>
+            </button>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileChange} 
+              accept="image/*" 
+              className="hidden" 
+            />
           </div>
           <div className="space-y-1">
             <h1 className="text-3xl font-black tracking-tight">@{profile?.username || "Anonyme"}</h1>
