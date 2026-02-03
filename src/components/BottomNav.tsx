@@ -28,37 +28,17 @@ export function BottomNav() {
           {NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
-            const isQuiz = item.name === "Quiz";
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={cn(
-                  "relative flex-1 group",
-                  isQuiz && "flex-[1.2]" 
-                )}
+                className="relative flex-1 group"
               >
                 <div className={cn(
                   "relative flex flex-col items-center justify-center py-2.5 px-2 rounded-[1.75rem] transition-all duration-500",
-                  isActive ? "text-primary-foreground" : "text-foreground/30 hover:text-foreground/60",
-                  isQuiz && !isActive && "text-primary opacity-90 scale-105"
+                  isActive ? "text-primary-foreground" : "text-foreground/30 hover:text-foreground/60"
                 )}>
-                  {/* Effet d'aura pulsante pour le Quiz uniquement */}
-                  {isQuiz && (
-                    <motion.div 
-                      animate={{ 
-                        scale: [1, 1.15, 1],
-                        opacity: isActive ? [0.4, 0.2, 0.4] : [0.2, 0, 0.2]
-                      }}
-                      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                      className={cn(
-                        "absolute inset-0 rounded-[1.75rem] blur-xl -z-10",
-                        isActive ? "bg-primary/40" : "bg-primary/20"
-                      )}
-                    />
-                  )}
-
                   <motion.div
                     whileHover={{ scale: 1.15 }}
                     whileTap={{ scale: 0.9 }}
@@ -67,16 +47,12 @@ export function BottomNav() {
                   >
                     <Icon className={cn(
                       "h-5 w-5 mb-1 transition-all duration-300",
-                      isActive ? "stroke-[2.5]" : (isQuiz ? "stroke-[2.2]" : "stroke-2"),
-                      isQuiz && !isActive && "text-primary"
+                      isActive ? "stroke-[2.5]" : "stroke-2"
                     )} />
                   </motion.div>
                   
                   <motion.span 
-                    className={cn(
-                      "relative z-10 text-[8px] font-black uppercase tracking-[0.2em] leading-none",
-                      isQuiz && !isActive && "text-primary"
-                    )}
+                    className="relative z-10 text-[8px] font-black uppercase tracking-[0.2em] leading-none"
                   >
                     {item.name}
                   </motion.span>
@@ -84,25 +60,13 @@ export function BottomNav() {
                   {isActive && (
                     <motion.div
                       layoutId="nav-pill"
-                      className={cn(
-                        "absolute inset-0 bg-primary rounded-[1.75rem] shadow-[0_6px_20px_rgba(var(--primary-rgb),0.25)]",
-                        isQuiz && "shadow-[0_0_25px_rgba(var(--primary-rgb),0.4)]"
-                      )}
+                      className="absolute inset-0 bg-primary rounded-[1.75rem] shadow-[0_6px_20px_rgba(var(--primary-rgb),0.25)]"
                       transition={{ 
                         type: "spring", 
                         bounce: 0.25, 
                         duration: 0.6,
                         layout: { duration: 0.4 }
                       }}
-                    />
-                  )}
-
-                  {/* Animation de respiration discrète pour le Quiz */}
-                  {isQuiz && !isActive && (
-                    <motion.div
-                      animate={{ scale: [1, 1.02, 1] }}
-                      transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                      className="absolute inset-0 border border-primary/10 rounded-[1.75rem] pointer-events-none"
                     />
                   )}
                 </div>
