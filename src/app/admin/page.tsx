@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -12,7 +11,8 @@ import {
   updateDoc, 
   serverTimestamp,
   query,
-  orderBy
+  orderBy,
+  setDoc
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { 
   Table, 
   TableBody, 
@@ -40,7 +41,8 @@ import {
   ChevronLeft,
   Search,
   CheckCircle2,
-  ShieldAlert
+  AlertTriangle,
+  Settings2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -67,7 +69,13 @@ export default function AdminPage() {
     return doc(db, "users", user.uid);
   }, [db, user?.uid]);
 
+  const appConfigRef = useMemo(() => {
+    if (!db) return null;
+    return doc(db, "appConfig", "status");
+  }, [db]);
+
   const { data: profile, loading: profileLoading } = useDoc(userDocRef);
+  const { data: appStatus, loading: appStatusLoading } = useDoc(appConfigRef);
   
   const quotesQuery = useMemo(() => {
     if (!db) return null;
@@ -126,6 +134,27 @@ export default function AdminPage() {
       const permissionError = new FirestorePermissionError({
         path: `quotes/${id}`,
         operation: 'delete',
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    }
+  };
+
+  const handleToggleMaintenance = async (checked: boolean) => {
+    if (!appConfigRef) return;
+    try {
+      await setDoc(appConfigRef, {
+        maintenanceMode: checked,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      toast({
+        title: checked ? "Maintenance activée" : "Maintenance désactivée",
+        description: checked ? "L'application est maintenant en mode privé." : "L'application est de nouveau accessible à tous."
+      });
+    } catch (error) {
+      const permissionError = new FirestorePermissionError({
+        path: appConfigRef.path,
+        operation: 'update',
+        requestResourceData: { maintenanceMode: checked },
       } satisfies SecurityRuleContext);
       errorEmitter.emit('permission-error', permissionError);
     }
@@ -236,10 +265,14 @@ export default function AdminPage() {
         </div>
 
         <Tabs defaultValue="stats" className="space-y-8">
-          <TabsList className="bg-card/40 backdrop-blur-3xl border border-primary/5 p-1 h-14 rounded-2xl grid grid-cols-3">
+          <TabsList className="bg-card/40 backdrop-blur-3xl border border-primary/5 p-1 h-14 rounded-2xl grid grid-cols-4">
             <TabsTrigger value="stats" className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <BarChart3 className="h-4 w-4 mr-2" />
               Stats
+            </TabsTrigger>
+            <TabsTrigger value="system" className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Settings2 className="h-4 w-4 mr-2" />
+              Système
             </TabsTrigger>
             <TabsTrigger value="quotes" className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <QuoteIcon className="h-4 w-4 mr-2" />
@@ -283,6 +316,45 @@ export default function AdminPage() {
                 <CheckCircle2 className="h-12 w-12 opacity-40" />
                 <h3 className="text-2xl font-black">Système Stable</h3>
                 <p className="text-sm opacity-60 font-medium">Tous les flux de données sont synchronisés avec l'éther numérique.</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="system" className="space-y-6">
+            <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden">
+              <CardHeader>
+                <CardTitle className="text-xl font-black">Contrôle de l'Éther</CardTitle>
+                <CardDescription className="font-medium">Gérez la visibilité globale de l'application.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between p-6 bg-background/50 rounded-3xl border border-primary/5">
+                  <div className="space-y-1">
+                    <p className="font-black text-sm uppercase tracking-widest">Mode Maintenance</p>
+                    <p className="text-xs opacity-60 font-medium">Désactive l'accès pour tous les utilisateurs standards.</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {appStatus?.maintenanceMode && (
+                      <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                    )}
+                    <Switch 
+                      checked={appStatus?.maintenanceMode || false} 
+                      onCheckedChange={handleToggleMaintenance}
+                      className="data-[state=checked]:bg-red-500"
+                    />
+                  </div>
+                </div>
+
+                {appStatus?.maintenanceMode && (
+                  <div className="p-6 bg-red-500/5 rounded-3xl border border-red-500/10 flex gap-4 items-start">
+                    <AlertTriangle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-red-600">Alerte Maintenance</p>
+                      <p className="text-[10px] leading-relaxed opacity-60 font-medium">
+                        L'application est actuellement verrouillée pour les esprits standards. Seuls les Maîtres de l'Éveil peuvent naviguer librement.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "Quote": {
@@ -42,6 +41,14 @@
         "role": { "type": "string", "description": "Rôle de l'utilisateur", "default": "user" }
       },
       "required": ["username", "phoneNumber", "acceptedTerms", "gender", "referralCode", "role"]
+    },
+    "AppStatus": {
+      "title": "AppStatus",
+      "description": "Configuration globale de l'application",
+      "type": "object",
+      "properties": {
+        "maintenanceMode": { "type": "boolean", "default": false }
+      }
     }
   },
   "auth": {
@@ -59,6 +66,10 @@
     "/users/{userId}/favorites/{favoriteId}": {
       "schema": "UserFavorite",
       "description": "Citations favorites de l'utilisateur"
+    },
+    "/appConfig/status": {
+      "schema": "AppStatus",
+      "description": "Statut global du système (Maintenance, etc.)"
     }
   }
 }
