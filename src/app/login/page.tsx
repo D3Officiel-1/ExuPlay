@@ -141,7 +141,6 @@ function LoginContent() {
     if (step === 3 && !isValidPhoneNumber(formData.phoneNumber)) return;
     if (step === 4) {
       if (!formData.acceptedTerms) return;
-      // SAUT DE L'ÉTAPE 5 SI LIEN MAGIQUE VALIDE
       if (isMagicReferral && referralStatus === 'valid') {
         setStep(6);
         return;
@@ -180,6 +179,7 @@ function LoginContent() {
         locationAuthorized: false,
         biometricEnabled: false,
         createdAt: serverTimestamp(),
+        totalPoints: 0
       });
 
       toast({ title: "Bienvenue", description: "Votre compte est prêt." });
@@ -276,11 +276,11 @@ function LoginContent() {
                       <CardTitle className="text-2xl">Quel est votre genre ?</CardTitle>
                     </CardHeader>
                     <CardContent className="p-6">
-                      <RadioGroup value={formData.gender} onValueChange={(val) => setFormData({...formData, gender: val})} className="grid gap-4">
-                        {[{ id: "masculin", label: "Homme" }, { id: "féminin", label: "Femme" }, { id: "non-binaire", label: "Autre" }].map((option) => (
+                      <RadioGroup value={formData.gender} onValueChange={(val) => setFormData({...formData, gender: val})} className="grid grid-cols-2 gap-4">
+                        {[{ id: "masculin", label: "Homme" }, { id: "féminin", label: "Femme" }].map((option) => (
                           <div key={option.id}>
                             <RadioGroupItem value={option.id} id={option.id} className="peer sr-only" />
-                            <Label htmlFor={option.id} className="flex items-center justify-between rounded-xl border-2 border-muted bg-background/50 p-4 hover:bg-accent peer-data-[state=checked]:border-primary transition-all cursor-pointer font-bold">{option.label}</Label>
+                            <Label htmlFor={option.id} className="flex flex-col items-center justify-center rounded-2xl border-2 border-muted bg-background/50 p-6 hover:bg-accent peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 transition-all cursor-pointer font-bold text-base h-24">{option.label}</Label>
                           </div>
                         ))}
                       </RadioGroup>
