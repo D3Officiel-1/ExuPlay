@@ -14,21 +14,19 @@ export default function Icon() {
     (
       <div
         style={{
-          fontSize: 256,
-          background: 'black',
+          background: 'transparent',
           width: '100%',
           height: '100%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'white',
-          borderRadius: '20%',
+          color: 'black',
         }}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="350"
-          height="350"
+          width="400"
+          height="400"
           viewBox="0 0 24 24"
           fill="currentColor"
           stroke="none"
