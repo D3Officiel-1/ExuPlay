@@ -20,6 +20,7 @@ export default function AutoriserPage() {
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useUser();
@@ -58,6 +59,23 @@ export default function AutoriserPage() {
     detectStartStep();
   }, [user, db, router]);
 
+  // Fermer la caméra dès que l'étape n'est plus "1"
+  useEffect(() => {
+    if (step !== 1 && streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  }, [step]);
+
+  // Nettoyage lors de la destruction du composant
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
   const refreshUserDataAndStep = async () => {
     if (!user) return;
     const userDoc = await getDoc(doc(db, "users", user.uid));
@@ -73,6 +91,7 @@ export default function AutoriserPage() {
     setLoading(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      streamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
 
       if (user) {
