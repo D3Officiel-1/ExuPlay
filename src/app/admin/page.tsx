@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -51,7 +50,8 @@ import {
   Brain,
   Edit3,
   User,
-  MinusCircle
+  MinusCircle,
+  Search
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -80,6 +80,10 @@ export default function AdminPage() {
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
   const [pointsToSubtract, setPointsToSubtract] = useState<number>(0);
 
+  // Search states
+  const [quizSearch, setQuizSearch] = useState("");
+  const [userSearch, setUserSearch] = useState("");
+
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
     return doc(db, "users", user.uid);
@@ -105,6 +109,26 @@ export default function AdminPage() {
 
   const { data: users, loading: usersLoading } = useCollection(usersQuery);
   const { data: quizzes, loading: quizzesLoading } = useCollection(quizzesQuery);
+
+  // Filtering logic
+  const filteredQuizzes = useMemo(() => {
+    if (!quizzes) return [];
+    const q = quizSearch.toLowerCase().trim();
+    if (!q) return quizzes;
+    return quizzes.filter(quiz => 
+      quiz.question.toLowerCase().includes(q)
+    );
+  }, [quizzes, quizSearch]);
+
+  const filteredUsers = useMemo(() => {
+    if (!users) return [];
+    const q = userSearch.toLowerCase().trim();
+    if (!q) return users;
+    return users.filter(user => 
+      user.username.toLowerCase().includes(q) || 
+      user.phoneNumber?.toLowerCase().includes(q)
+    );
+  }, [users, userSearch]);
 
   useEffect(() => {
     if (!authLoading && !profileLoading && profile) {
@@ -260,7 +284,7 @@ export default function AdminPage() {
     <div className="min-h-screen bg-background flex flex-col pb-24">
       <Header />
       
-      <main className="flex-1 p-4 pt-24 space-y-6 md:space-y-8 max-w-4xl mx-auto w-full">
+      <main className="flex-1 p-4 pt-20 space-y-6 md:space-y-8 max-w-4xl mx-auto w-full">
         <div className="flex items-center gap-4">
           <Button 
             variant="ghost" 
@@ -325,79 +349,91 @@ export default function AdminPage() {
           </TabsContent>
 
           <TabsContent value="quizzes" className="space-y-6 md:space-y-8">
-            <div className="flex justify-between items-center px-1">
-              <h3 className="text-xs font-black uppercase tracking-widest opacity-40">Base de Données</h3>
-              
-              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="h-12 md:h-14 px-6 md:px-8 rounded-2xl font-black text-xs uppercase tracking-widest gap-2 md:gap-3 shadow-lg shadow-primary/10">
-                    <Plus className="h-4 w-4 md:h-5 md:w-5" />
-                    Ajouter un défi
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[500px] bg-card/95 backdrop-blur-2xl border-primary/5 rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-10">
-                  <DialogHeader>
-                    <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight">Nouveau Défi</DialogTitle>
-                    <p className="text-sm font-medium opacity-60">Créez une nouvelle épreuve pour les esprits.</p>
-                  </DialogHeader>
-                  <form onSubmit={handleAddQuiz} className="space-y-6 pt-6 md:pt-8">
-                    <div className="space-y-2">
-                      <Label className="text-xs font-black uppercase tracking-widest opacity-40">La Question</Label>
-                      <Input 
-                        placeholder="Ex: Quelle est l'essence du désir ?" 
-                        className="h-12 md:h-14 text-sm md:text-lg font-bold rounded-2xl" 
-                        value={newQuiz.question} 
-                        onChange={e => setNewQuiz({...newQuiz, question: e.target.value})}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {newQuiz.options.map((opt, idx) => (
-                        <div key={idx} className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <Label className="text-xs font-black uppercase tracking-widest opacity-40">Option {idx + 1}</Label>
-                            <input 
-                              type="radio" 
-                              name="correct" 
-                              className="accent-primary h-5 w-5"
-                              checked={newQuiz.correctIndex === idx} 
-                              onChange={() => setNewQuiz({...newQuiz, correctIndex: idx})}
-                            />
-                          </div>
-                          <Input 
-                            placeholder={`Réponse ${idx + 1}`} 
-                            className="h-12 text-sm font-medium rounded-xl" 
-                            value={opt} 
-                            onChange={e => {
-                              const newOpts = [...newQuiz.options];
-                              newOpts[idx] = e.target.value;
-                              setNewQuiz({...newQuiz, options: newOpts});
-                            }}
-                          />
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1 space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest opacity-40">Récompense (PTS)</Label>
+            <div className="flex flex-col gap-4 px-1">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xs font-black uppercase tracking-widest opacity-40">Base de Données</h3>
+                
+                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="h-10 md:h-12 px-4 md:px-6 rounded-2xl font-black text-xs uppercase tracking-widest gap-2 md:gap-3 shadow-lg shadow-primary/10">
+                      <Plus className="h-4 w-4 md:h-5 md:w-5" />
+                      Ajouter un défi
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[500px] bg-card/95 backdrop-blur-2xl border-primary/5 rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-10">
+                    <DialogHeader>
+                      <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight">Nouveau Défi</DialogTitle>
+                      <p className="text-sm font-medium opacity-60">Créez une nouvelle épreuve pour les esprits.</p>
+                    </DialogHeader>
+                    <form onSubmit={handleAddQuiz} className="space-y-6 pt-6 md:pt-8">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-black uppercase tracking-widest opacity-40">La Question</Label>
                         <Input 
-                          type="number" 
-                          className="h-12 text-sm rounded-xl" 
-                          value={newQuiz.points} 
-                          onChange={e => setNewQuiz({...newQuiz, points: parseInt(e.target.value) || 0})}
+                          placeholder="Ex: Quelle est l'essence du désir ?" 
+                          className="h-12 md:h-14 text-sm md:text-lg font-bold rounded-2xl" 
+                          value={newQuiz.question} 
+                          onChange={e => setNewQuiz({...newQuiz, question: e.target.value})}
                         />
                       </div>
-                    </div>
 
-                    <DialogFooter className="pt-6 md:pt-8">
-                      <Button type="submit" disabled={isSubmitting} className="w-full h-14 md:h-16 rounded-2xl md:rounded-3xl font-black text-sm uppercase tracking-widest">
-                        {isSubmitting ? <Loader2 className="h-5 w-5 md:h-6 md:w-6 animate-spin" /> : "Publier le défi"}
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {newQuiz.options.map((opt, idx) => (
+                          <div key={idx} className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <Label className="text-xs font-black uppercase tracking-widest opacity-40">Option {idx + 1}</Label>
+                              <input 
+                                type="radio" 
+                                name="correct" 
+                                className="accent-primary h-5 w-5"
+                                checked={newQuiz.correctIndex === idx} 
+                                onChange={() => setNewQuiz({...newQuiz, correctIndex: idx})}
+                              />
+                            </div>
+                            <Input 
+                              placeholder={`Réponse ${idx + 1}`} 
+                              className="h-12 text-sm font-medium rounded-xl" 
+                              value={opt} 
+                              onChange={e => {
+                                const newOpts = [...newQuiz.options];
+                                newOpts[idx] = e.target.value;
+                                setNewQuiz({...newQuiz, options: newOpts});
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1 space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest opacity-40">Récompense (PTS)</Label>
+                          <Input 
+                            type="number" 
+                            className="h-12 text-sm rounded-xl" 
+                            value={newQuiz.points} 
+                            onChange={e => setNewQuiz({...newQuiz, points: parseInt(e.target.value) || 0})}
+                          />
+                        </div>
+                      </div>
+
+                      <DialogFooter className="pt-6 md:pt-8">
+                        <Button type="submit" disabled={isSubmitting} className="w-full h-14 md:h-16 rounded-2xl md:rounded-3xl font-black text-sm uppercase tracking-widest">
+                          {isSubmitting ? <Loader2 className="h-5 w-5 md:h-6 md:w-6 animate-spin" /> : "Publier le défi"}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-40" />
+                <Input 
+                  placeholder="Rechercher une question..." 
+                  className="pl-12 h-12 bg-card/20 border-none rounded-2xl"
+                  value={quizSearch}
+                  onChange={(e) => setQuizSearch(e.target.value)}
+                />
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -405,7 +441,7 @@ export default function AdminPage() {
                 <div className="flex justify-center p-16"><Loader2 className="h-8 w-8 md:h-10 md:w-10 animate-spin opacity-20" /></div>
               ) : (
                 <div className="grid gap-4">
-                  {quizzes?.map(q => (
+                  {filteredQuizzes.map(q => (
                     <Card 
                       key={q.id} 
                       onClick={() => openQuizDetails(q)}
@@ -429,10 +465,10 @@ export default function AdminPage() {
                       </CardContent>
                     </Card>
                   ))}
-                  {quizzes?.length === 0 && (
+                  {filteredQuizzes.length === 0 && (
                     <div className="text-center py-20 opacity-20">
                       <Brain className="h-12 w-12 md:h-16 md:w-16 mx-auto mb-4" />
-                      <p className="text-sm font-black uppercase tracking-widest">Aucun défi actif</p>
+                      <p className="text-sm font-black uppercase tracking-widest">Aucun défi correspondant</p>
                     </div>
                   )}
                 </div>
@@ -463,6 +499,18 @@ export default function AdminPage() {
           </TabsContent>
 
           <TabsContent value="users" className="space-y-6">
+            <div className="px-1 mb-4">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-40" />
+                <Input 
+                  placeholder="Rechercher un esprit (nom ou numéro)..." 
+                  className="pl-12 h-12 bg-card/20 border-none rounded-2xl"
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                />
+              </div>
+            </div>
+
             <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-lg rounded-[2rem] overflow-hidden">
               <div className="overflow-x-auto">
                 <Table>
@@ -473,7 +521,7 @@ export default function AdminPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {users?.map((u) => (
+                    {filteredUsers.map((u) => (
                       <TableRow 
                         key={u.id} 
                         className="border-primary/5 hover:bg-primary/5 transition-colors cursor-pointer"
@@ -492,6 +540,13 @@ export default function AdminPage() {
                         </TableCell>
                       </TableRow>
                     ))}
+                    {filteredUsers.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={2} className="text-center py-10 opacity-20 font-black uppercase tracking-widest">
+                          Aucun esprit trouvé
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </div>
