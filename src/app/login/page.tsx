@@ -389,7 +389,7 @@ function LoginContent() {
                     </CardContent>
                     <CardFooter className="flex gap-4 p-6">
                       <Button variant="ghost" onClick={handleBackStep} className="h-14 flex-1">Retour</Button>
-                      <Button onClick={handleNextStep} className="h-14 flex-1" disabled={hasReferral && (referralStatus !== 'valid' || checkingReferral)}>Vérifier</Button>
+                      <Button onClick={handleNextStep} className="h-14 flex-1" disabled={hasReferral && (referralStatus !== 'valid' || checkingReferral)}>Suivant</Button>
                     </CardFooter>
                   </>
                 )}
