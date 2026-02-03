@@ -195,7 +195,7 @@ function LoginContent() {
   const stepVariants = {
     enter: (direction: number) => ({ x: direction > 0 ? 50 : -50, opacity: 0, filter: "blur(10px)" }),
     center: { zIndex: 1, x: 0, opacity: 1, filter: "blur(0px)", transition: { x: { type: "spring", stiffness: 300, damping: 30 }, opacity: { duration: 0.4 } } },
-    exit: (direction: number) => ({ zIndex: 0, x: direction < 0 ? 50 : -50, opacity: 0, filter: "blur(10px)", transition: { x: { type: "spring", stiffness: 300, damping: 30 }, opacity: { duration: 0.4 } } })
+    exit: (direction: number) => ({ zIndex: 0, x: direction < 0 ? 50 : -50, opacity: 0, filter: "blur(10px)", transition: { x: { type: "spring", stiffness: 300, damping: 30 }, opacity: { duration: 0.4 } })
   };
 
   if (isAuthLoading) return null;
@@ -208,8 +208,7 @@ function LoginContent() {
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-lg z-10">
         <div className="flex flex-col items-center mb-10">
-          <Logo className="mb-4 scale-75" />
-          <p className="text-muted-foreground text-[10px] font-bold tracking-[0.4em] uppercase opacity-40">Pensée & Éveil</p>
+          <Logo className="scale-75" />
         </div>
 
         <div className="flex justify-center gap-2 mb-8">
