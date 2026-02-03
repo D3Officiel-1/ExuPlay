@@ -2,7 +2,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { useUser, useFirestore, useDoc, useAuth } from "@/firebase";
 import { 
   doc, 
@@ -48,6 +48,7 @@ export default function ProfilPage() {
   const router = useRouter();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   const [localProfileImage, setLocalProfileImage] = useState<string | null>(null);
   
@@ -63,6 +64,17 @@ export default function ProfilPage() {
   const [editedPhone, setEditedPhone] = useState("");
   const [isSavingPhone, setIsSavingPhone] = useState(false);
 
+  // Scroll animations
+  const { scrollY } = useScroll();
+  
+  // Calculs pour l'animation vers le header
+  // On commence à animer quand on approche du haut (ex: après 80px)
+  // Et on finit quand le profil principal est caché (ex: 180px)
+  const headerOpacity = useTransform(scrollY, [140, 200], [0, 1]);
+  const headerY = useTransform(scrollY, [140, 200], [10, 0]);
+  const mainProfileOpacity = useTransform(scrollY, [0, 150], [1, 0]);
+  const mainProfileScale = useTransform(scrollY, [0, 150], [1, 0.9]);
+
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
     return doc(db, "users", user.uid);
@@ -77,7 +89,6 @@ export default function ProfilPage() {
     }
   }, []);
 
-  // Vérification de l'unicité du nom d'utilisateur
   useEffect(() => {
     if (!isEditingName || editedUsername.length < 3 || editedUsername === profile?.username) {
       setUsernameStatus(editedUsername === profile?.username ? 'idle' : 'idle');
@@ -261,10 +272,27 @@ export default function ProfilPage() {
     <div className="min-h-screen bg-background flex flex-col pb-32">
       <Header />
       
+      {/* Sticky Mini Profile in Header area */}
+      <motion.div 
+        style={{ opacity: headerOpacity, y: headerY }}
+        className="fixed top-0 left-0 right-0 h-14 z-[60] flex items-center justify-center pointer-events-none"
+      >
+        <div className="flex items-center gap-3 bg-card/60 backdrop-blur-3xl px-4 py-1.5 rounded-2xl border border-primary/5 shadow-2xl">
+          <div className="relative h-7 w-7 rounded-full overflow-hidden border border-primary/10">
+            {currentImage ? (
+              <Image src={currentImage} alt="Profile" fill className="object-cover" />
+            ) : (
+              <UserIcon className="h-4 w-4 text-primary m-auto absolute inset-0" />
+            )}
+          </div>
+          <span className="text-sm font-black tracking-tight">@{profile?.username}</span>
+        </div>
+      </motion.div>
+
       <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
+        {/* Animated Main Profile Section */}
         <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          style={{ opacity: mainProfileOpacity, scale: mainProfileScale }}
           className="text-center space-y-4"
         >
           <div className="relative inline-block">
