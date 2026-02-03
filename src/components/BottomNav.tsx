@@ -8,9 +8,9 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
+  { name: "Paramètres", href: "/parametres", icon: Settings },
   { name: "Quiz", href: "/quiz", icon: Trophy },
   { name: "Profil", href: "/profil", icon: User },
-  { name: "Paramètres", href: "/parametres", icon: Settings },
 ];
 
 export function BottomNav() {
