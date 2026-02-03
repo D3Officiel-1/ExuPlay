@@ -31,10 +31,10 @@ export function Header() {
         delay: 0.1
       }}
       className={cn(
-        "fixed top-0 left-0 right-0 z-40 h-24",
+        "fixed top-0 left-0 right-0 z-40 h-20",
         "flex items-center px-10",
         "bg-background/10 backdrop-blur-2xl",
-        "after:absolute after:bottom-0 after:left-[15%] after:right-[15%] after:h-[1px] after:bg-gradient-to-r after:from-transparent after:via-primary/10 after:to-transparent"
+        "after:absolute after:bottom-0 after:left-[25%] after:right-[25%] after:h-[1px] after:bg-gradient-to-r after:from-transparent after:via-primary/5 after:to-transparent"
       )}
     >
       <div className="max-w-screen-2xl mx-auto w-full flex items-center justify-between">
@@ -80,7 +80,7 @@ export function Header() {
           ease: "linear",
           repeatDelay: 3
         }}
-        className="absolute bottom-0 left-0 w-20 h-[1px] bg-gradient-to-r from-transparent via-primary/20 to-transparent z-10"
+        className="absolute bottom-0 left-[30%] w-10 h-[1px] bg-gradient-to-r from-transparent via-primary/10 to-transparent z-10"
       />
     </motion.header>
   );

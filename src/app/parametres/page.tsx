@@ -76,7 +76,7 @@ export default function ParametresPage() {
     <div className="min-h-screen bg-background flex flex-col pb-32">
       <Header />
       
-      <main className="flex-1 p-6 pt-32 space-y-8 max-w-lg mx-auto w-full">
+      <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}

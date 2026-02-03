@@ -281,7 +281,7 @@ export default function ProfilPage() {
       
       <motion.div 
         style={{ opacity: headerOpacity, y: headerY }}
-        className="fixed top-0 left-0 right-0 h-24 z-[60] flex items-center justify-center pointer-events-none"
+        className="fixed top-0 left-0 right-0 h-20 z-[60] flex items-center justify-center pointer-events-none"
       >
         <div className="flex items-center gap-3 bg-card/60 backdrop-blur-3xl px-4 py-1.5 rounded-2xl border border-primary/5 shadow-2xl">
           <div className="relative h-7 w-7 rounded-full overflow-hidden border border-primary/10">
@@ -295,7 +295,7 @@ export default function ProfilPage() {
         </div>
       </motion.div>
 
-      <main className="flex-1 p-6 pt-32 space-y-8 max-w-lg mx-auto w-full">
+      <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
         <motion.div 
           style={{ opacity: mainProfileOpacity, scale: mainProfileScale }}
           className="text-center space-y-4"

@@ -260,7 +260,7 @@ export default function AdminPage() {
     <div className="min-h-screen bg-background flex flex-col pb-24">
       <Header />
       
-      <main className="flex-1 p-4 pt-32 space-y-6 md:space-y-8 max-w-4xl mx-auto w-full">
+      <main className="flex-1 p-4 pt-24 space-y-6 md:space-y-8 max-w-4xl mx-auto w-full">
         <div className="flex items-center gap-4">
           <Button 
             variant="ghost" 

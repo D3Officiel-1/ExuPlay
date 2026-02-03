@@ -104,7 +104,7 @@ export default function HomePage() {
     return (
       <div className="min-h-screen bg-background flex flex-col pb-32">
         <Header />
-        <main className="flex-1 flex flex-col items-center justify-center p-6 pt-32 space-y-8">
+        <main className="flex-1 flex flex-col items-center justify-center p-6 pt-24 space-y-8">
           <div className="mx-auto w-24 h-24 bg-primary/5 rounded-[2.5rem] flex items-center justify-center border border-primary/10 shadow-2xl">
             <Brain className="h-10 w-10 text-primary opacity-20" />
           </div>
@@ -124,7 +124,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-background flex flex-col pb-32">
       <Header />
       
-      <main className="flex-1 flex items-center justify-center p-6 pt-32">
+      <main className="flex-1 flex items-center justify-center p-6 pt-24">
         <div className="w-full max-w-lg">
           <AnimatePresence mode="wait">
             {!quizComplete ? (
