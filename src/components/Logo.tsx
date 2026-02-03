@@ -63,16 +63,6 @@ export function Logo({ className, layout = 'vertical' }: LogoProps) {
             className="text-primary"
           >.</motion.span>
         </motion.span>
-        {isHorizontal && (
-          <motion.span 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.4 }}
-            transition={{ delay: 1.4 }}
-            className="text-[8px] font-bold tracking-[0.4em] uppercase mt-1"
-          >
-            Digital Flight
-          </motion.span>
-        )}
       </div>
     </div>
   );

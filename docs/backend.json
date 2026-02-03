@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Quote": {
@@ -34,6 +35,7 @@
         "acceptedTerms": { "type": "boolean" },
         "referralCode": { "type": "string", "description": "Code unique de parrainage de l'utilisateur" },
         "referredBy": { "type": "string", "description": "Code du parrain si applicable" },
+        "totalPoints": { "type": "integer", "description": "Points totaux accumulés par l'utilisateur", "default": 0 },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["username", "phoneNumber", "acceptedTerms", "gender", "referralCode"]
