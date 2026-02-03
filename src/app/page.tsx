@@ -46,7 +46,6 @@ export default function SplashPage() {
     }
   };
 
-  // Variantes pour les lignes de vent
   const windLineVariants = {
     animate: (i: number) => ({
       x: ["-100%", "200%"],
@@ -76,7 +75,6 @@ export default function SplashPage() {
             }}
             className="flex flex-col items-center justify-center w-full h-full"
           >
-            {/* Arrière-plan cinématique */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
               {[...Array(6)].map((_, i) => (
                 <motion.div
@@ -126,7 +124,6 @@ export default function SplashPage() {
                 </motion.div>
               </motion.div>
 
-              {/* Barre de progression stylisée */}
               <motion.div 
                 className="mt-16 w-40 h-[2px] bg-primary/5 relative overflow-hidden rounded-full"
                 initial={{ opacity: 0, width: 0 }}
@@ -145,16 +142,6 @@ export default function SplashPage() {
                 />
               </motion.div>
             </div>
-
-            {/* Footer minimaliste */}
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 2, duration: 1 }}
-              className="absolute bottom-10 text-[8px] font-bold uppercase tracking-[0.3em] opacity-20"
-            >
-              Version 2.0 • Exu Play Global
-            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
