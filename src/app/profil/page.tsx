@@ -33,7 +33,8 @@ import {
   Loader2,
   Edit2,
   Check,
-  X
+  X,
+  Share2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
@@ -113,12 +114,13 @@ export default function ProfilPage() {
     }
   };
 
-  const copyReferralCode = () => {
+  const copyMagicLink = () => {
     if (profile?.referralCode) {
-      navigator.clipboard.writeText(profile.referralCode);
+      const magicLink = `${window.location.origin}/login?ref=${profile.referralCode}`;
+      navigator.clipboard.writeText(magicLink);
       toast({
-        title: "Code copié",
-        description: "Votre code de parrainage est prêt à être partagé."
+        title: "Lien magique copié",
+        description: "Partagez ce lien pour parrainer automatiquement vos amis."
       });
     }
   };
@@ -485,22 +487,35 @@ export default function ProfilPage() {
               <Gift className="h-32 w-32" />
             </div>
             <CardContent className="p-8 space-y-6 relative z-10">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-1">Votre Code de Parrainage</p>
-                <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-1">Votre Code de Parrainage</p>
                   <p className="text-4xl font-black tracking-tighter">{profile?.referralCode || "------"}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="secondary" 
+                    onClick={copyMagicLink}
+                    className="flex-1 h-12 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2"
+                  >
+                    <Share2 className="h-4 w-4" />
+                    Lien Magique
+                  </Button>
                   <Button 
                     variant="secondary" 
                     size="icon" 
-                    onClick={copyReferralCode}
-                    className="h-12 w-12 rounded-2xl shadow-lg"
+                    onClick={() => {
+                      navigator.clipboard.writeText(profile?.referralCode || "");
+                      toast({ title: "Code copié" });
+                    }}
+                    className="h-12 w-12 rounded-2xl"
                   >
                     <Copy className="h-5 w-5" />
                   </Button>
                 </div>
               </div>
               <p className="text-xs font-medium opacity-80 leading-relaxed">
-                Partagez ce code avec vos amis. Chaque nouvel esprit éveillé vous rapporte <span className="font-bold">500 points</span>.
+                Partagez votre <span className="underline decoration-primary-foreground/30">lien magique</span>. Chaque nouvel esprit éveillé vous rapporte <span className="font-bold">500 points</span> sans qu'ils n'aient à saisir votre code.
               </p>
             </CardContent>
           </Card>

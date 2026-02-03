@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -24,7 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/Logo";
-import { Loader2, ChevronRight, ChevronLeft, CheckCircle2, User as UserIcon, ShieldCheck, Sparkles, XCircle, CheckCircle, Users, Gift, Phone } from "lucide-react";
+import { Loader2, User as UserIcon, ShieldCheck, XCircle, CheckCircle, Users, Gift, Sparkles } from "lucide-react";
 import placeholderImages from "@/app/lib/placeholder-images.json";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
@@ -38,12 +38,13 @@ const generateReferralCode = () => {
   return code;
 };
 
-export default function LoginPage() {
+function LoginContent() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'available' | 'taken' | 'invalid'>('idle');
   const [hasReferral, setHasReferral] = useState(false);
+  const [isMagicReferral, setIsMagicReferral] = useState(false);
   const [checkingReferral, setCheckingReferral] = useState(false);
   const [referralStatus, setReferralStatus] = useState<'idle' | 'valid' | 'invalid'>('idle');
   
@@ -57,6 +58,7 @@ export default function LoginPage() {
   });
   
   const router = useRouter();
+  const searchParams = useSearchParams();
   const db = useFirestore();
   const auth = getAuth(useFirebaseApp());
   const { user, isLoading: isAuthLoading } = useUser();
@@ -64,6 +66,16 @@ export default function LoginPage() {
 
   const waveIcon = placeholderImages.placeholderImages.find(img => img.id === "wave-icon")?.imageUrl;
   const civFlag = placeholderImages.placeholderImages.find(img => img.id === "flag-civ")?.imageUrl;
+
+  // Détection du lien magique
+  useEffect(() => {
+    const refCode = searchParams.get('ref');
+    if (refCode && refCode.length === 6) {
+      setFormData(prev => ({ ...prev, referredBy: refCode.toUpperCase() }));
+      setHasReferral(true);
+      setIsMagicReferral(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!isAuthLoading && user) {
@@ -95,21 +107,23 @@ export default function LoginPage() {
   }, [formData.username, db, step]);
 
   useEffect(() => {
-    if (step !== 5 || !hasReferral) {
+    const code = formData.referredBy.trim().toUpperCase();
+    if (code.length !== 6) {
       setReferralStatus('idle');
       return;
     }
     const checkReferral = async () => {
-      const code = formData.referredBy.trim().toUpperCase();
-      if (code.length !== 6) {
-        setReferralStatus('idle');
-        return;
-      }
       setCheckingReferral(true);
       try {
         const q = query(collection(db, "users"), where("referralCode", "==", code), limit(1));
         const querySnapshot = await getDocs(q);
-        setReferralStatus(querySnapshot.empty ? 'invalid' : 'valid');
+        const isValid = !querySnapshot.empty;
+        setReferralStatus(isValid ? 'valid' : 'invalid');
+        
+        if (isValid && isMagicReferral && step === 4) {
+          // Si c'est un lien magique valide, on pourrait vouloir notifier l'utilisateur
+          // mais on ne change pas encore le step ici pour éviter les effets de bord
+        }
       } catch (error) {
         console.error("Error checking referral:", error);
       } finally {
@@ -118,7 +132,7 @@ export default function LoginPage() {
     };
     const timeoutId = setTimeout(checkReferral, 500);
     return () => clearTimeout(timeoutId);
-  }, [formData.referredBy, db, step, hasReferral]);
+  }, [formData.referredBy, db, isMagicReferral, step]);
 
   const isValidPhoneNumber = (num: string) => {
     if (num.length !== 10) return false;
@@ -130,12 +144,25 @@ export default function LoginPage() {
     if (step === 1 && usernameStatus !== 'available') return;
     if (step === 2 && !formData.gender) return;
     if (step === 3 && !isValidPhoneNumber(formData.phoneNumber)) return;
-    if (step === 4 && !formData.acceptedTerms) return;
+    if (step === 4) {
+      if (!formData.acceptedTerms) return;
+      // SAUT DE L'ÉTAPE 5 SI LIEN MAGIQUE VALIDE
+      if (isMagicReferral && referralStatus === 'valid') {
+        setStep(6);
+        return;
+      }
+    }
     if (step === 5 && hasReferral && referralStatus !== 'valid') return;
     setStep(prev => prev + 1);
   };
 
-  const handleBackStep = () => setStep(prev => prev - 1);
+  const handleBackStep = () => {
+    if (step === 6 && isMagicReferral && referralStatus === 'valid') {
+      setStep(4);
+      return;
+    }
+    setStep(prev => prev - 1);
+  };
 
   const handleRegister = async () => {
     setLoading(true);
@@ -150,7 +177,7 @@ export default function LoginPage() {
         gender: formData.gender,
         phoneNumber: fullPhoneNumber,
         acceptedTerms: formData.acceptedTerms,
-        referredBy: hasReferral ? formData.referredBy.toUpperCase().trim() : null,
+        referredBy: (hasReferral && referralStatus === 'valid') ? formData.referredBy.toUpperCase().trim() : null,
         referralCode: myReferralCode,
         cameraAuthorized: false,
         notificationsEnabled: false,
@@ -191,7 +218,15 @@ export default function LoginPage() {
 
         <div className="flex justify-center gap-2 mb-8">
           {[1, 2, 3, 4, 5, 6].map((s) => (
-            <motion.div key={s} animate={{ width: step === s ? 32 : 8, backgroundColor: step >= s ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.1)" }} className="h-1.5 rounded-full transition-colors duration-500" />
+            <motion.div 
+              key={s} 
+              animate={{ 
+                width: step === s ? 32 : 8, 
+                backgroundColor: step >= s ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.1)",
+                opacity: (s === 5 && isMagicReferral && referralStatus === 'valid') ? 0.2 : 1
+              }} 
+              className="h-1.5 rounded-full transition-all duration-500" 
+            />
           ))}
         </div>
 
@@ -307,7 +342,9 @@ export default function LoginPage() {
                     </CardContent>
                     <CardFooter className="flex gap-4 p-6">
                       <Button variant="ghost" onClick={handleBackStep} className="h-14 flex-1">Retour</Button>
-                      <Button onClick={handleNextStep} className="h-14 flex-1" disabled={!formData.acceptedTerms}>Suivant</Button>
+                      <Button onClick={handleNextStep} className="h-14 flex-1" disabled={!formData.acceptedTerms}>
+                        {isMagicReferral && referralStatus === 'valid' ? "Terminer" : "Suivant"}
+                      </Button>
                     </CardFooter>
                   </>
                 )}
@@ -357,16 +394,21 @@ export default function LoginPage() {
                   <>
                     <CardHeader className="p-6">
                       <div className="flex items-center gap-3 mb-2 text-primary">
-                        <CheckCircle2 className="h-5 w-5" />
+                        <Sparkles className="h-5 w-5" />
                         <span className="text-[10px] font-bold uppercase tracking-widest">Confirmation</span>
                       </div>
-                      <CardTitle className="text-2xl">Prêt ?</CardTitle>
+                      <CardTitle className="text-2xl">Prêt pour l'éveil ?</CardTitle>
                     </CardHeader>
                     <CardContent className="p-6">
                       <div className="space-y-4 p-6 bg-muted/30 rounded-2xl border border-primary/5">
                         <div className="flex flex-col"><span className="text-[10px] font-black uppercase opacity-40">Pseudonyme</span><span className="text-xl font-bold">@{formData.username}</span></div>
-                        <div className="flex flex-col"><span className="text-[10px] font-black uppercase opacity-40">Genre</span><span className="text-xl font-bold capitalize">{formData.gender}</span></div>
                         <div className="flex flex-col"><span className="text-[10px] font-black uppercase opacity-40">Liaison Wave</span><span className="text-xl font-bold">{formData.countryCode} {formData.phoneNumber}</span></div>
+                        {hasReferral && referralStatus === 'valid' && (
+                          <div className="flex flex-col p-3 bg-green-500/5 rounded-xl border border-green-500/10">
+                            <span className="text-[10px] font-black uppercase text-green-600 opacity-60">Parrainage Actif</span>
+                            <span className="text-sm font-bold text-green-600">Code: {formData.referredBy}</span>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                     <CardFooter className="flex gap-4 p-6">
@@ -381,5 +423,13 @@ export default function LoginPage() {
         </div>
       </motion.div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>}>
+      <LoginContent />
+    </Suspense>
   );
 }
