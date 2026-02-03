@@ -14,7 +14,7 @@ import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
 import { doc, getDoc } from "firebase/firestore";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/Logo";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 function ThemeSync() {
   const { user } = useUser();
@@ -99,9 +99,10 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const [isOffline, setIsOffline] = useState(false);
   const [isAppLocked, setIsAppLocked] = useState(false);
   const [showPwaPrompt, setShowPwaPrompt] = useState(false);
-  const { user } = useUser();
+  const { user, isLoading: isAuthLoading } = useUser();
   const db = useFirestore();
   const pathname = usePathname();
+  const router = useRouter();
 
   const appConfigRef = useMemo(() => {
     if (!db) return null;
@@ -116,15 +117,29 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const { data: profile } = useDoc(userDocRef);
   const { data: appStatus } = useDoc(appConfigRef);
 
+  // Authenticated route protection
+  useEffect(() => {
+    if (isAuthLoading) return;
+
+    const publicPaths = ["/", "/login"];
+    const isPublicPath = publicPaths.includes(pathname);
+
+    if (!user && !isPublicPath) {
+      router.push("/login");
+    } else if (user && pathname === "/login") {
+      router.push("/");
+    }
+  }, [user, isAuthLoading, pathname, router]);
+
   const checkLockRequirement = useCallback(async () => {
     if (!user) return;
-    const isBiometricLocal = localStorage.getItem("exu_biometric_enabled") === "true";
+    const isBiometricLocal = localStorage.getItem("citation_biometric_enabled") === "true";
     if (isBiometricLocal) {
       setIsAppLocked(true);
     } else {
       const snap = await getDoc(doc(db, "users", user.uid));
       if (snap.exists() && snap.data().biometricEnabled) {
-        localStorage.setItem("exu_biometric_enabled", "true");
+        localStorage.setItem("citation_biometric_enabled", "true");
         setIsAppLocked(true);
       } else {
         setShowPwaPrompt(true);
@@ -168,6 +183,16 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   
   const canShowPwa = showPwaPrompt && pathname !== "/";
 
+  // While checking auth status on a protected route, we show a loader to avoid flickering
+  const isProtectedPath = pathname !== "/" && pathname !== "/login";
+  if (isAuthLoading && isProtectedPath) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin opacity-20" />
+      </div>
+    );
+  }
+
   return (
     <>
       <PrivacyShield />
@@ -209,12 +234,8 @@ export default function RootLayout({
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
-        // Enregistrement plus robuste du Service Worker
         navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(
           (reg) => {
-            console.log('SW registered successfully with scope:', reg.scope);
-            
-            // Forcer la mise à jour si un nouveau SW est disponible
             reg.onupdatefound = () => {
               const installingWorker = reg.installing;
               if (installingWorker) {
@@ -222,8 +243,6 @@ export default function RootLayout({
                   if (installingWorker.state === 'installed') {
                     if (navigator.serviceWorker.controller) {
                       console.log('New content is available; please refresh.');
-                    } else {
-                      console.log('Content is cached for offline use.');
                     }
                   }
                 };
