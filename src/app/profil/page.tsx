@@ -2,15 +2,25 @@
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useUser, useFirestore, useDoc, useAuth } from "@/firebase";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { 
+  doc, 
+  updateDoc, 
+  serverTimestamp, 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  limit 
+} from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { 
   User as UserIcon, 
   Phone, 
@@ -20,7 +30,10 @@ import {
   Trophy, 
   Calendar,
   Camera,
-  Loader2
+  Loader2,
+  Edit2,
+  Check,
+  X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
@@ -36,6 +49,13 @@ export default function ProfilPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [localProfileImage, setLocalProfileImage] = useState<string | null>(null);
+  
+  // États pour la modification du nom d'utilisateur
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedUsername, setEditedUsername] = useState("");
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'available' | 'taken' | 'invalid'>('idle');
+  const [isSavingName, setIsSavingName] = useState(false);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -44,13 +64,36 @@ export default function ProfilPage() {
 
   const { data: profile, loading } = useDoc(userDocRef);
 
-  // Fallback sur le localStorage si Firestore n'a pas encore l'image (optimistic UI)
   useEffect(() => {
     const savedImage = localStorage.getItem("exu_profile_image");
     if (savedImage) {
       setLocalProfileImage(savedImage);
     }
   }, []);
+
+  // Vérification de l'unicité du nom d'utilisateur
+  useEffect(() => {
+    if (!isEditingName || editedUsername.length < 3 || editedUsername === profile?.username) {
+      setUsernameStatus(editedUsername === profile?.username ? 'idle' : 'idle');
+      return;
+    }
+
+    const checkUsername = async () => {
+      setCheckingUsername(true);
+      try {
+        const q = query(collection(db, "users"), where("username", "==", editedUsername.toLowerCase()), limit(1));
+        const querySnapshot = await getDocs(q);
+        setUsernameStatus(querySnapshot.empty ? 'available' : 'taken');
+      } catch (error) {
+        console.error("Error checking username:", error);
+      } finally {
+        setCheckingUsername(false);
+      }
+    };
+
+    const timeoutId = setTimeout(checkUsername, 500);
+    return () => clearTimeout(timeoutId);
+  }, [editedUsername, db, isEditingName, profile?.username]);
 
   const handleLogout = async () => {
     try {
@@ -82,11 +125,11 @@ export default function ProfilPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 1 * 1024 * 1024) { // 1MB limit for Base64 in Firestore documents
+      if (file.size > 1 * 1024 * 1024) {
         toast({
           variant: "destructive",
           title: "Fichier trop lourd",
-          description: "Veuillez choisir une image de moins de 1 Mo pour la synchronisation."
+          description: "Veuillez choisir une image de moins de 1 Mo."
         });
         return;
       }
@@ -94,12 +137,9 @@ export default function ProfilPage() {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64String = reader.result as string;
-        
-        // Mise à jour locale immédiate
         setLocalProfileImage(base64String);
         localStorage.setItem("exu_profile_image", base64String);
 
-        // Synchronisation Firestore
         if (user?.uid && db) {
           const userRef = doc(db, "users", user.uid);
           updateDoc(userRef, {
@@ -109,18 +149,50 @@ export default function ProfilPage() {
             const permissionError = new FirestorePermissionError({
               path: userRef.path,
               operation: 'update',
-              requestResourceData: { profileImage: base64String.substring(0, 50) + "..." },
+              requestResourceData: { profileImage: "base64_image_data" },
             } satisfies SecurityRuleContext);
             errorEmitter.emit('permission-error', permissionError);
           });
         }
-
-        toast({
-          title: "Image synchronisée",
-          description: "Votre avatar a été sauvegardé sur votre compte."
-        });
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const startEditingName = () => {
+    setEditedUsername(profile?.username || "");
+    setIsEditingName(true);
+  };
+
+  const cancelEditingName = () => {
+    setIsEditingName(false);
+    setUsernameStatus('idle');
+  };
+
+  const saveNewUsername = async () => {
+    if (usernameStatus !== 'available' || !user?.uid) return;
+    
+    setIsSavingName(true);
+    try {
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, {
+        username: editedUsername.toLowerCase().trim(),
+        updatedAt: serverTimestamp()
+      });
+      setIsEditingName(false);
+      toast({
+        title: "Profil mis à jour",
+        description: "Votre nom d'utilisateur a été modifié avec succès."
+      });
+    } catch (error) {
+      const permissionError = new FirestorePermissionError({
+        path: `users/${user.uid}`,
+        operation: 'update',
+        requestResourceData: { username: editedUsername },
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    } finally {
+      setIsSavingName(false);
     }
   };
 
@@ -136,7 +208,6 @@ export default function ProfilPage() {
     );
   }
 
-  // Priorité à l'image venant de Firestore (synchronisée), sinon localStorage
   const currentImage = profile?.profileImage || localProfileImage;
 
   return (
@@ -144,7 +215,6 @@ export default function ProfilPage() {
       <Header />
       
       <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
-        {/* En-tête du profil */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -178,13 +248,73 @@ export default function ProfilPage() {
               className="hidden" 
             />
           </div>
-          <div className="space-y-1">
-            <h1 className="text-3xl font-black tracking-tight">@{profile?.username || "Anonyme"}</h1>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Membre de l'Éveil</p>
+
+          <div className="space-y-2 flex flex-col items-center">
+            <AnimatePresence mode="wait">
+              {!isEditingName ? (
+                <motion.div 
+                  key="display-name"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="group flex items-center gap-2 cursor-pointer"
+                  onClick={startEditingName}
+                >
+                  <h1 className="text-3xl font-black tracking-tight">@{profile?.username || "Anonyme"}</h1>
+                  <Edit2 className="h-4 w-4 opacity-0 group-hover:opacity-40 transition-opacity" />
+                </motion.div>
+              ) : (
+                <motion.div 
+                  key="edit-name"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="flex flex-col items-center gap-3 w-full"
+                >
+                  <div className="relative w-full max-w-[280px]">
+                    <Input 
+                      value={editedUsername}
+                      onChange={(e) => setEditedUsername(e.target.value.replace(/\s/g, '').toLowerCase())}
+                      className="h-12 text-center text-xl font-bold bg-background/50 rounded-xl pr-10"
+                      autoFocus
+                      maxLength={15}
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {checkingUsername ? <Loader2 className="h-4 w-4 animate-spin opacity-40" /> : (
+                        <>
+                          {usernameStatus === 'available' && <Check className="h-4 w-4 text-green-500" />}
+                          {usernameStatus === 'taken' && <X className="h-4 w-4 text-red-500" />}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={cancelEditingName}
+                      className="rounded-xl h-9 px-4 font-bold opacity-60"
+                    >
+                      Annuler
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      onClick={saveNewUsername}
+                      disabled={usernameStatus !== 'available' || isSavingName}
+                      className="rounded-xl h-9 px-6 font-bold"
+                    >
+                      {isSavingName ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enregistrer"}
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {!isEditingName && (
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Membre de l'Éveil</p>
+            )}
           </div>
         </motion.div>
 
-        {/* Statistiques rapides */}
         <div className="grid grid-cols-2 gap-4">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -216,7 +346,6 @@ export default function ProfilPage() {
           </motion.div>
         </div>
 
-        {/* Détails du compte */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -248,7 +377,6 @@ export default function ProfilPage() {
           </Card>
         </motion.div>
 
-        {/* Parrainage */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -282,7 +410,6 @@ export default function ProfilPage() {
           </Card>
         </motion.div>
 
-        {/* Actions */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
