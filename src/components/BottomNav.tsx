@@ -17,14 +17,14 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <div className="fixed bottom-8 left-0 right-0 z-[100] px-6 pointer-events-none">
+    <div className="fixed bottom-4 left-0 right-0 z-[100] px-6 pointer-events-none">
       <motion.nav 
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.5, duration: 1, ease: [0.22, 1, 0.36, 1] }}
         className="max-w-md mx-auto pointer-events-auto"
       >
-        <div className="relative bg-card/40 backdrop-blur-3xl border border-primary/5 rounded-[2.5rem] p-2 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.25)] flex items-center justify-between">
+        <div className="relative bg-card/40 backdrop-blur-3xl border border-primary/5 rounded-[2rem] p-1.5 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.2)] flex items-center justify-between">
           {NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
@@ -36,13 +36,13 @@ export function BottomNav() {
                 href={item.href}
                 className={cn(
                   "relative flex-1 group",
-                  isQuiz && "flex-[1.2]" // Plus d'espace pour le quiz
+                  isQuiz && "flex-[1.2]" 
                 )}
               >
                 <div className={cn(
-                  "relative flex flex-col items-center justify-center py-4 px-2 rounded-[2rem] transition-all duration-500",
+                  "relative flex flex-col items-center justify-center py-2.5 px-2 rounded-[1.75rem] transition-all duration-500",
                   isActive ? "text-primary-foreground" : "text-foreground/30 hover:text-foreground/60",
-                  isQuiz && !isActive && "text-primary opacity-90 scale-105" // Le quiz reste visible même inactif
+                  isQuiz && !isActive && "text-primary opacity-90 scale-105"
                 )}>
                   {/* Effet d'aura pulsante pour le Quiz uniquement */}
                   {isQuiz && (
@@ -53,7 +53,7 @@ export function BottomNav() {
                       }}
                       transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                       className={cn(
-                        "absolute inset-0 rounded-[2rem] blur-xl -z-10",
+                        "absolute inset-0 rounded-[1.75rem] blur-xl -z-10",
                         isActive ? "bg-primary/40" : "bg-primary/20"
                       )}
                     />
@@ -66,7 +66,7 @@ export function BottomNav() {
                     className="relative z-10"
                   >
                     <Icon className={cn(
-                      "h-6 w-6 mb-1.5 transition-all duration-300",
+                      "h-5 w-5 mb-1 transition-all duration-300",
                       isActive ? "stroke-[2.5]" : (isQuiz ? "stroke-[2.2]" : "stroke-2"),
                       isQuiz && !isActive && "text-primary"
                     )} />
@@ -74,7 +74,7 @@ export function BottomNav() {
                   
                   <motion.span 
                     className={cn(
-                      "relative z-10 text-[9px] font-black uppercase tracking-[0.25em] leading-none",
+                      "relative z-10 text-[8px] font-black uppercase tracking-[0.2em] leading-none",
                       isQuiz && !isActive && "text-primary"
                     )}
                   >
@@ -85,8 +85,8 @@ export function BottomNav() {
                     <motion.div
                       layoutId="nav-pill"
                       className={cn(
-                        "absolute inset-0 bg-primary rounded-[2rem] shadow-[0_8px_24px_rgba(var(--primary-rgb),0.3)]",
-                        isQuiz && "shadow-[0_0_30px_rgba(var(--primary-rgb),0.5)]"
+                        "absolute inset-0 bg-primary rounded-[1.75rem] shadow-[0_6px_20px_rgba(var(--primary-rgb),0.25)]",
+                        isQuiz && "shadow-[0_0_25px_rgba(var(--primary-rgb),0.4)]"
                       )}
                       transition={{ 
                         type: "spring", 
@@ -102,7 +102,7 @@ export function BottomNav() {
                     <motion.div
                       animate={{ scale: [1, 1.02, 1] }}
                       transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                      className="absolute inset-0 border border-primary/10 rounded-[2rem] pointer-events-none"
+                      className="absolute inset-0 border border-primary/10 rounded-[1.75rem] pointer-events-none"
                     />
                   )}
                 </div>
