@@ -3,13 +3,12 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useUser, useFirestore } from "@/firebase";
-import { collection, query, limit, getDocs } from "firebase/firestore";
+import { useUser } from "@/firebase";
 import { QUOTES, Quote } from "@/app/lib/quotes-data";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Logo } from "@/components/Logo";
-import { Navigation } from "@/components/Navigation";
+import { BottomNav } from "@/components/BottomNav";
 import { RefreshCw, Heart, Share2, Quote as QuoteIcon, LogOut } from "lucide-react";
 import { getAuth, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
@@ -40,11 +39,10 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col pb-32">
       <header className="border-b border-primary/5 backdrop-blur-md sticky top-0 z-50">
         <div className="container max-w-7xl mx-auto h-20 px-6 flex items-center justify-between">
           <Logo className="scale-50" />
-          <Navigation />
           <Button variant="ghost" size="icon" onClick={handleLogout} className="rounded-full">
             <LogOut className="h-5 w-5" />
           </Button>
@@ -105,6 +103,8 @@ export default function HomePage() {
           <div className="absolute -bottom-12 -right-12 w-64 h-64 bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
         </div>
       </main>
+
+      <BottomNav />
     </div>
   );
 }
