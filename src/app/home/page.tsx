@@ -125,7 +125,7 @@ export default function HomePage() {
               >
                 <div className="flex justify-between items-end px-2">
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Défi Philosophique</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Défi Mental</p>
                     <h2 className="text-3xl font-black">Question {currentQuestion + 1}</h2>
                   </div>
                   <div className="text-right">
@@ -205,8 +205,8 @@ export default function HomePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <h2 className="text-4xl font-black tracking-tight">Éveil Terminé</h2>
-                  <p className="text-muted-foreground font-medium">Votre esprit s'est enrichi de nouvelles pensées.</p>
+                  <h2 className="text-4xl font-black tracking-tight">Quiz Terminé</h2>
+                  <p className="text-muted-foreground font-medium">Votre esprit s'est enrichi de nouveaux savoirs.</p>
                 </div>
 
                 <div className="p-10 bg-card/40 backdrop-blur-3xl rounded-[3rem] border border-primary/5 shadow-2xl">
@@ -221,7 +221,7 @@ export default function HomePage() {
                     className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-widest gap-3"
                   >
                     {updating ? <Loader2 className="animate-spin h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-                    Recommencer l'éveil
+                    Recommencer le défi
                   </Button>
                 </div>
               </motion.div>

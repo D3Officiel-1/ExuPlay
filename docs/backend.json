@@ -1,27 +1,15 @@
+
 {
   "entities": {
-    "Quote": {
-      "title": "Quote",
-      "description": "Une citation philosophique",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "text": { "type": "string" },
-        "author": { "type": "string" },
-        "theme": { "type": "string" },
-        "work": { "type": "string" }
-      },
-      "required": ["text", "author"]
-    },
     "UserFavorite": {
       "title": "UserFavorite",
-      "description": "Favoris d'un utilisateur",
+      "description": "Favoris d'un utilisateur (Quiz ou défis)",
       "type": "object",
       "properties": {
-        "quoteId": { "type": "string" },
+        "quizId": { "type": "string" },
         "addedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["quoteId", "addedAt"]
+      "required": ["quizId", "addedAt"]
     },
     "UserProfile": {
       "title": "UserProfile",
@@ -55,17 +43,9 @@
     "providers": ["google.com", "password", "anonymous"]
   },
   "firestore": {
-    "/quotes/{quoteId}": {
-      "schema": "Quote",
-      "description": "Collection globale de citations"
-    },
     "/users/{userId}": {
       "schema": "UserProfile",
       "description": "Profil de l'utilisateur"
-    },
-    "/users/{userId}/favorites/{favoriteId}": {
-      "schema": "UserFavorite",
-      "description": "Citations favorites de l'utilisateur"
     },
     "/appConfig/status": {
       "schema": "AppStatus",

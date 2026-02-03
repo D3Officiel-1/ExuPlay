@@ -59,7 +59,6 @@ export default function AutoriserPage() {
     detectStartStep();
   }, [user, db, router]);
 
-  // Fermer la caméra dès que l'étape n'est plus "1"
   useEffect(() => {
     if (step !== 1 && streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
@@ -67,7 +66,6 @@ export default function AutoriserPage() {
     }
   }, [step]);
 
-  // Nettoyage lors de la destruction du composant
   useEffect(() => {
     return () => {
       if (streamRef.current) {
@@ -101,10 +99,10 @@ export default function AutoriserPage() {
         });
       }
 
-      toast({ title: "Caméra autorisée", description: "Votre vue est désormais claire." });
+      toast({ title: "Caméra autorisée", description: "Votre perception est désormais claire." });
       setTimeout(() => refreshUserDataAndStep(), 1500);
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Accès refusé', description: 'Veuillez activer la caméra dans les réglages.' });
+      toast({ variant: 'destructive', title: 'Accès refusé', description: 'Veuillez activer la caméra.' });
     } finally {
       setLoading(false);
     }
@@ -124,7 +122,7 @@ export default function AutoriserPage() {
             updatedAt: serverTimestamp()
           });
         }
-        toast({ title: "Notifications activées", description: "Le lien est établi." });
+        toast({ title: "Notifications activées", description: "Liaison établie." });
       } else {
         if (user) await updateDoc(doc(db, "users", user.uid), { notificationsEnabled: true });
       }
@@ -173,7 +171,7 @@ export default function AutoriserPage() {
         user: {
           id: Uint8Array.from(userId, c => c.charCodeAt(0)),
           name: userEmail,
-          displayName: user?.displayName || "Utilisateur Exu Play",
+          displayName: user?.displayName || "Joueur Exu Play",
         },
         pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
         authenticatorSelection: { 
@@ -194,12 +192,10 @@ export default function AutoriserPage() {
             updatedAt: serverTimestamp() 
           });
         }
-        toast({ title: "Sceau biométrique activé", description: "Identité sécurisée avec succès." });
+        toast({ title: "Sceau biométrique activé", description: "Identité sécurisée." });
         router.push("/home");
       }
     } catch (error: any) {
-      console.error('Passkey creation error:', error);
-      toast({ title: "Étape ignorée", description: "La biométrie pourra être activée plus tard." });
       router.push("/home");
     } finally {
       setLoading(false);
@@ -252,11 +248,11 @@ export default function AutoriserPage() {
                     </div>
                     <div className="space-y-2">
                       <CardTitle className="text-3xl font-black tracking-tight">Perception</CardTitle>
-                      <CardDescription className="text-base font-medium opacity-60">L'accès à la caméra est requis pour l'expérience immersive.</CardDescription>
+                      <CardDescription className="text-base font-medium opacity-60">L'accès à la caméra est requis pour l'immersion.</CardDescription>
                     </div>
                   </CardHeader>
                   <CardContent className="px-8 pb-4">
-                    <div className="relative w-full aspect-video rounded-3xl overflow-hidden bg-black/40 border border-white/5 group shadow-inner">
+                    <div className="relative w-full aspect-video rounded-3xl overflow-hidden bg-black/40 border border-white/5 shadow-inner">
                       <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
                     </div>
                   </CardContent>
@@ -277,7 +273,7 @@ export default function AutoriserPage() {
                     </div>
                     <div className="space-y-2">
                       <CardTitle className="text-3xl font-black tracking-tight">Résonance</CardTitle>
-                      <CardDescription className="text-base font-medium opacity-60">Recevez une pensée choisie chaque matin pour nourrir votre esprit.</CardDescription>
+                      <CardDescription className="text-base font-medium opacity-60">Recevez des défis exclusifs pour votre esprit.</CardDescription>
                     </div>
                   </CardHeader>
                   <CardContent className="py-12 px-10">
@@ -309,7 +305,7 @@ export default function AutoriserPage() {
                     </div>
                     <div className="space-y-2">
                       <CardTitle className="text-3xl font-black tracking-tight">Ancrage</CardTitle>
-                      <CardDescription className="text-base font-medium opacity-60">Nous adaptons les thèmes philosophiques selon votre environnement.</CardDescription>
+                      <CardDescription className="text-base font-medium opacity-60">Nous adaptons les défis selon votre environnement.</CardDescription>
                     </div>
                   </CardHeader>
                   <CardContent className="py-16 flex justify-center">
@@ -336,7 +332,7 @@ export default function AutoriserPage() {
                     </div>
                     <div className="space-y-2">
                       <CardTitle className="text-3xl font-black tracking-tight">Sceau Final</CardTitle>
-                      <CardDescription className="text-base font-medium opacity-60">Sécurisez votre expérience avec votre biométrie native (Passkey).</CardDescription>
+                      <CardDescription className="text-base font-medium opacity-60">Sécurisez votre progression avec votre biométrie native.</CardDescription>
                     </div>
                   </CardHeader>
                   <CardContent className="py-12 px-8">
