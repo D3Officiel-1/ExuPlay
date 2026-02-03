@@ -10,13 +10,11 @@ import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { 
   Moon, 
   Sun, 
   Monitor, 
-  Bell, 
   ShieldCheck, 
   ChevronRight, 
   Info, 
@@ -52,22 +50,6 @@ export default function ParametresPage() {
         path: userDocRef.path,
         operation: 'update',
         requestResourceData: { theme: newTheme },
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
-    });
-  };
-
-  const handleToggleNotifications = (enabled: boolean) => {
-    if (!userDocRef) return;
-    
-    updateDoc(userDocRef, {
-      notificationsEnabled: enabled,
-      updatedAt: serverTimestamp()
-    }).catch(async (error) => {
-      const permissionError = new FirestorePermissionError({
-        path: userDocRef.path,
-        operation: 'update',
-        requestResourceData: { notificationsEnabled: enabled },
       } satisfies SecurityRuleContext);
       errorEmitter.emit('permission-error', permissionError);
     });
@@ -138,33 +120,6 @@ export default function ParametresPage() {
                     </div>
                   ))}
                 </RadioGroup>
-              </CardContent>
-            </Card>
-          </motion.section>
-
-          {/* Section Notifications */}
-          <motion.section variants={itemVariants} className="space-y-4">
-            <div className="flex items-center gap-3 pl-2">
-              <Bell className="h-4 w-4 text-primary opacity-60" />
-              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Résonance</h2>
-            </div>
-            <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem]">
-              <CardContent className="p-2">
-                <div className="flex items-center justify-between p-4 hover:bg-primary/5 transition-colors rounded-2xl group">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
-                      <Bell className="h-5 w-5 text-primary opacity-60" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold">Notifications d'éveil</p>
-                      <p className="text-[10px] opacity-40 font-medium">Recevoir une pensée chaque matin</p>
-                    </div>
-                  </div>
-                  <Switch 
-                    checked={profile?.notificationsEnabled || false} 
-                    onCheckedChange={handleToggleNotifications}
-                  />
-                </div>
               </CardContent>
             </Card>
           </motion.section>
