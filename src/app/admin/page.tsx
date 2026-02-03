@@ -31,7 +31,7 @@ import {
   TableHead, 
   TableHeader, 
   TableRow 
-} from "@/table";
+} from "@/components/ui/table";
 import { 
   Dialog,
   DialogContent,
