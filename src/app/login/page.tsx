@@ -24,7 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/Logo";
-import { Loader2, User as UserIcon, ShieldCheck, XCircle, CheckCircle, Users, Gift, Sparkles } from "lucide-react";
+import { Loader2, User as UserIcon, ShieldCheck, XCircle, CheckCircle, Users, Gift, Sparkles, Mars, Venus } from "lucide-react";
 import placeholderImages from "@/app/lib/placeholder-images.json";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
@@ -277,12 +277,21 @@ function LoginContent() {
                     </CardHeader>
                     <CardContent className="p-6">
                       <RadioGroup value={formData.gender} onValueChange={(val) => setFormData({...formData, gender: val})} className="grid grid-cols-2 gap-4">
-                        {[{ id: "masculin", label: "Homme" }, { id: "féminin", label: "Femme" }].map((option) => (
-                          <div key={option.id}>
-                            <RadioGroupItem value={option.id} id={option.id} className="peer sr-only" />
-                            <Label htmlFor={option.id} className="flex flex-col items-center justify-center rounded-2xl border-2 border-muted bg-background/50 p-6 hover:bg-accent peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 transition-all cursor-pointer font-bold text-base h-24">{option.label}</Label>
-                          </div>
-                        ))}
+                        {[
+                          { id: "masculin", label: "Homme", icon: Mars },
+                          { id: "féminin", label: "Femme", icon: Venus }
+                        ].map((option) => {
+                          const Icon = option.icon;
+                          return (
+                            <div key={option.id}>
+                              <RadioGroupItem value={option.id} id={option.id} className="peer sr-only" />
+                              <Label htmlFor={option.id} className="flex flex-col items-center justify-center rounded-2xl border-2 border-muted bg-background/50 p-6 hover:bg-accent peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 transition-all cursor-pointer font-bold text-base h-32 group">
+                                <Icon className="h-8 w-8 mb-3 opacity-40 group-hover:opacity-100 transition-opacity peer-data-[state=checked]:opacity-100" />
+                                {option.label}
+                              </Label>
+                            </div>
+                          );
+                        })}
                       </RadioGroup>
                     </CardContent>
                     <CardFooter className="flex gap-4 p-6">
