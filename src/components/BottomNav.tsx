@@ -17,7 +17,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <div className="fixed bottom-4 left-0 right-0 z-[100] px-6 pointer-events-none">
+    <div className="fixed bottom-4 left-0 right-0 z-40 px-6 pointer-events-none">
       <motion.nav 
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
