@@ -31,8 +31,8 @@ export function Header() {
         delay: 0.1
       }}
       className={cn(
-        "fixed top-0 left-0 right-0 z-40 h-14 sm:h-18",
-        "flex items-center px-4 sm:px-10",
+        "fixed top-0 left-0 right-0 z-40 h-18",
+        "flex items-center px-10",
         "bg-background/10 backdrop-blur-2xl border-b border-primary/5",
         "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[1px] after:bg-gradient-to-r after:from-transparent after:via-primary/10 after:to-transparent"
       )}
@@ -45,7 +45,7 @@ export function Header() {
           className="relative"
         >
           <div className="absolute -inset-2 bg-primary/5 blur-2xl rounded-full opacity-30 pointer-events-none" />
-          <Logo layout="horizontal" className="relative z-10 scale-[0.8] sm:scale-100 origin-left" />
+          <Logo layout="horizontal" className="relative z-10 scale-100 origin-left" />
         </motion.div>
 
         <motion.div 
@@ -54,9 +54,9 @@ export function Header() {
           transition={{ duration: 1, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
           className="flex items-center"
         >
-          <div className="flex items-center gap-2 sm:gap-3 px-3 py-1.5 sm:px-4 sm:py-2 bg-card/40 backdrop-blur-3xl rounded-xl sm:rounded-2xl border border-primary/5 shadow-lg group hover:border-primary/20 transition-all duration-500">
+          <div className="flex items-center gap-3 px-4 py-2 bg-card/40 backdrop-blur-3xl rounded-2xl border border-primary/5 shadow-lg group hover:border-primary/20 transition-all duration-500">
             <div className="relative">
-              <Trophy className="h-3 w-3 sm:h-4 sm:w-4 text-primary group-hover:scale-110 transition-transform duration-500" />
+              <Trophy className="h-4 w-4 text-primary group-hover:scale-110 transition-transform duration-500" />
               <motion.div 
                 animate={{ opacity: [0, 1, 0], scale: [1, 1.4, 1] }}
                 transition={{ duration: 2.5, repeat: Infinity }}
@@ -64,7 +64,7 @@ export function Header() {
               />
             </div>
             <div className="flex items-center leading-none">
-              <span className="text-[10px] sm:text-xs font-black tracking-tight">{totalPoints.toLocaleString()} PTS</span>
+              <span className="text-xs font-black tracking-tight">{totalPoints.toLocaleString()} PTS</span>
             </div>
           </div>
         </motion.div>
