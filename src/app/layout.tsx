@@ -117,7 +117,6 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const { data: profile } = useDoc(userDocRef);
   const { data: appStatus } = useDoc(appConfigRef);
 
-  // Authenticated route protection
   useEffect(() => {
     if (isAuthLoading) return;
 
@@ -127,19 +126,19 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     if (!user && !isPublicPath) {
       router.push("/login");
     } else if (user && pathname === "/login") {
-      router.push("/");
+      router.push("/home");
     }
   }, [user, isAuthLoading, pathname, router]);
 
   const checkLockRequirement = useCallback(async () => {
     if (!user) return;
-    const isBiometricLocal = localStorage.getItem("citation_biometric_enabled") === "true";
+    const isBiometricLocal = localStorage.getItem("exu_biometric_enabled") === "true";
     if (isBiometricLocal) {
       setIsAppLocked(true);
     } else {
       const snap = await getDoc(doc(db, "users", user.uid));
       if (snap.exists() && snap.data().biometricEnabled) {
-        localStorage.setItem("citation_biometric_enabled", "true");
+        localStorage.setItem("exu_biometric_enabled", "true");
         setIsAppLocked(true);
       } else {
         setShowPwaPrompt(true);
@@ -183,7 +182,6 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   
   const canShowPwa = showPwaPrompt && pathname !== "/";
 
-  // While checking auth status on a protected route, we show a loader to avoid flickering
   const isProtectedPath = pathname !== "/" && pathname !== "/login";
   if (isAuthLoading && isProtectedPath) {
     return (
@@ -233,22 +231,9 @@ export default function RootLayout({
 }>) {
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(
-          (reg) => {
-            reg.onupdatefound = () => {
-              const installingWorker = reg.installing;
-              if (installingWorker) {
-                installingWorker.onstatechange = () => {
-                  if (installingWorker.state === 'installed') {
-                    if (navigator.serviceWorker.controller) {
-                      console.log('New content is available; please refresh.');
-                    }
-                  }
-                };
-              }
-            };
-          },
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then(
+          (reg) => console.log('SW registered:', reg.scope),
           (err) => console.log('SW registration failed:', err)
         );
       });

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'exu-play-v2';
+const CACHE_NAME = 'exu-play-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/login',
@@ -6,13 +6,10 @@ const ASSETS_TO_CACHE = [
   '/home',
   '/profil',
   '/parametres',
-  '/conditions',
-  '/manifest.json',
-  '/icon?size=192',
-  '/icon?size=512'
+  '/app-icon.svg',
+  '/manifest.json'
 ];
 
-// Installation : Mise en cache des ressources critiques
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -22,7 +19,6 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activation : Nettoyage des anciens caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -38,37 +34,39 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Récupération : Stratégie Stale-While-Revalidate
 self.addEventListener('fetch', (event) => {
-  // On ne met pas en cache les requêtes vers Firebase ou les APIs externes
-  if (
-    event.request.url.includes('firestore.googleapis.com') ||
-    event.request.url.includes('firebaseinstallations.googleapis.com') ||
-    event.request.url.includes('identitytoolkit.googleapis.com')
-  ) {
+  // Ignorer les requêtes non-GET et les requêtes Firebase/Chrome-extension
+  if (event.request.method !== 'GET' || 
+      event.request.url.includes('firestore.googleapis.com') ||
+      event.request.url.includes('firebase') ||
+      event.request.url.startsWith('chrome-extension')) {
     return;
   }
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request)
-        .then((networkResponse) => {
-          // Si la réponse est valide, on met à jour le cache
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-            const cacheCopy = networkResponse.clone();
+      if (cachedResponse) {
+        // Stratégie Stale-while-revalidate
+        fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, cacheCopy);
+              cache.put(event.request, networkResponse.clone());
             });
           }
-          return networkResponse;
-        })
-        .catch(() => {
-          // En cas d'échec réseau total, on renvoie la version cachée si elle existe
-          return cachedResponse;
-        });
+        }).catch(() => {});
+        return cachedResponse;
+      }
 
-      // On renvoie la réponse cachée immédiatement, ou on attend le réseau
-      return cachedResponse || fetchPromise;
+      return fetch(event.request).then((response) => {
+        if (!response || response.status !== 200 || response.type !== 'basic') {
+          return response;
+        }
+        const responseToCache = response.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseToCache);
+        });
+        return response;
+      });
     })
   );
 });

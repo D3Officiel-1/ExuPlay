@@ -1,4 +1,3 @@
-
 import { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
@@ -14,48 +13,36 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: '/',
     icons: [
       {
-        src: '/icon?size=192',
-        sizes: '192x192',
-        type: 'image/png',
+        src: '/app-icon.svg',
+        sizes: 'any',
+        type: 'image/svg+xml',
         purpose: 'maskable',
       },
       {
-        src: '/icon?size=192',
-        sizes: '192x192',
-        type: 'image/png',
+        src: '/app-icon.svg',
+        sizes: 'any',
+        type: 'image/svg+xml',
         purpose: 'any',
-      },
-      {
-        src: '/icon?size=512',
-        sizes: '512x512',
-        type: 'image/png',
-        purpose: 'maskable',
-      },
-      {
-        src: '/icon?size=512',
-        sizes: '512x512',
-        type: 'image/png',
-        purpose: 'any',
-      },
+      }
     ],
     shortcuts: [
       {
         name: 'Défis Mentaux',
         url: '/home',
         description: 'Accéder directement aux quiz',
-        icons: [{ src: '/manifest/play.svg', sizes: '192x192', type: 'image/svg+xml' }]
+        icons: [{ src: '/manifest/play.svg', sizes: 'any', type: 'image/svg+xml' }]
       },
       {
         name: 'Mon Profil',
         url: '/profil',
         description: 'Voir ma progression',
-        icons: [{ src: '/manifest/profile.svg', sizes: '192x192', type: 'image/svg+xml' }]
+        icons: [{ src: '/manifest/profile.svg', sizes: 'any', type: 'image/svg+xml' }]
       },
       {
         name: 'Paramètres',
         url: '/parametres',
         description: 'Ajuster mes réglages',
-        icons: [{ src: '/manifest/settings.svg', sizes: '192x192', type: 'image/svg+xml' }]
+        icons: [{ src: '/manifest/settings.svg', sizes: 'any', type: 'image/svg+xml' }]
       }
     ]
   };
