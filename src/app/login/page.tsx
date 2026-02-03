@@ -67,7 +67,6 @@ function LoginContent() {
   const waveIcon = placeholderImages.placeholderImages.find(img => img.id === "wave-icon")?.imageUrl;
   const civFlag = placeholderImages.placeholderImages.find(img => img.id === "flag-civ")?.imageUrl;
 
-  // Détection du lien magique
   useEffect(() => {
     const refCode = searchParams.get('ref');
     if (refCode && refCode.length === 6) {
@@ -362,30 +361,40 @@ function LoginContent() {
                       </div>
                       <CardTitle className="text-2xl">Code d'invitation</CardTitle>
                     </CardHeader>
-                    <CardContent className="p-6 space-y-6">
+                    <CardContent className="p-6 space-y-0">
                       <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/10">
                         <Label className="text-sm font-bold">J'ai un code</Label>
                         <Switch checked={hasReferral} onCheckedChange={setHasReferral} />
                       </div>
-                      {hasReferral && (
-                        <div className="relative">
-                          <Input 
-                            placeholder="CODE6X" 
-                            value={formData.referredBy}
-                            onChange={(e) => setFormData({...formData, referredBy: e.target.value.toUpperCase()})}
-                            maxLength={6}
-                            className="h-14 text-center text-xl font-black tracking-widest"
-                          />
-                          <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                            {checkingReferral ? <Loader2 className="h-5 w-5 animate-spin" /> : (
-                              <>
-                                {referralStatus === 'valid' && <CheckCircle className="h-5 w-5 text-green-500" />}
-                                {referralStatus === 'invalid' && formData.referredBy.length === 6 && <XCircle className="h-5 w-5 text-red-500" />}
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      )}
+                      <AnimatePresence>
+                        {hasReferral && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                            animate={{ height: "auto", opacity: 1, marginTop: 24 }}
+                            exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                            className="overflow-hidden"
+                          >
+                            <div className="relative">
+                              <Input 
+                                placeholder="CODE6X" 
+                                value={formData.referredBy}
+                                onChange={(e) => setFormData({...formData, referredBy: e.target.value.toUpperCase()})}
+                                maxLength={6}
+                                className="h-14 text-center text-xl font-black tracking-widest"
+                              />
+                              <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                                {checkingReferral ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+                                  <>
+                                    {referralStatus === 'valid' && <CheckCircle className="h-5 w-5 text-green-500" />}
+                                    {referralStatus === 'invalid' && formData.referredBy.length === 6 && <XCircle className="h-5 w-5 text-red-500" />}
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </CardContent>
                     <CardFooter className="flex gap-4 p-6">
                       <Button variant="ghost" onClick={handleBackStep} className="h-14 flex-1">Retour</Button>
