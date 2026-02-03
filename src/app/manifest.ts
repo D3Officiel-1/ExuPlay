@@ -3,8 +3,8 @@ import { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Citation',
-    short_name: 'Citation',
+    name: 'Exu Play',
+    short_name: 'Exu Play',
     description: 'L\'art de la pensée, réinventé.',
     start_url: '/',
     display: 'standalone',

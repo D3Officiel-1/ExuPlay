@@ -61,7 +61,6 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
 
   const handleUnlockSuccess = () => {
     setIsAppLocked(false);
-    // On n'affiche le prompt PWA que si la biométrie était active (gage de confiance)
     setShowPwaPrompt(true);
   };
 
@@ -115,7 +114,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Citation" />
+        <meta name="apple-mobile-web-app-title" content="Exu Play" />
         <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
       </head>

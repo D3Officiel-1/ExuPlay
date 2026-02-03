@@ -23,19 +23,16 @@ export function InstallPwa() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // 1. Détection de l'installation existante
     const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches 
       || (navigator as any).standalone 
       || document.referrer.includes('android-app://');
     
     setIsStandalone(isStandaloneMode);
 
-    // 2. Détection iOS
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
     setIsIos(isIosDevice);
 
-    // 3. Capture de l'événement d'installation (Chrome/Android/Edge)
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
@@ -43,7 +40,6 @@ export function InstallPwa() {
 
     window.addEventListener("beforeinstallprompt", handler);
 
-    // 4. Affichage automatique si non installé et pas encore décliné
     const hasBeenDismissed = localStorage.getItem("pwa_install_dismissed");
     if (!isStandaloneMode && !hasBeenDismissed) {
       const timer = setTimeout(() => setIsVisible(true), 1000);
@@ -126,7 +122,7 @@ export function InstallPwa() {
                     className="w-full h-16 rounded-2xl font-black text-lg gap-3 shadow-xl shadow-primary/20"
                   >
                     <Download className="h-6 w-6" />
-                    Installer Citation
+                    Installer Exu Play
                   </Button>
                   {!deferredPrompt && (
                     <p className="text-[10px] text-center font-bold uppercase tracking-widest opacity-40">

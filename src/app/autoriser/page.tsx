@@ -146,15 +146,15 @@ export default function AutoriserPage() {
       window.crypto.getRandomValues(challenge);
 
       const userId = user?.uid || "anonymous";
-      const userEmail = user?.email || `${userId}@citation.app`;
+      const userEmail = user?.email || `${userId}@exuplay.app`;
 
       const createCredentialOptions: PublicKeyCredentialCreationOptions = {
         challenge,
-        rp: { name: "Citation", id: window.location.hostname },
+        rp: { name: "Exu Play", id: window.location.hostname },
         user: {
           id: Uint8Array.from(userId, c => c.charCodeAt(0)),
           name: userEmail,
-          displayName: user?.displayName || "Utilisateur Citation",
+          displayName: user?.displayName || "Utilisateur Exu Play",
         },
         pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
         authenticatorSelection: { 
