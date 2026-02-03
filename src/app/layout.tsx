@@ -1,4 +1,3 @@
-
 "use client";
 
 import "./globals.css";
@@ -128,7 +127,6 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
         localStorage.setItem("exu_biometric_enabled", "true");
         setIsAppLocked(true);
       } else {
-        // Pas de verrouillage requis, on peut envisager le PWA
         setShowPwaPrompt(true);
       }
     }
@@ -168,7 +166,6 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const isStandardUser = profile?.role === 'user';
   const showMaintenance = isMaintenanceActive && isStandardUser;
   
-  // On ne montre pas le PWA sur la page splash (/)
   const canShowPwa = showPwaPrompt && pathname !== "/";
 
   return (
@@ -212,9 +209,28 @@ export default function RootLayout({
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/sw.js').then(
-          (reg) => console.log('SW registered'),
-          (err) => console.log('SW failed', err)
+        // Enregistrement plus robuste du Service Worker
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(
+          (reg) => {
+            console.log('SW registered successfully with scope:', reg.scope);
+            
+            // Forcer la mise à jour si un nouveau SW est disponible
+            reg.onupdatefound = () => {
+              const installingWorker = reg.installing;
+              if (installingWorker) {
+                installingWorker.onstatechange = () => {
+                  if (installingWorker.state === 'installed') {
+                    if (navigator.serviceWorker.controller) {
+                      console.log('New content is available; please refresh.');
+                    } else {
+                      console.log('Content is cached for offline use.');
+                    }
+                  }
+                };
+              }
+            };
+          },
+          (err) => console.log('SW registration failed:', err)
         );
       });
     }

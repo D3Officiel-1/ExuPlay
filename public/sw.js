@@ -1,23 +1,28 @@
-const CACHE_NAME = 'citation-v2-cache-v1';
-const OFFLINE_URLS = [
+const CACHE_NAME = 'exu-play-v2';
+const ASSETS_TO_CACHE = [
   '/',
   '/login',
   '/autoriser',
-  '/random',
+  '/home',
+  '/profil',
+  '/parametres',
+  '/conditions',
   '/manifest.json',
-  '/globals.css'
+  '/icon?size=192',
+  '/icon?size=512'
 ];
 
+// Installation : Mise en cache des ressources critiques
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('Opened cache');
-      return cache.addAll(OFFLINE_URLS);
+      return cache.addAll(ASSETS_TO_CACHE);
     })
   );
   self.skipWaiting();
 });
 
+// Activation : Nettoyage des anciens caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -30,30 +35,40 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
+  self.clients.claim();
 });
 
+// Récupération : Stratégie Stale-While-Revalidate
 self.addEventListener('fetch', (event) => {
-  // Stratégie : Network First, falling back to cache
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(() => {
-        return caches.match(event.request) || caches.match('/');
-      })
-    );
+  // On ne met pas en cache les requêtes vers Firebase ou les APIs externes
+  if (
+    event.request.url.includes('firestore.googleapis.com') ||
+    event.request.url.includes('firebaseinstallations.googleapis.com') ||
+    event.request.url.includes('identitytoolkit.googleapis.com')
+  ) {
     return;
   }
 
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request).then((fetchResponse) => {
-        // Optionnel : on pourrait mettre en cache dynamiquement ici
-        return fetchResponse;
-      });
-    }).catch(() => {
-      // Pour les images ou autres assets si on est offline
-      if (event.request.destination === 'image') {
-        return caches.match('/icon?size=192');
-      }
+    caches.match(event.request).then((cachedResponse) => {
+      const fetchPromise = fetch(event.request)
+        .then((networkResponse) => {
+          // Si la réponse est valide, on met à jour le cache
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            const cacheCopy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, cacheCopy);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          // En cas d'échec réseau total, on renvoie la version cachée si elle existe
+          return cachedResponse;
+        });
+
+      // On renvoie la réponse cachée immédiatement, ou on attend le réseau
+      return cachedResponse || fetchPromise;
     })
   );
 });
