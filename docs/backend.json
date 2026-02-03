@@ -37,6 +37,22 @@
       "properties": {
         "maintenanceMode": { "type": "boolean", "default": false }
       }
+    },
+    "Quiz": {
+      "title": "Quiz",
+      "description": "Une question de quiz avec options et réponse",
+      "type": "object",
+      "properties": {
+        "question": { "type": "string" },
+        "options": { 
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "correctIndex": { "type": "integer" },
+        "points": { "type": "integer", "default": 100 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["question", "options", "correctIndex", "points"]
     }
   },
   "auth": {
@@ -50,6 +66,10 @@
     "/appConfig/status": {
       "schema": "AppStatus",
       "description": "Statut global du système (Maintenance, etc.)"
+    },
+    "/quizzes/{quizId}": {
+      "schema": "Quiz",
+      "description": "Collection des questions de quiz"
     }
   }
 }

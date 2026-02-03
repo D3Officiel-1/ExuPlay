@@ -9,7 +9,9 @@ import {
   serverTimestamp,
   query,
   orderBy,
-  setDoc
+  setDoc,
+  addDoc,
+  deleteDoc
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
@@ -18,6 +20,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { 
   Table, 
   TableBody, 
@@ -33,7 +37,10 @@ import {
   ChevronLeft,
   CheckCircle2,
   AlertTriangle,
-  Settings2
+  Settings2,
+  Plus,
+  Trash2,
+  BookOpen
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -44,6 +51,14 @@ export default function AdminPage() {
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+
+  const [newQuiz, setNewQuiz] = useState({
+    question: "",
+    options: ["", "", "", ""],
+    correctIndex: 0,
+    points: 100
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -63,7 +78,13 @@ export default function AdminPage() {
     return query(collection(db, "users"), orderBy("createdAt", "desc"));
   }, [db]);
 
+  const quizzesQuery = useMemo(() => {
+    if (!db) return null;
+    return query(collection(db, "quizzes"), orderBy("createdAt", "desc"));
+  }, [db]);
+
   const { data: users, loading: usersLoading } = useCollection(usersQuery);
+  const { data: quizzes, loading: quizzesLoading } = useCollection(quizzesQuery);
 
   useEffect(() => {
     if (!authLoading && !profileLoading && profile) {
@@ -80,22 +101,59 @@ export default function AdminPage() {
 
   const handleToggleMaintenance = async (checked: boolean) => {
     if (!appConfigRef) return;
-    try {
-      await setDoc(appConfigRef, {
-        maintenanceMode: checked,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-      toast({
-        title: checked ? "Maintenance activée" : "Maintenance désactivée",
-        description: checked ? "L'application est en mode privé." : "L'application est accessible à tous."
-      });
-    } catch (error) {
+    setDoc(appConfigRef, {
+      maintenanceMode: checked,
+      updatedAt: serverTimestamp()
+    }, { merge: true }).catch((error) => {
       const permissionError = new FirestorePermissionError({
         path: appConfigRef.path,
         operation: 'update',
         requestResourceData: { maintenanceMode: checked },
       } satisfies SecurityRuleContext);
       errorEmitter.emit('permission-error', permissionError);
+    });
+    toast({
+      title: checked ? "Maintenance activée" : "Maintenance désactivée",
+      description: checked ? "L'application est en mode privé." : "L'application est accessible à tous."
+    });
+  };
+
+  const handleAddQuiz = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!db || isSubmitting) return;
+    
+    if (newQuiz.question.trim() === "" || newQuiz.options.some(o => o.trim() === "")) {
+      toast({ variant: "destructive", title: "Erreur", description: "Veuillez remplir tous les champs." });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, "quizzes"), {
+        ...newQuiz,
+        createdAt: serverTimestamp()
+      });
+      setNewQuiz({
+        question: "",
+        options: ["", "", "", ""],
+        correctIndex: 0,
+        points: 100
+      });
+      toast({ title: "Quiz ajouté", description: "La question a été ajoutée avec succès." });
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteQuiz = async (id: string) => {
+    if (!db) return;
+    try {
+      await deleteDoc(doc(db, "quizzes", id));
+      toast({ title: "Quiz supprimé" });
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -128,17 +186,21 @@ export default function AdminPage() {
         </div>
 
         <Tabs defaultValue="stats" className="space-y-6">
-          <TabsList className="bg-card/40 backdrop-blur-3xl border border-primary/5 p-1 h-11 rounded-xl grid grid-cols-3">
-            <TabsTrigger value="stats" className="rounded-lg font-black text-[9px] uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
+          <TabsList className="bg-card/40 backdrop-blur-3xl border border-primary/5 p-1 h-11 rounded-xl grid grid-cols-4">
+            <TabsTrigger value="stats" className="rounded-lg font-black text-[8px] uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <BarChart3 className="h-3.5 w-3.5 mr-1" />
               Stats
             </TabsTrigger>
-            <TabsTrigger value="system" className="rounded-lg font-black text-[9px] uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Settings2 className="h-3.5 w-3.5 mr-1.5" />
+            <TabsTrigger value="quizzes" className="rounded-lg font-black text-[8px] uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Quiz
+            </TabsTrigger>
+            <TabsTrigger value="system" className="rounded-lg font-black text-[8px] uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Settings2 className="h-3.5 w-3.5 mr-1" />
               Système
             </TabsTrigger>
-            <TabsTrigger value="users" className="rounded-lg font-black text-[9px] uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Users className="h-3.5 w-3.5 mr-1.5" />
+            <TabsTrigger value="users" className="rounded-lg font-black text-[8px] uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Users className="h-3.5 w-3.5 mr-1" />
               Esprits
             </TabsTrigger>
           </TabsList>
@@ -159,31 +221,114 @@ export default function AdminPage() {
 
               <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-lg rounded-2xl">
                 <CardHeader className="p-4 pb-2">
-                  <CardTitle className="text-[9px] font-black uppercase tracking-widest opacity-40">Status</CardTitle>
+                  <CardTitle className="text-[9px] font-black uppercase tracking-widest opacity-40">Défis</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                    <p className="text-sm font-black uppercase">En Ligne</p>
+                  <div className="flex items-end gap-2">
+                    <p className="text-3xl font-black">{quizzes?.length || 0}</p>
+                    <p className="text-[7px] font-bold opacity-40 mb-1">EN LIGNE</p>
                   </div>
                 </CardContent>
               </Card>
             </div>
-            
-            <Card className="border-none bg-primary text-primary-foreground shadow-xl rounded-2xl overflow-hidden">
-              <CardContent className="p-6 flex flex-col items-center text-center space-y-2">
-                <CheckCircle2 className="h-8 w-8 opacity-40" />
-                <h3 className="text-lg font-black">Système Stable</h3>
-                <p className="text-[10px] opacity-60 font-medium">Liaison établie avec l'éther numérique.</p>
+          </TabsContent>
+
+          <TabsContent value="quizzes" className="space-y-6">
+            <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-lg rounded-2xl overflow-hidden">
+              <CardHeader className="p-5 pb-3">
+                <CardTitle className="text-base font-black">Nouveau Défi</CardTitle>
+                <CardDescription className="text-[10px]">Ajoutez une question à la collection.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-5 pt-0">
+                <form onSubmit={handleAddQuiz} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[9px] font-black uppercase tracking-widest opacity-40">Question</Label>
+                    <Input 
+                      placeholder="La question..." 
+                      className="h-10 text-xs font-bold" 
+                      value={newQuiz.question} 
+                      onChange={e => setNewQuiz({...newQuiz, question: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {newQuiz.options.map((opt, idx) => (
+                      <div key={idx} className="space-y-1.5">
+                        <Label className="text-[9px] font-black uppercase tracking-widest opacity-40 flex justify-between">
+                          Option {idx + 1}
+                          <input 
+                            type="radio" 
+                            name="correct" 
+                            checked={newQuiz.correctIndex === idx} 
+                            onChange={() => setNewQuiz({...newQuiz, correctIndex: idx})}
+                          />
+                        </Label>
+                        <Input 
+                          placeholder={`Réponse ${idx + 1}`} 
+                          className="h-9 text-[10px] font-medium" 
+                          value={opt} 
+                          onChange={e => {
+                            const newOpts = [...newQuiz.options];
+                            newOpts[idx] = e.target.value;
+                            setNewQuiz({...newQuiz, options: newOpts});
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1 space-y-1.5">
+                      <Label className="text-[9px] font-black uppercase tracking-widest opacity-40">Points</Label>
+                      <Input 
+                        type="number" 
+                        className="h-9 text-[10px]" 
+                        value={newQuiz.points} 
+                        onChange={e => setNewQuiz({...newQuiz, points: parseInt(e.target.value) || 0})}
+                      />
+                    </div>
+                    <Button type="submit" disabled={isSubmitting} className="h-10 px-8 mt-4 rounded-xl font-black text-[10px] uppercase tracking-widest">
+                      {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Publier"}
+                    </Button>
+                  </div>
+                </form>
               </CardContent>
             </Card>
+
+            <div className="space-y-3">
+              <h3 className="text-[10px] font-black uppercase tracking-widest opacity-40 pl-2">Questions Actives</h3>
+              {quizzesLoading ? (
+                <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin opacity-20" /></div>
+              ) : (
+                <div className="space-y-2">
+                  {quizzes?.map(q => (
+                    <Card key={q.id} className="border-none bg-card/20 backdrop-blur-3xl rounded-xl overflow-hidden">
+                      <CardContent className="p-4 flex items-center justify-between gap-4">
+                        <div className="space-y-1 flex-1">
+                          <p className="text-xs font-black leading-tight">{q.question}</p>
+                          <p className="text-[8px] font-bold opacity-40 uppercase tracking-widest">{q.points} PTS • {q.options.length} OPTIONS</p>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleDeleteQuiz(q.id)}
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="system" className="space-y-4">
             <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-lg rounded-2xl overflow-hidden">
               <CardHeader className="p-5 pb-3">
                 <CardTitle className="text-base font-black">Contrôle</CardTitle>
-                <CardDescription className="text-[10px] font-medium">Gérez la visibilité globale.</CardDescription>
+                <CardDescription className="text-[10px]">Gérez la visibilité globale.</CardDescription>
               </CardHeader>
               <CardContent className="p-5 pt-0 space-y-4">
                 <div className="flex items-center justify-between p-4 bg-background/50 rounded-xl border border-primary/5">
@@ -197,18 +342,6 @@ export default function AdminPage() {
                     className="data-[state=checked]:bg-red-500 scale-90"
                   />
                 </div>
-
-                {appStatus?.maintenanceMode && (
-                  <div className="p-4 bg-red-500/5 rounded-xl border border-red-500/10 flex gap-3 items-start">
-                    <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-                    <div className="space-y-0.5">
-                      <p className="text-[10px] font-bold text-red-600">Maintenance Active</p>
-                      <p className="text-[9px] leading-relaxed opacity-60 font-medium">
-                        Seuls les administrateurs peuvent naviguer.
-                      </p>
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -228,13 +361,13 @@ export default function AdminPage() {
                       <TableRow key={u.id} className="border-primary/5 hover:bg-primary/5 transition-colors">
                         <TableCell className="py-3 px-4">
                           <div className="flex flex-col">
-                            <span className="font-black text-xs tracking-tight">@{u.username}</span>
+                            <span className="font-black text-[10px] tracking-tight">@{u.username}</span>
                             <span className="text-[7px] opacity-40 uppercase tracking-widest">
                               {u.phoneNumber}
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="py-3 px-4 text-right font-black text-xs tabular-nums">
+                        <TableCell className="py-3 px-4 text-right font-black text-[10px] tabular-nums">
                           {u.totalPoints?.toLocaleString() || 0}
                         </TableCell>
                       </TableRow>

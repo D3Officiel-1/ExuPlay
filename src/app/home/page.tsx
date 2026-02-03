@@ -3,49 +3,26 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useUser, useFirestore, useDoc } from "@/firebase";
-import { doc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
+import { useUser, useFirestore, useCollection } from "@/firebase";
+import { 
+  collection, 
+  doc, 
+  updateDoc, 
+  increment, 
+  serverTimestamp,
+  query,
+  orderBy
+} from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
-import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles } from "lucide-react";
+import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, Brain } from "lucide-react";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
-const QUIZ_QUESTIONS = [
-  {
-    id: 1,
-    question: "Qui a écrit 'Le Banquet' ?",
-    options: ["Socrate", "Platon", "Aristote", "Épicure"],
-    correct: 1,
-    points: 100
-  },
-  {
-    id: 2,
-    question: "Quel philosophe a affirmé 'Dieu est mort' ?",
-    options: ["Kant", "Hegel", "Nietzsche", "Sartre"],
-    correct: 2,
-    points: 150
-  },
-  {
-    id: 3,
-    question: "Le concept de 'Cogito' est associé à :",
-    options: ["Descartes", "Spinoza", "Pascal", "Leibniz"],
-    correct: 0,
-    points: 100
-  },
-  {
-    id: 4,
-    question: "Qui est l'auteur de 'L'Existentialisme est un humanisme' ?",
-    options: ["Camus", "Sartre", "Beauvoir", "Heidegger"],
-    correct: 1,
-    points: 120
-  }
-];
-
 export default function HomePage() {
-  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [score, setScore] = useState(0);
@@ -55,19 +32,28 @@ export default function HomePage() {
   const { user } = useUser();
   const db = useFirestore();
 
+  const quizzesQuery = useMemo(() => {
+    if (!db) return null;
+    return query(collection(db, "quizzes"), orderBy("createdAt", "asc"));
+  }, [db]);
+
+  const { data: quizzes, loading: quizzesLoading } = useCollection(quizzesQuery);
+
   const handleAnswer = (index: number) => {
-    if (isAnswered) return;
+    if (isAnswered || !quizzes) return;
+    const currentQuiz = quizzes[currentQuestionIdx];
     setSelectedOption(index);
     setIsAnswered(true);
     
-    if (index === QUIZ_QUESTIONS[currentQuestion].correct) {
-      setScore(prev => prev + QUIZ_QUESTIONS[currentQuestion].points);
+    if (index === currentQuiz.correctIndex) {
+      setScore(prev => prev + (currentQuiz.points || 100));
     }
   };
 
   const nextQuestion = () => {
-    if (currentQuestion < QUIZ_QUESTIONS.length - 1) {
-      setCurrentQuestion(prev => prev + 1);
+    if (!quizzes) return;
+    if (currentQuestionIdx < quizzes.length - 1) {
+      setCurrentQuestionIdx(prev => prev + 1);
       setSelectedOption(null);
       setIsAnswered(false);
     } else {
@@ -77,7 +63,7 @@ export default function HomePage() {
 
   const finishQuiz = async () => {
     setQuizComplete(true);
-    if (user && score > 0) {
+    if (user && score > 0 && db) {
       setUpdating(true);
       const userRef = doc(db, "users", user.uid);
       
@@ -98,14 +84,41 @@ export default function HomePage() {
   };
 
   const resetQuiz = () => {
-    setCurrentQuestion(0);
+    setCurrentQuestionIdx(0);
     setSelectedOption(null);
     setIsAnswered(false);
     setScore(0);
     setQuizComplete(false);
   };
 
-  const question = QUIZ_QUESTIONS[currentQuestion];
+  if (quizzesLoading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+        <Loader2 className="h-8 w-8 animate-spin opacity-20 mb-4" />
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Connexion à l'Éveil...</p>
+      </div>
+    );
+  }
+
+  if (!quizzes || quizzes.length === 0) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col pb-32">
+        <Header />
+        <main className="flex-1 flex flex-col items-center justify-center p-6 pt-24 space-y-8">
+          <div className="mx-auto w-24 h-24 bg-primary/5 rounded-[2.5rem] flex items-center justify-center border border-primary/10 shadow-2xl">
+            <Brain className="h-10 w-10 text-primary opacity-20" />
+          </div>
+          <div className="space-y-2 text-center">
+            <h2 className="text-2xl font-black uppercase tracking-tight">Aucun Défi</h2>
+            <p className="text-xs font-medium opacity-40">Le savoir est en cours de compilation. Revenez plus tard.</p>
+          </div>
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
+
+  const question = quizzes[currentQuestionIdx];
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
@@ -126,11 +139,11 @@ export default function HomePage() {
                 <div className="flex justify-between items-end px-2">
                   <div className="space-y-1">
                     <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Défi Mental</p>
-                    <h2 className="text-3xl font-black">Question {currentQuestion + 1}</h2>
+                    <h2 className="text-3xl font-black">Question {currentQuestionIdx + 1}</h2>
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Progression</p>
-                    <p className="text-xl font-bold">{currentQuestion + 1}/{QUIZ_QUESTIONS.length}</p>
+                    <p className="text-xl font-bold">{currentQuestionIdx + 1}/{quizzes.length}</p>
                   </div>
                 </div>
 
@@ -141,8 +154,8 @@ export default function HomePage() {
                     </p>
 
                     <div className="grid gap-3">
-                      {question.options.map((option, idx) => {
-                        const isCorrect = idx === question.correct;
+                      {question.options.map((option: string, idx: number) => {
+                        const isCorrect = idx === question.correctIndex;
                         const isSelected = idx === selectedOption;
                         
                         return (
@@ -182,7 +195,7 @@ export default function HomePage() {
                             onClick={nextQuestion} 
                             className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-widest gap-3 shadow-xl shadow-primary/20"
                           >
-                            {currentQuestion === QUIZ_QUESTIONS.length - 1 ? "Terminer" : "Question Suivante"}
+                            {currentQuestionIdx === quizzes.length - 1 ? "Terminer" : "Question Suivante"}
                             <ArrowRight className="h-4 w-4" />
                           </Button>
                         </motion.div>
