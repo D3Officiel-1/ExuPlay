@@ -7,10 +7,8 @@ import { useUser } from "@/firebase";
 import { QUOTES, Quote } from "@/app/lib/quotes-data";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Logo } from "@/components/Logo";
 import { BottomNav } from "@/components/BottomNav";
-import { RefreshCw, Heart, Share2, Quote as QuoteIcon, LogOut } from "lucide-react";
-import { getAuth, signOut } from "firebase/auth";
+import { RefreshCw, Heart, Share2, Quote as QuoteIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function HomePage() {
@@ -32,24 +30,9 @@ export default function HomePage() {
     getRandomQuote();
   }, []);
 
-  const handleLogout = async () => {
-    const auth = getAuth();
-    await signOut(auth);
-    router.push("/login");
-  };
-
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
-      <header className="border-b border-primary/5 backdrop-blur-md sticky top-0 z-50">
-        <div className="container max-w-7xl mx-auto h-20 px-6 flex items-center justify-between">
-          <Logo className="scale-50" />
-          <Button variant="ghost" size="icon" onClick={handleLogout} className="rounded-full">
-            <LogOut className="h-5 w-5" />
-          </Button>
-        </div>
-      </header>
-
-      <main className="flex-1 flex items-center justify-center p-6">
+      <main className="flex-1 flex items-center justify-center p-6 pt-12">
         <div className="w-full max-w-2xl relative">
           <AnimatePresence mode="wait">
             {quote && (
