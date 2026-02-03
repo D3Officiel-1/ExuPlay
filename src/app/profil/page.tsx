@@ -57,6 +57,11 @@ export default function ProfilPage() {
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'available' | 'taken' | 'invalid'>('idle');
   const [isSavingName, setIsSavingName] = useState(false);
 
+  // États pour la modification du téléphone
+  const [isEditingPhone, setIsEditingPhone] = useState(false);
+  const [editedPhone, setEditedPhone] = useState("");
+  const [isSavingPhone, setIsSavingPhone] = useState(false);
+
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
     return doc(db, "users", user.uid);
@@ -193,6 +198,46 @@ export default function ProfilPage() {
       errorEmitter.emit('permission-error', permissionError);
     } finally {
       setIsSavingName(false);
+    }
+  };
+
+  const startEditingPhone = () => {
+    const rawPhone = profile?.phoneNumber?.replace("+225", "") || "";
+    setEditedPhone(rawPhone);
+    setIsEditingPhone(true);
+  };
+
+  const isValidPhoneNumber = (num: string) => {
+    if (num.length !== 10) return false;
+    const validPrefixes = ["01", "05", "07"];
+    return validPrefixes.some(prefix => num.startsWith(prefix));
+  };
+
+  const saveNewPhone = async () => {
+    if (!isValidPhoneNumber(editedPhone) || !user?.uid) return;
+    
+    setIsSavingPhone(true);
+    try {
+      const userRef = doc(db, "users", user.uid);
+      const fullPhoneNumber = `+225${editedPhone}`;
+      await updateDoc(userRef, {
+        phoneNumber: fullPhoneNumber,
+        updatedAt: serverTimestamp()
+      });
+      setIsEditingPhone(false);
+      toast({
+        title: "Numéro mis à jour",
+        description: "Votre numéro Wave a été modifié avec succès."
+      });
+    } catch (error) {
+      const permissionError = new FirestorePermissionError({
+        path: `users/${user.uid}`,
+        operation: 'update',
+        requestResourceData: { phoneNumber: editedPhone },
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    } finally {
+      setIsSavingPhone(false);
     }
   };
 
@@ -355,15 +400,66 @@ export default function ProfilPage() {
           <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 pl-2">Informations</h2>
           <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden">
             <CardContent className="p-2 space-y-1">
-              <div className="flex items-center gap-4 p-4 hover:bg-primary/5 transition-colors rounded-2xl group">
-                <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
-                  <Phone className="h-5 w-5 text-primary opacity-60" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-[8px] font-black uppercase tracking-widest opacity-40">Téléphone Liaison</p>
-                  <p className="text-sm font-bold">{profile?.phoneNumber || "Non renseigné"}</p>
-                </div>
-              </div>
+              <AnimatePresence mode="wait">
+                {!isEditingPhone ? (
+                  <motion.div 
+                    key="phone-display"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={startEditingPhone}
+                    className="flex items-center gap-4 p-4 hover:bg-primary/5 transition-colors rounded-2xl group cursor-pointer"
+                  >
+                    <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
+                      <Phone className="h-5 w-5 text-primary opacity-60" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[8px] font-black uppercase tracking-widest opacity-40">Téléphone Liaison (Wave)</p>
+                      <p className="text-sm font-bold">{profile?.phoneNumber || "Non renseigné"}</p>
+                    </div>
+                    <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-40 transition-opacity" />
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    key="phone-edit"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="p-4 space-y-3"
+                  >
+                    <p className="text-[8px] font-black uppercase tracking-widest opacity-40">Nouveau numéro Wave</p>
+                    <div className="flex gap-2">
+                      <div className="flex-1 relative">
+                        <Input 
+                          value={editedPhone}
+                          onChange={(e) => setEditedPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                          className="h-10 text-sm font-bold bg-background/50 rounded-xl"
+                          placeholder="07..."
+                          autoFocus
+                        />
+                        {editedPhone.length === 10 && isValidPhoneNumber(editedPhone) && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <Check className="h-3 w-3 text-green-500" />
+                          </div>
+                        )}
+                      </div>
+                      <Button size="icon" variant="ghost" onClick={() => setIsEditingPhone(false)} className="h-10 w-10 rounded-xl">
+                        <X className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        size="icon" 
+                        onClick={saveNewPhone}
+                        disabled={!isValidPhoneNumber(editedPhone) || isSavingPhone}
+                        className="h-10 w-10 rounded-xl"
+                      >
+                        {isSavingPhone ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    <p className="text-[10px] opacity-40 font-medium">Format: 10 chiffres (01, 05 ou 07)</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <div className="flex items-center gap-4 p-4 hover:bg-primary/5 transition-colors rounded-2xl group">
                 <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
                   <UserIcon className="h-5 w-5 text-primary opacity-60" />
