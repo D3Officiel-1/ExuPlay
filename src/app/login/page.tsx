@@ -307,7 +307,7 @@ function LoginContent() {
                         <div className="relative h-6 w-6 rounded-full overflow-hidden">{waveIcon && <Image src={waveIcon} alt="Wave" fill className="object-cover" />}</div>
                         <span className="text-[10px] font-bold uppercase tracking-widest">Liaison Wave</span>
                       </div>
-                      <CardTitle className="text-2xl">Numéro de contact</CardTitle>
+                      <CardTitle className="text-2xl">Numéro Wave</CardTitle>
                     </CardHeader>
                     <CardContent className="p-6 space-y-4">
                       <div className="flex gap-3">
