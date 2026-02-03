@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { name: "Réglages", href: "/parametres", icon: Settings },
-  { name: "Quiz", href: "/quiz", icon: Trophy },
+  { name: "Quiz", href: "/home", icon: Trophy },
   { name: "Profil", href: "/profil", icon: User },
 ];
 
