@@ -157,7 +157,7 @@ export default function AdminPage() {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => router.push("/parametres")}
+              onClick={() => router.push("/profil")}
               className="rounded-full h-10 w-10 hover:bg-primary/5"
             >
               <ChevronLeft className="h-6 w-6" />
