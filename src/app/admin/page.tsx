@@ -11,7 +11,8 @@ import {
   setDoc,
   addDoc,
   deleteDoc,
-  updateDoc
+  updateDoc,
+  increment
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
@@ -48,7 +49,8 @@ import {
   Trash2,
   Brain,
   Edit3,
-  Eye
+  User,
+  MinusCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -69,10 +71,15 @@ export default function AdminPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   
-  // État pour la visualisation/modification
+  // État pour les quiz
   const [selectedQuiz, setSelectedQuiz] = useState<any>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+
+  // État pour les utilisateurs
+  const [selectedAdminUser, setSelectedAdminUser] = useState<any>(null);
+  const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
+  const [pointsToSubtract, setPointsToSubtract] = useState<number>(0);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -202,10 +209,44 @@ export default function AdminPage() {
     }
   };
 
+  const handleSubtractPoints = async () => {
+    if (!db || !selectedAdminUser || pointsToSubtract <= 0 || isSubmitting) return;
+
+    setIsSubmitting(true);
+    const userRef = doc(db, "users", selectedAdminUser.id);
+    
+    updateDoc(userRef, {
+      totalPoints: increment(-pointsToSubtract),
+      updatedAt: serverTimestamp()
+    }).then(() => {
+      toast({ 
+        title: "Points retirés", 
+        description: `${pointsToSubtract} points ont été déduits de @${selectedAdminUser.username}.`
+      });
+      setPointsToSubtract(0);
+      setIsUserDialogOpen(false);
+    }).catch((error) => {
+      const permissionError = new FirestorePermissionError({
+        path: userRef.path,
+        operation: 'update',
+        requestResourceData: { totalPoints: increment(-pointsToSubtract) },
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    }).finally(() => {
+      setIsSubmitting(false);
+    });
+  };
+
   const openQuizDetails = (quiz: any) => {
     setSelectedQuiz({...quiz});
     setIsEditMode(false);
     setIsViewDialogOpen(true);
+  };
+
+  const openUserDetails = (userData: any) => {
+    setSelectedAdminUser(userData);
+    setPointsToSubtract(0);
+    setIsUserDialogOpen(true);
   };
 
   if (authLoading || profileLoading || profile?.role !== 'admin') {
@@ -434,7 +475,11 @@ export default function AdminPage() {
                   </TableHeader>
                   <TableBody>
                     {users?.map((u) => (
-                      <TableRow key={u.id} className="border-primary/5 hover:bg-primary/5 transition-colors">
+                      <TableRow 
+                        key={u.id} 
+                        className="border-primary/5 hover:bg-primary/5 transition-colors cursor-pointer"
+                        onClick={() => openUserDetails(u)}
+                      >
                         <TableCell className="py-2 md:py-4 px-3 md:px-6">
                           <div className="flex flex-col">
                             <span className="font-black text-[9px] md:text-base tracking-tight">@{u.username}</span>
@@ -456,7 +501,7 @@ export default function AdminPage() {
         </Tabs>
       </main>
 
-      {/* Dialogue de Visualisation / Modification */}
+      {/* Dialogue de Visualisation / Modification de Quiz */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent className="sm:max-w-[500px] bg-card/95 backdrop-blur-2xl border-primary/5 rounded-[2rem] md:rounded-[3rem] p-6 md:p-10">
           <DialogHeader>
@@ -563,6 +608,74 @@ export default function AdminPage() {
                 )}
               </DialogFooter>
             </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialogue de Détails de l'Utilisateur */}
+      <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
+        <DialogContent className="sm:max-w-[500px] bg-card/95 backdrop-blur-2xl border-primary/5 rounded-[2rem] md:rounded-[3rem] p-6 md:p-10">
+          <DialogHeader>
+            <DialogTitle className="text-lg md:text-3xl font-black tracking-tight flex items-center gap-3">
+              <User className="h-6 w-6 md:h-8 md:w-8" />
+              Fiche de l'Esprit
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedAdminUser && (
+            <div className="space-y-6 md:space-y-8 pt-4 md:pt-8">
+              <div className="flex flex-col items-center gap-4 p-6 bg-primary/5 rounded-[2rem] border border-primary/10">
+                <div className="text-center">
+                  <p className="text-2xl md:text-4xl font-black tracking-tight">@{selectedAdminUser.username}</p>
+                  <p className="text-[10px] md:text-sm font-bold opacity-40 uppercase tracking-widest">{selectedAdminUser.phoneNumber}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] opacity-30 mb-1">Lumière Totale</p>
+                  <p className="text-3xl md:text-5xl font-black tabular-nums">{selectedAdminUser.totalPoints?.toLocaleString() || 0} <span className="text-sm md:text-xl opacity-20">PTS</span></p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] md:text-xs font-black uppercase tracking-widest opacity-40">Retrait de Lumière (Pénalité)</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      type="number"
+                      placeholder="Nombre de points à retirer"
+                      className="h-12 md:h-16 text-lg md:text-2xl font-bold rounded-xl md:rounded-2xl"
+                      value={pointsToSubtract || ""}
+                      onChange={(e) => setPointsToSubtract(Math.abs(parseInt(e.target.value) || 0))}
+                    />
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={handleSubtractPoints}
+                  disabled={isSubmitting || pointsToSubtract <= 0}
+                  className="w-full h-12 md:h-16 rounded-2xl md:rounded-3xl font-black text-[10px] md:text-sm uppercase tracking-widest gap-3 bg-red-500 hover:bg-red-600 text-white"
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <>
+                      <MinusCircle className="h-5 w-5" />
+                      Soustraire {pointsToSubtract || ""} points
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-background/50 rounded-2xl border border-primary/5">
+                  <p className="text-[8px] md:text-[10px] font-black uppercase tracking-widest opacity-30 mb-1">Genre</p>
+                  <p className="text-xs md:text-base font-bold capitalize">{selectedAdminUser.gender}</p>
+                </div>
+                <div className="p-4 bg-background/50 rounded-2xl border border-primary/5">
+                  <p className="text-[8px] md:text-[10px] font-black uppercase tracking-widest opacity-30 mb-1">Sceau</p>
+                  <p className="text-xs md:text-base font-bold capitalize">{selectedAdminUser.biometricEnabled ? "Activé" : "Inactif"}</p>
+                </div>
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>
