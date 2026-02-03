@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo } from "react";
@@ -6,6 +5,7 @@ import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
 import { useUser, useFirestore, useDoc } from "@/firebase";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,6 +30,7 @@ export default function ParametresPage() {
   const { theme, setTheme } = useTheme();
   const { user } = useUser();
   const db = useFirestore();
+  const router = useRouter();
   
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -132,7 +133,10 @@ export default function ParametresPage() {
             </div>
             <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem]">
               <CardContent className="p-2">
-                <div className="flex items-center justify-between p-4 hover:bg-primary/5 transition-colors rounded-2xl group">
+                <button 
+                  onClick={() => router.push("/parametres/securite")}
+                  className="w-full flex items-center justify-between p-4 hover:bg-primary/5 transition-colors rounded-2xl group text-left"
+                >
                   <div className="flex items-center gap-4">
                     <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
                       <Fingerprint className="h-5 w-5 text-primary opacity-60" />
@@ -143,11 +147,11 @@ export default function ParametresPage() {
                     </div>
                   </div>
                   {profile?.biometricEnabled ? (
-                    <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                    <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse mr-2" />
                   ) : (
-                    <ChevronRight className="h-4 w-4 opacity-20" />
+                    <ChevronRight className="h-4 w-4 opacity-20 group-hover:opacity-60 transition-opacity" />
                   )}
-                </div>
+                </button>
               </CardContent>
             </Card>
           </motion.section>
