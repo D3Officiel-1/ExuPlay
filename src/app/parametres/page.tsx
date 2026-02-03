@@ -164,7 +164,10 @@ export default function ParametresPage() {
             </div>
             <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden">
               <CardContent className="p-2 space-y-1">
-                <button className="w-full flex items-center justify-between p-4 hover:bg-primary/5 transition-colors rounded-2xl group text-left">
+                <button 
+                  onClick={() => router.push("/conditions")}
+                  className="w-full flex items-center justify-between p-4 hover:bg-primary/5 transition-colors rounded-2xl group text-left"
+                >
                   <div className="flex items-center gap-4">
                     <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
                       <Scale className="h-5 w-5 text-primary opacity-60" />
