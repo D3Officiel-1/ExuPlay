@@ -33,8 +33,8 @@ export function Header() {
       className={cn(
         "fixed top-0 left-0 right-0 z-40 h-24",
         "flex items-center px-10",
-        "bg-background/10 backdrop-blur-2xl border-b border-primary/5",
-        "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[1px] after:bg-gradient-to-r after:from-transparent after:via-primary/10 after:to-transparent"
+        "bg-background/10 backdrop-blur-2xl",
+        "after:absolute after:bottom-0 after:left-[15%] after:right-[15%] after:h-[1px] after:bg-gradient-to-r after:from-transparent after:via-primary/10 after:to-transparent"
       )}
     >
       <div className="max-w-screen-2xl mx-auto w-full flex items-center justify-between">
@@ -72,15 +72,15 @@ export function Header() {
 
       <motion.div
         animate={{
-          x: ["-100%", "200%"],
+          x: ["-100%", "300%"],
         }}
         transition={{
-          duration: 4,
+          duration: 5,
           repeat: Infinity,
           ease: "linear",
-          repeatDelay: 4
+          repeatDelay: 3
         }}
-        className="absolute bottom-0 left-0 w-32 h-[1px] bg-gradient-to-r from-transparent via-primary/20 to-transparent z-10"
+        className="absolute bottom-0 left-0 w-20 h-[1px] bg-gradient-to-r from-transparent via-primary/20 to-transparent z-10"
       />
     </motion.header>
   );
