@@ -38,7 +38,7 @@ export default function SplashPage() {
         userData?.notificationsEnabled === true && 
         userData?.locationAuthorized === true;
 
-      const nextPath = isFullyAuthorized ? "/random" : "/autoriser";
+      const nextPath = isFullyAuthorized ? "/home" : "/autoriser";
       router.push(nextPath);
     } catch (error) {
       console.error("Error checking permissions:", error);

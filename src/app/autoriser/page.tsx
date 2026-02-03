@@ -45,7 +45,7 @@ export default function AutoriserPage() {
         const nextStep = determineNextStep(data);
         
         if (nextStep === 5) {
-          router.push("/random");
+          router.push("/home");
         } else {
           setStep(nextStep);
         }
@@ -63,7 +63,7 @@ export default function AutoriserPage() {
     const userDoc = await getDoc(doc(db, "users", user.uid));
     const nextStep = determineNextStep(userDoc.data());
     if (nextStep === 5) {
-      router.push("/random");
+      router.push("/home");
     } else {
       setStep(nextStep);
     }
@@ -176,12 +176,12 @@ export default function AutoriserPage() {
           });
         }
         toast({ title: "Sceau biométrique activé", description: "Identité sécurisée avec succès." });
-        router.push("/random");
+        router.push("/home");
       }
     } catch (error: any) {
       console.error('Passkey creation error:', error);
       toast({ title: "Étape ignorée", description: "La biométrie pourra être activée plus tard." });
-      router.push("/random");
+      router.push("/home");
     } finally {
       setLoading(false);
     }
@@ -331,7 +331,7 @@ export default function AutoriserPage() {
                       {loading ? <Loader2 className="animate-spin mr-2" /> : <Lock className="mr-3 h-6 w-6" />}
                       Activer ma Passkey
                     </Button>
-                    <Button variant="ghost" onClick={() => router.push("/random")} className="w-full h-12 text-muted-foreground font-bold text-[10px] uppercase tracking-widest">Plus tard</Button>
+                    <Button variant="ghost" onClick={() => router.push("/home")} className="w-full h-12 text-muted-foreground font-bold text-[10px] uppercase tracking-widest">Plus tard</Button>
                   </CardFooter>
                 </>
               )}
