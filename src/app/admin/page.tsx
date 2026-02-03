@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -30,7 +31,7 @@ import {
   TableHead, 
   TableHeader, 
   TableRow 
-} from "@/components/ui/table";
+} from "@/table";
 import { 
   Dialog,
   DialogContent,
@@ -71,12 +72,10 @@ export default function AdminPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   
-  // État pour les quiz
   const [selectedQuiz, setSelectedQuiz] = useState<any>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
 
-  // État pour les utilisateurs
   const [selectedAdminUser, setSelectedAdminUser] = useState<any>(null);
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
   const [pointsToSubtract, setPointsToSubtract] = useState<number>(0);
@@ -261,7 +260,7 @@ export default function AdminPage() {
     <div className="min-h-screen bg-background flex flex-col pb-24">
       <Header />
       
-      <main className="flex-1 p-4 pt-20 space-y-4 md:space-y-8 max-w-4xl mx-auto w-full">
+      <main className="flex-1 p-4 pt-32 space-y-4 md:space-y-8 max-w-4xl mx-auto w-full">
         <div className="flex items-center gap-2 md:gap-4">
           <Button 
             variant="ghost" 

@@ -52,26 +52,22 @@ export default function ProfilPage() {
   
   const [localProfileImage, setLocalProfileImage] = useState<string | null>(null);
   
-  // États pour la modification du nom d'utilisateur
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedUsername, setEditedUsername] = useState("");
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'available' | 'taken' | 'invalid'>('idle');
   const [isSavingName, setIsSavingName] = useState(false);
 
-  // États pour la modification du téléphone
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [editedPhone, setEditedPhone] = useState("");
   const [isSavingPhone, setIsSavingPhone] = useState(false);
 
-  // Scroll animations
   const { scrollY } = useScroll();
   
-  // Calculs pour l'animation vers le header
-  const headerOpacity = useTransform(scrollY, [140, 200], [0, 1]);
-  const headerY = useTransform(scrollY, [140, 200], [10, 0]);
-  const mainProfileOpacity = useTransform(scrollY, [0, 150], [1, 0]);
-  const mainProfileScale = useTransform(scrollY, [0, 150], [1, 0.9]);
+  const headerOpacity = useTransform(scrollY, [180, 240], [0, 1]);
+  const headerY = useTransform(scrollY, [180, 240], [10, 0]);
+  const mainProfileOpacity = useTransform(scrollY, [0, 180], [1, 0]);
+  const mainProfileScale = useTransform(scrollY, [0, 180], [1, 0.9]);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -114,7 +110,6 @@ export default function ProfilPage() {
     if (profile?.referralCode) {
       const magicLink = `${window.location.origin}/login?ref=${profile.referralCode}`;
       
-      // Tentative de partage natif
       if (typeof navigator !== 'undefined' && navigator.share) {
         try {
           await navigator.share({
@@ -127,12 +122,11 @@ export default function ProfilPage() {
           if ((error as Error).name !== 'AbortError') {
             console.error('Error sharing:', error);
           } else {
-            return; // L'utilisateur a annulé, on ne fait rien
+            return;
           }
         }
       }
 
-      // Fallback: Copie dans le presse-papier
       try {
         await navigator.clipboard.writeText(magicLink);
         toast({
@@ -285,10 +279,9 @@ export default function ProfilPage() {
     <div className="min-h-screen bg-background flex flex-col pb-32">
       <Header />
       
-      {/* Sticky Mini Profile in Header area */}
       <motion.div 
         style={{ opacity: headerOpacity, y: headerY }}
-        className="fixed top-0 left-0 right-0 h-14 z-[60] flex items-center justify-center pointer-events-none"
+        className="fixed top-0 left-0 right-0 h-24 z-[60] flex items-center justify-center pointer-events-none"
       >
         <div className="flex items-center gap-3 bg-card/60 backdrop-blur-3xl px-4 py-1.5 rounded-2xl border border-primary/5 shadow-2xl">
           <div className="relative h-7 w-7 rounded-full overflow-hidden border border-primary/10">
@@ -302,8 +295,7 @@ export default function ProfilPage() {
         </div>
       </motion.div>
 
-      <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
-        {/* Animated Main Profile Section */}
+      <main className="flex-1 p-6 pt-32 space-y-8 max-w-lg mx-auto w-full">
         <motion.div 
           style={{ opacity: mainProfileOpacity, scale: mainProfileScale }}
           className="text-center space-y-4"
@@ -403,7 +395,6 @@ export default function ProfilPage() {
           </div>
         </motion.div>
 
-        {/* Section Administration pour les Admin */}
         {profile?.role === 'admin' && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}

@@ -76,7 +76,7 @@ export default function ParametresPage() {
     <div className="min-h-screen bg-background flex flex-col pb-32">
       <Header />
       
-      <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
+      <main className="flex-1 p-6 pt-32 space-y-8 max-w-lg mx-auto w-full">
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -92,7 +92,6 @@ export default function ParametresPage() {
           animate="visible"
           className="space-y-8"
         >
-          {/* Section Thème */}
           <motion.section variants={itemVariants} className="space-y-4">
             <div className="flex items-center gap-3 pl-2">
               <Zap className="h-4 w-4 text-primary opacity-60" />
@@ -126,7 +125,6 @@ export default function ParametresPage() {
             </Card>
           </motion.section>
 
-          {/* Section Sécurité */}
           <motion.section variants={itemVariants} className="space-y-4">
             <div className="flex items-center gap-3 pl-2">
               <ShieldCheck className="h-4 w-4 text-primary opacity-60" />
@@ -157,7 +155,6 @@ export default function ParametresPage() {
             </Card>
           </motion.section>
 
-          {/* Section Légal & Infos */}
           <motion.section variants={itemVariants} className="space-y-4">
             <div className="flex items-center gap-3 pl-2">
               <Info className="h-4 w-4 text-primary opacity-60" />

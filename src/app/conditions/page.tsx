@@ -1,3 +1,4 @@
+
 "use client";
 
 import { motion } from "framer-motion";
@@ -30,7 +31,7 @@ export default function ConditionsPage() {
     {
       icon: BookOpen,
       title: "L'Essence d'Exu Play",
-      content: "Exu Play est une plateforme dédiée à l'exploration de la pensée. Nous fournissons des outils pour l'éveil spirituel et intellectuel à travers des citations et des défis philosophiques."
+      content: "Exu Play est une plateforme dédiée à l'exploration de la pensée. Nous fournissons des outils pour l'éveil spirituel et intellectuel à travers des quiz et des défis philosophiques."
     },
     {
       icon: Shield,
@@ -50,7 +51,7 @@ export default function ConditionsPage() {
     {
       icon: Scale,
       title: "Responsabilité",
-      content: "L'utilisateur est responsable de l'usage qu'il fait des réflexions partagées. Exu Play ne saurait être tenu responsable des interprétations personnelles des textes philosophiques."
+      content: "L'utilisateur est responsable de l'usage qu'il fait des réflexions partagées. Exu Play ne saurait être tenu responsable des interprétations personnelles des défis proposés."
     }
   ];
 
@@ -58,7 +59,7 @@ export default function ConditionsPage() {
     <div className="min-h-screen bg-background flex flex-col pb-32">
       <Header />
       
-      <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
+      <main className="flex-1 p-6 pt-32 space-y-8 max-w-lg mx-auto w-full">
         <div className="flex items-center gap-4">
           <Button 
             variant="ghost" 
