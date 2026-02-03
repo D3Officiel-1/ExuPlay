@@ -8,6 +8,7 @@ import { QUOTES, Quote } from "@/app/lib/quotes-data";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { BottomNav } from "@/components/BottomNav";
+import { Header } from "@/components/Header";
 import { RefreshCw, Heart, Share2, Quote as QuoteIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -32,7 +33,9 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
-      <main className="flex-1 flex items-center justify-center p-6 pt-12">
+      <Header />
+      
+      <main className="flex-1 flex items-center justify-center p-6 pt-24">
         <div className="w-full max-w-2xl relative">
           <AnimatePresence mode="wait">
             {quote && (
