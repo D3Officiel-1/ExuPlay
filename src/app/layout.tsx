@@ -6,7 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { FirebaseClientProvider, useUser, useFirestore, useDoc } from "@/firebase";
 import { Toaster } from "@/components/ui/toaster";
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { WifiOff, ShieldAlert, Sparkles, Loader2 } from "lucide-react";
+import { WifiOff, ShieldAlert, Sparkles, Loader2, RefreshCcw } from "lucide-react";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { PrivacyShield } from "@/components/PrivacyShield";
 import { BiometricLock } from "@/components/BiometricLock";
@@ -16,6 +16,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/Logo";
 import { usePathname, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 function ThemeSync() {
   const { user } = useUser();
@@ -96,6 +97,57 @@ function MaintenanceOverlay() {
   );
 }
 
+function OfflineOverlay() {
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[1100] bg-background/95 backdrop-blur-3xl flex flex-col items-center justify-center p-8 text-center"
+    >
+      <div className="absolute inset-0 pointer-events-none opacity-20 overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-destructive/10 blur-[120px]" />
+      </div>
+
+      <motion.div 
+        initial={{ y: 20, opacity: 0, scale: 0.9 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        className="space-y-12 max-w-sm"
+      >
+        <div className="flex justify-center">
+          <Logo className="scale-125" />
+        </div>
+        
+        <div className="space-y-6">
+          <div className="mx-auto w-24 h-24 bg-destructive/5 rounded-[2.5rem] flex items-center justify-center border border-destructive/10 shadow-2xl relative">
+            <WifiOff className="h-10 w-10 text-destructive" />
+            <motion.div 
+              animate={{ opacity: [0, 1, 0], scale: [1, 1.2, 1] }}
+              transition={{ duration: 3, repeat: Infinity }}
+              className="absolute inset-0 bg-destructive/10 rounded-[2.5rem] blur-xl"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <h2 className="text-3xl font-black tracking-tight uppercase text-destructive">Signal Perdu</h2>
+            <p className="text-sm font-medium opacity-40 leading-relaxed px-4">
+              L'éther est silencieux. Votre esprit est temporairement déconnecté du flux universel de l'éveil.
+            </p>
+          </div>
+        </div>
+
+        <Button 
+          onClick={() => window.location.reload()}
+          className="h-16 px-10 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-3 shadow-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 border-none"
+        >
+          <RefreshCcw className="h-4 w-4" />
+          Résonner à nouveau
+        </Button>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const [isOffline, setIsOffline] = useState(false);
   const [isAppLocked, setIsAppLocked] = useState(false);
@@ -104,7 +156,6 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const db = useFirestore();
   const pathname = usePathname();
   const router = useRouter();
-  const { scrollY } = useScroll();
 
   const appConfigRef = useMemo(() => {
     if (!db) return null;
@@ -119,14 +170,10 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const { data: profile } = useDoc(userDocRef);
   const { data: appStatus } = useDoc(appConfigRef);
 
-  const isProfilePage = pathname === "/profil";
-  // Sur la page profil, on décale l'indicateur hors-ligne vers le bas pour ne pas masquer le nom centré au scroll
-  const pillY = useTransform(scrollY, [0, 100], [24, 86]);
-
   useEffect(() => {
     if (isAuthLoading) return;
 
-    const publicPaths = ["/", "/login"];
+    const publicPaths = ["/", "/login", "/offline"];
     const isPublicPath = publicPaths.includes(pathname);
 
     if (!user && !isPublicPath) {
@@ -186,9 +233,9 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const isStandardUser = profile?.role === 'user';
   const showMaintenance = isMaintenanceActive && isStandardUser;
   
-  const canShowPwa = showPwaPrompt && pathname !== "/" && pathname !== "/login";
+  const canShowPwa = showPwaPrompt && pathname !== "/" && pathname !== "/login" && pathname !== "/offline";
 
-  const isProtectedPath = pathname !== "/" && pathname !== "/login";
+  const isProtectedPath = pathname !== "/" && pathname !== "/login" && pathname !== "/offline";
   if (isAuthLoading && isProtectedPath) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -201,27 +248,15 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     <>
       <PrivacyShield />
       <AnimatePresence mode="wait">
-        {showMaintenance ? (
+        {isOffline && pathname !== "/offline" ? (
+          <OfflineOverlay key="offline" />
+        ) : showMaintenance ? (
           <MaintenanceOverlay key="maintenance" />
         ) : isAppLocked ? (
           <BiometricLock key="lock" onSuccess={handleUnlockSuccess} />
         ) : canShowPwa ? (
           <InstallPwa key="pwa-prompt" />
         ) : null}
-      </AnimatePresence>
-      <AnimatePresence>
-        {isOffline && (
-          <motion.div 
-            style={isProfilePage ? { y: pillY, x: "-50%" } : { y: 24, x: "-50%" }}
-            initial={{ y: -100, x: "-50%", opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ y: -100, x: "-50%", opacity: 0 }}
-            className="fixed top-0 left-1/2 z-[200] bg-destructive text-destructive-foreground py-1.5 px-4 rounded-full flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl border border-white/20 whitespace-nowrap"
-          >
-            <WifiOff className="h-3.5 w-3.5" />
-            <span>Mode Hors Ligne</span>
-          </motion.div>
-        )}
       </AnimatePresence>
       <ThemeSync />
       {children}
