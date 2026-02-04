@@ -56,12 +56,14 @@ export default function TransfertPage() {
   const qrStyling = useRef<any>(null);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
+  // Logic to render the QR Code
   useEffect(() => {
     if (activeTab === "qr" && qrRef.current && typeof window !== "undefined") {
       const initQr = async () => {
         const QRCodeStyling = (await import("qr-code-styling")).default;
         
         const dotColor = resolvedTheme === 'dark' ? '#000000' : '#FFFFFF';
+        // Using a transparent pixel to leave space for our custom central badge
         const transparentPixel = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
         
         const options = {
@@ -97,24 +99,26 @@ export default function TransfertPage() {
           },
         };
 
-        if (!qrStyling.current) {
+        // Clear container and always re-append to be resilient to tab switching (mounting/unmounting)
+        if (qrRef.current) {
+          qrRef.current.innerHTML = "";
           qrStyling.current = new QRCodeStyling(options);
           qrStyling.current.append(qrRef.current);
-        } else {
-          qrStyling.current.update(options);
         }
       };
 
       initQr();
     }
-  }, [activeTab, user?.uid, resolvedTheme]);
+  }, [activeTab, user?.uid, resolvedTheme, profile?.profileImage]);
 
+  // Logic for the Scanner
   useEffect(() => {
     if (activeTab === "scan") {
       const getCameraPermission = async () => {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true });
           setHasCameraPermission(true);
+          // Stop the stream immediately, it's just to check permission for the scanner
           stream.getTracks().forEach(track => track.stop());
 
           const scanner = new Html5QrcodeScanner(
@@ -139,6 +143,7 @@ export default function TransfertPage() {
 
       getCameraPermission();
     } else {
+      // Cleanup scanner and torch when leaving the tab
       setIsTorchOn(false);
       if (scannerRef.current) {
         scannerRef.current.clear().catch(err => console.error("Failed to clear scanner", err));
