@@ -11,6 +11,18 @@
       },
       "required": ["quizId", "addedAt"]
     },
+    "QuizAttempt": {
+      "title": "QuizAttempt",
+      "description": "Enregistrement d'une tentative de quiz par l'utilisateur",
+      "type": "object",
+      "properties": {
+        "quizId": { "type": "string" },
+        "status": { "type": "string", "enum": ["started", "completed"] },
+        "score": { "type": "integer" },
+        "attemptedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["quizId", "status", "attemptedAt"]
+    },
     "UserProfile": {
       "title": "UserProfile",
       "description": "Profil utilisateur avec informations personnelles et parrainage",
@@ -62,6 +74,10 @@
     "/users/{userId}": {
       "schema": "UserProfile",
       "description": "Profil de l'utilisateur"
+    },
+    "/users/{userId}/attempts/{quizId}": {
+      "schema": "QuizAttempt",
+      "description": "Historique des quiz tentés par l'utilisateur"
     },
     "/appConfig/status": {
       "schema": "AppStatus",

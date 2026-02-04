@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser, useFirestore, useCollection } from "@/firebase";
 import { 
@@ -10,13 +11,14 @@ import {
   increment, 
   serverTimestamp,
   query,
-  orderBy
+  orderBy,
+  setDoc
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
-import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, Brain, Play } from "lucide-react";
+import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, Brain, Play, Timer } from "lucide-react";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
@@ -29,10 +31,8 @@ export function SpoilerOverlay() {
       transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
       className="absolute inset-0 z-10 overflow-hidden rounded-2xl pointer-events-none"
     >
-      {/* Background Opaque + Blur Massif */}
       <div className="absolute inset-0 bg-card/95 backdrop-blur-[40px] z-0" />
       
-      {/* Texture de grain avec clignotement ultra-doux */}
       <motion.div
         animate={{
           opacity: [0.2, 0.4, 0.2],
@@ -49,7 +49,6 @@ export function SpoilerOverlay() {
         }}
       />
 
-      {/* Scintillements de lumière lents et organiques */}
       <motion.div 
         animate={{ 
           opacity: [0.05, 0.15, 0.05],
@@ -70,6 +69,7 @@ export default function HomePage() {
   const [quizComplete, setQuizComplete] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [quizStarted, setQuizStarted] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(10);
   
   const { user } = useUser();
   const db = useFirestore();
@@ -79,32 +79,22 @@ export default function HomePage() {
     return query(collection(db, "quizzes"), orderBy("createdAt", "asc"));
   }, [db]);
 
-  const { data: quizzes, loading: quizzesLoading } = useCollection(quizzesQuery);
+  const attemptsQuery = useMemo(() => {
+    if (!db || !user?.uid) return null;
+    return collection(db, "users", user.uid, "attempts");
+  }, [db, user?.uid]);
 
-  const handleAnswer = (index: number) => {
-    if (!quizStarted || isAnswered || !quizzes) return;
-    const currentQuiz = quizzes[currentQuestionIdx];
-    setSelectedOption(index);
-    setIsAnswered(true);
-    
-    if (index === currentQuiz.correctIndex) {
-      setScore(prev => prev + (currentQuiz.points || 100));
-    }
-  };
+  const { data: allQuizzes, loading: quizzesLoading } = useCollection(quizzesQuery);
+  const { data: attempts, loading: attemptsLoading } = useCollection(attemptsQuery);
 
-  const nextQuestion = () => {
-    if (!quizzes) return;
-    if (currentQuestionIdx < quizzes.length - 1) {
-      setCurrentQuestionIdx(prev => prev + 1);
-      setSelectedOption(null);
-      setIsAnswered(false);
-      setQuizStarted(false);
-    } else {
-      finishQuiz();
-    }
-  };
+  // Filtrer les quiz déjà tentés
+  const availableQuizzes = useMemo(() => {
+    if (!allQuizzes || !attempts) return allQuizzes;
+    const attemptedIds = attempts.map(a => a.id);
+    return allQuizzes.filter(q => !attemptedIds.includes(q.id));
+  }, [allQuizzes, attempts]);
 
-  const finishQuiz = async () => {
+  const finishQuiz = useCallback(async () => {
     setQuizComplete(true);
     if (user && score > 0 && db) {
       setUpdating(true);
@@ -124,18 +114,80 @@ export default function HomePage() {
         setUpdating(false);
       });
     }
+  }, [user, score, db]);
+
+  // Gestion du compte à rebours
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (quizStarted && !isAnswered && timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+    } else if (timeLeft === 0 && !isAnswered) {
+      setIsAnswered(true);
+      // On passe automatiquement à la suite si le temps est écoulé
+    }
+    return () => clearInterval(timer);
+  }, [quizStarted, isAnswered, timeLeft]);
+
+  const handleStartChallenge = async () => {
+    if (!user || !availableQuizzes) return;
+    const currentQuiz = availableQuizzes[currentQuestionIdx];
+    
+    setQuizStarted(true);
+    setTimeLeft(10);
+
+    // Enregistrer la tentative immédiatement pour marquer le quiz comme "vu"
+    const attemptRef = doc(db, "users", user.uid, "attempts", currentQuiz.id);
+    setDoc(attemptRef, {
+      quizId: currentQuiz.id,
+      status: "started",
+      attemptedAt: serverTimestamp()
+    }).catch((error) => {
+      const permissionError = new FirestorePermissionError({
+        path: attemptRef.path,
+        operation: 'create',
+        requestResourceData: { quizId: currentQuiz.id, status: "started" },
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    });
   };
 
-  const resetQuiz = () => {
-    setCurrentQuestionIdx(0);
-    setSelectedOption(null);
-    setIsAnswered(false);
-    setScore(0);
-    setQuizComplete(false);
-    setQuizStarted(false);
+  const handleAnswer = (index: number) => {
+    if (!quizStarted || isAnswered || !availableQuizzes) return;
+    const currentQuiz = availableQuizzes[currentQuestionIdx];
+    setSelectedOption(index);
+    setIsAnswered(true);
+    
+    if (index === currentQuiz.correctIndex) {
+      setScore(prev => prev + (currentQuiz.points || 100));
+    }
+
+    // Mettre à jour la tentative avec le résultat
+    if (user) {
+      const attemptRef = doc(db, "users", user.uid, "attempts", currentQuiz.id);
+      updateDoc(attemptRef, {
+        status: "completed",
+        score: index === currentQuiz.correctIndex ? currentQuiz.points : 0,
+        updatedAt: serverTimestamp()
+      }).catch(() => {});
+    }
   };
 
-  if (quizzesLoading) {
+  const nextQuestion = () => {
+    if (!availableQuizzes) return;
+    if (currentQuestionIdx < availableQuizzes.length - 1) {
+      setCurrentQuestionIdx(prev => prev + 1);
+      setSelectedOption(null);
+      setIsAnswered(false);
+      setQuizStarted(false);
+      setTimeLeft(10);
+    } else {
+      finishQuiz();
+    }
+  };
+
+  if (quizzesLoading || attemptsLoading) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
         <Loader2 className="h-8 w-8 animate-spin opacity-20 mb-4" />
@@ -144,7 +196,7 @@ export default function HomePage() {
     );
   }
 
-  if (!quizzes || quizzes.length === 0) {
+  if (!availableQuizzes || availableQuizzes.length === 0) {
     return (
       <div className="min-h-screen bg-background flex flex-col pb-32">
         <Header />
@@ -153,8 +205,8 @@ export default function HomePage() {
             <Brain className="h-10 w-10 text-primary opacity-20" />
           </div>
           <div className="space-y-2 text-center">
-            <h2 className="text-2xl font-black uppercase tracking-tight">Aucun Défi</h2>
-            <p className="text-xs font-medium opacity-40">Le savoir est en cours de compilation. Revenez plus tard.</p>
+            <h2 className="text-2xl font-black uppercase tracking-tight">C'est le calme plat</h2>
+            <p className="text-xs font-medium opacity-40">Vous avez relevé tous les défis disponibles. Revenez plus tard pour de nouveaux éveils.</p>
           </div>
         </main>
         <BottomNav />
@@ -162,7 +214,7 @@ export default function HomePage() {
     );
   }
 
-  const question = quizzes[currentQuestionIdx];
+  const question = availableQuizzes[currentQuestionIdx];
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
@@ -180,6 +232,30 @@ export default function HomePage() {
                 transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                 className="space-y-8"
               >
+                {/* Timer Display */}
+                {quizStarted && !isAnswered && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col items-center gap-2"
+                  >
+                    <div className="flex items-center gap-2 px-4 py-2 bg-primary/5 rounded-full border border-primary/10">
+                      <Timer className={`h-4 w-4 ${timeLeft <= 3 ? 'text-red-500 animate-pulse' : 'text-primary opacity-60'}`} />
+                      <span className={`text-xs font-black tabular-nums tracking-widest ${timeLeft <= 3 ? 'text-red-500' : 'opacity-40'}`}>
+                        {timeLeft} SECONDES
+                      </span>
+                    </div>
+                    <div className="w-32 h-1 bg-primary/5 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: "100%" }}
+                        animate={{ width: `${(timeLeft / 10) * 100}%` }}
+                        transition={{ duration: 1, ease: "linear" }}
+                        className={`h-full ${timeLeft <= 3 ? 'bg-red-500' : 'bg-primary'}`}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+
                 <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] overflow-hidden">
                   <CardContent className="p-8 sm:p-12 space-y-10">
                     <p className="text-xl sm:text-2xl font-medium leading-tight tracking-tight text-center">
@@ -241,7 +317,7 @@ export default function HomePage() {
                               whileTap={{ scale: 0.95 }}
                             >
                               <Button 
-                                onClick={() => setQuizStarted(true)}
+                                onClick={handleStartChallenge}
                                 className="h-16 px-10 rounded-2xl font-black text-xs uppercase tracking-widest gap-3 shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)] bg-primary text-primary-foreground relative overflow-hidden group"
                               >
                                 <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
@@ -255,7 +331,7 @@ export default function HomePage() {
                     </div>
 
                     <AnimatePresence>
-                      {isAnswered && (
+                      {(isAnswered || (timeLeft === 0 && quizStarted)) && (
                         <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -265,7 +341,7 @@ export default function HomePage() {
                             onClick={nextQuestion} 
                             className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-widest gap-3 shadow-xl shadow-primary/20"
                           >
-                            {currentQuestionIdx === quizzes.length - 1 ? "Terminer" : "Question Suivante"}
+                            {currentQuestionIdx === availableQuizzes.length - 1 ? "Terminer" : "Défi Suivant"}
                             <ArrowRight className="h-4 w-4" />
                           </Button>
                         </motion.div>
@@ -288,8 +364,8 @@ export default function HomePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <h2 className="text-4xl font-black tracking-tight">Quiz Terminé</h2>
-                  <p className="text-muted-foreground font-medium">Votre esprit s'est enrichi de nouveaux savoirs.</p>
+                  <h2 className="text-4xl font-black tracking-tight">Session Terminée</h2>
+                  <p className="text-muted-foreground font-medium">Votre esprit s'est enrichi. Vos points ont été synchronisés.</p>
                 </div>
 
                 <div className="p-10 bg-card/40 backdrop-blur-3xl rounded-[3rem] border border-primary/5 shadow-2xl">
@@ -299,12 +375,19 @@ export default function HomePage() {
 
                 <div className="flex flex-col gap-4">
                   <Button 
-                    onClick={resetQuiz} 
+                    onClick={() => {
+                      setQuizComplete(false);
+                      setCurrentQuestionIdx(0);
+                      setSelectedOption(null);
+                      setIsAnswered(false);
+                      setQuizStarted(false);
+                      setScore(0);
+                    }} 
                     disabled={updating}
                     className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-widest gap-3"
                   >
                     {updating ? <Loader2 className="animate-spin h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-                    Recommencer le défi
+                    Voir mes nouveaux défis
                   </Button>
                 </div>
               </motion.div>
