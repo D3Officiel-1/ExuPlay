@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -60,7 +61,6 @@ export default function TransfertPage() {
         const QRCodeStyling = (await import("qr-code-styling")).default;
         
         const dotColor = resolvedTheme === 'dark' ? '#000000' : '#FFFFFF';
-        // Transparent pixel to trigger center clearing in qr-code-styling
         const transparentPixel = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
         
         const options = {
@@ -233,39 +233,39 @@ export default function TransfertPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <main className="flex-1 p-6 pt-12 space-y-8 max-w-lg mx-auto w-full pb-12">
-        <div className="flex items-center">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => router.back()}
-            className="rounded-full h-10 w-10 hover:bg-primary/5"
-          >
-            <ChevronLeft className="h-6 w-6" />
-          </Button>
-        </div>
-
-        <AnimatePresence mode="wait">
-          {!recipient && !isSuccess ? (
-            <motion.div
-              key="selection"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-6"
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <div className="flex items-center gap-4 mb-8">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => router.back()}
+              className="rounded-full h-10 w-10 hover:bg-primary/5 shrink-0"
             >
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="bg-card/40 backdrop-blur-3xl border border-primary/5 p-1 h-14 rounded-2xl grid grid-cols-2">
-                  <TabsTrigger value="qr" className="rounded-xl font-black text-xs uppercase tracking-widest gap-2">
-                    <QrCode className="h-4 w-4" />
-                    Mon Sceau
-                  </TabsTrigger>
-                  <TabsTrigger value="scan" className="rounded-xl font-black text-xs uppercase tracking-widest gap-2">
-                    <Scan className="h-4 w-4" />
-                    Scanner
-                  </TabsTrigger>
-                </TabsList>
+              <ChevronLeft className="h-6 w-6" />
+            </Button>
+            
+            <TabsList className="flex-1 bg-card/40 backdrop-blur-3xl border border-primary/5 p-1 h-14 rounded-2xl grid grid-cols-2">
+              <TabsTrigger value="qr" className="rounded-xl font-black text-xs uppercase tracking-widest gap-2">
+                <QrCode className="h-4 w-4" />
+                Mon Sceau
+              </TabsTrigger>
+              <TabsTrigger value="scan" className="rounded-xl font-black text-xs uppercase tracking-widest gap-2">
+                <Scan className="h-4 w-4" />
+                Scanner
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-                <TabsContent value="qr" className="mt-8 space-y-8">
+          <AnimatePresence mode="wait">
+            {!recipient && !isSuccess ? (
+              <motion.div
+                key="selection"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-6"
+              >
+                <TabsContent value="qr" className="mt-0 space-y-8">
                   <div className="relative group flex justify-center">
                     <motion.div 
                       animate={{ scale: [1, 1.05, 1], opacity: [0.05, 0.1, 0.05] }}
@@ -284,7 +284,6 @@ export default function TransfertPage() {
                             ref={qrRef} 
                           />
                           
-                          {/* Central Identity Badge */}
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <motion.div 
                               initial={{ scale: 0.8, opacity: 0 }}
@@ -322,7 +321,7 @@ export default function TransfertPage() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="scan" className="mt-8">
+                <TabsContent value="scan" className="mt-0">
                   <div className="relative aspect-square w-full rounded-[3rem] overflow-hidden bg-black/40 border-4 border-primary/10 shadow-inner group">
                     <div id="reader" className="w-full h-full object-cover" />
                     {hasCameraPermission === false && (
@@ -336,117 +335,117 @@ export default function TransfertPage() {
                     <div className="absolute inset-[40px] border-2 border-primary/20 rounded-3xl pointer-events-none animate-pulse" />
                   </div>
                 </TabsContent>
-              </Tabs>
-            </motion.div>
-          ) : recipient && !isSuccess ? (
-            <motion.div
-              key="amount"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.05 }}
-              className="space-y-6"
-            >
-              <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] overflow-hidden">
-                <CardHeader className="text-center pt-10 pb-4">
-                  <div className="mx-auto w-20 h-20 bg-primary/5 rounded-3xl flex items-center justify-center mb-4 relative overflow-hidden border border-primary/10">
-                    <User className="h-10 w-10 text-primary opacity-20" />
-                    {recipient.profileImage && (
-                      <img src={recipient.profileImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                    )}
-                  </div>
-                  <CardTitle className="text-2xl font-black">Vers @{recipient.username}</CardTitle>
-                  <CardDescription>Partagez une part de votre éveil</CardDescription>
-                </CardHeader>
-                
-                <CardContent className="px-8 pb-10 space-y-8">
-                  <div className="space-y-4">
-                    <div className="text-center">
-                      <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1">Votre Solde Actuel</p>
-                      <p className="text-xl font-black">{profile?.totalPoints?.toLocaleString()} <span className="text-xs opacity-20">PTS</span></p>
+              </motion.div>
+            ) : recipient && !isSuccess ? (
+              <motion.div
+                key="amount"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.05 }}
+                className="space-y-6"
+              >
+                <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] overflow-hidden">
+                  <CardHeader className="text-center pt-10 pb-4">
+                    <div className="mx-auto w-20 h-20 bg-primary/5 rounded-3xl flex items-center justify-center mb-4 relative overflow-hidden border border-primary/10">
+                      <User className="h-10 w-10 text-primary opacity-20" />
+                      {recipient.profileImage && (
+                        <img src={recipient.profileImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                      )}
                     </div>
+                    <CardTitle className="text-2xl font-black">Vers @{recipient.username}</CardTitle>
+                    <CardDescription>Partagez une part de votre éveil</CardDescription>
+                  </CardHeader>
+                  
+                  <CardContent className="px-8 pb-10 space-y-8">
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1">Votre Solde Actuel</p>
+                        <p className="text-xl font-black">{profile?.totalPoints?.toLocaleString()} <span className="text-xs opacity-20">PTS</span></p>
+                      </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Montant du transfert</Label>
-                      <div className="relative">
-                        <Input 
-                          type="number" 
-                          placeholder="0" 
-                          value={amount}
-                          onChange={(e) => setAmount(e.target.value)}
-                          className="h-16 text-3xl font-black text-center rounded-2xl bg-primary/5 border-none focus-visible:ring-primary/20"
-                        />
-                        <div className="absolute right-6 top-1/2 -translate-y-1/2 text-xs font-black opacity-20">PTS</div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Montant du transfert</Label>
+                        <div className="relative">
+                          <Input 
+                            type="number" 
+                            placeholder="0" 
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            className="h-16 text-3xl font-black text-center rounded-2xl bg-primary/5 border-none focus-visible:ring-primary/20"
+                          />
+                          <div className="absolute right-6 top-1/2 -translate-y-1/2 text-xs font-black opacity-20">PTS</div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
+                  </CardContent>
 
-                <CardFooter className="px-8 pb-10 flex flex-col gap-3">
-                  <Button 
-                    onClick={handleTransfer}
-                    disabled={isProcessing || !amount || parseInt(amount) <= 0 || parseInt(amount) > (profile?.totalPoints || 0)}
-                    className="w-full h-16 rounded-2xl font-black text-sm uppercase tracking-widest gap-3 shadow-xl shadow-primary/20"
-                  >
-                    {isProcessing ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <>
-                        <Zap className="h-5 w-5" />
-                        Confirmer le Transfert
-                      </>
-                    )}
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => {
-                      setRecipient(null);
-                      setAmount("");
-                      setActiveTab("qr");
-                    }}
-                    className="w-full h-12 text-[10px] font-black uppercase tracking-widest opacity-40"
-                  >
-                    Annuler
-                  </Button>
-                </CardFooter>
-              </Card>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="success"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="text-center space-y-8 py-10"
-            >
-              <div className="relative inline-block">
-                <div className="absolute inset-0 bg-green-500/20 blur-3xl rounded-full scale-150 animate-pulse" />
-                <div className="relative h-24 w-24 bg-card rounded-[2.5rem] flex items-center justify-center border border-green-500/20 shadow-2xl mx-auto">
-                  <CheckCircle2 className="h-12 w-12 text-green-500" />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <h2 className="text-3xl font-black tracking-tight">Transmission Réussie</h2>
-                <p className="text-sm font-medium opacity-40 px-6">
-                  Votre lumière a été partagée avec @{recipient?.username}. Le cycle de l'éveil continue.
-                </p>
-              </div>
-
-              <div className="p-8 bg-card/40 backdrop-blur-3xl rounded-[2.5rem] border border-primary/5 max-w-xs mx-auto">
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-30 mb-1">Montant envoyé</p>
-                <p className="text-4xl font-black tabular-nums">{amount} <span className="text-xs opacity-20">PTS</span></p>
-              </div>
-
-              <Button 
-                variant="outline" 
-                onClick={() => router.push("/profil")}
-                className="h-14 px-8 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2"
+                  <CardFooter className="px-8 pb-10 flex flex-col gap-3">
+                    <Button 
+                      onClick={handleTransfer}
+                      disabled={isProcessing || !amount || parseInt(amount) <= 0 || parseInt(amount) > (profile?.totalPoints || 0)}
+                      className="w-full h-16 rounded-2xl font-black text-sm uppercase tracking-widest gap-3 shadow-xl shadow-primary/20"
+                    >
+                      {isProcessing ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <>
+                          <Zap className="h-5 w-5" />
+                          Confirmer le Transfert
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => {
+                        setRecipient(null);
+                        setAmount("");
+                        setActiveTab("qr");
+                      }}
+                      className="w-full h-12 text-[10px] font-black uppercase tracking-widest opacity-40"
+                    >
+                      Annuler
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="success"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center space-y-8 py-10"
               >
-                Retour au Profil
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                <div className="relative inline-block">
+                  <div className="absolute inset-0 bg-green-500/20 blur-3xl rounded-full scale-150 animate-pulse" />
+                  <div className="relative h-24 w-24 bg-card rounded-[2.5rem] flex items-center justify-center border border-green-500/20 shadow-2xl mx-auto">
+                    <CheckCircle2 className="h-12 w-12 text-green-500" />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-black tracking-tight">Transmission Réussie</h2>
+                  <p className="text-sm font-medium opacity-40 px-6">
+                    Votre lumière a été partagée avec @{recipient?.username}. Le cycle de l'éveil continue.
+                  </p>
+                </div>
+
+                <div className="p-8 bg-card/40 backdrop-blur-3xl rounded-[2.5rem] border border-primary/5 max-w-xs mx-auto">
+                  <p className="text-[10px] font-black uppercase tracking-widest opacity-30 mb-1">Montant envoyé</p>
+                  <p className="text-4xl font-black tabular-nums">{amount} <span className="text-xs opacity-20">PTS</span></p>
+                </div>
+
+                <Button 
+                  variant="outline" 
+                  onClick={() => router.push("/profil")}
+                  className="h-14 px-8 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2"
+                >
+                  Retour au Profil
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Tabs>
       </main>
     </div>
   );
