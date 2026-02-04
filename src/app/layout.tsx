@@ -1,3 +1,4 @@
+
 "use client";
 
 import "./globals.css";
@@ -206,15 +207,13 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
       <AnimatePresence>
         {isOffline && (
           <motion.div 
-            initial={{ y: -50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -50, opacity: 0 }}
-            className="fixed top-0 left-0 right-0 z-[100] bg-destructive text-destructive-foreground py-2 px-4 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest"
+            initial={{ y: -100, x: "-50%", opacity: 0 }}
+            animate={{ y: 24, x: "-50%", opacity: 1 }}
+            exit={{ y: -100, x: "-50%", opacity: 0 }}
+            className="fixed top-0 left-1/2 z-[200] bg-destructive text-destructive-foreground py-1.5 px-4 rounded-full flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl border border-white/20 whitespace-nowrap"
           >
-            <div className="flex items-center gap-2">
-              <WifiOff className="h-4 w-4" />
-              <span>Mode Hors Ligne activé</span>
-            </div>
+            <WifiOff className="h-3.5 w-3.5" />
+            <span>Mode Hors Ligne</span>
           </motion.div>
         )}
       </AnimatePresence>
