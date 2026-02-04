@@ -281,7 +281,7 @@ export default function TransfertPage() {
                   exit={{ opacity: 0 }}
                   className="h-full"
                 >
-                  <TabsContent value="qr" className="mt-0 h-full flex flex-col items-center justify-center px-6">
+                  <TabsContent value="qr" className="mt-0 h-full flex flex-col items-center justify-start pt-28 px-6">
                     <div className="relative group flex justify-center w-full max-w-[340px]">
                       <motion.div 
                         animate={{ scale: [1, 1.05, 1], opacity: [0.05, 0.1, 0.05] }}
@@ -338,16 +338,13 @@ export default function TransfertPage() {
                     <div className="fixed inset-0 z-0 bg-black flex items-center justify-center">
                       <div id="reader" className="absolute inset-0 w-full h-full" />
                       
-                      {/* Nouveau Viseur par Défaut : Overlay Plein Écran */}
                       <div className="absolute inset-0 pointer-events-none z-10">
-                        {/* Coins de précision */}
                         <div className="absolute top-24 left-6 right-6 bottom-32">
                            <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-white/80 rounded-tl-[2rem]" />
                            <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-white/80 rounded-tr-[2rem]" />
                            <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-white/80 rounded-bl-[2rem]" />
                            <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-white/80 rounded-br-[2rem]" />
                            
-                           {/* Ligne de scan dynamique */}
                            <motion.div 
                              animate={{ y: ["0%", "100%", "0%"] }} 
                              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} 
@@ -355,7 +352,6 @@ export default function TransfertPage() {
                            />
                         </div>
 
-                        {/* Texte informatif */}
                         <div className="absolute bottom-32 left-0 right-0 text-center">
                           <p className="text-[10px] font-black uppercase tracking-[0.5em] text-white/40 animate-pulse">
                             RECONNAISSANCE DU SCEAU...
