@@ -24,26 +24,42 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 export function SpoilerOverlay() {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="absolute inset-0 z-10 overflow-hidden rounded-2xl"
+      initial={{ opacity: 0, scale: 1.05 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 1.1, filter: "blur(20px)" }}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      className="absolute inset-0 z-10 overflow-hidden rounded-2xl pointer-events-none"
     >
-      <div className="absolute inset-0 bg-primary/10 backdrop-blur-md" />
+      {/* Background Opaque + Blur Intensif */}
+      <div className="absolute inset-0 bg-card/90 backdrop-blur-[24px] z-0" />
+      
+      {/* Texture de grain animé (style Telegram/Glass) */}
       <motion.div
         animate={{
-          backgroundPosition: ["0% 0%", "100% 100%"],
+          opacity: [0.3, 0.5, 0.3],
+          scale: [1, 1.05, 1],
         }}
         transition={{
-          duration: 1,
+          duration: 0.2,
           repeat: Infinity,
           ease: "linear",
         }}
-        className="absolute inset-0 opacity-40 pointer-events-none"
+        className="absolute inset-0 z-10 opacity-30 pointer-events-none"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-          backgroundSize: "200px 200px",
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+          backgroundSize: "150px 150px",
         }}
+      />
+
+      {/* Scintillements aléatoires */}
+      <motion.div 
+        animate={{ 
+          opacity: [0.1, 0.3, 0.1],
+          x: ["-10%", "10%"],
+          y: ["-10%", "10%"]
+        }}
+        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute inset-0 bg-gradient-to-tr from-primary/5 via-transparent to-primary/10 z-20"
       />
     </motion.div>
   );
@@ -85,7 +101,7 @@ export default function HomePage() {
       setCurrentQuestionIdx(prev => prev + 1);
       setSelectedOption(null);
       setIsAnswered(false);
-      setQuizStarted(false); // On redemande de démarrer pour chaque question pour l'effet
+      setQuizStarted(false);
     } else {
       finishQuiz();
     }
@@ -228,18 +244,25 @@ export default function HomePage() {
                       <AnimatePresence>
                         {!quizStarted && (
                           <motion.div 
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 1.2, filter: "blur(10px)" }}
+                            initial={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
+                            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                            exit={{ opacity: 0, scale: 1.2, filter: "blur(15px)" }}
+                            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                             className="absolute inset-0 z-20 flex items-center justify-center"
                           >
-                            <Button 
-                              onClick={() => setQuizStarted(true)}
-                              className="h-16 px-10 rounded-2xl font-black text-xs uppercase tracking-widest gap-3 shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)] bg-primary text-primary-foreground"
+                            <motion.div
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
                             >
-                              <Play className="h-5 w-5 fill-current" />
-                              Démarrer le défi
-                            </Button>
+                              <Button 
+                                onClick={() => setQuizStarted(true)}
+                                className="h-16 px-10 rounded-2xl font-black text-xs uppercase tracking-widest gap-3 shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)] bg-primary text-primary-foreground relative overflow-hidden group"
+                              >
+                                <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+                                <Play className="h-5 w-5 fill-current relative z-10" />
+                                <span className="relative z-10">Démarrer le défi</span>
+                              </Button>
+                            </motion.div>
                           </motion.div>
                         )}
                       </AnimatePresence>
