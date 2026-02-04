@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -109,7 +108,6 @@ export default function TransfertPage() {
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
       try {
         if (isTorchOn) {
-          // Turn off torch before stopping if active
           await html5QrCodeRef.current.applyVideoConstraints({
             // @ts-ignore
             advanced: [{ torch: false }]
@@ -149,10 +147,9 @@ export default function TransfertPage() {
             
             if (isMounted) {
               setHasCameraPermission(true);
-              // Check for torch capability
               try {
                 const capabilities = scanner.getRunningTrackCapabilities();
-                // @ts-ignore - torch is supported by mobile browsers but might not be in the type def
+                // @ts-ignore
                 if (capabilities.torch) {
                   setHasTorch(true);
                 }
@@ -380,16 +377,16 @@ export default function TransfertPage() {
                         </div>
                       )}
 
-                      {/* Floating Torch Button */}
+                      {/* Flashlight Button - Centered at bottom */}
                       {hasTorch && hasCameraPermission && (
                         <motion.div 
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="absolute bottom-32 right-8 z-[100]"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[100]"
                         >
                           <Button
                             onClick={toggleTorch}
-                            className={`h-16 w-16 rounded-full shadow-2xl transition-all duration-500 backdrop-blur-xl border ${
+                            className={`h-20 w-20 rounded-full shadow-[0_0_50px_rgba(0,0,0,0.5)] transition-all duration-500 backdrop-blur-2xl border ${
                               isTorchOn 
                                 ? 'bg-primary text-primary-foreground border-primary shadow-primary/20' 
                                 : 'bg-black/20 text-white border-white/10 hover:bg-black/40'
@@ -403,11 +400,11 @@ export default function TransfertPage() {
                                   animate={{ opacity: 1, rotate: 0 }}
                                   exit={{ opacity: 0, rotate: 45 }}
                                 >
-                                  <Zap className="h-6 w-6 fill-current" />
+                                  <Zap className="h-8 w-8 fill-current" />
                                   <motion.div 
-                                    animate={{ opacity: [0.2, 0.5, 0.2], scale: [1, 1.2, 1] }}
+                                    animate={{ opacity: [0.2, 0.5, 0.2], scale: [1, 1.3, 1] }}
                                     transition={{ duration: 2, repeat: Infinity }}
-                                    className="absolute inset-0 bg-white/20 rounded-full blur-lg"
+                                    className="absolute inset-0 bg-white/20 rounded-full blur-xl"
                                   />
                                 </motion.div>
                               ) : (
@@ -417,7 +414,7 @@ export default function TransfertPage() {
                                   animate={{ opacity: 1, rotate: 0 }}
                                   exit={{ opacity: 0, rotate: 45 }}
                                 >
-                                  <ZapOff className="h-6 w-6 opacity-60" />
+                                  <ZapOff className="h-8 w-8 opacity-60" />
                                 </motion.div>
                               )}
                             </AnimatePresence>
