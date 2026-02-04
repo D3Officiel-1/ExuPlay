@@ -23,7 +23,7 @@ import {
   RefreshCw,
   Zap,
   ZapOff,
-  Search
+  AlertCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
@@ -38,12 +38,12 @@ export default function TransfertPage() {
 
   const [activeTab, setActiveTab] = useState("qr");
   const [recipient, setRecipient] = useState<any>(null);
-  const [isValidating, setIsValidating] = useState(false);
+  const [validationStatus, setValidationStatus] = useState<'idle' | 'validating' | 'success' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState("");
   const [amount, setAmount] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-  const [loadingRecipient, setLoadingRecipient] = useState(false);
   
   const [hasTorch, setHasTorch] = useState(false);
   const [isTorchOn, setIsTorchOn] = useState(false);
@@ -99,11 +99,11 @@ export default function TransfertPage() {
   };
 
   useEffect(() => {
-    if (activeTab === "qr" && !recipient && !isSuccess && !isValidating) {
+    if (activeTab === "qr" && !recipient && !isSuccess && validationStatus === 'idle') {
       const timer = setTimeout(() => generateQRCode(), 100);
       return () => clearTimeout(timer);
     }
-  }, [activeTab, user?.uid, resolvedTheme, recipient, isSuccess, isValidating]);
+  }, [activeTab, user?.uid, resolvedTheme, recipient, isSuccess, validationStatus]);
 
   const stopScanner = async () => {
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
@@ -128,7 +128,7 @@ export default function TransfertPage() {
     let isMounted = true;
     let scannerTimeout: NodeJS.Timeout;
 
-    if (activeTab === "scan" && !recipient && !isSuccess && !isValidating) {
+    if (activeTab === "scan" && !recipient && !isSuccess && validationStatus === 'idle') {
       const startScanner = async () => {
         scannerTimeout = setTimeout(async () => {
           const container = document.getElementById("reader");
@@ -177,7 +177,7 @@ export default function TransfertPage() {
       clearTimeout(scannerTimeout);
       stopScanner();
     };
-  }, [activeTab, recipient, isSuccess, isValidating]);
+  }, [activeTab, recipient, isSuccess, validationStatus]);
 
   const toggleTorch = async () => {
     if (!html5QrCodeRef.current || !html5QrCodeRef.current.isScanning) return;
@@ -195,33 +195,50 @@ export default function TransfertPage() {
   };
 
   const onScanSuccess = async (decodedText: string) => {
+    await stopScanner();
+    
+    // Auto-échec si c'est son propre code
     if (decodedText === user?.uid) {
-      toast({ variant: "destructive", title: "Action impossible", description: "C'est votre propre sceau." });
+      setErrorMessage("C'est votre propre Sceau");
+      setValidationStatus('error');
+      setTimeout(() => {
+        setValidationStatus('idle');
+        setErrorMessage("");
+        setActiveTab("scan");
+      }, 2500);
       return;
     }
-    
-    await stopScanner();
-    setLoadingRecipient(true);
+
+    setValidationStatus('validating');
     
     try {
       const recipientRef = doc(db, "users", decodedText);
       const recipientSnap = await getDoc(recipientRef);
+      
       if (recipientSnap.exists()) {
         const data = recipientSnap.data();
         setRecipient({ id: decodedText, ...data });
-        setIsValidating(true);
-        // Animation de validation de 2.5 secondes
+        setValidationStatus('success');
         setTimeout(() => {
-          setIsValidating(false);
+          setValidationStatus('idle');
         }, 2500);
       } else {
-        toast({ variant: "destructive", title: "Esprit non trouvé" });
-        setActiveTab("qr");
+        setErrorMessage("Esprit non identifié");
+        setValidationStatus('error');
+        setTimeout(() => {
+          setValidationStatus('idle');
+          setErrorMessage("");
+          setActiveTab("scan");
+        }, 2500);
       }
     } catch (error) {
-      setActiveTab("qr");
-    } finally {
-      setLoadingRecipient(false);
+      setErrorMessage("Dissonance réseau");
+      setValidationStatus('error');
+      setTimeout(() => {
+        setValidationStatus('idle');
+        setErrorMessage("");
+        setActiveTab("scan");
+      }, 2500);
     }
   };
 
@@ -265,9 +282,9 @@ export default function TransfertPage() {
 
       await updateDoc(receiverRef, receiverUpdatePayload);
       setIsSuccess(true);
-      toast({ title: "Transfert réussi", description: `${transferAmount} points envoyés.` });
     } catch (error) {
       console.error(error);
+      toast({ variant: "destructive", title: "Erreur de transfert" });
     } finally {
       setIsProcessing(false);
     }
@@ -300,58 +317,99 @@ export default function TransfertPage() {
 
           <div className="flex-1 w-full relative">
             <AnimatePresence mode="wait">
-              {isValidating ? (
+              {validationStatus !== 'idle' ? (
                 <motion.div
-                  key="validation-animation"
+                  key="validation-overlay"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0, scale: 1.1, filter: "blur(20px)" }}
                   className="fixed inset-0 z-[200] bg-background flex flex-col items-center justify-center overflow-hidden"
                 >
+                  {/* Particules et lueurs adaptatives */}
                   <motion.div 
                     initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: [1, 2, 1.5], opacity: [0.5, 0.1, 0.3] }}
+                    animate={{ 
+                      scale: [1, 2, 1.5], 
+                      opacity: validationStatus === 'error' ? [0.4, 0.1, 0.2] : [0.5, 0.1, 0.3] 
+                    }}
                     transition={{ duration: 2, ease: "easeOut" }}
-                    className="absolute h-96 w-96 bg-primary/10 rounded-full blur-[80px]"
+                    className={`absolute h-96 w-96 rounded-full blur-[80px] ${
+                      validationStatus === 'error' ? 'bg-red-500/20' : 'bg-primary/10'
+                    }`}
                   />
                   
                   <div className="relative flex flex-col items-center">
                     <motion.div
                       initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                      className="h-32 w-32 rounded-[3rem] bg-card border-2 border-primary/10 shadow-2xl flex items-center justify-center overflow-hidden relative"
+                      animate={validationStatus === 'error' 
+                        ? { 
+                            scale: 1, 
+                            opacity: 1, 
+                            x: [0, -10, 10, -10, 10, 0],
+                            transition: { duration: 0.5, ease: "easeInOut" }
+                          } 
+                        : { 
+                            scale: 1, 
+                            opacity: 1,
+                            transition: { type: "spring", stiffness: 200, damping: 20 }
+                          }
+                      }
+                      className={`h-32 w-32 rounded-[3rem] bg-card border-2 shadow-2xl flex items-center justify-center overflow-hidden relative ${
+                        validationStatus === 'error' ? 'border-red-500/30' : 'border-primary/10'
+                      }`}
                     >
-                      {recipient?.profileImage ? (
+                      {validationStatus === 'error' ? (
+                        <AlertCircle className="h-12 w-12 text-red-500" />
+                      ) : validationStatus === 'success' && recipient?.profileImage ? (
                         <img src={recipient.profileImage} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <User className="h-12 w-12 text-primary opacity-20" />
+                        <motion.div 
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                        >
+                          <Sparkles className="h-12 w-12 text-primary opacity-20" />
+                        </motion.div>
                       )}
-                      <motion.div 
-                        initial={{ height: 0 }}
-                        animate={{ height: "100%" }}
-                        transition={{ duration: 1.5, ease: "easeInOut", delay: 0.5 }}
-                        className="absolute inset-x-0 bottom-0 bg-primary/5 pointer-events-none"
-                      />
+                      
+                      {validationStatus === 'success' && (
+                        <motion.div 
+                          initial={{ height: 0 }}
+                          animate={{ height: "100%" }}
+                          transition={{ duration: 1.5, ease: "easeInOut", delay: 0.5 }}
+                          className="absolute inset-x-0 bottom-0 bg-primary/5 pointer-events-none"
+                        />
+                      )}
                     </motion.div>
 
                     <motion.div
                       initial={{ y: 20, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.8 }}
+                      transition={{ delay: 0.4 }}
                       className="mt-8 text-center"
                     >
-                      <h2 className="text-2xl font-black tracking-tighter">@{recipient?.username}</h2>
-                      <div className="flex items-center justify-center gap-2 mt-2">
-                        <motion.div 
-                          animate={{ opacity: [0, 1, 0] }}
-                          transition={{ duration: 1, repeat: Infinity }}
-                          className="h-1.5 w-1.5 bg-green-500 rounded-full"
-                        />
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Sceau Identifié</p>
-                      </div>
+                      {validationStatus === 'error' ? (
+                        <>
+                          <h2 className="text-2xl font-black tracking-tighter text-red-500 uppercase italic">Dissonance</h2>
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mt-2">{errorMessage}</p>
+                        </>
+                      ) : validationStatus === 'success' ? (
+                        <>
+                          <h2 className="text-2xl font-black tracking-tighter">@{recipient?.username}</h2>
+                          <div className="flex items-center justify-center gap-2 mt-2">
+                            <motion.div 
+                              animate={{ opacity: [0, 1, 0] }}
+                              transition={{ duration: 1, repeat: Infinity }}
+                              className="h-1.5 w-1.5 bg-green-500 rounded-full"
+                            />
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Résonance Établie</p>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Analyse de l'Éther...</p>
+                      )}
                     </motion.div>
 
+                    {/* Ondes éthérées */}
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
                       {[...Array(3)].map((_, i) => (
                         <motion.div
@@ -364,7 +422,9 @@ export default function TransfertPage() {
                             delay: i * 0.4,
                             ease: "easeOut" 
                           }}
-                          className="absolute inset-0 h-40 w-40 border border-primary/20 rounded-full"
+                          className={`absolute inset-0 h-40 w-40 border rounded-full ${
+                            validationStatus === 'error' ? 'border-red-500/20' : 'border-primary/20'
+                          }`}
                           style={{ left: -80, top: -80 }}
                         />
                       ))}
@@ -378,8 +438,14 @@ export default function TransfertPage() {
                     className="absolute bottom-20 h-0.5 bg-primary/10 rounded-full overflow-hidden"
                   >
                     <motion.div 
-                      animate={{ x: ["-100%", "100%"] }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                      animate={{ 
+                        x: ["-100%", "100%"],
+                        backgroundColor: validationStatus === 'error' ? '#ef4444' : '#000000'
+                      }}
+                      transition={{ 
+                        x: { duration: 1.5, repeat: Infinity, ease: "linear" },
+                        backgroundColor: { duration: 0.3 }
+                      }}
                       className="h-full w-20 bg-primary"
                     />
                   </motion.div>
@@ -460,50 +526,6 @@ export default function TransfertPage() {
                           </Button>
                         </div>
                       )}
-
-                      {hasTorch && hasCameraPermission && (
-                        <motion.div 
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[100]"
-                        >
-                          <Button
-                            onClick={toggleTorch}
-                            className={`h-20 w-20 rounded-full shadow-[0_0_50px_rgba(0,0,0,0.5)] transition-all duration-500 backdrop-blur-2xl border ${
-                              isTorchOn 
-                                ? 'bg-primary text-primary-foreground border-primary shadow-primary/20' 
-                                : 'bg-black/20 text-white border-white/10 hover:bg-black/40'
-                            }`}
-                          >
-                            <AnimatePresence mode="wait">
-                              {isTorchOn ? (
-                                <motion.div
-                                  key="on"
-                                  initial={{ opacity: 0, rotate: -45 }}
-                                  animate={{ opacity: 1, rotate: 0 }}
-                                  exit={{ opacity: 0, rotate: 45 }}
-                                >
-                                  <Zap className="h-8 w-8 fill-current" />
-                                  <motion.div 
-                                    animate={{ opacity: [0.2, 0.5, 0.2], scale: [1, 1.3, 1] }}
-                                    transition={{ duration: 2, repeat: Infinity }}
-                                    className="absolute inset-0 bg-white/20 rounded-full blur-xl"
-                                  />
-                                </motion.div>
-                              ) : (
-                                <motion.div
-                                  key="off"
-                                  initial={{ opacity: 0, rotate: -45 }}
-                                  animate={{ opacity: 1, rotate: 0 }}
-                                  exit={{ opacity: 0, rotate: 45 }}
-                                >
-                                  <ZapOff className="h-8 w-8 opacity-60" />
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </Button>
-                        </motion.div>
-                      )}
                     </div>
                   </TabsContent>
                 </motion.div>
@@ -560,7 +582,7 @@ export default function TransfertPage() {
                         className="w-full h-16 rounded-2xl font-black text-sm uppercase tracking-widest gap-3 shadow-xl shadow-primary/20"
                       >
                         {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
-                        {isProcessing ? "Traitement..." : "Confirmer le Transfert"}
+                        {isProcessing ? "Transmission..." : "Confirmer le Transfert"}
                       </Button>
                       <Button variant="ghost" onClick={() => { setRecipient(null); setAmount(""); setActiveTab("qr"); }} className="w-full h-12 text-[10px] font-black uppercase tracking-widest opacity-40">
                         Annuler
