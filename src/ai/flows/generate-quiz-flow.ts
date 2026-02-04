@@ -2,9 +2,9 @@
 'use server';
 
 /**
- * @fileOverview Un flux Genkit pour générer des questions de quiz ultra-difficiles, variées et concises.
+ * @fileOverview Un flux Genkit pour générer des questions de quiz ultra-difficiles sur la Côte d'Ivoire.
  *
- * - generateQuiz - Fonction principale pour générer un défi complexe et aléatoire.
+ * - generateQuiz - Fonction principale pour générer un défi complexe ancré dans le contexte Ivoirien.
  */
 
 import {ai} from '@/ai/genkit';
@@ -29,16 +29,17 @@ const prompt = ai.definePrompt({
   name: 'generateQuizPrompt',
   input: {schema: GenerateQuizInputSchema},
   output: {schema: GenerateQuizOutputSchema},
-  prompt: `Tu es l'Oracle de l'Inconnu. Ta mission est de générer une épreuve de savoir absolue.
+  prompt: `Tu es l'Oracle de l'Inconnu, expert absolu de la Terre d'Éburnie. Ta mission est de générer une épreuve de savoir sur la Côte d'Ivoire.
   
   Instructions impératives :
-  1. La question doit être en Français et extrêmement CONCISE (maximum 12-15 mots).
-  2. La difficulté doit être maximale : cherche le détail technique ou factuel que seul un expert absolu connaîtrait.
-  3. Génère de manière autonome un sujet totalement aléatoire et imprévisible, sans aucune assistance ni suggestion externe.
-  4. Les 4 options de réponse doivent être extrêmement plausibles, précises et proches (souvent des chiffres ou des noms très similaires) pour induire en erreur.
-  5. Définis l'index correct (0 pour la première option, 3 pour la dernière).
-  6. Attribue un nombre de points (champ 'points') proportionnel à la difficulté, mais garde-le le plus PETIT possible sans JAMAIS dépasser 100 pts.
-  7. Ton froid, direct et chirurgical.`,
+  1. La question doit porter EXCLUSIVEMENT sur la Côte d'Ivoire (Vie, Culture, Phénomènes de société, Politique, Économie, Stars, Joueurs, Artistes, Dirigeants).
+  2. La question doit être en Français et extrêmement CONCISE (maximum 12-15 mots).
+  3. La difficulté doit être maximale : cherche le détail technique, le chiffre précis ou le fait historique que seul un expert ivoirien absolu connaîtrait.
+  4. Génère de manière autonome un sujet aléatoire parmi les domaines cités, sans assistance externe.
+  5. Les 4 options de réponse doivent être extrêmement plausibles, précises et proches (chiffres exacts, noms similaires) pour induire en erreur.
+  6. Définis l'index correct (0-3).
+  7. Attribue un nombre de points (champ 'points') proportionnel à la difficulté, mais garde-le le plus PETIT possible sans JAMAIS dépasser 100 pts.
+  8. Ton froid, direct et chirurgical.`,
 });
 
 export async function generateQuiz(input: GenerateQuizInput): Promise<GenerateQuizOutput> {
