@@ -8,14 +8,12 @@ import { cn } from "@/lib/utils";
 import { Trophy, User as UserIcon } from "lucide-react";
 import { useUser, useFirestore, useDoc } from "@/firebase";
 import { doc } from "firebase/firestore";
-import { useIsMobile } from "@/hooks/use-mobile";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 
 export function Header() {
   const { user } = useUser();
   const db = useFirestore();
-  const isMobile = useIsMobile();
   const { scrollY } = useScroll();
   const router = useRouter();
   const pathname = usePathname();
@@ -30,14 +28,16 @@ export function Header() {
 
   const isProfilePage = pathname === "/profil";
 
-  // Animations stylées pilotées par le scroll (uniquement sur la page profil)
+  // Animations pilotées par le scroll (actives uniquement sur la page profil)
+  // On fait disparaître le contenu standard (logo et points)
   const defaultOpacity = useTransform(scrollY, [40, 90], [1, 0]);
-  const defaultY = useTransform(scrollY, [40, 90], [0, -25]);
-  const defaultScale = useTransform(scrollY, [40, 90], [1, 0.85]);
+  const defaultY = useTransform(scrollY, [40, 90], [0, -20]);
+  const defaultScale = useTransform(scrollY, [40, 90], [1, 0.9]);
 
-  const userOpacity = useTransform(scrollY, [70, 110], [0, 1]);
-  const userY = useTransform(scrollY, [70, 110], [25, 0]);
-  const userScale = useTransform(scrollY, [70, 110], [0.85, 1]);
+  // On fait apparaître le profil utilisateur au centre
+  const profileOpacity = useTransform(scrollY, [60, 100], [0, 1]);
+  const profileY = useTransform(scrollY, [60, 100], [20, 0]);
+  const profileScale = useTransform(scrollY, [60, 100], [0.8, 1]);
 
   const currentImage = profile?.profileImage;
 
@@ -58,58 +58,45 @@ export function Header() {
       )}
     >
       <div className="max-w-screen-2xl mx-auto w-full relative h-full flex items-center">
-        {/* Contenu Standard : App Name & Points */}
+        {/* Contenu Standard : Logo & Points */}
         <motion.div 
-          style={isProfilePage && isMobile ? { 
+          style={isProfilePage ? { 
             opacity: defaultOpacity, 
             y: defaultY, 
             scale: defaultScale 
           } : {}}
           className="w-full flex items-center justify-between"
         >
-          <motion.div
-            initial={{ x: -10, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.5, ease: "easeOut" }}
-            className="relative"
+          <div 
+            className="cursor-pointer"
             onClick={() => router.push("/home")}
           >
-            <div className="absolute -inset-2 bg-primary/5 blur-2xl rounded-full opacity-30 pointer-events-none" />
-            <Logo layout="horizontal" className="relative z-10 scale-100 origin-left cursor-pointer" />
-          </motion.div>
+            <Logo layout="horizontal" className="scale-100 origin-left" />
+          </div>
 
-          <motion.div 
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 1, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="flex items-center"
+          <button 
+            onClick={() => router.push("/echange")}
+            className="flex items-center gap-3 px-4 py-2 bg-card/40 backdrop-blur-3xl rounded-2xl border border-primary/5 shadow-lg group hover:border-primary/20 hover:bg-primary/5 transition-all duration-300"
           >
-            <button 
-              onClick={() => router.push("/echange")}
-              className="flex items-center gap-3 px-4 py-2 bg-card/40 backdrop-blur-3xl rounded-2xl border border-primary/5 shadow-lg group hover:border-primary/20 hover:bg-primary/5 transition-all duration-500"
-            >
-              <div className="relative">
-                <Trophy className="h-4 w-4 text-primary group-hover:scale-110 transition-transform duration-500" />
-                <motion.div 
-                  animate={{ opacity: [0, 1, 0], scale: [1, 1.4, 1] }}
-                  transition={{ duration: 2.5, repeat: Infinity }}
-                  className="absolute inset-0 bg-primary/20 rounded-full blur-sm"
-                />
-              </div>
-              <div className="flex items-center leading-none">
-                <span className="text-xs font-black tracking-tight">{totalPoints.toLocaleString()} PTS</span>
-              </div>
-            </button>
-          </motion.div>
+            <div className="relative">
+              <Trophy className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
+              <motion.div 
+                animate={{ opacity: [0, 1, 0], scale: [1, 1.4, 1] }}
+                transition={{ duration: 2.5, repeat: Infinity }}
+                className="absolute inset-0 bg-primary/20 rounded-full blur-sm"
+              />
+            </div>
+            <span className="text-xs font-black tracking-tight">{totalPoints.toLocaleString()} PTS</span>
+          </button>
         </motion.div>
 
-        {/* Contenu Profil : Avatar & Username (Visible au scroll sur mobile dans profil) */}
-        {isProfilePage && isMobile && (
+        {/* Contenu Profil Centré (uniquement sur /profil et lors du défilement) */}
+        {isProfilePage && (
           <motion.div 
             style={{ 
-              opacity: userOpacity, 
-              y: userY, 
-              scale: userScale
+              opacity: profileOpacity, 
+              y: profileY, 
+              scale: profileScale
             }}
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
           >

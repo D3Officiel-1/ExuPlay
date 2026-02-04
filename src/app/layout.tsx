@@ -7,7 +7,7 @@ import { FirebaseClientProvider, useUser, useFirestore, useDoc } from "@/firebas
 import { Toaster } from "@/components/ui/toaster";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { WifiOff, ShieldAlert, Sparkles, Loader2 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { PrivacyShield } from "@/components/PrivacyShield";
 import { BiometricLock } from "@/components/BiometricLock";
 import { InstallPwa } from "@/components/InstallPwa";
@@ -104,6 +104,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const db = useFirestore();
   const pathname = usePathname();
   const router = useRouter();
+  const { scrollY } = useScroll();
 
   const appConfigRef = useMemo(() => {
     if (!db) return null;
@@ -117,6 +118,10 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
 
   const { data: profile } = useDoc(userDocRef);
   const { data: appStatus } = useDoc(appConfigRef);
+
+  const isProfilePage = pathname === "/profil";
+  // Sur la page profil, on décale l'indicateur hors-ligne vers le bas pour ne pas masquer le nom centré au scroll
+  const pillY = useTransform(scrollY, [0, 100], [24, 86]);
 
   useEffect(() => {
     if (isAuthLoading) return;
@@ -207,8 +212,9 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
       <AnimatePresence>
         {isOffline && (
           <motion.div 
+            style={isProfilePage ? { y: pillY, x: "-50%" } : { y: 24, x: "-50%" }}
             initial={{ y: -100, x: "-50%", opacity: 0 }}
-            animate={{ y: 24, x: "-50%", opacity: 1 }}
+            animate={{ opacity: 1 }}
             exit={{ y: -100, x: "-50%", opacity: 0 }}
             className="fixed top-0 left-1/2 z-[200] bg-destructive text-destructive-foreground py-1.5 px-4 rounded-full flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl border border-white/20 whitespace-nowrap"
           >
