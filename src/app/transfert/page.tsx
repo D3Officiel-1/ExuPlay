@@ -41,6 +41,7 @@ export default function TransfertPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [loadingRecipient, setLoadingRecipient] = useState(false);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -59,13 +60,15 @@ export default function TransfertPage() {
         const QRCodeStyling = (await import("qr-code-styling")).default;
         
         const dotColor = resolvedTheme === 'dark' ? '#000000' : '#FFFFFF';
+        // Transparent pixel to trigger center clearing in qr-code-styling
+        const transparentPixel = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
         
         const options = {
-          width: 280,
-          height: 280,
+          width: 300,
+          height: 300,
           type: "svg" as const,
           data: user?.uid || "",
-          image: profile?.profileImage || "",
+          image: transparentPixel,
           dotsOptions: {
             color: dotColor,
             type: "rounded" as const,
@@ -74,9 +77,9 @@ export default function TransfertPage() {
             color: "transparent",
           },
           imageOptions: {
-            crossOrigin: "anonymous",
-            margin: 10,
+            hideBackgroundDots: true,
             imageSize: 0.4,
+            margin: 0,
           },
           cornersSquareOptions: {
             color: dotColor,
@@ -103,7 +106,7 @@ export default function TransfertPage() {
 
       initQr();
     }
-  }, [activeTab, user?.uid, profile?.profileImage, resolvedTheme]);
+  }, [activeTab, user?.uid, resolvedTheme]);
 
   useEffect(() => {
     if (activeTab === "scan") {
@@ -176,8 +179,6 @@ export default function TransfertPage() {
   };
 
   const onScanFailure = (error: any) => {};
-
-  const [loadingRecipient, setLoadingRecipient] = useState(false);
 
   const handleTransfer = async () => {
     const transferAmount = parseInt(amount);
@@ -269,30 +270,55 @@ export default function TransfertPage() {
                 </TabsList>
 
                 <TabsContent value="qr" className="mt-8 space-y-8">
-                  <div className="relative group">
+                  <div className="relative group flex justify-center">
                     <motion.div 
                       animate={{ scale: [1, 1.05, 1], opacity: [0.05, 0.1, 0.05] }}
                       transition={{ duration: 4, repeat: Infinity }}
                       className="absolute inset-0 blur-[60px] rounded-full bg-primary"
                     />
                     
-                    <Card className="border-none bg-card/60 backdrop-blur-3xl shadow-2xl rounded-[3rem] overflow-hidden relative">
+                    <Card className="border-none bg-card/60 backdrop-blur-3xl shadow-2xl rounded-[3rem] overflow-hidden relative w-full max-w-[340px]">
                       <CardContent className="p-8 flex flex-col items-center gap-6">
-                        <div 
-                          className={`
-                            w-full aspect-square rounded-[2.5rem] flex items-center justify-center p-4 shadow-2xl transition-colors duration-500
-                            ${resolvedTheme === 'dark' ? 'bg-white' : 'bg-black'}
-                          `} 
-                          ref={qrRef} 
-                        />
+                        <div className="relative">
+                          <div 
+                            className={`
+                              w-full aspect-square rounded-[2.5rem] flex items-center justify-center p-4 shadow-2xl transition-colors duration-500
+                              ${resolvedTheme === 'dark' ? 'bg-white' : 'bg-black'}
+                            `} 
+                            ref={qrRef} 
+                          />
+                          
+                          {/* Central Identity Badge */}
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <motion.div 
+                              initial={{ scale: 0.8, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              className={`
+                                flex flex-col items-center gap-1 p-2 rounded-2xl border-2 shadow-2xl min-w-[80px]
+                                ${resolvedTheme === 'dark' ? 'bg-white border-black text-black' : 'bg-black border-white text-white'}
+                              `}
+                            >
+                              <div className="relative h-12 w-12 rounded-full overflow-hidden border-2 border-current bg-background/10">
+                                {profile?.profileImage ? (
+                                  <img src={profile.profileImage} alt="" className="object-cover w-full h-full" />
+                                ) : (
+                                  <User className="h-6 w-6 m-auto absolute inset-0 opacity-40" />
+                                )}
+                              </div>
+                              <span className="text-[9px] font-black uppercase tracking-tighter truncate max-w-[70px]">
+                                {profile?.username}
+                              </span>
+                            </motion.div>
+                          </div>
+                        </div>
                         
                         <div className="space-y-2 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <Sparkles className="h-4 w-4 text-primary" />
-                            <p className="text-xl font-black tracking-tight">@{profile?.username}</p>
+                            <p className="text-xl font-black tracking-tight">Sceau d'Éveil</p>
                           </div>
                           <p className="text-[10px] font-black uppercase tracking-widest opacity-40">
-                            Faites résonner votre code pour recevoir
+                            Scannez pour résonner
                           </p>
                         </div>
                       </CardContent>
