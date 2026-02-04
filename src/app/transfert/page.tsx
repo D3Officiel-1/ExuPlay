@@ -121,23 +121,20 @@ export default function TransfertPage() {
 
     if (activeTab === "scan" && !recipient && !isSuccess) {
       const startScanner = async () => {
-        // Attendre que l'élément "reader" soit bien dans le DOM
         scannerTimeout = setTimeout(async () => {
-          if (!document.getElementById("reader")) return;
+          const container = document.getElementById("reader");
+          if (!container) return;
           
           try {
             await stopScanner();
             const scanner = new Html5Qrcode("reader");
             html5QrCodeRef.current = scanner;
 
+            // On ne passe pas de qrbox pour supprimer le viseur par défaut
             await scanner.start(
               { facingMode: "environment" },
               {
-                fps: 15,
-                qrbox: (viewfinderWidth, viewfinderHeight) => {
-                  const size = Math.min(viewfinderWidth, viewfinderHeight) * 0.7;
-                  return { width: size, height: size };
-                },
+                fps: 20,
               },
               onScanSuccess,
               onScanFailure
@@ -146,7 +143,6 @@ export default function TransfertPage() {
             if (isMounted) setHasCameraPermission(true);
           } catch (error: any) {
             console.error("Scanner error:", error);
-            // On ne met hasCameraPermission à false que si c'est vraiment un refus de permission
             if (isMounted && (error?.name === "NotAllowedError" || error?.name === "PermissionDeniedError")) {
               setHasCameraPermission(false);
             }
@@ -487,8 +483,16 @@ export default function TransfertPage() {
           top: 0 !important;
           left: 0 !important;
         }
-        #reader { border: none !important; background: black !important; }
-        #reader__scan_region img { display: none !important; }
+        #reader { 
+          border: none !important; 
+          background: black !important; 
+        }
+        #reader__scan_region {
+          display: none !important;
+        }
+        #reader__scan_region img { 
+          display: none !important; 
+        }
       `}</style>
     </div>
   );
