@@ -12,8 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { 
   QrCode, 
-  Zap, 
-  ZapOff,
   Loader2, 
   CheckCircle2, 
   Scan,
@@ -42,7 +40,6 @@ export default function TransfertPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [loadingRecipient, setLoadingRecipient] = useState(false);
-  const [isTorchOn, setIsTorchOn] = useState(false);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -106,7 +103,6 @@ export default function TransfertPage() {
       try {
         await html5QrCodeRef.current.stop();
         html5QrCodeRef.current = null;
-        setIsTorchOn(false);
       } catch (err) {
         console.error("Stop scanner error:", err);
       }
@@ -156,34 +152,6 @@ export default function TransfertPage() {
       stopScanner();
     };
   }, [activeTab, recipient, isSuccess]);
-
-  const toggleTorch = async () => {
-    if (!html5QrCodeRef.current || !html5QrCodeRef.current.isScanning) return;
-    
-    try {
-      const scanner = html5QrCodeRef.current;
-      const track = (scanner as any).getRunningTrack();
-      
-      if (!track) return;
-
-      const capabilities = track.getCapabilities();
-      
-      if (capabilities.torch) {
-        const newState = !isTorchOn;
-        await track.applyConstraints({
-          advanced: [{ torch: newState }]
-        });
-        setIsTorchOn(newState);
-      } else {
-        toast({
-          title: "Flash indisponible",
-          description: "Le flash n'est pas supporté par cet appareil."
-        });
-      }
-    } catch (err) {
-      console.error("Torch toggle error:", err);
-    }
-  };
 
   const onScanSuccess = async (decodedText: string) => {
     if (decodedText === user?.uid) {
@@ -364,15 +332,6 @@ export default function TransfertPage() {
                           </Button>
                         </div>
                       )}
-
-                      <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[110]">
-                        <Button
-                          onClick={toggleTorch}
-                          className="h-16 w-16 rounded-full bg-white/10 backdrop-blur-2xl border border-white/20 text-white hover:bg-white/20 transition-all shadow-2xl active:scale-95"
-                        >
-                          {isTorchOn ? <ZapOff className="h-6 w-6" /> : <Zap className="h-6 w-6" />}
-                        </Button>
-                      </div>
                     </div>
                   </TabsContent>
                 </motion.div>
@@ -427,7 +386,8 @@ export default function TransfertPage() {
                         disabled={isProcessing || !amount || parseInt(amount) <= 0 || parseInt(amount) > (profile?.totalPoints || 0)}
                         className="w-full h-16 rounded-2xl font-black text-sm uppercase tracking-widest gap-3 shadow-xl shadow-primary/20"
                       >
-                        {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Zap className="h-5 w-5" />Confirmer le Transfert</>}
+                        {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
+                        {isProcessing ? "Traitement..." : "Confirmer le Transfert"}
                       </Button>
                       <Button variant="ghost" onClick={() => { setRecipient(null); setAmount(""); setActiveTab("qr"); }} className="w-full h-12 text-[10px] font-black uppercase tracking-widest opacity-40">
                         Annuler
