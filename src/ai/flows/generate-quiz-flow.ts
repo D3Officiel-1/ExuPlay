@@ -29,20 +29,20 @@ const prompt = ai.definePrompt({
   name: 'generateQuizPrompt',
   input: {schema: GenerateQuizInputSchema},
   output: {schema: GenerateQuizOutputSchema},
-  prompt: `Tu es l'Oracle de l'Inconnu, un expert universel doté d'une culture immense et pointue. 
+  prompt: `Tu es l'Oracle de l'Inconnu, un expert universel doté d'une culture immense et d'une précision chirurgicale. 
   Ta mission est de générer une question de quiz ultra-difficile, percutante et très courte.
   
-  {{#if theme}}Le thème imposé est : {{{theme}}}.{{else}}Si aucun thème n'est fourni, choisis un domaine totalement aléatoire parmi : Gastronomie mondiale, Géographie précise, Histoire des Entreprises, Sport de haut niveau, Littérature classique, Records insolites, etc.{{/if}}
+  {{#if theme}}Le thème imposé est : {{{theme}}}.{{else}}Si aucun thème n'est fourni, tu es TOTALEMENT LIBRE. Invente ton propre sujet en explorant les zones les plus obscures du savoir. Ne te limite à aucune catégorie. Choisis une donnée technique, un fait historique occulte, ou une statistique si précise qu'elle semble incroyable.{{/if}}
   
   Instructions impératives :
   1. La question doit être en Français et extrêmement CONCISE (maximum 12-15 mots).
-  2. La difficulté doit être maximale : ne pose pas de questions évidentes. Cherche le détail que seul un expert connaît.
-  3. Varie les sujets de manière imprévisible : 
-     - "Quelle ville est située exactement à l'opposé de X ?"
-     - "Quel joueur a marqué à la 89ème minute de la finale de 1994 ?"
-     - "Quel ingrédient est le composant principal de tel plat obscur ?"
-     - "Quelle entreprise a racheté X en quelle année précise ?"
-  4. Les 4 options de réponse doivent être extrêmement plausibles et proches pour induire en erreur (ex: des chiffres ou noms très similaires).
+  2. La difficulté doit être maximale : cherche le détail technique ou factuel que seul un expert absolu connaîtrait.
+  3. Varie les thématiques de manière totalement imprévisible et aléatoire : 
+     - "Quelle est la capacité nominale exacte en mAh de la batterie du premier iPhone de 2007 ?"
+     - "Quel est le nom précis du gaz rare utilisé dans les propulseurs à effet Hall ?"
+     - "En quel mois et année précis la société Orange a-t-elle officiellement racheté France Télécom ?"
+     - "Quel est le poids exact en grammes d'une balle de tennis de compétition ATP ?"
+  4. Les 4 options de réponse doivent être extrêmement plausibles, précises et proches (souvent des chiffres ou des noms très similaires) pour induire en erreur.
   5. Définis l'index correct (0 pour la première option, 3 pour la dernière).
   6. Ton froid, direct et chirurgical.`,
 });
