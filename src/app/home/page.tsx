@@ -41,23 +41,23 @@ export function SpoilerOverlay() {
       }}
       className="absolute inset-0 z-10 overflow-hidden rounded-[2rem] pointer-events-none"
     >
-      {/* Verre dépoli de base */}
-      <div className="absolute inset-0 bg-card/90 backdrop-blur-[45px] z-0" />
+      {/* Verre dépoli de base avec angles arrondis */}
+      <div className="absolute inset-0 bg-card/90 backdrop-blur-[45px] z-0 rounded-[2rem]" />
       
       {/* Voile flouté supplémentaire derrière le masque */}
-      <div className="absolute inset-0 bg-background/20 backdrop-blur-md -z-10" />
+      <div className="absolute inset-0 bg-background/30 backdrop-blur-xl -z-10 rounded-[2rem]" />
       
-      {/* Texture de bruit numérique animée - Plus douce */}
+      {/* Texture de bruit numérique animée - Très douce */}
       <motion.div
         animate={{
-          opacity: [0.05, 0.1, 0.05],
+          opacity: [0.03, 0.06, 0.03],
         }}
         transition={{
-          duration: 3,
+          duration: 4,
           repeat: Infinity,
           ease: "easeInOut",
         }}
-        className="absolute inset-0 z-10 opacity-10 pointer-events-none"
+        className="absolute inset-0 z-10 opacity-5 pointer-events-none rounded-[2rem]"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
           backgroundSize: "120px 120px",
@@ -67,29 +67,29 @@ export function SpoilerOverlay() {
       {/* Orbes lumineux éthérés */}
       <motion.div 
         animate={{ 
-          scale: [1, 1.3, 1],
-          x: [0, 40, 0],
-          y: [0, -30, 0],
+          scale: [1, 1.2, 1],
+          x: [0, 30, 0],
+          y: [0, -20, 0],
         }}
-        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-[-20%] left-[-10%] w-[80%] h-[80%] bg-primary/10 rounded-full blur-[100px] z-20"
+        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-[-20%] left-[-10%] w-[80%] h-[80%] bg-primary/5 rounded-full blur-[100px] z-20"
       />
       <motion.div 
         animate={{ 
-          scale: [1, 1.4, 1],
-          x: [0, -50, 0],
-          y: [0, 40, 0],
+          scale: [1, 1.3, 1],
+          x: [0, -40, 0],
+          y: [0, 30, 0],
         }}
-        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 1 }}
         className="absolute bottom-[-20%] right-[-10%] w-[80%] h-[80%] bg-primary/5 rounded-full blur-[100px] z-20"
       />
 
-      {/* Effet de balayage lumineux */}
+      {/* Effet de balayage lumineux subtil */}
       <motion.div 
         animate={{ 
-          x: ["-100%", "200%"],
+          x: ["-150%", "250%"],
         }}
-        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", repeatDelay: 2 }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", repeatDelay: 3 }}
         className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent skew-x-12 z-30"
       />
     </motion.div>
@@ -170,7 +170,7 @@ export default function HomePage() {
       await setDoc(attemptRef, {
         attemptedAt: startTime,
         completedAt: endTime,
-        isPlayed: false, // Indique que c'est en cours
+        isPlayed: false,
         status: 'started'
       }, { merge: true });
       
@@ -202,7 +202,6 @@ export default function HomePage() {
 
     setUpdating(true);
     try {
-      // 1. Marquer le quiz comme joué définitivement (isPlayed: true)
       await updateDoc(attemptRef, {
         isPlayed: true,
         status: 'completed',
@@ -211,7 +210,6 @@ export default function HomePage() {
         updatedAt: serverTimestamp()
       });
 
-      // 2. Mettre à jour le profil utilisateur
       if (pointsEarned > 0) {
         const updatePayload: any = {
           totalPoints: increment(pointsEarned),
@@ -219,7 +217,6 @@ export default function HomePage() {
           updatedAt: serverTimestamp()
         };
 
-        // Gestion parrainage
         if (profile && profile.referredBy && !profile.referralRewardClaimed) {
           const newTotal = (profile.totalPoints || 0) + pointsEarned;
           if (newTotal >= 100) {
