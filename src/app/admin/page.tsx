@@ -51,11 +51,13 @@ import {
   Edit3,
   User,
   MinusCircle,
-  Search
+  Search,
+  Sparkles
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import { generateQuiz } from "@/ai/flows/generate-quiz-flow";
 
 export default function AdminPage() {
   const { user, isLoading: authLoading } = useUser();
@@ -70,6 +72,7 @@ export default function AdminPage() {
     points: 100
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   
   const [selectedQuiz, setSelectedQuiz] = useState<any>(null);
@@ -160,6 +163,31 @@ export default function AdminPage() {
       title: checked ? "Maintenance activée" : "Maintenance désactivée",
       description: checked ? "L'application est en mode privé." : "L'application est accessible à tous."
     });
+  };
+
+  const handleAiGenerate = async () => {
+    setIsGenerating(true);
+    try {
+      const result = await generateQuiz({});
+      setNewQuiz({
+        question: result.question,
+        options: result.options,
+        correctIndex: result.correctIndex,
+        points: result.points
+      });
+      toast({
+        title: "Défis généré",
+        description: "L'IA a conçu une nouvelle épreuve philosophique."
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Dissonance IA",
+        description: "L'IA n'a pas pu concevoir de défi pour le moment."
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleAddQuiz = async (e: React.FormEvent) => {
@@ -357,14 +385,29 @@ export default function AdminPage() {
                   <DialogTrigger asChild>
                     <Button className="h-10 md:h-12 px-4 md:px-6 rounded-2xl font-black text-xs uppercase tracking-widest gap-2 md:gap-3 shadow-lg shadow-primary/10">
                       <Plus className="h-4 w-4 md:h-5 md:w-5" />
-                      Ajouter un défi
+                      Nouveau défi
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[500px] bg-card/95 backdrop-blur-2xl border-primary/5 rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-10">
+                  <DialogContent className="sm:max-w-[600px] bg-card/95 backdrop-blur-2xl border-primary/5 rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-10 max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight">Nouveau Défi</DialogTitle>
-                      <p className="text-sm font-medium opacity-60">Créez une nouvelle épreuve pour les esprits.</p>
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                          <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight">Nouveau Défi</DialogTitle>
+                          <p className="text-sm font-medium opacity-60">Créez ou générez une nouvelle épreuve.</p>
+                        </div>
+                        <Button 
+                          type="button"
+                          variant="secondary"
+                          onClick={handleAiGenerate}
+                          disabled={isGenerating}
+                          className="h-10 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest gap-2 bg-primary/5 border border-primary/10"
+                        >
+                          {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3 text-primary" />}
+                          Générer avec l'IA
+                        </Button>
+                      </div>
                     </DialogHeader>
+                    
                     <form onSubmit={handleAddQuiz} className="space-y-6 pt-6 md:pt-8">
                       <div className="space-y-2">
                         <Label className="text-xs font-black uppercase tracking-widest opacity-40">La Question</Label>
@@ -381,13 +424,16 @@ export default function AdminPage() {
                           <div key={idx} className="space-y-2">
                             <div className="flex justify-between items-center">
                               <Label className="text-xs font-black uppercase tracking-widest opacity-40">Option {idx + 1}</Label>
-                              <input 
-                                type="radio" 
-                                name="correct" 
-                                className="accent-primary h-5 w-5"
-                                checked={newQuiz.correctIndex === idx} 
-                                onChange={() => setNewQuiz({...newQuiz, correctIndex: idx})}
-                              />
+                              <div className="flex items-center gap-2">
+                                <span className="text-[9px] font-black uppercase opacity-20">Correct</span>
+                                <input 
+                                  type="radio" 
+                                  name="correct" 
+                                  className="accent-primary h-5 w-5 cursor-pointer"
+                                  checked={newQuiz.correctIndex === idx} 
+                                  onChange={() => setNewQuiz({...newQuiz, correctIndex: idx})}
+                                />
+                              </div>
                             </div>
                             <Input 
                               placeholder={`Réponse ${idx + 1}`} 
@@ -416,7 +462,7 @@ export default function AdminPage() {
                       </div>
 
                       <DialogFooter className="pt-6 md:pt-8">
-                        <Button type="submit" disabled={isSubmitting} className="w-full h-14 md:h-16 rounded-2xl md:rounded-3xl font-black text-sm uppercase tracking-widest">
+                        <Button type="submit" disabled={isSubmitting || isGenerating} className="w-full h-14 md:h-16 rounded-2xl md:rounded-3xl font-black text-sm uppercase tracking-widest shadow-xl shadow-primary/10">
                           {isSubmitting ? <Loader2 className="h-5 w-5 md:h-6 md:w-6 animate-spin" /> : "Publier le défi"}
                         </Button>
                       </DialogFooter>
@@ -557,7 +603,7 @@ export default function AdminPage() {
 
       {/* Dialogue de Visualisation / Modification de Quiz */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] bg-card/95 backdrop-blur-2xl border-primary/5 rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-10">
+        <DialogContent className="sm:max-w-[500px] bg-card/95 backdrop-blur-2xl border-primary/5 rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-10 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight">
               {isEditMode ? "Modifier le Défi" : "Détails du Défi"}
@@ -586,13 +632,16 @@ export default function AdminPage() {
                     <div className="flex justify-between items-center">
                       <Label className="text-xs font-black uppercase tracking-widest opacity-40">Option {idx + 1}</Label>
                       {isEditMode && (
-                        <input 
-                          type="radio" 
-                          name="edit-correct" 
-                          className="accent-primary h-5 w-5"
-                          checked={selectedQuiz.correctIndex === idx} 
-                          onChange={() => setSelectedQuiz({...selectedQuiz, correctIndex: idx})}
-                        />
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-black uppercase opacity-20">Correct</span>
+                          <input 
+                            type="radio" 
+                            name="edit-correct" 
+                            className="accent-primary h-5 w-5 cursor-pointer"
+                            checked={selectedQuiz.correctIndex === idx} 
+                            onChange={() => setSelectedQuiz({...selectedQuiz, correctIndex: idx})}
+                          />
+                        </div>
                       )}
                     </div>
                     {isEditMode ? (
