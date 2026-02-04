@@ -21,11 +21,17 @@ import {
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
+/**
+ * @fileOverview Page de suivi du parrainage affichant les utilisateurs recrutés.
+ * Interroge Firestore pour trouver tous les utilisateurs ayant utilisé le code du parrain actuel.
+ */
+
 export default function ParrainagePage() {
   const { user } = useUser();
   const db = useFirestore();
   const router = useRouter();
 
+  // Référence au document du profil de l'utilisateur actuel
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
     return doc(db, "users", user.uid);
@@ -33,6 +39,7 @@ export default function ParrainagePage() {
 
   const { data: profile, loading: profileLoading } = useDoc(userDocRef);
 
+  // Requête pour trouver les utilisateurs dont 'referredBy' est égal au 'referralCode' de l'utilisateur actuel
   const referredUsersQuery = useMemo(() => {
     if (!db || !profile?.referralCode) return null;
     return query(
@@ -44,13 +51,15 @@ export default function ParrainagePage() {
 
   const { data: referredUsers, loading: usersLoading } = useCollection(referredUsersQuery);
 
-  if (profileLoading || (profile?.referralCode && usersLoading)) {
+  if (profileLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin opacity-20" />
       </div>
     );
   }
+
+  const isLoading = profile?.referralCode && usersLoading;
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
@@ -73,7 +82,11 @@ export default function ParrainagePage() {
         </div>
 
         <div className="space-y-4">
-          {referredUsers && referredUsers.length > 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center p-12">
+              <Loader2 className="h-6 w-6 animate-spin opacity-20" />
+            </div>
+          ) : referredUsers && referredUsers.length > 0 ? (
             <>
               <div className="px-2 flex items-center justify-between">
                 <p className="text-[10px] font-black uppercase tracking-widest opacity-40">
@@ -103,7 +116,7 @@ export default function ParrainagePage() {
                           <div className="flex items-center gap-1.5 opacity-40">
                             <Calendar className="h-3 w-3" />
                             <p className="text-[9px] font-bold uppercase tracking-wider">
-                              Inscrit en {u.createdAt ? format(u.createdAt.toDate(), "MMMM yyyy", { locale: fr }) : "inconnu"}
+                              Inscrit en {u.createdAt && typeof u.createdAt.toDate === 'function' ? format(u.createdAt.toDate(), "MMMM yyyy", { locale: fr }) : "inconnu"}
                             </p>
                           </div>
                         </div>
