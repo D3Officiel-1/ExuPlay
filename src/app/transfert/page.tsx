@@ -16,7 +16,6 @@ import { Label } from "@/components/ui/label";
 import { 
   ChevronLeft, 
   QrCode, 
-  Camera, 
   Zap, 
   Loader2, 
   CheckCircle2, 
@@ -24,13 +23,24 @@ import {
   Scan,
   User,
   ArrowRight,
-  ShieldAlert
+  ShieldAlert,
+  Sparkles,
+  Palette
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { QRCodeCanvas } from "qrcode.react";
 import { Html5QrcodeScanner, Html5QrcodeScanType } from "html5-qrcode";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+
+// Themes de couleurs pour le QR Code
+const VIBRATIONS = [
+  { id: 'classic', name: 'Noir Ébène', color: '#000000', secondary: '#333333' },
+  { id: 'royal', name: 'Améthyste', color: '#7c3aed', secondary: '#a78bfa' },
+  { id: 'growth', name: 'Émeraude', color: '#059669', secondary: '#34d399' },
+  { id: 'fire', name: 'Rubis', color: '#dc2626', secondary: '#f87171' },
+  { id: 'ocean', name: 'Saphir', color: '#2563eb', secondary: '#60a5fa' },
+  { id: 'gold', name: 'Ambre', color: '#d97706', secondary: '#fbbf24' },
+];
 
 export default function TransfertPage() {
   const { user } = useUser();
@@ -44,6 +54,7 @@ export default function TransfertPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [vibration, setVibration] = useState(VIBRATIONS[0]);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -52,8 +63,62 @@ export default function TransfertPage() {
 
   const { data: profile, loading } = useDoc(userDocRef);
 
+  const qrRef = useRef<HTMLDivElement>(null);
+  const qrStyling = useRef<any>(null);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
+  // Initialisation et mise à jour du QR Code stylisé
+  useEffect(() => {
+    if (activeTab === "qr" && qrRef.current && typeof window !== "undefined") {
+      const initQr = async () => {
+        const QRCodeStyling = (await import("qr-code-styling")).default;
+        
+        const options = {
+          width: 280,
+          height: 280,
+          type: "svg" as const,
+          data: user?.uid || "",
+          image: profile?.profileImage || "",
+          dotsOptions: {
+            color: vibration.color,
+            type: "rounded" as const,
+          },
+          backgroundOptions: {
+            color: "transparent",
+          },
+          imageOptions: {
+            crossOrigin: "anonymous",
+            margin: 10,
+            imageSize: 0.4,
+          },
+          cornersSquareOptions: {
+            color: vibration.color,
+            type: "extra-rounded" as const,
+          },
+          cornersDotOptions: {
+            color: vibration.secondary,
+            type: "dot" as const,
+          },
+          qrOptions: {
+            typeNumber: 0,
+            mode: "Byte" as const,
+            errorCorrectionLevel: "H" as const,
+          },
+        };
+
+        if (!qrStyling.current) {
+          qrStyling.current = new QRCodeStyling(options);
+          qrStyling.current.append(qrRef.current);
+        } else {
+          qrStyling.current.update(options);
+        }
+      };
+
+      initQr();
+    }
+  }, [activeTab, user?.uid, profile?.profileImage, vibration]);
+
+  // Logique du scanner
   useEffect(() => {
     if (activeTab === "scan") {
       const getCameraPermission = async () => {
@@ -124,9 +189,7 @@ export default function TransfertPage() {
     }
   };
 
-  const onScanFailure = (error: any) => {
-    // Silently continue scanning
-  };
+  const onScanFailure = (error: any) => {};
 
   const [loadingRecipient, setLoadingRecipient] = useState(false);
 
@@ -148,7 +211,6 @@ export default function TransfertPage() {
       const senderRef = doc(db, "users", user!.uid);
       const receiverRef = doc(db, "users", recipient.id);
 
-      // Perform updates
       await updateDoc(senderRef, {
         totalPoints: increment(-transferAmount),
         updatedAt: serverTimestamp()
@@ -223,27 +285,56 @@ export default function TransfertPage() {
                 </TabsList>
 
                 <TabsContent value="qr" className="mt-8 space-y-8">
-                  <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[3rem] overflow-hidden">
-                    <CardContent className="p-10 flex flex-col items-center gap-8 text-center">
-                      <div className="p-6 bg-white rounded-[2.5rem] shadow-inner relative">
-                        <QRCodeCanvas 
-                          value={user?.uid || ""} 
-                          size={200}
-                          level="H"
-                          includeMargin={false}
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5">
-                          <Zap className="h-10 w-10 text-primary" />
+                  <div className="relative group">
+                    <motion.div 
+                      animate={{ scale: [1, 1.05, 1], opacity: [0.1, 0.2, 0.1] }}
+                      transition={{ duration: 4, repeat: Infinity }}
+                      className="absolute inset-0 blur-[60px] rounded-full"
+                      style={{ backgroundColor: vibration.color }}
+                    />
+                    
+                    <Card className="border-none bg-card/60 backdrop-blur-3xl shadow-2xl rounded-[3rem] overflow-hidden relative">
+                      <CardContent className="p-8 flex flex-col items-center gap-6">
+                        <div className="w-full aspect-square bg-white/80 rounded-[2.5rem] flex items-center justify-center p-4 shadow-inner" ref={qrRef} />
+                        
+                        <div className="space-y-2 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <Sparkles className="h-4 w-4" style={{ color: vibration.color }} />
+                            <p className="text-xl font-black tracking-tight">@{profile?.username}</p>
+                          </div>
+                          <p className="text-[10px] font-black uppercase tracking-widest opacity-40">
+                            Faites résonner votre code pour recevoir
+                          </p>
                         </div>
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-sm font-bold">@{profile?.username}</p>
-                        <p className="text-[10px] font-black uppercase tracking-widest opacity-40">
-                          Présentez ce code pour recevoir de la lumière
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 pl-2">
+                      <Palette className="h-4 w-4 opacity-40" />
+                      <h3 className="text-[10px] font-black uppercase tracking-widest opacity-40">Vibrations chromatiques</h3>
+                    </div>
+                    <div className="flex gap-3 overflow-x-auto pb-4 px-2 no-scrollbar">
+                      {VIBRATIONS.map((v) => (
+                        <button
+                          key={v.id}
+                          onClick={() => setVibration(v)}
+                          className={`
+                            shrink-0 flex flex-col items-center gap-2 p-3 rounded-2xl transition-all border-2
+                            ${vibration.id === v.id ? 'bg-primary/5 scale-105' : 'bg-transparent border-transparent opacity-60'}
+                          `}
+                          style={{ borderColor: vibration.id === v.id ? v.color : 'transparent' }}
+                        >
+                          <div 
+                            className="h-8 w-8 rounded-full shadow-lg" 
+                            style={{ background: `linear-gradient(135deg, ${v.color}, ${v.secondary})` }}
+                          />
+                          <span className="text-[9px] font-black uppercase tracking-tighter">{v.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="scan" className="mt-8">
@@ -272,20 +363,20 @@ export default function TransfertPage() {
             >
               <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] overflow-hidden">
                 <CardHeader className="text-center pt-10 pb-4">
-                  <div className="mx-auto w-20 h-20 bg-primary/5 rounded-3xl flex items-center justify-center mb-4 relative">
+                  <div className="mx-auto w-20 h-20 bg-primary/5 rounded-3xl flex items-center justify-center mb-4 relative overflow-hidden border border-primary/10">
                     <User className="h-10 w-10 text-primary opacity-20" />
                     {recipient.profileImage && (
-                      <img src={recipient.profileImage} alt="" className="absolute inset-0 w-full h-full object-cover rounded-3xl" />
+                      <img src={recipient.profileImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
                     )}
                   </div>
                   <CardTitle className="text-2xl font-black">Vers @{recipient.username}</CardTitle>
-                  <CardDescription>Envoyez une part de votre éveil</CardDescription>
+                  <CardDescription>Partagez une part de votre éveil</CardDescription>
                 </CardHeader>
                 
                 <CardContent className="px-8 pb-10 space-y-8">
                   <div className="space-y-4">
                     <div className="text-center">
-                      <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1">Votre Solde</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1">Votre Solde Actuel</p>
                       <p className="text-xl font-black">{profile?.totalPoints?.toLocaleString()} <span className="text-xs opacity-20">PTS</span></p>
                     </div>
 
@@ -303,21 +394,12 @@ export default function TransfertPage() {
                       </div>
                     </div>
                   </div>
-
-                  {recipient.id === user?.uid && (
-                    <div className="flex gap-3 p-4 bg-destructive/5 rounded-2xl border border-destructive/10 items-start">
-                      <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-                      <p className="text-[10px] leading-relaxed font-bold text-destructive uppercase">
-                        Vous ne pouvez pas vous envoyer de points.
-                      </p>
-                    </div>
-                  )}
                 </CardContent>
 
                 <CardFooter className="px-8 pb-10 flex flex-col gap-3">
                   <Button 
                     onClick={handleTransfer}
-                    disabled={isProcessing || !amount || parseInt(amount) <= 0 || parseInt(amount) > (profile?.totalPoints || 0) || recipient.id === user?.uid}
+                    disabled={isProcessing || !amount || parseInt(amount) <= 0 || parseInt(amount) > (profile?.totalPoints || 0)}
                     className="w-full h-16 rounded-2xl font-black text-sm uppercase tracking-widest gap-3 shadow-xl shadow-primary/20"
                   >
                     {isProcessing ? (
