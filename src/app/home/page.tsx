@@ -70,6 +70,7 @@ export default function HomePage() {
   const [updating, setUpdating] = useState(false);
   const [quizStarted, setQuizStarted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(10);
+  const [sessionQuizzes, setSessionQuizzes] = useState<any[] | null>(null);
   
   const { user } = useUser();
   const db = useFirestore();
@@ -87,12 +88,14 @@ export default function HomePage() {
   const { data: allQuizzes, loading: quizzesLoading } = useCollection(quizzesQuery);
   const { data: attempts, loading: attemptsLoading } = useCollection(attemptsQuery);
 
-  // Filtrer les quiz déjà tentés
-  const availableQuizzes = useMemo(() => {
-    if (!allQuizzes || !attempts) return allQuizzes;
-    const attemptedIds = attempts.map(a => a.id);
-    return allQuizzes.filter(q => !attemptedIds.includes(q.id));
-  }, [allQuizzes, attempts]);
+  // Charger les quiz de session UNE SEULE FOIS au démarrage ou quand les données arrivent
+  useEffect(() => {
+    if (allQuizzes && attempts && sessionQuizzes === null) {
+      const attemptedIds = attempts.map(a => a.id);
+      const filtered = allQuizzes.filter(q => !attemptedIds.includes(q.id));
+      setSessionQuizzes(filtered);
+    }
+  }, [allQuizzes, attempts, sessionQuizzes]);
 
   const finishQuiz = useCallback(async () => {
     setQuizComplete(true);
@@ -123,21 +126,31 @@ export default function HomePage() {
       timer = setInterval(() => {
         setTimeLeft(prev => prev - 1);
       }, 1000);
-    } else if (timeLeft === 0 && !isAnswered) {
+    } else if (timeLeft === 0 && !isAnswered && quizStarted) {
       setIsAnswered(true);
-      // On passe automatiquement à la suite si le temps est écoulé
+      // On valide une réponse vide ou mauvaise par défaut si le temps est écoulé
+      if (user && sessionQuizzes) {
+        const currentQuiz = sessionQuizzes[currentQuestionIdx];
+        const attemptRef = doc(db, "users", user.uid, "attempts", currentQuiz.id);
+        updateDoc(attemptRef, {
+          status: "completed",
+          score: 0,
+          updatedAt: serverTimestamp()
+        }).catch(() => {});
+      }
     }
     return () => clearInterval(timer);
-  }, [quizStarted, isAnswered, timeLeft]);
+  }, [quizStarted, isAnswered, timeLeft, user, sessionQuizzes, currentQuestionIdx, db]);
 
   const handleStartChallenge = async () => {
-    if (!user || !availableQuizzes) return;
-    const currentQuiz = availableQuizzes[currentQuestionIdx];
+    if (!user || !sessionQuizzes || !db) return;
+    const currentQuiz = sessionQuizzes[currentQuestionIdx];
     
     setQuizStarted(true);
     setTimeLeft(10);
 
     // Enregistrer la tentative immédiatement pour marquer le quiz comme "vu"
+    // On utilise setDoc car l'ID du document est l'ID du quiz pour assurer l'unicité par utilisateur
     const attemptRef = doc(db, "users", user.uid, "attempts", currentQuiz.id);
     setDoc(attemptRef, {
       quizId: currentQuiz.id,
@@ -154,29 +167,30 @@ export default function HomePage() {
   };
 
   const handleAnswer = (index: number) => {
-    if (!quizStarted || isAnswered || !availableQuizzes) return;
-    const currentQuiz = availableQuizzes[currentQuestionIdx];
+    if (!quizStarted || isAnswered || !sessionQuizzes || !db) return;
+    const currentQuiz = sessionQuizzes[currentQuestionIdx];
     setSelectedOption(index);
     setIsAnswered(true);
     
-    if (index === currentQuiz.correctIndex) {
+    const isCorrect = index === currentQuiz.correctIndex;
+    if (isCorrect) {
       setScore(prev => prev + (currentQuiz.points || 100));
     }
 
-    // Mettre à jour la tentative avec le résultat
+    // Mettre à jour la tentative avec le résultat final
     if (user) {
       const attemptRef = doc(db, "users", user.uid, "attempts", currentQuiz.id);
       updateDoc(attemptRef, {
         status: "completed",
-        score: index === currentQuiz.correctIndex ? currentQuiz.points : 0,
+        score: isCorrect ? currentQuiz.points : 0,
         updatedAt: serverTimestamp()
       }).catch(() => {});
     }
   };
 
   const nextQuestion = () => {
-    if (!availableQuizzes) return;
-    if (currentQuestionIdx < availableQuizzes.length - 1) {
+    if (!sessionQuizzes) return;
+    if (currentQuestionIdx < sessionQuizzes.length - 1) {
       setCurrentQuestionIdx(prev => prev + 1);
       setSelectedOption(null);
       setIsAnswered(false);
@@ -187,7 +201,7 @@ export default function HomePage() {
     }
   };
 
-  if (quizzesLoading || attemptsLoading) {
+  if (quizzesLoading || attemptsLoading || sessionQuizzes === null) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
         <Loader2 className="h-8 w-8 animate-spin opacity-20 mb-4" />
@@ -196,7 +210,7 @@ export default function HomePage() {
     );
   }
 
-  if (!availableQuizzes || availableQuizzes.length === 0) {
+  if (sessionQuizzes.length === 0) {
     return (
       <div className="min-h-screen bg-background flex flex-col pb-32">
         <Header />
@@ -214,7 +228,7 @@ export default function HomePage() {
     );
   }
 
-  const question = availableQuizzes[currentQuestionIdx];
+  const question = sessionQuizzes[currentQuestionIdx];
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
@@ -341,7 +355,7 @@ export default function HomePage() {
                             onClick={nextQuestion} 
                             className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-widest gap-3 shadow-xl shadow-primary/20"
                           >
-                            {currentQuestionIdx === availableQuizzes.length - 1 ? "Terminer" : "Défi Suivant"}
+                            {currentQuestionIdx === sessionQuizzes.length - 1 ? "Terminer" : "Défi Suivant"}
                             <ArrowRight className="h-4 w-4" />
                           </Button>
                         </motion.div>
@@ -376,6 +390,8 @@ export default function HomePage() {
                 <div className="flex flex-col gap-4">
                   <Button 
                     onClick={() => {
+                      // Réinitialiser la session pour recharger les nouveaux quiz disponibles
+                      setSessionQuizzes(null);
                       setQuizComplete(false);
                       setCurrentQuestionIdx(0);
                       setSelectedOption(null);
