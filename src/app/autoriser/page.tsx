@@ -32,7 +32,7 @@ export default function AutoriserPage() {
     if (!data.cameraAuthorized) return 1;
     if (!data.notificationsEnabled) return 2;
     if (!data.locationAuthorized) return 3;
-    const isBiometricDone = data.biometricEnabled === true || localStorage.getItem("citation_biometric_enabled") === "true";
+    const isBiometricDone = data.biometricEnabled === true || localStorage.getItem("exu_biometric_enabled") === "true";
     if (!isBiometricDone) return 4;
     return 5;
   };
@@ -190,7 +190,7 @@ export default function AutoriserPage() {
       const credential = await navigator.credentials.create({ publicKey: createCredentialOptions });
 
       if (credential) {
-        localStorage.setItem("citation_biometric_enabled", "true");
+        localStorage.setItem("exu_biometric_enabled", "true");
         if (user) {
           await updateDoc(doc(db, "users", user.uid), { 
             biometricEnabled: true,

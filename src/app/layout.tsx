@@ -192,7 +192,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   }, [user, isAuthLoading, pathname, router]);
 
   const checkLockRequirement = useCallback(async () => {
-    if (!user || pathname === "/autoriser") return;
+    if (!user || pathname === "/autoriser" || pathname === "/login") return;
     const isBiometricLocal = localStorage.getItem("exu_biometric_enabled") === "true";
     if (isBiometricLocal) {
       setIsAppLocked(true);
@@ -241,12 +241,12 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const isStandardUser = profile?.role === 'user';
   const showMaintenance = isMaintenanceActive && isStandardUser;
   
-  const canShowPwa = showPwaPrompt && pathname !== "/" && pathname !== "/login" && pathname !== "/offline" && pathname !== "/autoriser";
+  const canShowPwa = showPwaPrompt && !["/", "/login", "/offline", "/autoriser"].includes(pathname);
 
   const isOfflineAllowedPath = ["/", "/login", "/autoriser", "/offline"].includes(pathname);
   const showOffline = isOffline && !isOfflineAllowedPath;
 
-  const isProtectedPath = pathname !== "/" && pathname !== "/login" && pathname !== "/offline" && pathname !== "/autoriser";
+  const isProtectedPath = !["/", "/login", "/offline", "/autoriser"].includes(pathname);
   if (isAuthLoading && isProtectedPath) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">

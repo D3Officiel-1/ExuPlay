@@ -15,29 +15,21 @@ const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
   clientsClaim: true,
-  navigationPreload: true,
+  navigationPreload: false, // Désactivé pour corriger ERR_FAILED
   runtimeCaching: [
-    // 1. Pages autorisées (Whitelist) : Mise en cache pour accès hors-ligne
+    // 1. Pages critiques : Toujours accessibles
     {
       matcher: ({ url }) => ["/", "/login", "/autoriser", "/offline"].includes(url.pathname),
-      handler: "StaleWhileRevalidate",
+      handler: "NetworkFirst", // Priorité réseau pour éviter les blocages de redirection
       options: {
-        cacheName: "essential-pages-cache",
+        cacheName: "critical-pages",
         expiration: {
           maxEntries: 10,
-          maxAgeSeconds: 60 * 60 * 24 * 30, // 30 jours
+          maxAgeSeconds: 60 * 60 * 24, // 24h
         },
       },
     },
-    // 2. Interdiction stricte de cache pour toutes les autres pages (Navigation)
-    // Cela garantit que /home, /profil, /parametres, etc. ne sont JAMAIS servis depuis le cache.
-    {
-      matcher: ({ request, url }) => 
-        request.mode === 'navigate' && 
-        !["/", "/login", "/autoriser", "/offline"].includes(url.pathname),
-      handler: "NetworkOnly",
-    },
-    // 3. Assets statiques (Indispensable pour le rendu de l'interface)
+    // 2. Assets statiques
     {
       matcher: /\/(_next\/static|static|manifest\.json|icon\.svg)/,
       handler: "CacheFirst",
@@ -45,16 +37,14 @@ const serwist = new Serwist({
         cacheName: "static-assets",
       },
     },
-    // 4. Images externes
+    // 3. Images externes
     {
-      matcher: /^https:\/\/images\.unsplash\.com\/.*/,
+      matcher: /^https:\/\/(images\.unsplash\.com|picsum\.photos)\/.*/,
       handler: "StaleWhileRevalidate",
       options: {
-        cacheName: "external-images",
+        cacheName: "images-cache",
       },
     },
-    // 5. Cache par défaut pour le fonctionnement technique de Next.js (chunks, scripts)
-    // On le place en dernier pour que nos règles de pages soient prioritaires
     ...defaultCache,
   ],
 });
