@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
-import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, Brain, Play, Timer } from "lucide-react";
+import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, Brain, Timer } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 /**
@@ -47,17 +47,17 @@ export function SpoilerOverlay() {
       {/* Voile flouté supplémentaire derrière le masque */}
       <div className="absolute inset-0 bg-background/20 backdrop-blur-md -z-10" />
       
-      {/* Texture de bruit numérique animée */}
+      {/* Texture de bruit numérique animée - Plus douce */}
       <motion.div
         animate={{
-          opacity: [0.1, 0.2, 0.1],
+          opacity: [0.05, 0.1, 0.05],
         }}
         transition={{
-          duration: 0.1,
+          duration: 3,
           repeat: Infinity,
-          ease: "linear",
+          ease: "easeInOut",
         }}
-        className="absolute inset-0 z-10 opacity-20 pointer-events-none"
+        className="absolute inset-0 z-10 opacity-10 pointer-events-none"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
           backgroundSize: "120px 120px",
@@ -89,7 +89,7 @@ export function SpoilerOverlay() {
         animate={{ 
           x: ["-100%", "200%"],
         }}
-        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", repeatDelay: 1 }}
+        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", repeatDelay: 2 }}
         className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent skew-x-12 z-30"
       />
     </motion.div>
@@ -367,22 +367,14 @@ export default function HomePage() {
                               transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
                               className="absolute inset-0 z-20 flex items-center justify-center"
                             >
-                              <div className="text-center space-y-6">
-                                <motion.div
-                                  animate={{ y: [0, -5, 0] }}
-                                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                                  className="mx-auto w-16 h-16 bg-primary rounded-3xl flex items-center justify-center shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)]"
-                                >
-                                  <Play className="h-6 w-6 text-primary-foreground fill-current" />
-                                </motion.div>
-                                
+                              <div className="text-center">
                                 <Button 
                                   onClick={handleStartChallenge}
                                   disabled={updating}
-                                  className="h-14 px-10 rounded-2xl font-black text-[10px] uppercase tracking-[0.4em] shadow-xl bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-500 group"
+                                  className="h-16 px-12 rounded-2xl font-black text-[10px] uppercase tracking-[0.4em] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-500 active:scale-95 group"
                                 >
                                   {updating ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <Loader2 className="h-5 w-5 animate-spin" />
                                   ) : (
                                     "Dévoiler l'Inconnu"
                                   )}
