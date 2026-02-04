@@ -20,10 +20,11 @@ import {
   User,
   ArrowRight,
   ShieldAlert,
-  Sparkles
+  Sparkles,
+  X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Html5QrcodeScanner, Html5QrcodeScanType } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { useTheme } from "next-themes";
@@ -52,7 +53,7 @@ export default function TransfertPage() {
   const { data: profile, loading } = useDoc(userDocRef);
 
   const qrRef = useRef<HTMLDivElement>(null);
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
   // Fonction de génération du QR Code
   const generateQRCode = async () => {
@@ -60,7 +61,6 @@ export default function TransfertPage() {
     
     try {
       const QRCodeStyling = (await import("qr-code-styling")).default;
-      // Mode clair: Blanc sur Noir | Mode sombre: Noir sur Blanc
       const dotColor = resolvedTheme === 'dark' ? '#000000' : '#FFFFFF';
       
       const options = {
@@ -96,82 +96,100 @@ export default function TransfertPage() {
     }
   };
 
-  // Re-générer quand l'onglet QR est actif ou que le thème change
   useEffect(() => {
     if (activeTab === "qr" && !recipient && !isSuccess) {
-      // Un court délai assure que le DOM est prêt après le switch d'onglet
       const timer = setTimeout(() => {
         generateQRCode();
-      }, 50);
+      }, 100);
       return () => clearTimeout(timer);
     }
   }, [activeTab, user?.uid, resolvedTheme, recipient, isSuccess]);
 
-  // Scanner Logic
+  // Scanner Logic using low-level Html5Qrcode
   useEffect(() => {
+    let isMounted = true;
+
     if (activeTab === "scan" && !recipient && !isSuccess) {
-      const getCameraPermission = async () => {
+      const startScanner = async () => {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-          setHasCameraPermission(true);
-          stream.getTracks().forEach(track => track.stop());
+          const scanner = new Html5Qrcode("reader");
+          html5QrCodeRef.current = scanner;
 
-          const scanner = new Html5QrcodeScanner(
-            "reader",
-            { 
-              fps: 10, 
-              qrbox: { width: 250, height: 250 },
-              rememberLastUsedCamera: true,
-              supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-              aspectRatio: 1.0
+          await scanner.start(
+            { facingMode: "environment" },
+            {
+              fps: 15,
+              qrbox: (viewfinderWidth, viewfinderHeight) => {
+                const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                const size = Math.floor(minEdge * 0.7);
+                return { width: size, height: size };
+              },
             },
-            false
+            onScanSuccess,
+            onScanFailure
           );
-
-          scanner.render(onScanSuccess, onScanFailure);
-          scannerRef.current = scanner;
+          
+          if (isMounted) setHasCameraPermission(true);
         } catch (error) {
-          setHasCameraPermission(false);
+          console.error("Scanner start error:", error);
+          if (isMounted) setHasCameraPermission(false);
         }
       };
-      getCameraPermission();
+
+      startScanner();
     } else {
-      setIsTorchOn(false);
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(() => {});
-        scannerRef.current = null;
-      }
+      stopScanner();
     }
+
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(() => {});
-      }
+      isMounted = false;
+      stopScanner();
     };
   }, [activeTab, recipient, isSuccess]);
 
-  const toggleTorch = async () => {
-    const videoElement = document.querySelector("#reader video") as HTMLVideoElement;
-    if (!videoElement || !videoElement.srcObject) return;
-    const stream = videoElement.srcObject as MediaStream;
-    const track = stream.getVideoTracks()[0];
-    const capabilities = track.getCapabilities() as any;
-    if (!capabilities.torch) {
-      toast({ title: "Flash non supporté", description: "Votre appareil ne permet pas d'activer la lampe." });
-      return;
+  const stopScanner = async () => {
+    if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+      try {
+        await html5QrCodeRef.current.stop();
+        html5QrCodeRef.current = null;
+        setIsTorchOn(false);
+      } catch (err) {
+        console.error("Stop scanner error:", err);
+      }
     }
+  };
+
+  const toggleTorch = async () => {
+    if (!html5QrCodeRef.current || !html5QrCodeRef.current.isScanning) return;
+    
     try {
-        await track.applyConstraints({ advanced: [{ torch: !isTorchOn }] } as any);
-        setIsTorchOn(!isTorchOn);
-    } catch (err) {}
+      // @ts-ignore - applyVideoConstraints is available in the internal track
+      const track = html5QrCodeRef.current.getRunningTrack();
+      const capabilities = track.getCapabilities() as any;
+      
+      if (!capabilities.torch) {
+        toast({ title: "Flash non supporté", description: "Votre appareil ne permet pas d'activer la lampe." });
+        return;
+      }
+
+      await track.applyConstraints({
+        advanced: [{ torch: !isTorchOn }]
+      });
+      setIsTorchOn(!isTorchOn);
+    } catch (err) {
+      console.error("Torch error:", err);
+    }
   };
 
   const onScanSuccess = async (decodedText: string) => {
     if (decodedText === user?.uid) {
-      toast({ variant: "destructive", title: "Action impossible", description: "Vous ne pouvez pas vous envoyer de points à vous-même." });
+      toast({ variant: "destructive", title: "Action impossible", description: "Vous ne pouvez pas vous envoyer de points." });
       return;
     }
-    if (scannerRef.current) scannerRef.current.clear();
+    
+    await stopScanner();
     setLoadingRecipient(true);
+    
     try {
       const recipientRef = doc(db, "users", decodedText);
       const recipientSnap = await getDoc(recipientRef);
@@ -202,7 +220,6 @@ export default function TransfertPage() {
     const senderRef = doc(db, "users", user!.uid);
     const receiverRef = doc(db, "users", recipient.id);
 
-    // Déduction de l'expéditeur
     updateDoc(senderRef, {
       totalPoints: increment(-transferAmount),
       updatedAt: serverTimestamp()
@@ -220,7 +237,6 @@ export default function TransfertPage() {
       updatedAt: serverTimestamp()
     };
 
-    // Logique de récompense de parrainage
     const newRecipientPoints = (recipient.totalPoints || 0) + transferAmount;
     if (recipient.referredBy && !recipient.referralRewardClaimed && newRecipientPoints >= 100) {
       const referrersQuery = query(
@@ -239,10 +255,9 @@ export default function TransfertPage() {
       }
     }
 
-    // Crédit du destinataire
     updateDoc(receiverRef, receiverUpdatePayload).then(() => {
       setIsSuccess(true);
-      toast({ title: "Transfert réussi", description: `${transferAmount} points envoyés à @${recipient.username}.` });
+      toast({ title: "Transfert réussi", description: `${transferAmount} points envoyés.` });
     }).catch(async (error) => {
       const permissionError = new FirestorePermissionError({
         path: receiverRef.path,
@@ -267,8 +282,8 @@ export default function TransfertPage() {
     <div className="min-h-screen bg-background flex flex-col overflow-hidden">
       <main className="flex-1 max-w-lg mx-auto w-full relative h-full">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
-          <div className="fixed top-6 left-0 right-0 z-50 px-6 max-w-lg mx-auto">
-            <TabsList className="w-full bg-card/20 backdrop-blur-3xl border border-white/20 dark:border-white/10 p-1 h-14 rounded-2xl grid grid-cols-2 shadow-2xl">
+          <div className="fixed top-6 left-0 right-0 z-[100] px-6 max-w-lg mx-auto">
+            <TabsList className="w-full bg-card/20 backdrop-blur-3xl border border-primary/10 p-1 h-14 rounded-2xl grid grid-cols-2 shadow-2xl">
               <TabsTrigger value="qr" className="rounded-xl font-black text-xs uppercase tracking-widest gap-2">
                 <QrCode className="h-4 w-4" />
                 Mon Sceau
@@ -280,25 +295,25 @@ export default function TransfertPage() {
             </TabsList>
           </div>
 
-          <div className="flex-1 w-full pt-24 px-6">
+          <div className="flex-1 w-full relative">
             <AnimatePresence mode="wait">
               {!recipient && !isSuccess ? (
                 <motion.div
                   key="selection"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                   className="h-full"
                 >
-                  <TabsContent value="qr" className="mt-0 space-y-8 flex flex-col items-center">
-                    <div className="relative group flex justify-center w-full mt-4">
+                  <TabsContent value="qr" className="mt-0 h-full flex flex-col items-center justify-center px-6 pt-12">
+                    <div className="relative group flex justify-center w-full max-w-[340px]">
                       <motion.div 
                         animate={{ scale: [1, 1.05, 1], opacity: [0.05, 0.1, 0.05] }}
                         transition={{ duration: 4, repeat: Infinity }}
                         className="absolute inset-0 blur-[60px] rounded-full bg-primary"
                       />
                       
-                      <Card className="border-none bg-card/60 backdrop-blur-3xl shadow-2xl rounded-[3.5rem] overflow-hidden relative w-full max-w-[340px]">
+                      <Card className="border-none bg-card/60 backdrop-blur-3xl shadow-2xl rounded-[3.5rem] overflow-hidden relative w-full">
                         <CardContent className="p-8 flex flex-col items-center gap-6">
                           <div className="relative">
                             <div 
@@ -309,7 +324,6 @@ export default function TransfertPage() {
                               ref={qrRef} 
                             />
                             
-                            {/* Badge d'Identité Central */}
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                               <motion.div 
                                 initial={{ scale: 0.8, opacity: 0 }}
@@ -345,31 +359,56 @@ export default function TransfertPage() {
                         </CardContent>
                       </Card>
                     </div>
+
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => router.push("/profil")}
+                      className="mt-8 text-[10px] font-black uppercase tracking-[0.3em] opacity-40"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Fermer
+                    </Button>
                   </TabsContent>
 
-                  <TabsContent value="scan" className="mt-0">
-                    <div className="fixed inset-0 z-0 bg-black">
-                      <div id="reader" className="w-full h-full" />
+                  <TabsContent value="scan" className="mt-0 h-full">
+                    <div className="fixed inset-0 z-0 bg-black flex items-center justify-center">
+                      <div id="reader" className="absolute inset-0 w-full h-full" />
+                      
+                      {/* Overlay Visuel du Scanner */}
+                      <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
+                         <motion.div 
+                            animate={{ opacity: [0.1, 0.4, 0.1] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                            className="w-64 h-64 border-2 border-white/20 rounded-[3rem] relative"
+                         >
+                           <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-white/60 rounded-tl-2xl" />
+                           <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-white/60 rounded-tr-2xl" />
+                           <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-white/60 rounded-bl-2xl" />
+                           <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-white/60 rounded-br-2xl" />
+                           
+                           <motion.div 
+                             animate={{ y: [0, 256, 0] }}
+                             transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                             className="absolute top-0 left-4 right-4 h-[2px] bg-white/40 shadow-[0_0_15px_white]"
+                           />
+                         </motion.div>
+                         <p className="mt-8 text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Viser le Sceau</p>
+                      </div>
+
                       {hasCameraPermission === false && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center space-y-4 bg-background/80 backdrop-blur-md z-50">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center space-y-4 bg-background/90 backdrop-blur-xl z-50">
                           <ShieldAlert className="h-12 w-12 text-destructive" />
-                          <p className="text-sm font-bold">Caméra Bloquée</p>
-                          <Button variant="outline" onClick={() => window.location.reload()}>Réessayer</Button>
+                          <h2 className="text-xl font-black uppercase tracking-tight">Accès Caméra Bloqué</h2>
+                          <p className="text-xs font-medium opacity-60">Veuillez autoriser l'accès à la caméra pour scanner les esprits.</p>
+                          <Button variant="outline" onClick={() => window.location.reload()} className="rounded-xl px-8">Réessayer</Button>
                         </div>
                       )}
-                      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                         <motion.div 
-                            animate={{ opacity: [0.1, 0.3, 0.1] }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                            className="w-64 h-64 border-2 border-white/20 rounded-[3rem]"
-                         />
-                      </div>
-                      
-                      {/* Contrôle de la Lampe */}
-                      <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50">
+
+                      {/* Bouton de Flash Flottant */}
+                      <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[110]">
                         <Button
                           onClick={toggleTorch}
-                          className="h-16 w-16 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 transition-all shadow-2xl active:scale-95"
+                          className="h-16 w-16 rounded-full bg-white/10 backdrop-blur-2xl border border-white/20 text-white hover:bg-white/20 transition-all shadow-2xl active:scale-95"
                         >
                           {isTorchOn ? <ZapOff className="h-6 w-6" /> : <Zap className="h-6 w-6" />}
                         </Button>
@@ -383,14 +422,15 @@ export default function TransfertPage() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 1.05 }}
-                  className="space-y-6 pt-8"
+                  className="min-h-screen flex flex-col items-center justify-center px-6"
                 >
-                  <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] overflow-hidden">
+                  <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] overflow-hidden w-full">
                     <CardHeader className="text-center pt-10 pb-4">
                       <div className="mx-auto w-20 h-20 bg-primary/5 rounded-3xl flex items-center justify-center mb-4 relative overflow-hidden border border-primary/10">
-                        <User className="h-10 w-10 text-primary opacity-20" />
-                        {recipient.profileImage && (
+                        {recipient.profileImage ? (
                           <img src={recipient.profileImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                        ) : (
+                          <User className="h-10 w-10 text-primary opacity-20" />
                         )}
                       </div>
                       <CardTitle className="text-2xl font-black">Vers @{recipient.username}</CardTitle>
@@ -413,6 +453,7 @@ export default function TransfertPage() {
                               value={amount}
                               onChange={(e) => setAmount(e.target.value)}
                               className="h-16 text-3xl font-black text-center rounded-2xl bg-primary/5 border-none focus-visible:ring-primary/20"
+                              autoFocus
                             />
                             <div className="absolute right-6 top-1/2 -translate-y-1/2 text-xs font-black opacity-20">PTS</div>
                           </div>
@@ -454,7 +495,7 @@ export default function TransfertPage() {
                   key="success"
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="text-center space-y-8 py-10 pt-16"
+                  className="min-h-screen flex flex-col items-center justify-center px-6 text-center space-y-8"
                 >
                   <div className="relative inline-block">
                     <div className="absolute inset-0 bg-green-500/20 blur-3xl rounded-full scale-150 animate-pulse" />
@@ -470,7 +511,7 @@ export default function TransfertPage() {
                     </p>
                   </div>
 
-                  <div className="p-8 bg-card/40 backdrop-blur-3xl rounded-[2.5rem] border border-primary/5 max-w-xs mx-auto">
+                  <div className="p-8 bg-card/40 backdrop-blur-3xl rounded-[2.5rem] border border-primary/5 w-full max-w-xs mx-auto">
                     <p className="text-[10px] font-black uppercase tracking-widest opacity-30 mb-1">Montant envoyé</p>
                     <p className="text-4xl font-black tabular-nums">{amount} <span className="text-xs opacity-20">PTS</span></p>
                   </div>
@@ -492,16 +533,18 @@ export default function TransfertPage() {
       <style jsx global>{`
         #reader video {
           object-fit: cover !important;
-          width: 100% !important;
-          height: 100% !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
         }
         #reader {
           border: none !important;
-        }
-        #reader__scan_region {
           background: black !important;
         }
-        #reader__dashboard {
+        /* Hide all UI elements from html5-qrcode */
+        #reader__scan_region img {
           display: none !important;
         }
       `}</style>
