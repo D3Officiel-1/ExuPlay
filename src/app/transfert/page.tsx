@@ -21,7 +21,8 @@ import {
   ArrowRight,
   ShieldAlert,
   Sparkles,
-  X
+  X,
+  RefreshCw
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
@@ -55,7 +56,6 @@ export default function TransfertPage() {
   const qrRef = useRef<HTMLDivElement>(null);
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
-  // Fonction de génération du QR Code
   const generateQRCode = async () => {
     if (!qrRef.current || !user?.uid) return;
     
@@ -92,60 +92,16 @@ export default function TransfertPage() {
       const qrCode = new QRCodeStyling(options);
       qrCode.append(qrRef.current);
     } catch (error) {
-      console.error("Erreur lors de la génération du QR Code:", error);
+      console.error("Erreur QR:", error);
     }
   };
 
   useEffect(() => {
     if (activeTab === "qr" && !recipient && !isSuccess) {
-      const timer = setTimeout(() => {
-        generateQRCode();
-      }, 100);
+      const timer = setTimeout(() => generateQRCode(), 100);
       return () => clearTimeout(timer);
     }
   }, [activeTab, user?.uid, resolvedTheme, recipient, isSuccess]);
-
-  // Scanner Logic using low-level Html5Qrcode
-  useEffect(() => {
-    let isMounted = true;
-
-    if (activeTab === "scan" && !recipient && !isSuccess) {
-      const startScanner = async () => {
-        try {
-          const scanner = new Html5Qrcode("reader");
-          html5QrCodeRef.current = scanner;
-
-          await scanner.start(
-            { facingMode: "environment" },
-            {
-              fps: 15,
-              qrbox: (viewfinderWidth, viewfinderHeight) => {
-                const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                const size = Math.floor(minEdge * 0.7);
-                return { width: size, height: size };
-              },
-            },
-            onScanSuccess,
-            onScanFailure
-          );
-          
-          if (isMounted) setHasCameraPermission(true);
-        } catch (error) {
-          console.error("Scanner start error:", error);
-          if (isMounted) setHasCameraPermission(false);
-        }
-      };
-
-      startScanner();
-    } else {
-      stopScanner();
-    }
-
-    return () => {
-      isMounted = false;
-      stopScanner();
-    };
-  }, [activeTab, recipient, isSuccess]);
 
   const stopScanner = async () => {
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
@@ -159,22 +115,67 @@ export default function TransfertPage() {
     }
   };
 
+  useEffect(() => {
+    let isMounted = true;
+    let scannerTimeout: NodeJS.Timeout;
+
+    if (activeTab === "scan" && !recipient && !isSuccess) {
+      const startScanner = async () => {
+        // Attendre que l'élément "reader" soit bien dans le DOM
+        scannerTimeout = setTimeout(async () => {
+          if (!document.getElementById("reader")) return;
+          
+          try {
+            await stopScanner();
+            const scanner = new Html5Qrcode("reader");
+            html5QrCodeRef.current = scanner;
+
+            await scanner.start(
+              { facingMode: "environment" },
+              {
+                fps: 15,
+                qrbox: (viewfinderWidth, viewfinderHeight) => {
+                  const size = Math.min(viewfinderWidth, viewfinderHeight) * 0.7;
+                  return { width: size, height: size };
+                },
+              },
+              onScanSuccess,
+              onScanFailure
+            );
+            
+            if (isMounted) setHasCameraPermission(true);
+          } catch (error: any) {
+            console.error("Scanner error:", error);
+            // On ne met hasCameraPermission à false que si c'est vraiment un refus de permission
+            if (isMounted && (error?.name === "NotAllowedError" || error?.name === "PermissionDeniedError")) {
+              setHasCameraPermission(false);
+            }
+          }
+        }, 300);
+      };
+
+      startScanner();
+    } else {
+      stopScanner();
+    }
+
+    return () => {
+      isMounted = false;
+      clearTimeout(scannerTimeout);
+      stopScanner();
+    };
+  }, [activeTab, recipient, isSuccess]);
+
   const toggleTorch = async () => {
-    if (!html5QrCodeRef.current || !html5QrCodeRef.current.isScanning) return;
-    
+    if (!html5QrCodeRef.current?.isScanning) return;
     try {
-      // @ts-ignore - applyVideoConstraints is available in the internal track
-      const track = html5QrCodeRef.current.getRunningTrack();
-      const capabilities = track.getCapabilities() as any;
-      
+      const track = (html5QrCodeRef.current as any).getRunningTrack();
+      const capabilities = track.getCapabilities();
       if (!capabilities.torch) {
-        toast({ title: "Flash non supporté", description: "Votre appareil ne permet pas d'activer la lampe." });
+        toast({ title: "Flash non supporté" });
         return;
       }
-
-      await track.applyConstraints({
-        advanced: [{ torch: !isTorchOn }]
-      });
+      await track.applyConstraints({ advanced: [{ torch: !isTorchOn }] });
       setIsTorchOn(!isTorchOn);
     } catch (err) {
       console.error("Torch error:", err);
@@ -210,64 +211,48 @@ export default function TransfertPage() {
 
   const handleTransfer = async () => {
     const transferAmount = parseInt(amount);
-    if (!transferAmount || transferAmount <= 0) return;
+    if (!transferAmount || transferAmount <= 0 || !user?.uid || !recipient?.id) return;
     if ((profile?.totalPoints || 0) < transferAmount) {
       toast({ variant: "destructive", title: "Lumière insuffisante" });
       return;
     }
 
     setIsProcessing(true);
-    const senderRef = doc(db, "users", user!.uid);
+    const senderRef = doc(db, "users", user.uid);
     const receiverRef = doc(db, "users", recipient.id);
 
-    updateDoc(senderRef, {
-      totalPoints: increment(-transferAmount),
-      updatedAt: serverTimestamp()
-    }).catch(async (error) => {
-      const permissionError = new FirestorePermissionError({
-        path: senderRef.path,
-        operation: 'update',
-        requestResourceData: { totalPoints: increment(-transferAmount) },
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
-    });
+    try {
+      await updateDoc(senderRef, {
+        totalPoints: increment(-transferAmount),
+        updatedAt: serverTimestamp()
+      });
 
-    const receiverUpdatePayload: any = {
-      totalPoints: increment(transferAmount),
-      updatedAt: serverTimestamp()
-    };
+      const receiverUpdatePayload: any = {
+        totalPoints: increment(transferAmount),
+        updatedAt: serverTimestamp()
+      };
 
-    const newRecipientPoints = (recipient.totalPoints || 0) + transferAmount;
-    if (recipient.referredBy && !recipient.referralRewardClaimed && newRecipientPoints >= 100) {
-      const referrersQuery = query(
-        collection(db, "users"), 
-        where("referralCode", "==", recipient.referredBy), 
-        limit(1)
-      );
-      const referrerSnap = await getDocs(referrersQuery);
-      if (!referrerSnap.empty) {
-        const referrerDoc = referrerSnap.docs[0];
-        updateDoc(referrerDoc.ref, {
-          totalPoints: increment(100),
-          updatedAt: serverTimestamp()
-        }).catch(() => {});
-        receiverUpdatePayload.referralRewardClaimed = true;
+      const newRecipientPoints = (recipient.totalPoints || 0) + transferAmount;
+      if (recipient.referredBy && !recipient.referralRewardClaimed && newRecipientPoints >= 100) {
+        const referrersQuery = query(collection(db, "users"), where("referralCode", "==", recipient.referredBy), limit(1));
+        const referrerSnap = await getDocs(referrersQuery);
+        if (!referrerSnap.empty) {
+          await updateDoc(referrerSnap.docs[0].ref, {
+            totalPoints: increment(100),
+            updatedAt: serverTimestamp()
+          });
+          receiverUpdatePayload.referralRewardClaimed = true;
+        }
       }
-    }
 
-    updateDoc(receiverRef, receiverUpdatePayload).then(() => {
+      await updateDoc(receiverRef, receiverUpdatePayload);
       setIsSuccess(true);
       toast({ title: "Transfert réussi", description: `${transferAmount} points envoyés.` });
-    }).catch(async (error) => {
-      const permissionError = new FirestorePermissionError({
-        path: receiverRef.path,
-        operation: 'update',
-        requestResourceData: receiverUpdatePayload,
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
-    }).finally(() => {
+    } catch (error) {
+      console.error(error);
+    } finally {
       setIsProcessing(false);
-    });
+    }
   };
 
   if (loading) {
@@ -305,7 +290,7 @@ export default function TransfertPage() {
                   exit={{ opacity: 0 }}
                   className="h-full"
                 >
-                  <TabsContent value="qr" className="mt-0 h-full flex flex-col items-center justify-center px-6 pt-12">
+                  <TabsContent value="qr" className="mt-0 h-full flex flex-col items-center justify-center px-6">
                     <div className="relative group flex justify-center w-full max-w-[340px]">
                       <motion.div 
                         animate={{ scale: [1, 1.05, 1], opacity: [0.05, 0.1, 0.05] }}
@@ -317,10 +302,7 @@ export default function TransfertPage() {
                         <CardContent className="p-8 flex flex-col items-center gap-6">
                           <div className="relative">
                             <div 
-                              className={`
-                                w-full aspect-square rounded-[3rem] flex items-center justify-center p-4 shadow-2xl transition-colors duration-500
-                                ${resolvedTheme === 'dark' ? 'bg-white' : 'bg-black'}
-                              `} 
+                              className={`w-full aspect-square rounded-[3rem] flex items-center justify-center p-4 shadow-2xl transition-colors duration-500 ${resolvedTheme === 'dark' ? 'bg-white' : 'bg-black'}`} 
                               ref={qrRef} 
                             />
                             
@@ -328,10 +310,7 @@ export default function TransfertPage() {
                               <motion.div 
                                 initial={{ scale: 0.8, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
-                                className={`
-                                  flex flex-col items-center gap-1 p-2 rounded-2xl border-2 shadow-2xl min-w-[90px]
-                                  ${resolvedTheme === 'dark' ? 'bg-white border-black text-black' : 'bg-black border-white text-white'}
-                                `}
+                                className={`flex flex-col items-center gap-1 p-2 rounded-2xl border-2 shadow-2xl min-w-[90px] ${resolvedTheme === 'dark' ? 'bg-white border-black text-black' : 'bg-black border-white text-white'}`}
                               >
                                 <div className="relative h-12 w-12 rounded-full overflow-hidden border-2 border-current bg-background/10">
                                   {profile?.profileImage ? (
@@ -352,19 +331,13 @@ export default function TransfertPage() {
                               <Sparkles className="h-4 w-4 text-primary" />
                               <p className="text-xl font-black tracking-tight">Sceau d'Éveil</p>
                             </div>
-                            <p className="text-[10px] font-black uppercase tracking-widest opacity-40">
-                              Scannez pour résonner
-                            </p>
+                            <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Scannez pour résonner</p>
                           </div>
                         </CardContent>
                       </Card>
                     </div>
 
-                    <Button 
-                      variant="ghost" 
-                      onClick={() => router.push("/profil")}
-                      className="mt-8 text-[10px] font-black uppercase tracking-[0.3em] opacity-40"
-                    >
+                    <Button variant="ghost" onClick={() => router.push("/profil")} className="mt-8 text-[10px] font-black uppercase tracking-[0.3em] opacity-40">
                       <X className="h-4 w-4 mr-2" />
                       Fermer
                     </Button>
@@ -374,7 +347,6 @@ export default function TransfertPage() {
                     <div className="fixed inset-0 z-0 bg-black flex items-center justify-center">
                       <div id="reader" className="absolute inset-0 w-full h-full" />
                       
-                      {/* Overlay Visuel du Scanner */}
                       <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
                          <motion.div 
                             animate={{ opacity: [0.1, 0.4, 0.1] }}
@@ -385,12 +357,7 @@ export default function TransfertPage() {
                            <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-white/60 rounded-tr-2xl" />
                            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-white/60 rounded-bl-2xl" />
                            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-white/60 rounded-br-2xl" />
-                           
-                           <motion.div 
-                             animate={{ y: [0, 256, 0] }}
-                             transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                             className="absolute top-0 left-4 right-4 h-[2px] bg-white/40 shadow-[0_0_15px_white]"
-                           />
+                           <motion.div animate={{ y: [0, 256, 0] }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="absolute top-0 left-4 right-4 h-[2px] bg-white/40 shadow-[0_0_15px_white]" />
                          </motion.div>
                          <p className="mt-8 text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Viser le Sceau</p>
                       </div>
@@ -398,13 +365,15 @@ export default function TransfertPage() {
                       {hasCameraPermission === false && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center space-y-4 bg-background/90 backdrop-blur-xl z-50">
                           <ShieldAlert className="h-12 w-12 text-destructive" />
-                          <h2 className="text-xl font-black uppercase tracking-tight">Accès Caméra Bloqué</h2>
-                          <p className="text-xs font-medium opacity-60">Veuillez autoriser l'accès à la caméra pour scanner les esprits.</p>
-                          <Button variant="outline" onClick={() => window.location.reload()} className="rounded-xl px-8">Réessayer</Button>
+                          <h2 className="text-xl font-black uppercase tracking-tight">Permission Requise</h2>
+                          <p className="text-xs font-medium opacity-60">L'accès à la caméra est nécessaire pour scanner.</p>
+                          <Button variant="outline" onClick={() => window.location.reload()} className="rounded-xl px-8 gap-2">
+                            <RefreshCw className="h-4 w-4" />
+                            Réessayer
+                          </Button>
                         </div>
                       )}
 
-                      {/* Bouton de Flash Flottant */}
                       <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[110]">
                         <Button
                           onClick={toggleTorch}
@@ -467,24 +436,9 @@ export default function TransfertPage() {
                         disabled={isProcessing || !amount || parseInt(amount) <= 0 || parseInt(amount) > (profile?.totalPoints || 0)}
                         className="w-full h-16 rounded-2xl font-black text-sm uppercase tracking-widest gap-3 shadow-xl shadow-primary/20"
                       >
-                        {isProcessing ? (
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                        ) : (
-                          <>
-                            <Zap className="h-5 w-5" />
-                            Confirmer le Transfert
-                          </>
-                        )}
+                        {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Zap className="h-5 w-5" />Confirmer le Transfert</>}
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        onClick={() => {
-                          setRecipient(null);
-                          setAmount("");
-                          setActiveTab("qr");
-                        }}
-                        className="w-full h-12 text-[10px] font-black uppercase tracking-widest opacity-40"
-                      >
+                      <Button variant="ghost" onClick={() => { setRecipient(null); setAmount(""); setActiveTab("qr"); }} className="w-full h-12 text-[10px] font-black uppercase tracking-widest opacity-40">
                         Annuler
                       </Button>
                     </CardFooter>
@@ -506,9 +460,7 @@ export default function TransfertPage() {
                   
                   <div className="space-y-2">
                     <h2 className="text-3xl font-black tracking-tight">Transmission Réussie</h2>
-                    <p className="text-sm font-medium opacity-40 px-6">
-                      Votre lumière a été partagée avec @{recipient?.username}. Le cycle de l'éveil continue.
-                    </p>
+                    <p className="text-sm font-medium opacity-40 px-6">Votre lumière a été partagée avec @{recipient?.username}.</p>
                   </div>
 
                   <div className="p-8 bg-card/40 backdrop-blur-3xl rounded-[2.5rem] border border-primary/5 w-full max-w-xs mx-auto">
@@ -516,11 +468,7 @@ export default function TransfertPage() {
                     <p className="text-4xl font-black tabular-nums">{amount} <span className="text-xs opacity-20">PTS</span></p>
                   </div>
 
-                  <Button 
-                    variant="outline" 
-                    onClick={() => router.push("/profil")}
-                    className="h-14 px-8 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2"
-                  >
+                  <Button variant="outline" onClick={() => router.push("/profil")} className="h-14 px-8 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2">
                     Retour au Profil
                     <ArrowRight className="h-4 w-4" />
                   </Button>
@@ -539,14 +487,8 @@ export default function TransfertPage() {
           top: 0 !important;
           left: 0 !important;
         }
-        #reader {
-          border: none !important;
-          background: black !important;
-        }
-        /* Hide all UI elements from html5-qrcode */
-        #reader__scan_region img {
-          display: none !important;
-        }
+        #reader { border: none !important; background: black !important; }
+        #reader__scan_region img { display: none !important; }
       `}</style>
     </div>
   );
