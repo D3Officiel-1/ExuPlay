@@ -52,42 +52,64 @@ export default function TransfertPage() {
   const { data: profile, loading } = useDoc(userDocRef);
 
   const qrRef = useRef<HTMLDivElement>(null);
-  const qrStyling = useRef<any>(null);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
-  useEffect(() => {
-    if (activeTab === "qr" && qrRef.current && typeof window !== "undefined") {
-      const initQr = async () => {
-        const QRCodeStyling = (await import("qr-code-styling")).default;
-        const dotColor = resolvedTheme === 'dark' ? '#000000' : '#FFFFFF';
-        const transparentPixel = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
-        
-        const options = {
-          width: 300,
-          height: 300,
-          type: "svg" as const,
-          data: user?.uid || "",
-          image: transparentPixel,
-          dotsOptions: { color: dotColor, type: "rounded" as const },
-          backgroundOptions: { color: "transparent" },
-          imageOptions: { hideBackgroundDots: true, imageSize: 0.4, margin: 0 },
-          cornersSquareOptions: { color: dotColor, type: "extra-rounded" as const },
-          cornersDotOptions: { color: dotColor, type: "dot" as const },
-          qrOptions: { typeNumber: 0, mode: "Byte" as const, errorCorrectionLevel: "H" as const },
-        };
-
-        if (qrRef.current) {
-          qrRef.current.innerHTML = "";
-          qrStyling.current = new QRCodeStyling(options);
-          qrStyling.current.append(qrRef.current);
-        }
+  // Fonction de génération du QR Code
+  const generateQRCode = async () => {
+    if (!qrRef.current || !user?.uid) return;
+    
+    try {
+      const QRCodeStyling = (await import("qr-code-styling")).default;
+      // Mode clair: Blanc sur Noir | Mode sombre: Noir sur Blanc
+      const dotColor = resolvedTheme === 'dark' ? '#000000' : '#FFFFFF';
+      
+      const options = {
+        width: 280,
+        height: 280,
+        type: "svg" as const,
+        data: user.uid,
+        dotsOptions: { 
+          color: dotColor, 
+          type: "dots" as const 
+        },
+        backgroundOptions: { color: "transparent" },
+        cornersSquareOptions: { 
+          color: dotColor, 
+          type: "extra-rounded" as const 
+        },
+        cornersDotOptions: { 
+          color: dotColor, 
+          type: "dot" as const 
+        },
+        qrOptions: { 
+          typeNumber: 0, 
+          mode: "Byte" as const, 
+          errorCorrectionLevel: "H" as const 
+        },
       };
-      initQr();
-    }
-  }, [activeTab, user?.uid, resolvedTheme, profile?.profileImage]);
 
+      qrRef.current.innerHTML = "";
+      const qrCode = new QRCodeStyling(options);
+      qrCode.append(qrRef.current);
+    } catch (error) {
+      console.error("Erreur lors de la génération du QR Code:", error);
+    }
+  };
+
+  // Re-générer quand l'onglet QR est actif ou que le thème change
   useEffect(() => {
-    if (activeTab === "scan") {
+    if (activeTab === "qr" && !recipient && !isSuccess) {
+      // Un court délai assure que le DOM est prêt après le switch d'onglet
+      const timer = setTimeout(() => {
+        generateQRCode();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, user?.uid, resolvedTheme, recipient, isSuccess]);
+
+  // Scanner Logic
+  useEffect(() => {
+    if (activeTab === "scan" && !recipient && !isSuccess) {
       const getCameraPermission = async () => {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -125,7 +147,7 @@ export default function TransfertPage() {
         scannerRef.current.clear().catch(() => {});
       }
     };
-  }, [activeTab]);
+  }, [activeTab, recipient, isSuccess]);
 
   const toggleTorch = async () => {
     const videoElement = document.querySelector("#reader video") as HTMLVideoElement;
@@ -133,7 +155,10 @@ export default function TransfertPage() {
     const stream = videoElement.srcObject as MediaStream;
     const track = stream.getVideoTracks()[0];
     const capabilities = track.getCapabilities() as any;
-    if (!capabilities.torch) return;
+    if (!capabilities.torch) {
+      toast({ title: "Flash non supporté", description: "Votre appareil ne permet pas d'activer la lampe." });
+      return;
+    }
     try {
         await track.applyConstraints({ advanced: [{ torch: !isTorchOn }] } as any);
         setIsTorchOn(!isTorchOn);
@@ -195,7 +220,7 @@ export default function TransfertPage() {
       updatedAt: serverTimestamp()
     };
 
-    // Logique de récompense de parrainage pour le destinataire (s'il atteint 100 pts grâce au transfert)
+    // Logique de récompense de parrainage
     const newRecipientPoints = (recipient.totalPoints || 0) + transferAmount;
     if (recipient.referredBy && !recipient.referralRewardClaimed && newRecipientPoints >= 100) {
       const referrersQuery = query(
@@ -207,7 +232,7 @@ export default function TransfertPage() {
       if (!referrerSnap.empty) {
         const referrerDoc = referrerSnap.docs[0];
         updateDoc(referrerDoc.ref, {
-          totalPoints: increment(100), // Récompense de 100 pts pour le parrain
+          totalPoints: increment(100),
           updatedAt: serverTimestamp()
         }).catch(() => {});
         receiverUpdatePayload.referralRewardClaimed = true;
@@ -273,23 +298,24 @@ export default function TransfertPage() {
                         className="absolute inset-0 blur-[60px] rounded-full bg-primary"
                       />
                       
-                      <Card className="border-none bg-card/60 backdrop-blur-3xl shadow-2xl rounded-[3rem] overflow-hidden relative w-full max-w-[340px]">
+                      <Card className="border-none bg-card/60 backdrop-blur-3xl shadow-2xl rounded-[3.5rem] overflow-hidden relative w-full max-w-[340px]">
                         <CardContent className="p-8 flex flex-col items-center gap-6">
                           <div className="relative">
                             <div 
                               className={`
-                                w-full aspect-square rounded-[2.5rem] flex items-center justify-center p-4 shadow-2xl transition-colors duration-500
+                                w-full aspect-square rounded-[3rem] flex items-center justify-center p-4 shadow-2xl transition-colors duration-500
                                 ${resolvedTheme === 'dark' ? 'bg-white' : 'bg-black'}
                               `} 
                               ref={qrRef} 
                             />
                             
+                            {/* Badge d'Identité Central */}
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                               <motion.div 
                                 initial={{ scale: 0.8, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 className={`
-                                  flex flex-col items-center gap-1 p-2 rounded-2xl border-2 shadow-2xl min-w-[80px]
+                                  flex flex-col items-center gap-1 p-2 rounded-2xl border-2 shadow-2xl min-w-[90px]
                                   ${resolvedTheme === 'dark' ? 'bg-white border-black text-black' : 'bg-black border-white text-white'}
                                 `}
                               >
@@ -300,7 +326,7 @@ export default function TransfertPage() {
                                     <User className="h-6 w-6 m-auto absolute inset-0 opacity-40" />
                                   )}
                                 </div>
-                                <span className="text-[9px] font-black uppercase tracking-tighter truncate max-w-[70px]">
+                                <span className="text-[9px] font-black uppercase tracking-tighter truncate max-w-[80px]">
                                   {profile?.username}
                                 </span>
                               </motion.div>
@@ -335,13 +361,15 @@ export default function TransfertPage() {
                          <motion.div 
                             animate={{ opacity: [0.1, 0.3, 0.1] }}
                             transition={{ duration: 2, repeat: Infinity }}
-                            className="w-64 h-64 border-2 border-white/20 rounded-3xl"
+                            className="w-64 h-64 border-2 border-white/20 rounded-[3rem]"
                          />
                       </div>
+                      
+                      {/* Contrôle de la Lampe */}
                       <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50">
                         <Button
                           onClick={toggleTorch}
-                          className="h-16 w-16 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 transition-all shadow-2xl"
+                          className="h-16 w-16 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 transition-all shadow-2xl active:scale-95"
                         >
                           {isTorchOn ? <ZapOff className="h-6 w-6" /> : <Zap className="h-6 w-6" />}
                         </Button>
