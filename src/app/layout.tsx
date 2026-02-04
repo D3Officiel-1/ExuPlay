@@ -1,3 +1,4 @@
+
 "use client";
 
 import "./globals.css";
@@ -104,7 +105,6 @@ function OfflineOverlay() {
       exit={{ opacity: 0, filter: "blur(20px)" }}
       className="fixed inset-0 z-[1100] bg-background flex flex-col items-center justify-center p-8 text-center"
     >
-      {/* Texture de fond Noise dynamique pour l'overlay */}
       <motion.div
         animate={{ opacity: [0.03, 0.06, 0.03] }}
         transition={{ duration: 4, repeat: Infinity }}
@@ -243,6 +243,10 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   
   const canShowPwa = showPwaPrompt && pathname !== "/" && pathname !== "/login" && pathname !== "/offline";
 
+  // Nouvelle logique : Ne pas afficher l'overlay hors ligne sur /, /login, /autoriser
+  const isOfflineAllowedPath = ["/", "/login", "/autoriser", "/offline"].includes(pathname);
+  const showOffline = isOffline && !isOfflineAllowedPath;
+
   const isProtectedPath = pathname !== "/" && pathname !== "/login" && pathname !== "/offline";
   if (isAuthLoading && isProtectedPath) {
     return (
@@ -256,7 +260,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     <>
       <PrivacyShield />
       <AnimatePresence mode="wait">
-        {isOffline && pathname !== "/offline" ? (
+        {showOffline ? (
           <OfflineOverlay key="offline" />
         ) : showMaintenance ? (
           <MaintenanceOverlay key="maintenance" />
