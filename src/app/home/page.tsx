@@ -153,7 +153,7 @@ export default function HomePage() {
                       {question.question}
                     </p>
 
-                    <div className="grid gap-3">
+                    <div className="grid grid-cols-2 gap-3">
                       {question.options.map((option: string, idx: number) => {
                         const isCorrect = idx === question.correctIndex;
                         const isSelected = idx === selectedOption;
@@ -166,7 +166,7 @@ export default function HomePage() {
                             onClick={() => handleAnswer(idx)}
                             disabled={isAnswered}
                             className={`
-                              w-full p-6 rounded-2xl text-left font-bold transition-all duration-300 flex items-center justify-between border
+                              w-full p-4 md:p-6 rounded-2xl text-left font-bold transition-all duration-300 flex items-center justify-between border min-h-[80px]
                               ${!isAnswered 
                                 ? "bg-background/50 border-primary/5 hover:border-primary/20" 
                                 : isCorrect 
@@ -176,9 +176,11 @@ export default function HomePage() {
                                     : "bg-background/20 border-transparent opacity-40"}
                             `}
                           >
-                            <span>{option}</span>
-                            {isAnswered && isCorrect && <CheckCircle2 className="h-5 w-5" />}
-                            {isAnswered && isSelected && !isCorrect && <XCircle className="h-5 w-5" />}
+                            <span className="text-sm md:text-base leading-tight">{option}</span>
+                            <div className="shrink-0 ml-2">
+                              {isAnswered && isCorrect && <CheckCircle2 className="h-4 w-4 md:h-5 md:w-5" />}
+                              {isAnswered && isSelected && !isCorrect && <XCircle className="h-4 w-4 md:h-5 md:w-5" />}
+                            </div>
                           </motion.button>
                         );
                       })}
