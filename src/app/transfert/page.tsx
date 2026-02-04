@@ -121,7 +121,8 @@ export default function TransfertPage() {
               fps: 10, 
               qrbox: { width: 250, height: 250 },
               rememberLastUsedCamera: true,
-              supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+              supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+              aspectRatio: 1.0
             },
             false
           );
@@ -230,11 +231,11 @@ export default function TransfertPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <main className="flex-1 p-6 pt-12 space-y-8 max-w-lg mx-auto w-full pb-12">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="flex items-center mb-8">
-            <TabsList className="flex-1 bg-card/40 backdrop-blur-3xl border border-primary/5 p-1 h-14 rounded-2xl grid grid-cols-2">
+    <div className="min-h-screen bg-background flex flex-col overflow-hidden">
+      <main className="flex-1 max-w-lg mx-auto w-full relative h-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
+          <div className="fixed top-6 left-0 right-0 z-50 px-6 max-w-lg mx-auto">
+            <TabsList className="w-full bg-card/60 backdrop-blur-3xl border border-primary/5 p-1 h-14 rounded-2xl grid grid-cols-2 shadow-2xl">
               <TabsTrigger value="qr" className="rounded-xl font-black text-xs uppercase tracking-widest gap-2">
                 <QrCode className="h-4 w-4" />
                 Mon Sceau
@@ -246,197 +247,222 @@ export default function TransfertPage() {
             </TabsList>
           </div>
 
-          <AnimatePresence mode="wait">
-            {!recipient && !isSuccess ? (
-              <motion.div
-                key="selection"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="space-y-6"
-              >
-                <TabsContent value="qr" className="mt-0 space-y-8">
-                  <div className="relative group flex justify-center">
-                    <motion.div 
-                      animate={{ scale: [1, 1.05, 1], opacity: [0.05, 0.1, 0.05] }}
-                      transition={{ duration: 4, repeat: Infinity }}
-                      className="absolute inset-0 blur-[60px] rounded-full bg-primary"
-                    />
-                    
-                    <Card className="border-none bg-card/60 backdrop-blur-3xl shadow-2xl rounded-[3rem] overflow-hidden relative w-full max-w-[340px]">
-                      <CardContent className="p-8 flex flex-col items-center gap-6">
-                        <div className="relative">
-                          <div 
-                            className={`
-                              w-full aspect-square rounded-[2.5rem] flex items-center justify-center p-4 shadow-2xl transition-colors duration-500
-                              ${resolvedTheme === 'dark' ? 'bg-white' : 'bg-black'}
-                            `} 
-                            ref={qrRef} 
-                          />
-                          
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <motion.div 
-                              initial={{ scale: 0.8, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              className={`
-                                flex flex-col items-center gap-1 p-2 rounded-2xl border-2 shadow-2xl min-w-[80px]
-                                ${resolvedTheme === 'dark' ? 'bg-white border-black text-black' : 'bg-black border-white text-white'}
-                              `}
-                            >
-                              <div className="relative h-12 w-12 rounded-full overflow-hidden border-2 border-current bg-background/10">
-                                {profile?.profileImage ? (
-                                  <img src={profile.profileImage} alt="" className="object-cover w-full h-full" />
-                                ) : (
-                                  <User className="h-6 w-6 m-auto absolute inset-0 opacity-40" />
-                                )}
-                              </div>
-                              <span className="text-[9px] font-black uppercase tracking-tighter truncate max-w-[70px]">
-                                {profile?.username}
-                              </span>
-                            </motion.div>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <Sparkles className="h-4 w-4 text-primary" />
-                            <p className="text-xl font-black tracking-tight">Sceau d'Éveil</p>
-                          </div>
-                          <p className="text-[10px] font-black uppercase tracking-widest opacity-40">
-                            Scannez pour résonner
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="scan" className="mt-0">
-                  <div className="relative aspect-square w-full rounded-[3rem] overflow-hidden bg-black/40 border-4 border-primary/10 shadow-inner group">
-                    <div id="reader" className="w-full h-full object-cover" />
-                    {hasCameraPermission === false && (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center space-y-4 bg-background/80 backdrop-blur-md">
-                        <ShieldAlert className="h-12 w-12 text-destructive" />
-                        <p className="text-sm font-bold">Caméra Bloquée</p>
-                        <p className="text-xs opacity-60">Veuillez autoriser l'accès à la caméra pour scanner les sceaux.</p>
-                      </div>
-                    )}
-                    <div className="absolute inset-0 border-[40px] border-black/40 pointer-events-none" />
-                    <div className="absolute inset-[40px] border-2 border-primary/20 rounded-3xl pointer-events-none animate-pulse" />
-                  </div>
-                </TabsContent>
-              </motion.div>
-            ) : recipient && !isSuccess ? (
-              <motion.div
-                key="amount"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.05 }}
-                className="space-y-6"
-              >
-                <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] overflow-hidden">
-                  <CardHeader className="text-center pt-10 pb-4">
-                    <div className="mx-auto w-20 h-20 bg-primary/5 rounded-3xl flex items-center justify-center mb-4 relative overflow-hidden border border-primary/10">
-                      <User className="h-10 w-10 text-primary opacity-20" />
-                      {recipient.profileImage && (
-                        <img src={recipient.profileImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                      )}
-                    </div>
-                    <CardTitle className="text-2xl font-black">Vers @{recipient.username}</CardTitle>
-                    <CardDescription>Partagez une part de votre éveil</CardDescription>
-                  </CardHeader>
-                  
-                  <CardContent className="px-8 pb-10 space-y-8">
-                    <div className="space-y-4">
-                      <div className="text-center">
-                        <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1">Votre Solde Actuel</p>
-                        <p className="text-xl font-black">{profile?.totalPoints?.toLocaleString()} <span className="text-xs opacity-20">PTS</span></p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Montant du transfert</Label>
-                        <div className="relative">
-                          <Input 
-                            type="number" 
-                            placeholder="0" 
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                            className="h-16 text-3xl font-black text-center rounded-2xl bg-primary/5 border-none focus-visible:ring-primary/20"
-                          />
-                          <div className="absolute right-6 top-1/2 -translate-y-1/2 text-xs font-black opacity-20">PTS</div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-
-                  <CardFooter className="px-8 pb-10 flex flex-col gap-3">
-                    <Button 
-                      onClick={handleTransfer}
-                      disabled={isProcessing || !amount || parseInt(amount) <= 0 || parseInt(amount) > (profile?.totalPoints || 0)}
-                      className="w-full h-16 rounded-2xl font-black text-sm uppercase tracking-widest gap-3 shadow-xl shadow-primary/20"
-                    >
-                      {isProcessing ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <>
-                          <Zap className="h-5 w-5" />
-                          Confirmer le Transfert
-                        </>
-                      )}
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      onClick={() => {
-                        setRecipient(null);
-                        setAmount("");
-                        setActiveTab("qr");
-                      }}
-                      className="w-full h-12 text-[10px] font-black uppercase tracking-widest opacity-40"
-                    >
-                      Annuler
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="success"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="text-center space-y-8 py-10"
-              >
-                <div className="relative inline-block">
-                  <div className="absolute inset-0 bg-green-500/20 blur-3xl rounded-full scale-150 animate-pulse" />
-                  <div className="relative h-24 w-24 bg-card rounded-[2.5rem] flex items-center justify-center border border-green-500/20 shadow-2xl mx-auto">
-                    <CheckCircle2 className="h-12 w-12 text-green-500" />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <h2 className="text-3xl font-black tracking-tight">Transmission Réussie</h2>
-                  <p className="text-sm font-medium opacity-40 px-6">
-                    Votre lumière a été partagée avec @{recipient?.username}. Le cycle de l'éveil continue.
-                  </p>
-                </div>
-
-                <div className="p-8 bg-card/40 backdrop-blur-3xl rounded-[2.5rem] border border-primary/5 max-w-xs mx-auto">
-                  <p className="text-[10px] font-black uppercase tracking-widest opacity-30 mb-1">Montant envoyé</p>
-                  <p className="text-4xl font-black tabular-nums">{amount} <span className="text-xs opacity-20">PTS</span></p>
-                </div>
-
-                <Button 
-                  variant="outline" 
-                  onClick={() => router.push("/profil")}
-                  className="h-14 px-8 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2"
+          <div className="flex-1 w-full pt-24 px-6">
+            <AnimatePresence mode="wait">
+              {!recipient && !isSuccess ? (
+                <motion.div
+                  key="selection"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="h-full"
                 >
-                  Retour au Profil
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                  <TabsContent value="qr" className="mt-0 space-y-8 flex flex-col items-center">
+                    <div className="relative group flex justify-center w-full mt-4">
+                      <motion.div 
+                        animate={{ scale: [1, 1.05, 1], opacity: [0.05, 0.1, 0.05] }}
+                        transition={{ duration: 4, repeat: Infinity }}
+                        className="absolute inset-0 blur-[60px] rounded-full bg-primary"
+                      />
+                      
+                      <Card className="border-none bg-card/60 backdrop-blur-3xl shadow-2xl rounded-[3rem] overflow-hidden relative w-full max-w-[340px]">
+                        <CardContent className="p-8 flex flex-col items-center gap-6">
+                          <div className="relative">
+                            <div 
+                              className={`
+                                w-full aspect-square rounded-[2.5rem] flex items-center justify-center p-4 shadow-2xl transition-colors duration-500
+                                ${resolvedTheme === 'dark' ? 'bg-white' : 'bg-black'}
+                              `} 
+                              ref={qrRef} 
+                            />
+                            
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <motion.div 
+                                initial={{ scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                className={`
+                                  flex flex-col items-center gap-1 p-2 rounded-2xl border-2 shadow-2xl min-w-[80px]
+                                  ${resolvedTheme === 'dark' ? 'bg-white border-black text-black' : 'bg-black border-white text-white'}
+                                `}
+                              >
+                                <div className="relative h-12 w-12 rounded-full overflow-hidden border-2 border-current bg-background/10">
+                                  {profile?.profileImage ? (
+                                    <img src={profile.profileImage} alt="" className="object-cover w-full h-full" />
+                                  ) : (
+                                    <User className="h-6 w-6 m-auto absolute inset-0 opacity-40" />
+                                  )}
+                                </div>
+                                <span className="text-[9px] font-black uppercase tracking-tighter truncate max-w-[70px]">
+                                  {profile?.username}
+                                </span>
+                              </motion.div>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <Sparkles className="h-4 w-4 text-primary" />
+                              <p className="text-xl font-black tracking-tight">Sceau d'Éveil</p>
+                            </div>
+                            <p className="text-[10px] font-black uppercase tracking-widest opacity-40">
+                              Scannez pour résonner
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="scan" className="mt-0">
+                    <div className="fixed inset-0 z-0 bg-black">
+                      <div id="reader" className="w-full h-full" />
+                      {hasCameraPermission === false && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center space-y-4 bg-background/80 backdrop-blur-md z-50">
+                          <ShieldAlert className="h-12 w-12 text-destructive" />
+                          <p className="text-sm font-bold">Caméra Bloquée</p>
+                          <p className="text-xs opacity-60">Veuillez autoriser l'accès à la caméra pour scanner les sceaux.</p>
+                          <Button variant="outline" onClick={() => window.location.reload()}>Réessayer</Button>
+                        </div>
+                      )}
+                      {/* Full screen scan effect overlay - completely borderless */}
+                      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                         <motion.div 
+                            animate={{ opacity: [0.1, 0.3, 0.1] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                            className="w-64 h-64 border-2 border-white/20 rounded-3xl"
+                         />
+                      </div>
+                    </div>
+                  </TabsContent>
+                </motion.div>
+              ) : recipient && !isSuccess ? (
+                <motion.div
+                  key="amount"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.05 }}
+                  className="space-y-6 pt-8"
+                >
+                  <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] overflow-hidden">
+                    <CardHeader className="text-center pt-10 pb-4">
+                      <div className="mx-auto w-20 h-20 bg-primary/5 rounded-3xl flex items-center justify-center mb-4 relative overflow-hidden border border-primary/10">
+                        <User className="h-10 w-10 text-primary opacity-20" />
+                        {recipient.profileImage && (
+                          <img src={recipient.profileImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                        )}
+                      </div>
+                      <CardTitle className="text-2xl font-black">Vers @{recipient.username}</CardTitle>
+                      <CardDescription>Partagez une part de votre éveil</CardDescription>
+                    </CardHeader>
+                    
+                    <CardContent className="px-8 pb-10 space-y-8">
+                      <div className="space-y-4">
+                        <div className="text-center">
+                          <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1">Votre Solde Actuel</p>
+                          <p className="text-xl font-black">{profile?.totalPoints?.toLocaleString()} <span className="text-xs opacity-20">PTS</span></p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Montant du transfert</Label>
+                          <div className="relative">
+                            <Input 
+                              type="number" 
+                              placeholder="0" 
+                              value={amount}
+                              onChange={(e) => setAmount(e.target.value)}
+                              className="h-16 text-3xl font-black text-center rounded-2xl bg-primary/5 border-none focus-visible:ring-primary/20"
+                            />
+                            <div className="absolute right-6 top-1/2 -translate-y-1/2 text-xs font-black opacity-20">PTS</div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+
+                    <CardFooter className="px-8 pb-10 flex flex-col gap-3">
+                      <Button 
+                        onClick={handleTransfer}
+                        disabled={isProcessing || !amount || parseInt(amount) <= 0 || parseInt(amount) > (profile?.totalPoints || 0)}
+                        className="w-full h-16 rounded-2xl font-black text-sm uppercase tracking-widest gap-3 shadow-xl shadow-primary/20"
+                      >
+                        {isProcessing ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <>
+                            <Zap className="h-5 w-5" />
+                            Confirmer le Transfert
+                          </>
+                        )}
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        onClick={() => {
+                          setRecipient(null);
+                          setAmount("");
+                          setActiveTab("qr");
+                        }}
+                        className="w-full h-12 text-[10px] font-black uppercase tracking-widest opacity-40"
+                      >
+                        Annuler
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="success"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="text-center space-y-8 py-10 pt-16"
+                >
+                  <div className="relative inline-block">
+                    <div className="absolute inset-0 bg-green-500/20 blur-3xl rounded-full scale-150 animate-pulse" />
+                    <div className="relative h-24 w-24 bg-card rounded-[2.5rem] flex items-center justify-center border border-green-500/20 shadow-2xl mx-auto">
+                      <CheckCircle2 className="h-12 w-12 text-green-500" />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h2 className="text-3xl font-black tracking-tight">Transmission Réussie</h2>
+                    <p className="text-sm font-medium opacity-40 px-6">
+                      Votre lumière a été partagée avec @{recipient?.username}. Le cycle de l'éveil continue.
+                    </p>
+                  </div>
+
+                  <div className="p-8 bg-card/40 backdrop-blur-3xl rounded-[2.5rem] border border-primary/5 max-w-xs mx-auto">
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-30 mb-1">Montant envoyé</p>
+                    <p className="text-4xl font-black tabular-nums">{amount} <span className="text-xs opacity-20">PTS</span></p>
+                  </div>
+
+                  <Button 
+                    variant="outline" 
+                    onClick={() => router.push("/profil")}
+                    className="h-14 px-8 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2"
+                  >
+                    Retour au Profil
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </Tabs>
       </main>
+      <style jsx global>{`
+        #reader video {
+          object-fit: cover !important;
+          width: 100% !important;
+          height: 100% !important;
+        }
+        #reader {
+          border: none !important;
+        }
+        #reader__scan_region {
+          background: black !important;
+        }
+        #reader__dashboard {
+          display: none !important;
+        }
+      `}</style>
     </div>
   );
 }
