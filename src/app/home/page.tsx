@@ -17,9 +17,37 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
-import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, Brain } from "lucide-react";
+import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, Brain, Play } from "lucide-react";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+
+export function SpoilerOverlay() {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="absolute inset-0 z-10 overflow-hidden rounded-2xl"
+    >
+      <div className="absolute inset-0 bg-primary/10 backdrop-blur-md" />
+      <motion.div
+        animate={{
+          backgroundPosition: ["0% 0%", "100% 100%"],
+        }}
+        transition={{
+          duration: 1,
+          repeat: Infinity,
+          ease: "linear",
+        }}
+        className="absolute inset-0 opacity-40 pointer-events-none"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+          backgroundSize: "200px 200px",
+        }}
+      />
+    </motion.div>
+  );
+}
 
 export default function HomePage() {
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
@@ -28,6 +56,7 @@ export default function HomePage() {
   const [score, setScore] = useState(0);
   const [quizComplete, setQuizComplete] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [quizStarted, setQuizStarted] = useState(false);
   
   const { user } = useUser();
   const db = useFirestore();
@@ -40,7 +69,7 @@ export default function HomePage() {
   const { data: quizzes, loading: quizzesLoading } = useCollection(quizzesQuery);
 
   const handleAnswer = (index: number) => {
-    if (isAnswered || !quizzes) return;
+    if (!quizStarted || isAnswered || !quizzes) return;
     const currentQuiz = quizzes[currentQuestionIdx];
     setSelectedOption(index);
     setIsAnswered(true);
@@ -56,6 +85,7 @@ export default function HomePage() {
       setCurrentQuestionIdx(prev => prev + 1);
       setSelectedOption(null);
       setIsAnswered(false);
+      setQuizStarted(false); // On redemande de démarrer pour chaque question pour l'effet
     } else {
       finishQuiz();
     }
@@ -89,6 +119,7 @@ export default function HomePage() {
     setIsAnswered(false);
     setScore(0);
     setQuizComplete(false);
+    setQuizStarted(false);
   };
 
   if (quizzesLoading) {
@@ -153,37 +184,65 @@ export default function HomePage() {
                       {question.question}
                     </p>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      {question.options.map((option: string, idx: number) => {
-                        const isCorrect = idx === question.correctIndex;
-                        const isSelected = idx === selectedOption;
-                        
-                        return (
-                          <motion.button
-                            key={idx}
-                            whileHover={!isAnswered ? { scale: 1.02 } : {}}
-                            whileTap={!isAnswered ? { scale: 0.98 } : {}}
-                            onClick={() => handleAnswer(idx)}
-                            disabled={isAnswered}
-                            className={`
-                              w-full p-4 md:p-6 rounded-2xl text-left font-bold transition-all duration-300 flex items-center justify-between border min-h-[80px]
-                              ${!isAnswered 
-                                ? "bg-background/50 border-primary/5 hover:border-primary/20" 
-                                : isCorrect 
-                                  ? "bg-green-500/10 border-green-500/50 text-green-600 dark:text-green-400" 
-                                  : isSelected 
-                                    ? "bg-red-500/10 border-red-500/50 text-red-600 dark:text-red-400" 
-                                    : "bg-background/20 border-transparent opacity-40"}
-                            `}
-                          >
-                            <span className="text-sm md:text-base leading-tight">{option}</span>
-                            <div className="shrink-0 ml-2">
-                              {isAnswered && isCorrect && <CheckCircle2 className="h-4 w-4 md:h-5 md:w-5" />}
-                              {isAnswered && isSelected && !isCorrect && <XCircle className="h-4 w-4 md:h-5 md:w-5" />}
+                    <div className="relative">
+                      <div className="grid grid-cols-2 gap-3">
+                        {question.options.map((option: string, idx: number) => {
+                          const isCorrect = idx === question.correctIndex;
+                          const isSelected = idx === selectedOption;
+                          
+                          return (
+                            <div key={idx} className="relative">
+                              <motion.button
+                                whileHover={(!isAnswered && quizStarted) ? { scale: 1.02 } : {}}
+                                whileTap={(!isAnswered && quizStarted) ? { scale: 0.98 } : {}}
+                                onClick={() => handleAnswer(idx)}
+                                disabled={isAnswered || !quizStarted}
+                                className={`
+                                  w-full p-4 md:p-6 rounded-2xl text-left font-bold transition-all duration-300 flex items-center justify-between border min-h-[80px]
+                                  ${!isAnswered 
+                                    ? "bg-background/50 border-primary/5 hover:border-primary/20" 
+                                    : isCorrect 
+                                      ? "bg-green-500/10 border-green-500/50 text-green-600 dark:text-green-400" 
+                                      : isSelected 
+                                        ? "bg-red-500/10 border-red-500/50 text-red-600 dark:text-red-400" 
+                                        : "bg-background/20 border-transparent opacity-40"}
+                                `}
+                              >
+                                <span className="text-sm md:text-base leading-tight">{option}</span>
+                                <div className="shrink-0 ml-2">
+                                  {isAnswered && isCorrect && <CheckCircle2 className="h-4 w-4 md:h-5 md:w-5" />}
+                                  {isAnswered && isSelected && !isCorrect && <XCircle className="h-4 w-4 md:h-5 md:w-5" />}
+                                </div>
+                              </motion.button>
+                              
+                              <AnimatePresence>
+                                {!quizStarted && (
+                                  <SpoilerOverlay key="spoiler" />
+                                )}
+                              </AnimatePresence>
                             </div>
-                          </motion.button>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
+
+                      <AnimatePresence>
+                        {!quizStarted && (
+                          <motion.div 
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 1.2, filter: "blur(10px)" }}
+                            className="absolute inset-0 z-20 flex items-center justify-center"
+                          >
+                            <Button 
+                              onClick={() => setQuizStarted(true)}
+                              className="h-16 px-10 rounded-2xl font-black text-xs uppercase tracking-widest gap-3 shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)] bg-primary text-primary-foreground"
+                            >
+                              <Play className="h-5 w-5 fill-current" />
+                              Démarrer le défi
+                            </Button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
 
                     <AnimatePresence>
