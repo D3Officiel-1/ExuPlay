@@ -414,36 +414,38 @@ export default function ProfilPage() {
             transition={{ delay: 0.1 }}
           >
             <Card 
-              className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2rem] overflow-hidden"
+              className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2rem] overflow-hidden h-full"
             >
-              <CardContent className="p-6 text-center space-y-4">
-                <div className="relative">
-                  <Trophy className="h-8 w-8 text-primary mx-auto opacity-20" />
-                  <motion.div 
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.3, 0.1] }}
-                    transition={{ duration: 4, repeat: Infinity }}
-                    className="absolute inset-0 bg-primary/20 rounded-full blur-xl"
-                  />
+              <CardContent className="p-6 text-center space-y-4 flex flex-col h-full justify-between">
+                <div className="space-y-4">
+                  <div className="relative">
+                    <Trophy className="h-8 w-8 text-primary mx-auto opacity-20" />
+                    <motion.div 
+                      animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.3, 0.1] }}
+                      transition={{ duration: 4, repeat: Infinity }}
+                      className="absolute inset-0 bg-primary/20 rounded-full blur-xl"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-3xl font-black tabular-nums">{profile?.totalPoints?.toLocaleString() || 0}</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Lumière Totale</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-3xl font-black tabular-nums">{profile?.totalPoints?.toLocaleString() || 0}</p>
-                  <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Lumière Totale</p>
-                </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col xs:flex-row gap-2 pt-2">
                   <Button 
                     variant="outline"
                     onClick={() => router.push("/transfert")}
-                    className="flex-1 h-12 rounded-2xl font-black text-[9px] uppercase tracking-widest gap-2"
+                    className="flex-1 h-12 rounded-2xl font-black text-[9px] uppercase tracking-widest gap-2 min-w-0"
                   >
-                    <QrCode className="h-4 w-4" />
-                    Transférer
+                    <QrCode className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Transférer</span>
                   </Button>
                   <Button 
                     onClick={() => router.push("/echange")}
-                    className="flex-1 h-12 rounded-2xl font-black text-[9px] uppercase tracking-widest gap-2"
+                    className="flex-1 h-12 rounded-2xl font-black text-[9px] uppercase tracking-widest gap-2 min-w-0"
                   >
-                    <ArrowRightLeft className="h-4 w-4" />
-                    Échanger
+                    <ArrowRightLeft className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Échanger</span>
                   </Button>
                 </div>
               </CardContent>
@@ -605,7 +607,7 @@ export default function ProfilPage() {
                     Mes Filleuls
                   </Button>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col xs:flex-row gap-2">
                   <Button 
                     variant="secondary" 
                     onClick={copyMagicLink}
@@ -624,7 +626,7 @@ export default function ProfilPage() {
                         toast({ title: "Lien copié" });
                       }
                     }}
-                    className="h-12 w-12 rounded-2xl"
+                    className="h-12 w-12 rounded-2xl shrink-0"
                   >
                     <Copy className="h-5 w-5" />
                   </Button>
