@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -6,8 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useUser, useFirestore, useDoc } from "@/firebase";
 import { doc, getDoc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { Header } from "@/components/Header";
-import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -56,13 +53,11 @@ export default function TransfertPage() {
   const qrStyling = useRef<any>(null);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
-  // Initialisation et mise à jour du QR Code stylisé
   useEffect(() => {
     if (activeTab === "qr" && qrRef.current && typeof window !== "undefined") {
       const initQr = async () => {
         const QRCodeStyling = (await import("qr-code-styling")).default;
         
-        // Couleur du QR : Blanc en mode clair, Noir en mode sombre
         const dotColor = resolvedTheme === 'dark' ? '#000000' : '#FFFFFF';
         
         const options = {
@@ -110,7 +105,6 @@ export default function TransfertPage() {
     }
   }, [activeTab, user?.uid, profile?.profileImage, resolvedTheme]);
 
-  // Logique du scanner
   useEffect(() => {
     if (activeTab === "scan") {
       const getCameraPermission = async () => {
@@ -236,10 +230,8 @@ export default function TransfertPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col pb-32">
-      <Header />
-      
-      <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
+    <div className="min-h-screen bg-background flex flex-col">
+      <main className="flex-1 p-6 pt-12 space-y-8 max-w-lg mx-auto w-full pb-12">
         <div className="flex items-center gap-4">
           <Button 
             variant="ghost" 
@@ -434,8 +426,6 @@ export default function TransfertPage() {
           )}
         </AnimatePresence>
       </main>
-
-      <BottomNav />
     </div>
   );
 }
