@@ -2,12 +2,11 @@
 {
   "name": "Exu Play",
   "short_name": "Exu Play",
-  "description": "L'art de la pensée réinventé. Défis philosophiques et éveil spirituel.",
+  "description": "L'art de la pensée réinventé à travers des défis philosophiques.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
-  "orientation": "portrait",
   "icons": [
     {
       "src": "/icon.svg",
@@ -17,30 +16,30 @@
     },
     {
       "src": "/icon.svg",
-      "sizes": "any",
+      "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "maskable"
     }
   ],
   "shortcuts": [
     {
-      "name": "Défis",
+      "name": "Mes Défis",
       "short_name": "Défis",
       "description": "Accéder aux quiz quotidiens",
       "url": "/home",
-      "icons": [{ "src": "/manifest/quiz.svg", "sizes": "any" }]
+      "icons": [{ "src": "/manifest/quizzes.svg", "sizes": "any" }]
     },
     {
-      "name": "Profil",
+      "name": "Mon Esprit",
       "short_name": "Profil",
-      "description": "Voir mon éveil",
+      "description": "Voir ma progression",
       "url": "/profil",
       "icons": [{ "src": "/manifest/profile.svg", "sizes": "any" }]
     },
     {
       "name": "Réglages",
-      "short_name": "Réglages",
-      "description": "Paramètres de l'app",
+      "short_name": "Paramètres",
+      "description": "Configurer l'expérience",
       "url": "/parametres",
       "icons": [{ "src": "/manifest/settings.svg", "sizes": "any" }]
     }
