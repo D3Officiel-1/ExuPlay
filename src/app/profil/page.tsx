@@ -37,7 +37,8 @@ import {
   ChevronRight,
   History,
   ArrowRightLeft,
-  Users
+  Users,
+  QrCode
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
@@ -406,38 +407,61 @@ export default function ProfilPage() {
           </motion.div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
             <Card 
-              onClick={() => router.push("/echange")}
-              className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2rem] cursor-pointer hover:bg-primary/5 transition-colors group"
+              className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2rem] overflow-hidden"
             >
-              <CardContent className="p-6 text-center">
-                <div className="relative mb-2">
-                  <Trophy className="h-5 w-5 text-primary mx-auto opacity-50 group-hover:scale-110 transition-transform" />
-                  <ArrowRightLeft className="h-3 w-3 text-primary absolute -bottom-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <CardContent className="p-6 text-center space-y-4">
+                <div className="relative">
+                  <Trophy className="h-8 w-8 text-primary mx-auto opacity-20" />
+                  <motion.div 
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.3, 0.1] }}
+                    transition={{ duration: 4, repeat: Infinity }}
+                    className="absolute inset-0 bg-primary/20 rounded-full blur-xl"
+                  />
                 </div>
-                <p className="text-2xl font-black">{profile?.totalPoints?.toLocaleString() || 0}</p>
-                <p className="text-[8px] font-black uppercase tracking-widest opacity-40">Lumière Totale</p>
+                <div>
+                  <p className="text-3xl font-black tabular-nums">{profile?.totalPoints?.toLocaleString() || 0}</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Lumière Totale</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline"
+                    onClick={() => router.push("/transfert")}
+                    className="flex-1 h-12 rounded-2xl font-black text-[9px] uppercase tracking-widest gap-2"
+                  >
+                    <QrCode className="h-4 w-4" />
+                    Transférer
+                  </Button>
+                  <Button 
+                    onClick={() => router.push("/echange")}
+                    className="flex-1 h-12 rounded-2xl font-black text-[9px] uppercase tracking-widest gap-2"
+                  >
+                    <ArrowRightLeft className="h-4 w-4" />
+                    Échanger
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
           <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
+            className="hidden sm:block"
           >
-            <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2rem]">
+            <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2rem] h-full flex items-center justify-center">
               <CardContent className="p-6 text-center">
-                <Calendar className="h-5 w-5 text-primary mx-auto mb-2 opacity-50" />
-                <p className="text-sm font-black">
-                  {profile?.createdAt ? new Date(profile.createdAt.toDate()).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }) : 'N/A'}
+                <Calendar className="h-6 w-6 text-primary mx-auto mb-2 opacity-20" />
+                <p className="text-lg font-black">
+                  {profile?.createdAt ? new Date(profile.createdAt.toDate()).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : 'N/A'}
                 </p>
-                <p className="text-[8px] font-black uppercase tracking-widest opacity-40">Depuis</p>
+                <p className="text-[8px] font-black uppercase tracking-widest opacity-40">Membre depuis</p>
               </CardContent>
             </Card>
           </motion.div>
@@ -596,7 +620,7 @@ export default function ProfilPage() {
                     onClick={async () => {
                       if (profile?.referralCode) {
                         const magicLink = `${window.location.origin}/login?ref=${profile.referralCode}`;
-                        await navigator.clipboard.clipboard.writeText(magicLink);
+                        await navigator.clipboard.writeText(magicLink);
                         toast({ title: "Lien copié" });
                       }
                     }}
