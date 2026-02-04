@@ -19,34 +19,24 @@ import {
   Zap, 
   Loader2, 
   CheckCircle2, 
-  AlertCircle,
   Scan,
   User,
   ArrowRight,
   ShieldAlert,
-  Sparkles,
-  Palette
+  Sparkles
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Html5QrcodeScanner, Html5QrcodeScanType } from "html5-qrcode";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
-
-// Themes de couleurs pour le QR Code
-const VIBRATIONS = [
-  { id: 'classic', name: 'Noir Ébène', color: '#000000', secondary: '#333333' },
-  { id: 'royal', name: 'Améthyste', color: '#7c3aed', secondary: '#a78bfa' },
-  { id: 'growth', name: 'Émeraude', color: '#059669', secondary: '#34d399' },
-  { id: 'fire', name: 'Rubis', color: '#dc2626', secondary: '#f87171' },
-  { id: 'ocean', name: 'Saphir', color: '#2563eb', secondary: '#60a5fa' },
-  { id: 'gold', name: 'Ambre', color: '#d97706', secondary: '#fbbf24' },
-];
+import { useTheme } from "next-themes";
 
 export default function TransfertPage() {
   const { user } = useUser();
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+  const { resolvedTheme } = useTheme();
 
   const [activeTab, setActiveTab] = useState("qr");
   const [recipient, setRecipient] = useState<any>(null);
@@ -54,7 +44,6 @@ export default function TransfertPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-  const [vibration, setVibration] = useState(VIBRATIONS[0]);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -73,6 +62,9 @@ export default function TransfertPage() {
       const initQr = async () => {
         const QRCodeStyling = (await import("qr-code-styling")).default;
         
+        // Couleur du QR : Blanc en mode clair, Noir en mode sombre
+        const dotColor = resolvedTheme === 'dark' ? '#000000' : '#FFFFFF';
+        
         const options = {
           width: 280,
           height: 280,
@@ -80,7 +72,7 @@ export default function TransfertPage() {
           data: user?.uid || "",
           image: profile?.profileImage || "",
           dotsOptions: {
-            color: vibration.color,
+            color: dotColor,
             type: "rounded" as const,
           },
           backgroundOptions: {
@@ -92,11 +84,11 @@ export default function TransfertPage() {
             imageSize: 0.4,
           },
           cornersSquareOptions: {
-            color: vibration.color,
+            color: dotColor,
             type: "extra-rounded" as const,
           },
           cornersDotOptions: {
-            color: vibration.secondary,
+            color: dotColor,
             type: "dot" as const,
           },
           qrOptions: {
@@ -116,7 +108,7 @@ export default function TransfertPage() {
 
       initQr();
     }
-  }, [activeTab, user?.uid, profile?.profileImage, vibration]);
+  }, [activeTab, user?.uid, profile?.profileImage, resolvedTheme]);
 
   // Logique du scanner
   useEffect(() => {
@@ -287,19 +279,24 @@ export default function TransfertPage() {
                 <TabsContent value="qr" className="mt-8 space-y-8">
                   <div className="relative group">
                     <motion.div 
-                      animate={{ scale: [1, 1.05, 1], opacity: [0.1, 0.2, 0.1] }}
+                      animate={{ scale: [1, 1.05, 1], opacity: [0.05, 0.1, 0.05] }}
                       transition={{ duration: 4, repeat: Infinity }}
-                      className="absolute inset-0 blur-[60px] rounded-full"
-                      style={{ backgroundColor: vibration.color }}
+                      className="absolute inset-0 blur-[60px] rounded-full bg-primary"
                     />
                     
                     <Card className="border-none bg-card/60 backdrop-blur-3xl shadow-2xl rounded-[3rem] overflow-hidden relative">
                       <CardContent className="p-8 flex flex-col items-center gap-6">
-                        <div className="w-full aspect-square bg-white/80 rounded-[2.5rem] flex items-center justify-center p-4 shadow-inner" ref={qrRef} />
+                        <div 
+                          className={`
+                            w-full aspect-square rounded-[2.5rem] flex items-center justify-center p-4 shadow-2xl transition-colors duration-500
+                            ${resolvedTheme === 'dark' ? 'bg-white' : 'bg-black'}
+                          `} 
+                          ref={qrRef} 
+                        />
                         
                         <div className="space-y-2 text-center">
                           <div className="flex items-center justify-center gap-2">
-                            <Sparkles className="h-4 w-4" style={{ color: vibration.color }} />
+                            <Sparkles className="h-4 w-4 text-primary" />
                             <p className="text-xl font-black tracking-tight">@{profile?.username}</p>
                           </div>
                           <p className="text-[10px] font-black uppercase tracking-widest opacity-40">
@@ -308,32 +305,6 @@ export default function TransfertPage() {
                         </div>
                       </CardContent>
                     </Card>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3 pl-2">
-                      <Palette className="h-4 w-4 opacity-40" />
-                      <h3 className="text-[10px] font-black uppercase tracking-widest opacity-40">Vibrations chromatiques</h3>
-                    </div>
-                    <div className="flex gap-3 overflow-x-auto pb-4 px-2 no-scrollbar">
-                      {VIBRATIONS.map((v) => (
-                        <button
-                          key={v.id}
-                          onClick={() => setVibration(v)}
-                          className={`
-                            shrink-0 flex flex-col items-center gap-2 p-3 rounded-2xl transition-all border-2
-                            ${vibration.id === v.id ? 'bg-primary/5 scale-105' : 'bg-transparent border-transparent opacity-60'}
-                          `}
-                          style={{ borderColor: vibration.id === v.id ? v.color : 'transparent' }}
-                        >
-                          <div 
-                            className="h-8 w-8 rounded-full shadow-lg" 
-                            style={{ background: `linear-gradient(135deg, ${v.color}, ${v.secondary})` }}
-                          />
-                          <span className="text-[9px] font-black uppercase tracking-tighter">{v.name}</span>
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 </TabsContent>
 
