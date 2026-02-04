@@ -23,7 +23,7 @@ export default function AutoriserPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useUser();
+  const { user, isLoading: authLoading } = useUser();
   const db = useFirestore();
   const app = useFirebaseApp();
 
@@ -39,7 +39,12 @@ export default function AutoriserPage() {
 
   useEffect(() => {
     const detectStartStep = async () => {
-      if (!user) return;
+      if (authLoading) return;
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
       try {
         const userDoc = await getDoc(doc(db, "users", user.uid));
         const data = userDoc.data();
@@ -57,7 +62,7 @@ export default function AutoriserPage() {
       }
     };
     detectStartStep();
-  }, [user, db, router]);
+  }, [user, authLoading, db, router]);
 
   useEffect(() => {
     if (step !== 1 && streamRef.current) {
