@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { 
   QrCode, 
   Zap, 
+  ZapOff,
   Loader2, 
   CheckCircle2, 
   Scan,
@@ -42,6 +43,7 @@ export default function TransfertPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [loadingRecipient, setLoadingRecipient] = useState(false);
+  const [isTorchOn, setIsTorchOn] = useState(false);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -137,6 +139,7 @@ export default function TransfertPage() {
 
       getCameraPermission();
     } else {
+      setIsTorchOn(false);
       if (scannerRef.current) {
         scannerRef.current.clear().catch(err => console.error("Failed to clear scanner", err));
         scannerRef.current = null;
@@ -149,6 +152,29 @@ export default function TransfertPage() {
       }
     };
   }, [activeTab]);
+
+  const toggleTorch = async () => {
+    const videoElement = document.querySelector("#reader video") as HTMLVideoElement;
+    if (!videoElement || !videoElement.srcObject) return;
+    
+    const stream = videoElement.srcObject as MediaStream;
+    const track = stream.getVideoTracks()[0];
+    
+    const capabilities = track.getCapabilities() as any;
+    if (!capabilities.torch) {
+        toast({ title: "Flash non supporté", description: "Votre appareil ne supporte pas le flash sur ce navigateur." });
+        return;
+    }
+
+    try {
+        await track.applyConstraints({
+            advanced: [{ torch: !isTorchOn }]
+        } as any);
+        setIsTorchOn(!isTorchOn);
+    } catch (err) {
+        console.error("Failed to toggle torch:", err);
+    }
+  };
 
   const onScanSuccess = async (decodedText: string) => {
     if (decodedText === user?.uid) {
@@ -330,6 +356,16 @@ export default function TransfertPage() {
                             transition={{ duration: 2, repeat: Infinity }}
                             className="w-64 h-64 border-2 border-white/20 rounded-3xl"
                          />
+                      </div>
+                      
+                      {/* Bouton de Lampe Torche */}
+                      <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50">
+                        <Button
+                          onClick={toggleTorch}
+                          className="h-16 w-16 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 transition-all shadow-2xl"
+                        >
+                          {isTorchOn ? <ZapOff className="h-6 w-6" /> : <Zap className="h-6 w-6" />}
+                        </Button>
                       </div>
                     </div>
                   </TabsContent>
