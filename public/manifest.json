@@ -3,7 +3,7 @@
   "name": "Exu Play",
   "short_name": "Exu Play",
   "description": "L'éveil philosophique réinventé.",
-  "start_url": "/home",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
