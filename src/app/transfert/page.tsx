@@ -235,7 +235,7 @@ export default function TransfertPage() {
       <main className="flex-1 max-w-lg mx-auto w-full relative h-full">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
           <div className="fixed top-6 left-0 right-0 z-50 px-6 max-w-lg mx-auto">
-            <TabsList className="w-full bg-card/60 backdrop-blur-3xl border border-primary/5 p-1 h-14 rounded-2xl grid grid-cols-2 shadow-2xl">
+            <TabsList className="w-full bg-card/20 backdrop-blur-3xl border border-white/20 dark:border-white/10 p-1 h-14 rounded-2xl grid grid-cols-2 shadow-2xl">
               <TabsTrigger value="qr" className="rounded-xl font-black text-xs uppercase tracking-widest gap-2">
                 <QrCode className="h-4 w-4" />
                 Mon Sceau
@@ -324,7 +324,6 @@ export default function TransfertPage() {
                           <Button variant="outline" onClick={() => window.location.reload()}>Réessayer</Button>
                         </div>
                       )}
-                      {/* Full screen scan effect overlay - completely borderless */}
                       <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                          <motion.div 
                             animate={{ opacity: [0.1, 0.3, 0.1] }}
