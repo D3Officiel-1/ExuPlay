@@ -87,7 +87,6 @@ export default function HomePage() {
 
   const { data: allQuizzes, loading: quizzesLoading } = useCollection(quizzesQuery);
 
-  // Mélanger les quiz une fois chargés
   useEffect(() => {
     if (allQuizzes && allQuizzes.length > 0 && sessionQuizzes.length === 0) {
       const shuffled = [...allQuizzes].sort(() => Math.random() - 0.5);
@@ -184,7 +183,6 @@ export default function HomePage() {
   };
 
   const resetSession = () => {
-    // Re-mélanger pour une nouvelle session
     if (allQuizzes) {
       const shuffled = [...allQuizzes].sort(() => Math.random() - 0.5);
       setSessionQuizzes(shuffled);
@@ -268,76 +266,73 @@ export default function HomePage() {
 
                 <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] overflow-hidden">
                   <CardContent className="p-8 sm:p-12 space-y-10">
-                    <p className="text-xl sm:text-2xl font-medium leading-tight tracking-tight text-center">
-                      {question?.question}
-                    </p>
-
-                    <div className="relative">
-                      <div className="grid grid-cols-2 gap-3">
-                        {question?.options.map((option: string, idx: number) => {
-                          const isCorrect = idx === question.correctIndex;
-                          const isSelected = idx === selectedOption;
-                          
-                          return (
-                            <div key={idx} className="relative">
-                              <motion.button
-                                whileHover={(!isAnswered && quizStarted) ? { scale: 1.02 } : {}}
-                                whileTap={(!isAnswered && quizStarted) ? { scale: 0.98 } : {}}
-                                onClick={() => handleAnswer(idx)}
-                                disabled={isAnswered || !quizStarted}
-                                className={`
-                                  w-full p-4 md:p-6 rounded-2xl text-left font-bold transition-all duration-300 flex items-center justify-between border min-h-[80px]
-                                  ${!isAnswered 
-                                    ? "bg-background/50 border-primary/5 hover:border-primary/20" 
-                                    : isCorrect 
-                                      ? "bg-green-500/10 border-green-500/50 text-green-600 dark:text-green-400" 
-                                      : isSelected 
-                                        ? "bg-red-500/10 border-red-500/50 text-red-600 dark:text-red-400" 
-                                        : "bg-background/20 border-transparent opacity-40"}
-                                `}
-                              >
-                                <span className="text-sm md:text-base leading-tight">{option}</span>
-                                <div className="shrink-0 ml-2">
-                                  {isAnswered && isCorrect && <CheckCircle2 className="h-4 w-4 md:h-5 md:w-5" />}
-                                  {isAnswered && isSelected && !isCorrect && <XCircle className="h-4 w-4 md:h-5 md:w-5" />}
-                                </div>
-                              </motion.button>
-                              
-                              <AnimatePresence>
-                                {!quizStarted && (
-                                  <SpoilerOverlay key="spoiler" />
-                                )}
-                              </AnimatePresence>
-                            </div>
-                          );
-                        })}
-                      </div>
+                    <div className="relative min-h-[100px] flex items-center justify-center">
+                      <p className="text-xl sm:text-2xl font-medium leading-tight tracking-tight text-center">
+                        {question?.question}
+                      </p>
 
                       <AnimatePresence>
                         {!quizStarted && (
-                          <motion.div 
-                            initial={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
-                            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                            exit={{ opacity: 0, scale: 1.2, filter: "blur(15px)" }}
-                            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                            className="absolute inset-0 z-20 flex items-center justify-center"
-                          >
-                            <motion.div
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
+                          <>
+                            <SpoilerOverlay key="question-spoiler" />
+                            <motion.div 
+                              initial={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
+                              animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                              exit={{ opacity: 0, scale: 1.2, filter: "blur(15px)" }}
+                              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                              className="absolute inset-0 z-20 flex items-center justify-center"
                             >
-                              <Button 
-                                onClick={handleStartChallenge}
-                                className="h-16 px-10 rounded-2xl font-black text-xs uppercase tracking-widest gap-3 shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)] bg-primary text-primary-foreground relative overflow-hidden group"
+                              <motion.div
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                               >
-                                <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
-                                <Play className="h-5 w-5 fill-current relative z-10" />
-                                <span className="relative z-10">Démarrer le défi</span>
-                              </Button>
+                                <Button 
+                                  onClick={handleStartChallenge}
+                                  className="h-16 px-10 rounded-2xl font-black text-xs uppercase tracking-widest gap-3 shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)] bg-primary text-primary-foreground relative overflow-hidden group"
+                                >
+                                  <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+                                  <Play className="h-5 w-5 fill-current relative z-10" />
+                                  <span className="relative z-10">Démarrer le défi</span>
+                                </Button>
+                              </motion.div>
                             </motion.div>
-                          </motion.div>
+                          </>
                         )}
                       </AnimatePresence>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      {question?.options.map((option: string, idx: number) => {
+                        const isCorrect = idx === question.correctIndex;
+                        const isSelected = idx === selectedOption;
+                        
+                        return (
+                          <div key={idx} className="relative">
+                            <motion.button
+                              whileHover={(!isAnswered && quizStarted) ? { scale: 1.02 } : {}}
+                              whileTap={(!isAnswered && quizStarted) ? { scale: 0.98 } : {}}
+                              onClick={() => handleAnswer(idx)}
+                              disabled={isAnswered || !quizStarted}
+                              className={`
+                                w-full p-4 md:p-6 rounded-2xl text-left font-bold transition-all duration-300 flex items-center justify-between border min-h-[80px]
+                                ${!isAnswered 
+                                  ? "bg-background/50 border-primary/5 hover:border-primary/20" 
+                                  : isCorrect 
+                                    ? "bg-green-500/10 border-green-500/50 text-green-600 dark:text-green-400" 
+                                    : isSelected 
+                                      ? "bg-red-500/10 border-red-500/50 text-red-600 dark:text-red-400" 
+                                      : "bg-background/20 border-transparent opacity-40"}
+                              `}
+                            >
+                              <span className="text-sm md:text-base leading-tight">{option}</span>
+                              <div className="shrink-0 ml-2">
+                                {isAnswered && isCorrect && <CheckCircle2 className="h-4 w-4 md:h-5 md:w-5" />}
+                                {isAnswered && isSelected && !isCorrect && <XCircle className="h-4 w-4 md:h-5 md:w-5" />}
+                              </div>
+                            </motion.button>
+                          </div>
+                        );
+                      })}
                     </div>
 
                     <AnimatePresence>
