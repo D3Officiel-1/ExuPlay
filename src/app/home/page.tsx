@@ -157,7 +157,7 @@ export default function HomePage() {
           const referrerRef = referrerDoc.ref;
           
           updateDoc(referrerRef, {
-            totalPoints: increment(100),
+            totalPoints: increment(100), // Récompense de 100 pts
             updatedAt: serverTimestamp()
           }).catch(async (error) => {
             const permissionError = new FirestorePermissionError({

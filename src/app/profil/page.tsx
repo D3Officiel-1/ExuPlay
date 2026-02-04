@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
@@ -633,7 +632,7 @@ export default function ProfilPage() {
                 </div>
               </div>
               <p className="text-xs font-medium opacity-80 leading-relaxed">
-                Partagez votre <span className="underline decoration-primary-foreground/30">lien magique</span>. Chaque nouvel esprit éveillé vous rapporte <span className="font-bold">500 points</span> sans qu'ils n'aient à saisir votre code.
+                Partagez votre <span className="underline decoration-primary-foreground/30">lien magique</span>. Chaque nouvel esprit éveillé vous rapporte <span className="font-bold">100 points</span> dès qu'il atteint lui-même l'éveil (100 pts).
               </p>
             </CardContent>
           </Card>

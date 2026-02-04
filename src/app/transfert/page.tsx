@@ -195,7 +195,7 @@ export default function TransfertPage() {
       updatedAt: serverTimestamp()
     };
 
-    // Logique de récompense de parrainage pour le destinataire
+    // Logique de récompense de parrainage pour le destinataire (s'il atteint 100 pts grâce au transfert)
     const newRecipientPoints = (recipient.totalPoints || 0) + transferAmount;
     if (recipient.referredBy && !recipient.referralRewardClaimed && newRecipientPoints >= 100) {
       const referrersQuery = query(
@@ -207,7 +207,7 @@ export default function TransfertPage() {
       if (!referrerSnap.empty) {
         const referrerDoc = referrerSnap.docs[0];
         updateDoc(referrerDoc.ref, {
-          totalPoints: increment(100),
+          totalPoints: increment(100), // Récompense de 100 pts pour le parrain
           updatedAt: serverTimestamp()
         }).catch(() => {});
         receiverUpdatePayload.referralRewardClaimed = true;

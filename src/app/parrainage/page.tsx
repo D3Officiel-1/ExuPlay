@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo } from "react";
@@ -57,6 +56,7 @@ export default function ParrainagePage() {
 
   const isLoading = profile?.referralCode && usersLoading;
 
+  // Calculer le total des récompenses réelles basées sur le seuil d'éveil de 100 pts
   const totalRewards = referredUsers?.filter(u => (u.totalPoints || 0) >= 100).length || 0;
 
   return (
