@@ -575,7 +575,7 @@ export default function ProfilPage() {
                     variant="secondary" 
                     size="sm"
                     onClick={() => router.push("/parrainage")}
-                    className="h-10 px-4 rounded-xl font-black text-[9px] uppercase tracking-widest gap-2 bg-white/10 hover:bg-white/20 border-none text-white"
+                    className="h-10 px-4 rounded-xl font-black text-[9px] uppercase tracking-widest gap-2 bg-primary-foreground/10 hover:bg-primary-foreground/20 border-none text-primary-foreground"
                   >
                     <Users className="h-3.5 w-3.5" />
                     Mes Filleuls
@@ -596,7 +596,7 @@ export default function ProfilPage() {
                     onClick={async () => {
                       if (profile?.referralCode) {
                         const magicLink = `${window.location.origin}/login?ref=${profile.referralCode}`;
-                        await navigator.clipboard.writeText(magicLink);
+                        await navigator.clipboard.clipboard.writeText(magicLink);
                         toast({ title: "Lien copié" });
                       }
                     }}
