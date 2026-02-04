@@ -106,7 +106,9 @@ export default function ProfilPage() {
 
   const copyMagicLink = async () => {
     if (profile?.referralCode) {
-      const magicLink = `${window.location.origin}/login?ref=${profile.referralCode}`;
+      // Construction du lien avec des paramètres pour l'aperçu dynamique (OG Tags)
+      const baseUrl = window.location.origin;
+      const magicLink = `${baseUrl}/login?ref=${profile.referralCode}&u=${encodeURIComponent(profile.username || 'Esprit')}${profile.profileImage ? `&img=${encodeURIComponent(profile.profileImage)}` : ''}`;
       
       if (typeof navigator !== 'undefined' && navigator.share) {
         try {
@@ -129,7 +131,7 @@ export default function ProfilPage() {
         await navigator.clipboard.writeText(magicLink);
         toast({
           title: "Lien magique copié",
-          description: "Partagez ce lien pour parrainer automatiquement vos amis."
+          description: "Le lien inclut désormais votre signature visuelle pour un partage optimal."
         });
       } catch (err) {
         toast({
@@ -592,7 +594,8 @@ export default function ProfilPage() {
                     size="icon" 
                     onClick={async () => {
                       if (profile?.referralCode) {
-                        const magicLink = `${window.location.origin}/login?ref=${profile.referralCode}`;
+                        const baseUrl = window.location.origin;
+                        const magicLink = `${baseUrl}/login?ref=${profile.referralCode}&u=${encodeURIComponent(profile.username || 'Esprit')}${profile.profileImage ? `&img=${encodeURIComponent(profile.profileImage)}` : ''}`;
                         await navigator.clipboard.writeText(magicLink);
                         toast({ title: "Lien copié" });
                       }
