@@ -22,7 +22,8 @@ import {
   X,
   RefreshCw,
   Zap,
-  ZapOff
+  ZapOff,
+  Search
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
@@ -37,13 +38,13 @@ export default function TransfertPage() {
 
   const [activeTab, setActiveTab] = useState("qr");
   const [recipient, setRecipient] = useState<any>(null);
+  const [isValidating, setIsValidating] = useState(false);
   const [amount, setAmount] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [loadingRecipient, setLoadingRecipient] = useState(false);
   
-  // Flashlight state
   const [hasTorch, setHasTorch] = useState(false);
   const [isTorchOn, setIsTorchOn] = useState(false);
 
@@ -98,11 +99,11 @@ export default function TransfertPage() {
   };
 
   useEffect(() => {
-    if (activeTab === "qr" && !recipient && !isSuccess) {
+    if (activeTab === "qr" && !recipient && !isSuccess && !isValidating) {
       const timer = setTimeout(() => generateQRCode(), 100);
       return () => clearTimeout(timer);
     }
-  }, [activeTab, user?.uid, resolvedTheme, recipient, isSuccess]);
+  }, [activeTab, user?.uid, resolvedTheme, recipient, isSuccess, isValidating]);
 
   const stopScanner = async () => {
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
@@ -127,7 +128,7 @@ export default function TransfertPage() {
     let isMounted = true;
     let scannerTimeout: NodeJS.Timeout;
 
-    if (activeTab === "scan" && !recipient && !isSuccess) {
+    if (activeTab === "scan" && !recipient && !isSuccess && !isValidating) {
       const startScanner = async () => {
         scannerTimeout = setTimeout(async () => {
           const container = document.getElementById("reader");
@@ -176,7 +177,7 @@ export default function TransfertPage() {
       clearTimeout(scannerTimeout);
       stopScanner();
     };
-  }, [activeTab, recipient, isSuccess]);
+  }, [activeTab, recipient, isSuccess, isValidating]);
 
   const toggleTorch = async () => {
     if (!html5QrCodeRef.current || !html5QrCodeRef.current.isScanning) return;
@@ -190,11 +191,6 @@ export default function TransfertPage() {
       setIsTorchOn(newState);
     } catch (err) {
       console.error("Erreur Torch:", err);
-      toast({
-        variant: "destructive",
-        title: "Erreur Lampe",
-        description: "Impossible d'activer le flash sur cet appareil."
-      });
     }
   };
 
@@ -211,7 +207,13 @@ export default function TransfertPage() {
       const recipientRef = doc(db, "users", decodedText);
       const recipientSnap = await getDoc(recipientRef);
       if (recipientSnap.exists()) {
-        setRecipient({ id: decodedText, ...recipientSnap.data() });
+        const data = recipientSnap.data();
+        setRecipient({ id: decodedText, ...data });
+        setIsValidating(true);
+        // Animation de validation de 2.5 secondes
+        setTimeout(() => {
+          setIsValidating(false);
+        }, 2500);
       } else {
         toast({ variant: "destructive", title: "Esprit non trouvé" });
         setActiveTab("qr");
@@ -298,7 +300,91 @@ export default function TransfertPage() {
 
           <div className="flex-1 w-full relative">
             <AnimatePresence mode="wait">
-              {!recipient && !isSuccess ? (
+              {isValidating ? (
+                <motion.div
+                  key="validation-animation"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, scale: 1.1, filter: "blur(20px)" }}
+                  className="fixed inset-0 z-[200] bg-background flex flex-col items-center justify-center overflow-hidden"
+                >
+                  <motion.div 
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: [1, 2, 1.5], opacity: [0.5, 0.1, 0.3] }}
+                    transition={{ duration: 2, ease: "easeOut" }}
+                    className="absolute h-96 w-96 bg-primary/10 rounded-full blur-[80px]"
+                  />
+                  
+                  <div className="relative flex flex-col items-center">
+                    <motion.div
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                      className="h-32 w-32 rounded-[3rem] bg-card border-2 border-primary/10 shadow-2xl flex items-center justify-center overflow-hidden relative"
+                    >
+                      {recipient?.profileImage ? (
+                        <img src={recipient.profileImage} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="h-12 w-12 text-primary opacity-20" />
+                      )}
+                      <motion.div 
+                        initial={{ height: 0 }}
+                        animate={{ height: "100%" }}
+                        transition={{ duration: 1.5, ease: "easeInOut", delay: 0.5 }}
+                        className="absolute inset-x-0 bottom-0 bg-primary/5 pointer-events-none"
+                      />
+                    </motion.div>
+
+                    <motion.div
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ delay: 0.8 }}
+                      className="mt-8 text-center"
+                    >
+                      <h2 className="text-2xl font-black tracking-tighter">@{recipient?.username}</h2>
+                      <div className="flex items-center justify-center gap-2 mt-2">
+                        <motion.div 
+                          animate={{ opacity: [0, 1, 0] }}
+                          transition={{ duration: 1, repeat: Infinity }}
+                          className="h-1.5 w-1.5 bg-green-500 rounded-full"
+                        />
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Sceau Identifié</p>
+                      </div>
+                    </motion.div>
+
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                      {[...Array(3)].map((_, i) => (
+                        <motion.div
+                          key={i}
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1.5 + i * 0.2, opacity: 0 }}
+                          transition={{ 
+                            duration: 1.5, 
+                            repeat: Infinity, 
+                            delay: i * 0.4,
+                            ease: "easeOut" 
+                          }}
+                          className="absolute inset-0 h-40 w-40 border border-primary/20 rounded-full"
+                          style={{ left: -80, top: -80 }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: "200px" }}
+                    transition={{ duration: 2, ease: "linear" }}
+                    className="absolute bottom-20 h-0.5 bg-primary/10 rounded-full overflow-hidden"
+                  >
+                    <motion.div 
+                      animate={{ x: ["-100%", "100%"] }}
+                      transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                      className="h-full w-20 bg-primary"
+                    />
+                  </motion.div>
+                </motion.div>
+              ) : !recipient && !isSuccess ? (
                 <motion.div
                   key="selection"
                   initial={{ opacity: 0 }}
@@ -363,8 +449,6 @@ export default function TransfertPage() {
                     <div className="fixed inset-0 z-0 bg-black flex items-center justify-center">
                       <div id="reader" className="absolute inset-0 w-full h-full" />
                       
-                      <div className="absolute inset-0 pointer-events-none z-10" />
-
                       {hasCameraPermission === false && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center space-y-4 bg-background/90 backdrop-blur-xl z-50">
                           <ShieldAlert className="h-12 w-12 text-destructive" />
@@ -377,7 +461,6 @@ export default function TransfertPage() {
                         </div>
                       )}
 
-                      {/* Flashlight Button - Centered at bottom */}
                       {hasTorch && hasCameraPermission && (
                         <motion.div 
                           initial={{ opacity: 0, y: 20 }}
@@ -427,9 +510,10 @@ export default function TransfertPage() {
               ) : recipient && !isSuccess ? (
                 <motion.div
                   key="amount"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0, y: 40, filter: "blur(20px)" }}
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                   exit={{ opacity: 0, scale: 1.05 }}
+                  transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
                   className="min-h-screen flex flex-col items-center justify-center px-6"
                 >
                   <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] overflow-hidden w-full">
@@ -533,9 +617,6 @@ export default function TransfertPage() {
         }
         #reader__scan_region {
           display: none !important;
-        }
-        #reader__scan_region img { 
-          display: none !important; 
         }
       `}</style>
     </div>
