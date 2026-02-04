@@ -233,7 +233,7 @@ export default function TransfertPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <main className="flex-1 p-6 pt-12 space-y-8 max-w-lg mx-auto w-full pb-12">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center">
           <Button 
             variant="ghost" 
             size="icon" 
@@ -242,10 +242,6 @@ export default function TransfertPage() {
           >
             <ChevronLeft className="h-6 w-6" />
           </Button>
-          <div className="space-y-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Interaction</p>
-            <h1 className="text-3xl font-black tracking-tight">Transfert</h1>
-          </div>
         </div>
 
         <AnimatePresence mode="wait">
