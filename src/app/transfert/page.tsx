@@ -158,18 +158,36 @@ export default function TransfertPage() {
   }, [activeTab, recipient, isSuccess]);
 
   const toggleTorch = async () => {
-    if (!html5QrCodeRef.current?.isScanning) return;
+    if (!html5QrCodeRef.current || !html5QrCodeRef.current.isScanning) return;
+    
     try {
-      const track = (html5QrCodeRef.current as any).getRunningTrack();
+      const scanner = html5QrCodeRef.current;
+      // getRunningTrack() retourne le MediaStreamTrack de la caméra
+      const track = (scanner as any).getRunningTrack();
+      
+      if (!track) return;
+
       const capabilities = track.getCapabilities();
-      if (!capabilities.torch) {
-        toast({ title: "Flash non supporté" });
-        return;
+      
+      if (capabilities.torch) {
+        const newState = !isTorchOn;
+        await track.applyConstraints({
+          advanced: [{ torch: newState }]
+        });
+        setIsTorchOn(newState);
+      } else {
+        toast({
+          title: "Flash indisponible",
+          description: "Le flash n'est pas supporté par cet appareil ou ce navigateur."
+        });
       }
-      await track.applyConstraints({ advanced: [{ torch: !isTorchOn }] });
-      setIsTorchOn(!isTorchOn);
     } catch (err) {
-      console.error("Torch error:", err);
+      console.error("Torch toggle error:", err);
+      toast({
+        variant: "destructive",
+        title: "Erreur Flash",
+        description: "Impossible de modifier l'état de la lampe."
+      });
     }
   };
 
