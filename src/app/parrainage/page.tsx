@@ -10,28 +10,25 @@ import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { 
   ChevronLeft, 
   Users, 
   User as UserIcon,
   Calendar,
   Sparkles,
-  Loader2
+  Loader2,
+  CheckCircle2,
+  Brain
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-
-/**
- * @fileOverview Page de suivi du parrainage affichant les utilisateurs recrutés.
- * Interroge Firestore pour trouver tous les utilisateurs ayant utilisé le code du parrain actuel.
- */
 
 export default function ParrainagePage() {
   const { user } = useUser();
   const db = useFirestore();
   const router = useRouter();
 
-  // Référence au document du profil de l'utilisateur actuel
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
     return doc(db, "users", user.uid);
@@ -39,7 +36,6 @@ export default function ParrainagePage() {
 
   const { data: profile, loading: profileLoading } = useDoc(userDocRef);
 
-  // Requête pour trouver les utilisateurs dont 'referredBy' est égal au 'referralCode' de l'utilisateur actuel
   const referredUsersQuery = useMemo(() => {
     if (!db || !profile?.referralCode) return null;
     return query(
@@ -60,6 +56,8 @@ export default function ParrainagePage() {
   }
 
   const isLoading = profile?.referralCode && usersLoading;
+
+  const totalRewards = referredUsers?.filter(u => (u.totalPoints || 0) >= 100).length || 0;
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
@@ -94,39 +92,68 @@ export default function ParrainagePage() {
                 </p>
                 <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-primary">
                   <Sparkles className="h-3 w-3" />
-                  <span>+{referredUsers.length * 500} PTS GAGNÉS</span>
+                  <span>+{totalRewards * 100} PTS RÉCOLTÉS</span>
                 </div>
               </div>
               
-              <div className="space-y-3">
-                {referredUsers.map((u, idx) => (
-                  <motion.div
-                    key={u.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                  >
-                    <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-lg rounded-2xl overflow-hidden">
-                      <CardContent className="p-4 flex items-center gap-4">
-                        <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center shrink-0">
-                          <UserIcon className="h-5 w-5 text-primary opacity-40" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-sm truncate">@{u.username}</p>
-                          <div className="flex items-center gap-1.5 opacity-40">
-                            <Calendar className="h-3 w-3" />
-                            <p className="text-[9px] font-bold uppercase tracking-wider">
-                              Inscrit en {u.createdAt && typeof u.createdAt.toDate === 'function' ? format(u.createdAt.toDate(), "MMMM yyyy", { locale: fr }) : "inconnu"}
-                            </p>
+              <div className="space-y-4">
+                {referredUsers.map((u, idx) => {
+                  const points = u.totalPoints || 0;
+                  const progress = Math.min((points / 100) * 100, 100);
+                  const isAwakened = points >= 100;
+
+                  return (
+                    <motion.div
+                      key={u.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                    >
+                      <Card className={`border-none bg-card/40 backdrop-blur-3xl shadow-lg rounded-[2rem] overflow-hidden transition-all ${isAwakened ? 'border border-primary/5' : ''}`}>
+                        <CardContent className="p-6 space-y-4">
+                          <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 bg-primary/5 rounded-2xl flex items-center justify-center shrink-0">
+                              <UserIcon className="h-6 w-6 text-primary opacity-40" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-black text-base truncate">@{u.username}</p>
+                              <div className="flex items-center gap-1.5 opacity-40">
+                                <Calendar className="h-3 w-3" />
+                                <p className="text-[9px] font-black uppercase tracking-wider">
+                                  Inscrit en {u.createdAt && typeof u.createdAt.toDate === 'function' ? format(u.createdAt.toDate(), "MMMM yyyy", { locale: fr }) : "inconnu"}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              {isAwakened ? (
+                                <div className="flex flex-col items-end gap-1">
+                                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                  <p className="text-[10px] font-black text-green-600 uppercase tracking-tighter">+100 PTS</p>
+                                </div>
+                              ) : (
+                                <p className="text-[10px] font-black opacity-30 uppercase tracking-tighter">{points}/100</p>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[10px] font-black text-green-600">+500</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
+
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest opacity-30">
+                              <span>Chemin vers l'éveil</span>
+                              <span>{Math.round(progress)}%</span>
+                            </div>
+                            <Progress value={progress} className="h-1.5 bg-primary/5" />
+                          </div>
+
+                          {!isAwakened && (
+                            <p className="text-[8px] font-bold text-center opacity-20 uppercase tracking-[0.2em]">
+                              Récompense de 100 PTS à l'éveil complet
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  );
+                })}
               </div>
             </>
           ) : (

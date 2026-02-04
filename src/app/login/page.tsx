@@ -172,6 +172,7 @@ function LoginContent() {
         acceptedTerms: formData.acceptedTerms,
         referredBy: (hasReferral && referralStatus === 'valid') ? formData.referredBy.toUpperCase().trim() : null,
         referralCode: myReferralCode,
+        referralRewardClaimed: false,
         role: "user",
         cameraAuthorized: false,
         notificationsEnabled: false,

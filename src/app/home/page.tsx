@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useUser, useFirestore, useCollection } from "@/firebase";
+import { useUser, useFirestore, useCollection, useDoc } from "@/firebase";
 import { 
   collection, 
   doc, 
@@ -13,7 +13,10 @@ import {
   query,
   orderBy,
   setDoc,
-  Timestamp
+  Timestamp,
+  getDocs,
+  where,
+  limit
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -76,6 +79,9 @@ export default function HomePage() {
   const { user } = useUser();
   const db = useFirestore();
 
+  const userRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
+  const { data: profile } = useDoc(userRef);
+
   const quizzesQuery = useMemo(() => {
     if (!db) return null;
     return query(collection(db, "quizzes"), orderBy("createdAt", "asc"));
@@ -126,25 +132,49 @@ export default function HomePage() {
 
   const finishQuiz = useCallback(async () => {
     setQuizComplete(true);
-    if (user && score > 0 && db) {
+    if (user && score > 0 && db && profile) {
       setUpdating(true);
-      const userRef = doc(db, "users", user.uid);
+      const userDocRef = doc(db, "users", user.uid);
       
-      updateDoc(userRef, {
+      const newTotalPoints = (profile.totalPoints || 0) + score;
+
+      const updatePayload: any = {
         totalPoints: increment(score),
-        lastQuizAt: serverTimestamp()
-      }).catch(async (error) => {
+        lastQuizAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+
+      // Système de récompense de parrainage
+      if (profile.referredBy && !profile.referralRewardClaimed && newTotalPoints >= 100) {
+        const referrersQuery = query(
+          collection(db, "users"), 
+          where("referralCode", "==", profile.referredBy), 
+          limit(1)
+        );
+        const referrerSnap = await getDocs(referrersQuery);
+        
+        if (!referrerSnap.empty) {
+          const referrerDoc = referrerSnap.docs[0];
+          updateDoc(referrerDoc.ref, {
+            totalPoints: increment(100),
+            updatedAt: serverTimestamp()
+          });
+          updatePayload.referralRewardClaimed = true;
+        }
+      }
+
+      updateDoc(userDocRef, updatePayload).catch(async (error) => {
         const permissionError = new FirestorePermissionError({
-          path: userRef.path,
+          path: userDocRef.path,
           operation: 'update',
-          requestResourceData: { totalPoints: score },
+          requestResourceData: updatePayload,
         } satisfies SecurityRuleContext);
         errorEmitter.emit('permission-error', permissionError);
       }).finally(() => {
         setUpdating(false);
       });
     }
-  }, [user, score, db]);
+  }, [user, score, db, profile]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
