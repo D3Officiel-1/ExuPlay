@@ -26,8 +26,6 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { useTheme } from "next-themes";
 
 export default function TransfertPage() {
@@ -130,12 +128,9 @@ export default function TransfertPage() {
             const scanner = new Html5Qrcode("reader");
             html5QrCodeRef.current = scanner;
 
-            // On ne passe pas de qrbox pour supprimer le viseur par défaut
             await scanner.start(
               { facingMode: "environment" },
-              {
-                fps: 20,
-              },
+              { fps: 20 },
               onScanSuccess,
               onScanFailure
             );
@@ -343,19 +338,29 @@ export default function TransfertPage() {
                     <div className="fixed inset-0 z-0 bg-black flex items-center justify-center">
                       <div id="reader" className="absolute inset-0 w-full h-full" />
                       
-                      <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
-                         <motion.div 
-                            animate={{ opacity: [0.1, 0.4, 0.1] }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                            className="w-64 h-64 border-2 border-white/20 rounded-[3rem] relative"
-                         >
-                           <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-white/60 rounded-tl-2xl" />
-                           <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-white/60 rounded-tr-2xl" />
-                           <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-white/60 rounded-bl-2xl" />
-                           <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-white/60 rounded-br-2xl" />
-                           <motion.div animate={{ y: [0, 256, 0] }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="absolute top-0 left-4 right-4 h-[2px] bg-white/40 shadow-[0_0_15px_white]" />
-                         </motion.div>
-                         <p className="mt-8 text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Viser le Sceau</p>
+                      {/* Nouveau Viseur par Défaut : Overlay Plein Écran */}
+                      <div className="absolute inset-0 pointer-events-none z-10">
+                        {/* Coins de précision */}
+                        <div className="absolute top-24 left-6 right-6 bottom-32">
+                           <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-white/80 rounded-tl-[2rem]" />
+                           <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-white/80 rounded-tr-[2rem]" />
+                           <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-white/80 rounded-bl-[2rem]" />
+                           <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-white/80 rounded-br-[2rem]" />
+                           
+                           {/* Ligne de scan dynamique */}
+                           <motion.div 
+                             animate={{ y: ["0%", "100%", "0%"] }} 
+                             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} 
+                             className="absolute left-4 right-4 h-[2px] bg-gradient-to-r from-transparent via-white/40 to-transparent shadow-[0_0_20px_rgba(255,255,255,0.5)]" 
+                           />
+                        </div>
+
+                        {/* Texte informatif */}
+                        <div className="absolute bottom-32 left-0 right-0 text-center">
+                          <p className="text-[10px] font-black uppercase tracking-[0.5em] text-white/40 animate-pulse">
+                            RECONNAISSANCE DU SCEAU...
+                          </p>
+                        </div>
                       </div>
 
                       {hasCameraPermission === false && (
