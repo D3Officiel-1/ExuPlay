@@ -8,58 +8,120 @@ import { Logo } from "@/components/Logo";
 import { useRouter } from "next/navigation";
 
 /**
- * @fileOverview Page de secours affichée lorsque l'utilisateur est hors ligne.
- * Design minimaliste et immersif conforme à l'esthétique d'Exu Play.
+ * @fileOverview Page de secours ultra-stylisée pour l'état hors ligne.
+ * Design immersif avec textures dynamiques et animations éthérées.
  */
 
 export default function OfflinePage() {
   const router = useRouter();
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.2,
+        delayChildren: 0.3
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 30, opacity: 0, filter: "blur(10px)", scale: 0.95 },
+    visible: { 
+      y: 0, 
+      opacity: 1, 
+      filter: "blur(0px)", 
+      scale: 1,
+      transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8 text-center relative overflow-hidden">
-      {/* Orbes de fond pour l'ambiance */}
-      <div className="absolute inset-0 pointer-events-none opacity-20">
-        <div className="absolute top-[-10%] left-[-10%] w-[70%] h-[70%] rounded-full bg-primary/10 blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] rounded-full bg-primary/10 blur-[120px]" />
+      {/* Texture de fond dynamique (Noise) */}
+      <motion.div
+        animate={{
+          opacity: [0.03, 0.08, 0.03],
+        }}
+        transition={{
+          duration: 4,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        className="absolute inset-0 z-0 opacity-10 pointer-events-none"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+          backgroundSize: "150px 150px",
+        }}
+      />
+
+      {/* Orbes éthérés */}
+      <div className="absolute inset-0 pointer-events-none">
+        <motion.div 
+          animate={{ 
+            scale: [1, 1.2, 1],
+            x: [0, 50, 0],
+            y: [0, -30, 0]
+          }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-[-10%] left-[-10%] w-[80%] h-[80%] rounded-full bg-primary/5 blur-[120px]" 
+        />
+        <motion.div 
+          animate={{ 
+            scale: [1, 1.3, 1],
+            x: [0, -40, 0],
+            y: [0, 20, 0]
+          }}
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          className="absolute bottom-[-10%] right-[-10%] w-[80%] h-[80%] rounded-full bg-destructive/5 blur-[120px]" 
+        />
       </div>
 
       <motion.div
-        initial={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
-        animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        className="space-y-12 z-10 max-w-sm w-full"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="space-y-16 z-10 max-w-sm w-full"
       >
-        <div className="flex justify-center">
+        <motion.div variants={itemVariants} className="flex justify-center">
           <Logo className="scale-125" />
-        </div>
+        </motion.div>
 
-        <div className="space-y-8">
-          <div className="relative mx-auto w-24 h-24">
+        <div className="space-y-10">
+          <motion.div variants={itemVariants} className="relative mx-auto w-28 h-28">
             <motion.div 
               animate={{ 
-                scale: [1, 1.3, 1],
-                opacity: [0.2, 0.4, 0.2]
+                scale: [1, 1.5, 1],
+                opacity: [0.1, 0.3, 0.1]
               }}
               transition={{ duration: 4, repeat: Infinity }}
-              className="absolute inset-0 bg-destructive/20 rounded-[2.5rem] blur-2xl"
+              className="absolute inset-0 bg-destructive/20 rounded-[2.5rem] blur-3xl"
             />
-            <div className="relative h-full w-full bg-card border border-destructive/10 rounded-[2.5rem] flex items-center justify-center shadow-2xl">
-              <WifiOff className="h-10 w-10 text-destructive" />
+            <div className="relative h-full w-full bg-card/40 backdrop-blur-2xl border border-destructive/10 rounded-[3rem] flex items-center justify-center shadow-2xl overflow-hidden">
+              <WifiOff className="h-12 w-12 text-destructive" />
+              <motion.div 
+                animate={{ x: ["-100%", "200%"] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-destructive/5 to-transparent skew-x-12"
+              />
             </div>
-          </div>
+          </motion.div>
 
-          <div className="space-y-3">
-            <h1 className="text-3xl font-black tracking-tighter uppercase text-destructive">Esprit Hors Ligne</h1>
-            <p className="text-sm font-medium opacity-40 leading-relaxed px-6">
-              La connexion à l'éther a été rompue. Vos réflexions sont momentanément isolées du flux universel.
+          <motion.div variants={itemVariants} className="space-y-4">
+            <h1 className="text-4xl font-black tracking-tighter uppercase text-destructive italic">
+              Esprit Hors Ligne
+            </h1>
+            <p className="text-sm font-medium opacity-40 leading-relaxed px-4">
+              La connexion à l'éther est rompue. Vos réflexions sont isolées du flux universel de l'éveil.
             </p>
-          </div>
+          </motion.div>
         </div>
 
-        <div className="flex flex-col gap-4">
+        <motion.div variants={itemVariants} className="flex flex-col gap-4">
           <Button 
             onClick={() => window.location.reload()}
-            className="w-full h-16 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] gap-3 bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-xl"
+            className="w-full h-16 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] gap-3 bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-[0_20px_40px_-10px_rgba(var(--destructive-rgb),0.3)] border-none"
           >
             <RefreshCcw className="h-4 w-4" />
             Reconnecter l'âme
@@ -68,26 +130,31 @@ export default function OfflinePage() {
           <Button 
             variant="ghost" 
             onClick={() => router.push("/")}
-            className="h-12 font-black text-[9px] uppercase tracking-[0.3em] opacity-30 gap-2"
+            className="h-12 font-black text-[9px] uppercase tracking-[0.4em] opacity-30 gap-2 hover:bg-primary/5 rounded-xl"
           >
             <ArrowLeft className="h-3 w-3" />
             Retour à l'Essentiel
           </Button>
-        </div>
+        </motion.div>
       </motion.div>
 
-      {/* Indicateur de statut pulsé en bas */}
-      <div className="absolute bottom-12 left-0 right-0 flex justify-center">
-        <div className="flex gap-1.5">
+      {/* Indicateur d'éveil pulsé */}
+      <div className="absolute bottom-12 left-0 right-0 flex justify-center items-center gap-4">
+        <div className="h-[1px] w-12 bg-gradient-to-r from-transparent to-destructive/20" />
+        <div className="flex gap-2">
           {[0, 1, 2].map((i) => (
             <motion.div
               key={i}
-              animate={{ opacity: [0.2, 1, 0.2] }}
-              transition={{ duration: 2, repeat: Infinity, delay: i * 0.3 }}
-              className="h-1 w-1 bg-destructive rounded-full"
+              animate={{ 
+                scale: [1, 1.5, 1],
+                opacity: [0.2, 1, 0.2] 
+              }}
+              transition={{ duration: 2, repeat: Infinity, delay: i * 0.4 }}
+              className="h-1.5 w-1.5 bg-destructive rounded-full"
             />
           ))}
         </div>
+        <div className="h-[1px] w-12 bg-gradient-to-l from-transparent to-destructive/20" />
       </div>
     </div>
   );

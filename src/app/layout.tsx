@@ -102,43 +102,60 @@ function OfflineOverlay() {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[1100] bg-background/95 backdrop-blur-3xl flex flex-col items-center justify-center p-8 text-center"
+      exit={{ opacity: 0, filter: "blur(20px)" }}
+      className="fixed inset-0 z-[1100] bg-background flex flex-col items-center justify-center p-8 text-center"
     >
-      <div className="absolute inset-0 pointer-events-none opacity-20 overflow-hidden">
+      {/* Texture de fond Noise dynamique pour l'overlay */}
+      <motion.div
+        animate={{ opacity: [0.03, 0.06, 0.03] }}
+        transition={{ duration: 4, repeat: Infinity }}
+        className="absolute inset-0 z-0 opacity-10 pointer-events-none"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+          backgroundSize: "150px 150px",
+        }}
+      />
+
+      <div className="absolute inset-0 pointer-events-none opacity-30 overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-destructive/10 blur-[120px]" />
       </div>
 
       <motion.div 
-        initial={{ y: 20, opacity: 0, scale: 0.9 }}
-        animate={{ y: 0, opacity: 1, scale: 1 }}
-        className="space-y-12 max-w-sm"
+        initial={{ y: 30, opacity: 0, scale: 0.9, filter: "blur(10px)" }}
+        animate={{ y: 0, opacity: 1, scale: 1, filter: "blur(0px)" }}
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        className="space-y-12 max-w-sm z-10"
       >
         <div className="flex justify-center">
-          <Logo className="scale-125" />
+          <Logo className="scale-110" />
         </div>
         
-        <div className="space-y-6">
-          <div className="mx-auto w-24 h-24 bg-destructive/5 rounded-[2.5rem] flex items-center justify-center border border-destructive/10 shadow-2xl relative">
-            <WifiOff className="h-10 w-10 text-destructive" />
+        <div className="space-y-8">
+          <div className="relative mx-auto w-24 h-24">
             <motion.div 
-              animate={{ opacity: [0, 1, 0], scale: [1, 1.2, 1] }}
-              transition={{ duration: 3, repeat: Infinity }}
-              className="absolute inset-0 bg-destructive/10 rounded-[2.5rem] blur-xl"
+              animate={{ 
+                scale: [1, 1.4, 1],
+                opacity: [0.1, 0.3, 0.1]
+              }}
+              transition={{ duration: 4, repeat: Infinity }}
+              className="absolute inset-0 bg-destructive/20 rounded-[2.5rem] blur-2xl"
             />
+            <div className="relative h-full w-full bg-card/40 backdrop-blur-2xl border border-destructive/10 rounded-[2.5rem] flex items-center justify-center shadow-2xl">
+              <WifiOff className="h-10 w-10 text-destructive" />
+            </div>
           </div>
           
           <div className="space-y-2">
-            <h2 className="text-3xl font-black tracking-tight uppercase text-destructive">Signal Perdu</h2>
+            <h2 className="text-3xl font-black tracking-tight uppercase text-destructive italic">Signal Perdu</h2>
             <p className="text-sm font-medium opacity-40 leading-relaxed px-4">
-              L'éther est silencieux. Votre esprit est temporairement déconnecté du flux universel de l'éveil.
+              L'éther est silencieux. Votre esprit est temporairement déconnecté du flux universel.
             </p>
           </div>
         </div>
 
         <Button 
           onClick={() => window.location.reload()}
-          className="h-16 px-10 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-3 shadow-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 border-none"
+          className="h-16 px-10 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] gap-3 shadow-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 border-none"
         >
           <RefreshCcw className="h-4 w-4" />
           Résonner à nouveau
