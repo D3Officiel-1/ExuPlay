@@ -12,7 +12,8 @@ import {
   serverTimestamp,
   query,
   orderBy,
-  setDoc
+  setDoc,
+  Timestamp
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -69,7 +70,7 @@ export default function HomePage() {
   const [quizComplete, setQuizComplete] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [quizStarted, setQuizStarted] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(10);
+  const [timeLeft, setTimeLeft] = useState(15);
   const [sessionQuizzes, setSessionQuizzes] = useState<any[] | null>(null);
   
   const { user } = useUser();
@@ -88,14 +89,43 @@ export default function HomePage() {
   const { data: allQuizzes, loading: quizzesLoading } = useCollection(quizzesQuery);
   const { data: attempts, loading: attemptsLoading } = useCollection(attemptsQuery);
 
-  // Charger les quiz de session UNE SEULE FOIS au démarrage ou quand les données arrivent
+  // Charger les quiz de session (uniquement ceux non complétés)
   useEffect(() => {
     if (allQuizzes && attempts && sessionQuizzes === null) {
-      const attemptedIds = attempts.map(a => a.id);
-      const filtered = allQuizzes.filter(q => !attemptedIds.includes(q.id));
+      const completedIds = attempts.filter(a => a.status === "completed").map(a => a.id);
+      const filtered = allQuizzes.filter(q => !completedIds.includes(q.id));
       setSessionQuizzes(filtered);
     }
   }, [allQuizzes, attempts, sessionQuizzes]);
+
+  // Gérer la persistance du chronomètre si le quiz a déjà été démarré dans le passé
+  useEffect(() => {
+    if (!quizStarted && sessionQuizzes && attempts && user) {
+      const currentQuiz = sessionQuizzes[currentQuestionIdx];
+      if (!currentQuiz) return;
+
+      const existingAttempt = attempts.find(a => a.id === currentQuiz.id);
+      
+      if (existingAttempt && existingAttempt.status === "started" && existingAttempt.startedAt) {
+        const startTime = (existingAttempt.startedAt as Timestamp).toMillis();
+        const now = Date.now();
+        const elapsed = Math.floor((now - startTime) / 1000);
+        const remaining = 15 - elapsed;
+
+        if (remaining > 0) {
+          setQuizStarted(true);
+          setTimeLeft(remaining);
+        } else {
+          // Si le temps est écoulé depuis longtemps mais n'a pas été marqué complété
+          setQuizStarted(true);
+          setTimeLeft(0);
+          setIsAnswered(true);
+          const attemptRef = doc(db, "users", user.uid, "attempts", currentQuiz.id);
+          updateDoc(attemptRef, { status: "completed", updatedAt: serverTimestamp() }).catch(() => {});
+        }
+      }
+    }
+  }, [quizStarted, sessionQuizzes, currentQuestionIdx, attempts, user, db]);
 
   const finishQuiz = useCallback(async () => {
     setQuizComplete(true);
@@ -128,7 +158,6 @@ export default function HomePage() {
       }, 1000);
     } else if (timeLeft === 0 && !isAnswered && quizStarted) {
       setIsAnswered(true);
-      // On valide une réponse vide ou mauvaise par défaut si le temps est écoulé
       if (user && sessionQuizzes) {
         const currentQuiz = sessionQuizzes[currentQuestionIdx];
         const attemptRef = doc(db, "users", user.uid, "attempts", currentQuiz.id);
@@ -147,14 +176,13 @@ export default function HomePage() {
     const currentQuiz = sessionQuizzes[currentQuestionIdx];
     
     setQuizStarted(true);
-    setTimeLeft(10);
+    setTimeLeft(15);
 
-    // Enregistrer la tentative immédiatement pour marquer le quiz comme "vu"
-    // On utilise setDoc car l'ID du document est l'ID du quiz pour assurer l'unicité par utilisateur
     const attemptRef = doc(db, "users", user.uid, "attempts", currentQuiz.id);
     setDoc(attemptRef, {
       quizId: currentQuiz.id,
       status: "started",
+      startedAt: serverTimestamp(),
       attemptedAt: serverTimestamp()
     }).catch((error) => {
       const permissionError = new FirestorePermissionError({
@@ -177,7 +205,6 @@ export default function HomePage() {
       setScore(prev => prev + (currentQuiz.points || 100));
     }
 
-    // Mettre à jour la tentative avec le résultat final
     if (user) {
       const attemptRef = doc(db, "users", user.uid, "attempts", currentQuiz.id);
       updateDoc(attemptRef, {
@@ -195,10 +222,21 @@ export default function HomePage() {
       setSelectedOption(null);
       setIsAnswered(false);
       setQuizStarted(false);
-      setTimeLeft(10);
+      setTimeLeft(15);
     } else {
       finishQuiz();
     }
+  };
+
+  const resetSession = () => {
+    setSessionQuizzes(null);
+    setQuizComplete(false);
+    setCurrentQuestionIdx(0);
+    setSelectedOption(null);
+    setIsAnswered(false);
+    setQuizStarted(false);
+    setScore(0);
+    setTimeLeft(15);
   };
 
   if (quizzesLoading || attemptsLoading || sessionQuizzes === null) {
@@ -222,6 +260,9 @@ export default function HomePage() {
             <h2 className="text-2xl font-black uppercase tracking-tight">C'est le calme plat</h2>
             <p className="text-xs font-medium opacity-40">Vous avez relevé tous les défis disponibles. Revenez plus tard pour de nouveaux éveils.</p>
           </div>
+          <Button onClick={resetSession} variant="ghost" className="text-[10px] font-black uppercase tracking-widest opacity-60">
+            Actualiser les défis
+          </Button>
         </main>
         <BottomNav />
       </div>
@@ -239,14 +280,13 @@ export default function HomePage() {
           <AnimatePresence mode="wait">
             {!quizComplete ? (
               <motion.div
-                key={question.id}
+                key={question?.id}
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                 className="space-y-8"
               >
-                {/* Timer Display */}
                 {quizStarted && !isAnswered && (
                   <motion.div 
                     initial={{ opacity: 0, y: -10 }}
@@ -262,7 +302,7 @@ export default function HomePage() {
                     <div className="w-32 h-1 bg-primary/5 rounded-full overflow-hidden">
                       <motion.div 
                         initial={{ width: "100%" }}
-                        animate={{ width: `${(timeLeft / 10) * 100}%` }}
+                        animate={{ width: `${(timeLeft / 15) * 100}%` }}
                         transition={{ duration: 1, ease: "linear" }}
                         className={`h-full ${timeLeft <= 3 ? 'bg-red-500' : 'bg-primary'}`}
                       />
@@ -273,12 +313,12 @@ export default function HomePage() {
                 <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] overflow-hidden">
                   <CardContent className="p-8 sm:p-12 space-y-10">
                     <p className="text-xl sm:text-2xl font-medium leading-tight tracking-tight text-center">
-                      {question.question}
+                      {question?.question}
                     </p>
 
                     <div className="relative">
                       <div className="grid grid-cols-2 gap-3">
-                        {question.options.map((option: string, idx: number) => {
+                        {question?.options.map((option: string, idx: number) => {
                           const isCorrect = idx === question.correctIndex;
                           const isSelected = idx === selectedOption;
                           
@@ -389,16 +429,7 @@ export default function HomePage() {
 
                 <div className="flex flex-col gap-4">
                   <Button 
-                    onClick={() => {
-                      // Réinitialiser la session pour recharger les nouveaux quiz disponibles
-                      setSessionQuizzes(null);
-                      setQuizComplete(false);
-                      setCurrentQuestionIdx(0);
-                      setSelectedOption(null);
-                      setIsAnswered(false);
-                      setQuizStarted(false);
-                      setScore(0);
-                    }} 
+                    onClick={resetSession} 
                     disabled={updating}
                     className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-widest gap-3"
                   >
