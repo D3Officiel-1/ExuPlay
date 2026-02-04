@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser, useFirestore, useCollection, useDoc } from "@/firebase";
 import { 
@@ -22,12 +22,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
 import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, Brain, Play, Timer } from "lucide-react";
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { useRouter } from "next/navigation";
 
 /**
- * @fileOverview Un masque de question ultra-stylisé avec des animations complexes.
+ * @fileOverview Un masque de question ultra-stylisé avec des animations complexes pour la mise à jour majeure.
  */
 
 export function SpoilerOverlay() {
@@ -45,6 +43,9 @@ export function SpoilerOverlay() {
     >
       {/* Verre dépoli de base */}
       <div className="absolute inset-0 bg-card/90 backdrop-blur-[45px] z-0" />
+      
+      {/* Voile flouté supplémentaire derrière le masque */}
+      <div className="absolute inset-0 bg-background/20 backdrop-blur-md -z-10" />
       
       {/* Texture de bruit numérique animée */}
       <motion.div
