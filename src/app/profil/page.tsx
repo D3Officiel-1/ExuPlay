@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
@@ -34,7 +35,6 @@ import {
   Share2,
   ShieldAlert,
   ChevronRight,
-  History,
   ArrowRightLeft,
   Users,
   QrCode
@@ -467,34 +467,6 @@ export default function ProfilPage() {
             </Card>
           </motion.div>
         </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="space-y-4"
-        >
-          <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 pl-2">Parcours</h2>
-          <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden">
-            <CardContent className="p-2">
-              <button 
-                onClick={() => router.push("/historique")}
-                className="w-full flex items-center justify-between p-4 hover:bg-primary/5 transition-colors rounded-2xl group text-left"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
-                    <History className="h-5 w-5 text-primary opacity-60" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold">Historique des Défis</p>
-                    <p className="text-[10px] opacity-40 font-medium">Consultez vos éveil passés</p>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 opacity-20 group-hover:opacity-60 transition-opacity" />
-              </button>
-            </CardContent>
-          </Card>
-        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -11,11 +12,9 @@ import {
   serverTimestamp,
   query,
   orderBy,
-  setDoc,
-  Timestamp,
-  getDocs,
   where,
-  limit
+  limit,
+  getDocs
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -73,7 +72,6 @@ export default function HomePage() {
   const [updating, setUpdating] = useState(false);
   const [quizStarted, setQuizStarted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(15);
-  const [sessionQuizzes, setSessionQuizzes] = useState<any[] | null>(null);
   
   const { user } = useUser();
   const db = useFirestore();
@@ -86,48 +84,7 @@ export default function HomePage() {
     return query(collection(db, "quizzes"), orderBy("createdAt", "asc"));
   }, [db]);
 
-  const attemptsQuery = useMemo(() => {
-    if (!db || !user?.uid) return null;
-    return collection(db, "users", user.uid, "attempts");
-  }, [db, user?.uid]);
-
   const { data: allQuizzes, loading: quizzesLoading } = useCollection(quizzesQuery);
-  const { data: attempts, loading: attemptsLoading } = useCollection(attemptsQuery);
-
-  useEffect(() => {
-    if (allQuizzes && attempts && sessionQuizzes === null) {
-      const completedIds = attempts.filter(a => a.status === "completed").map(a => a.id);
-      const filtered = allQuizzes.filter(q => !completedIds.includes(q.id));
-      setSessionQuizzes(filtered);
-    }
-  }, [allQuizzes, attempts, sessionQuizzes]);
-
-  useEffect(() => {
-    if (!quizStarted && sessionQuizzes && attempts && user) {
-      const currentQuiz = sessionQuizzes[currentQuestionIdx];
-      if (!currentQuiz) return;
-
-      const existingAttempt = attempts.find(a => a.id === currentQuiz.id);
-      
-      if (existingAttempt && existingAttempt.status === "started" && existingAttempt.startedAt) {
-        const startTime = (existingAttempt.startedAt as Timestamp).toMillis();
-        const now = Date.now();
-        const elapsed = Math.floor((now - startTime) / 1000);
-        const remaining = 15 - elapsed;
-
-        if (remaining > 0) {
-          setQuizStarted(true);
-          setTimeLeft(remaining);
-        } else {
-          setQuizStarted(true);
-          setTimeLeft(0);
-          setIsAnswered(true);
-          const attemptRef = doc(db, "users", user.uid, "attempts", currentQuiz.id);
-          updateDoc(attemptRef, { status: "completed", updatedAt: serverTimestamp() }).catch(() => {});
-        }
-      }
-    }
-  }, [quizStarted, sessionQuizzes, currentQuestionIdx, attempts, user, db]);
 
   const finishQuiz = useCallback(async () => {
     setQuizComplete(true);
@@ -143,7 +100,6 @@ export default function HomePage() {
         updatedAt: serverTimestamp()
       };
 
-      // Système de récompense de parrainage : Déclenchement à 100 points
       if (profile.referredBy && !profile.referralRewardClaimed && newTotalPoints >= 100) {
         const referrersQuery = query(
           collection(db, "users"), 
@@ -153,20 +109,11 @@ export default function HomePage() {
         const referrerSnap = await getDocs(referrersQuery);
         
         if (!referrerSnap.empty) {
-          const referrerDoc = referrerSnap.docs[0];
-          const referrerRef = referrerDoc.ref;
-          
+          const referrerRef = referrerSnap.docs[0].ref;
           updateDoc(referrerRef, {
-            totalPoints: increment(100), // Récompense de 100 pts
+            totalPoints: increment(100),
             updatedAt: serverTimestamp()
-          }).catch(async (error) => {
-            const permissionError = new FirestorePermissionError({
-              path: referrerRef.path,
-              operation: 'update',
-              requestResourceData: { totalPoints: increment(100) },
-            } satisfies SecurityRuleContext);
-            errorEmitter.emit('permission-error', permissionError);
-          });
+          }).catch(() => {});
           
           updatePayload.referralRewardClaimed = true;
         }
@@ -193,45 +140,18 @@ export default function HomePage() {
       }, 1000);
     } else if (timeLeft === 0 && !isAnswered && quizStarted) {
       setIsAnswered(true);
-      if (user && sessionQuizzes) {
-        const currentQuiz = sessionQuizzes[currentQuestionIdx];
-        const attemptRef = doc(db, "users", user.uid, "attempts", currentQuiz.id);
-        updateDoc(attemptRef, {
-          status: "completed",
-          score: 0,
-          updatedAt: serverTimestamp()
-        }).catch(() => {});
-      }
     }
     return () => clearInterval(timer);
-  }, [quizStarted, isAnswered, timeLeft, user, sessionQuizzes, currentQuestionIdx, db]);
+  }, [quizStarted, isAnswered, timeLeft]);
 
   const handleStartChallenge = async () => {
-    if (!user || !sessionQuizzes || !db) return;
-    const currentQuiz = sessionQuizzes[currentQuestionIdx];
-    
     setQuizStarted(true);
     setTimeLeft(15);
-
-    const attemptRef = doc(db, "users", user.uid, "attempts", currentQuiz.id);
-    setDoc(attemptRef, {
-      quizId: currentQuiz.id,
-      status: "started",
-      startedAt: serverTimestamp(),
-      attemptedAt: serverTimestamp()
-    }).catch((error) => {
-      const permissionError = new FirestorePermissionError({
-        path: attemptRef.path,
-        operation: 'create',
-        requestResourceData: { quizId: currentQuiz.id, status: "started" },
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
-    });
   };
 
   const handleAnswer = (index: number) => {
-    if (!quizStarted || isAnswered || !sessionQuizzes || !db) return;
-    const currentQuiz = sessionQuizzes[currentQuestionIdx];
+    if (!quizStarted || isAnswered || !allQuizzes) return;
+    const currentQuiz = allQuizzes[currentQuestionIdx];
     setSelectedOption(index);
     setIsAnswered(true);
     
@@ -239,21 +159,11 @@ export default function HomePage() {
     if (isCorrect) {
       setScore(prev => prev + (currentQuiz.points || 100));
     }
-
-    if (user) {
-      const attemptRef = doc(db, "users", user.uid, "attempts", currentQuiz.id);
-      updateDoc(attemptRef, {
-        status: "completed",
-        score: isCorrect ? currentQuiz.points : 0,
-        userAnswerIndex: index,
-        updatedAt: serverTimestamp()
-      }).catch(() => {});
-    }
   };
 
   const nextQuestion = () => {
-    if (!sessionQuizzes) return;
-    if (currentQuestionIdx < sessionQuizzes.length - 1) {
+    if (!allQuizzes) return;
+    if (currentQuestionIdx < allQuizzes.length - 1) {
       setCurrentQuestionIdx(prev => prev + 1);
       setSelectedOption(null);
       setIsAnswered(false);
@@ -265,7 +175,6 @@ export default function HomePage() {
   };
 
   const resetSession = () => {
-    setSessionQuizzes(null);
     setQuizComplete(false);
     setCurrentQuestionIdx(0);
     setSelectedOption(null);
@@ -275,7 +184,7 @@ export default function HomePage() {
     setTimeLeft(15);
   };
 
-  if (quizzesLoading || attemptsLoading || sessionQuizzes === null) {
+  if (quizzesLoading || !allQuizzes) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
         <Loader2 className="h-8 w-8 animate-spin opacity-20 mb-4" />
@@ -284,7 +193,7 @@ export default function HomePage() {
     );
   }
 
-  if (sessionQuizzes.length === 0) {
+  if (allQuizzes.length === 0) {
     return (
       <div className="min-h-screen bg-background flex flex-col pb-32">
         <Header />
@@ -294,18 +203,15 @@ export default function HomePage() {
           </div>
           <div className="space-y-2 text-center">
             <h2 className="text-2xl font-black uppercase tracking-tight">C'est le calme plat</h2>
-            <p className="text-xs font-medium opacity-40">Vous avez relevé tous les défis disponibles. Revenez plus tard pour de nouveaux éveils.</p>
+            <p className="text-xs font-medium opacity-40">Aucun défi n'est disponible pour le moment.</p>
           </div>
-          <Button onClick={resetSession} variant="ghost" className="text-[10px] font-black uppercase tracking-widest opacity-60">
-            Actualiser les défis
-          </Button>
         </main>
         <BottomNav />
       </div>
     );
   }
 
-  const question = sessionQuizzes[currentQuestionIdx];
+  const question = allQuizzes[currentQuestionIdx];
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
@@ -431,7 +337,7 @@ export default function HomePage() {
                             onClick={nextQuestion} 
                             className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-widest gap-3 shadow-xl shadow-primary/20"
                           >
-                            {currentQuestionIdx === sessionQuizzes.length - 1 ? "Terminer" : "Défi Suivant"}
+                            {currentQuestionIdx === allQuizzes.length - 1 ? "Terminer" : "Défi Suivant"}
                             <ArrowRight className="h-4 w-4" />
                           </Button>
                         </motion.div>
@@ -470,7 +376,7 @@ export default function HomePage() {
                     className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-widest gap-3"
                   >
                     {updating ? <Loader2 className="animate-spin h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-                    Voir mes nouveaux défis
+                    Relancer les défis
                   </Button>
                 </div>
               </motion.div>
