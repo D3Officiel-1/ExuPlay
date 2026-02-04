@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useUser, useFirestore, useDoc } from "@/firebase";
-import { doc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
@@ -13,12 +13,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { 
   ChevronLeft, 
   Zap, 
-  Wallet, 
   ArrowRightLeft, 
   Loader2, 
   CheckCircle2,
   AlertCircle,
-  Smartphone
+  Smartphone,
+  Clock,
+  Calendar
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -33,6 +34,20 @@ export default function EchangePage() {
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isWindowOpen, setIsWindowOpen] = useState(false);
+
+  // Check if current time is Friday between 18h and 20h
+  useEffect(() => {
+    const checkWindow = () => {
+      const now = new Date();
+      const day = now.getDay(); // 5 = Friday
+      const hours = now.getHours();
+      setIsWindowOpen(day === 5 && hours >= 18 && hours < 20);
+    };
+    checkWindow();
+    const interval = setInterval(checkWindow, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -44,15 +59,25 @@ export default function EchangePage() {
   const waveIcon = placeholderImages.placeholderImages.find(img => img.id === "wave-icon")?.imageUrl;
 
   const points = profile?.totalPoints || 0;
-  const conversionRate = 5; // 1 point = 5 FCFA (exemple)
+  const conversionRate = 1; // 1 point = 1 FCFA
   const moneyValue = points * conversionRate;
+  const minPoints = 1000;
 
   const handleExchange = async () => {
-    if (points < 500) {
+    if (points < minPoints) {
       toast({
         variant: "destructive",
         title: "Lumière insuffisante",
-        description: "Vous devez accumuler au moins 500 points pour initier un échange."
+        description: `Vous devez accumuler au moins ${minPoints} points pour initier un échange.`
+      });
+      return;
+    }
+
+    if (!isWindowOpen) {
+      toast({
+        variant: "destructive",
+        title: "Fenêtre fermée",
+        description: "Les échanges ne sont autorisés que le vendredi de 18h à 20h."
       });
       return;
     }
@@ -60,9 +85,8 @@ export default function EchangePage() {
     setIsProcessing(true);
     
     if (userDocRef) {
-      // Dans un vrai système, on créerait une demande de retrait ici
       updateDoc(userDocRef, {
-        totalPoints: 0, // On remet à zéro pour l'exemple
+        totalPoints: 0,
         lastExchangeAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       }).then(() => {
@@ -138,7 +162,7 @@ export default function EchangePage() {
               <CardContent className="px-8 pb-10 space-y-6">
                 <div className="flex items-center justify-center gap-4 py-4 border-y border-primary/5">
                   <div className="text-center">
-                    <p className="text-[10px] font-black uppercase opacity-30 mb-1">Valeur estimée</p>
+                    <p className="text-[10px] font-black uppercase opacity-30 mb-1">Valeur estimée (1:1)</p>
                     <p className="text-2xl font-black">{moneyValue.toLocaleString()} <span className="text-sm opacity-40">FCFA</span></p>
                   </div>
                 </div>
@@ -155,21 +179,35 @@ export default function EchangePage() {
                     <Smartphone className="h-4 w-4 opacity-20" />
                   </div>
 
-                  {points < 500 && (
-                    <div className="flex gap-3 p-4 bg-orange-500/5 rounded-2xl border border-orange-500/10 items-start">
-                      <AlertCircle className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
-                      <p className="text-[10px] leading-relaxed font-bold text-orange-600/80 uppercase">
-                        Seuil minimum de 500 points requis pour la conversion.
-                      </p>
+                  <div className="space-y-2">
+                    {points < minPoints && (
+                      <div className="flex gap-3 p-4 bg-orange-500/5 rounded-2xl border border-orange-500/10 items-start">
+                        <AlertCircle className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
+                        <p className="text-[10px] leading-relaxed font-bold text-orange-600/80 uppercase">
+                          Seuil minimum de {minPoints} points requis.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className={`flex gap-3 p-4 rounded-2xl border items-start ${isWindowOpen ? 'bg-green-500/5 border-green-500/10' : 'bg-red-500/5 border-red-500/10'}`}>
+                      {isWindowOpen ? <Clock className="h-4 w-4 text-green-500 shrink-0 mt-0.5" /> : <Calendar className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />}
+                      <div className="space-y-1">
+                        <p className={`text-[10px] leading-relaxed font-black uppercase ${isWindowOpen ? 'text-green-600' : 'text-red-600'}`}>
+                          Fenêtre de transfert : Vendredi 18h - 20h
+                        </p>
+                        {!isWindowOpen && (
+                          <p className="text-[9px] font-bold opacity-60 uppercase">Actuellement fermé</p>
+                        )}
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               </CardContent>
 
               <CardFooter className="px-8 pb-10">
                 <Button 
                   onClick={handleExchange}
-                  disabled={isProcessing || points < 500}
+                  disabled={isProcessing || points < minPoints || !isWindowOpen}
                   className="w-full h-16 rounded-2xl font-black text-sm uppercase tracking-widest gap-3 shadow-xl shadow-primary/20"
                 >
                   {isProcessing ? (
@@ -185,7 +223,7 @@ export default function EchangePage() {
             </Card>
 
             <p className="text-[10px] text-center font-bold opacity-20 uppercase tracking-[0.2em] px-10 leading-relaxed">
-              Les échanges sont traités sous 24h. Le taux de conversion peut varier selon l'activité du réseau.
+              Les échanges sont traités sous 24h. Le taux est fixe à 1 point pour 1 FCFA.
             </p>
           </motion.div>
         ) : (
