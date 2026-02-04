@@ -22,7 +22,6 @@ import {
   X,
   RefreshCw,
   Zap,
-  ZapOff,
   AlertCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -197,8 +196,21 @@ export default function TransfertPage() {
   const onScanSuccess = async (decodedText: string) => {
     await stopScanner();
     
+    const playErrorSound = () => {
+      const errorAudio = new Audio("https://cdn.pixabay.com/download/audio/2021/08/04/audio_39b5f497b1.mp3");
+      errorAudio.play().catch(() => {});
+      if (navigator.vibrate) navigator.vibrate([50, 50, 50, 50, 50, 50, 200]);
+    };
+
+    const playSuccessSound = () => {
+      const successAudio = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_f80e052d2e.mp3");
+      successAudio.play().catch(() => {});
+      if (navigator.vibrate) navigator.vibrate([100, 30, 100, 30, 200]);
+    };
+
     // Auto-échec si c'est son propre code
     if (decodedText === user?.uid) {
+      playErrorSound();
       setErrorMessage("C'est votre propre Sceau");
       setValidationStatus('error');
       setTimeout(() => {
@@ -216,6 +228,7 @@ export default function TransfertPage() {
       const recipientSnap = await getDoc(recipientRef);
       
       if (recipientSnap.exists()) {
+        playSuccessSound();
         const data = recipientSnap.data();
         setRecipient({ id: decodedText, ...data });
         setValidationStatus('success');
@@ -223,6 +236,7 @@ export default function TransfertPage() {
           setValidationStatus('idle');
         }, 2500);
       } else {
+        playErrorSound();
         setErrorMessage("Esprit non identifié");
         setValidationStatus('error');
         setTimeout(() => {
@@ -232,6 +246,7 @@ export default function TransfertPage() {
         }, 2500);
       }
     } catch (error) {
+      playErrorSound();
       setErrorMessage("Dissonance réseau");
       setValidationStatus('error');
       setTimeout(() => {
@@ -325,7 +340,6 @@ export default function TransfertPage() {
                   exit={{ opacity: 0, scale: 1.1, filter: "blur(20px)" }}
                   className="fixed inset-0 z-[200] bg-background flex flex-col items-center justify-center overflow-hidden"
                 >
-                  {/* Particules et lueurs adaptatives */}
                   <motion.div 
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ 
@@ -409,7 +423,6 @@ export default function TransfertPage() {
                       )}
                     </motion.div>
 
-                    {/* Ondes éthérées */}
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
                       {[...Array(3)].map((_, i) => (
                         <motion.div
@@ -526,6 +539,24 @@ export default function TransfertPage() {
                           </Button>
                         </div>
                       )}
+
+                      <AnimatePresence>
+                        {hasTorch && activeTab === "scan" && (
+                          <motion.div
+                            initial={{ y: 20, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 20, opacity: 0 }}
+                            className="absolute bottom-12 left-0 right-0 z-50 flex justify-center"
+                          >
+                            <Button
+                              onClick={toggleTorch}
+                              className={`h-16 w-16 rounded-full shadow-2xl backdrop-blur-3xl border transition-all duration-500 ${isTorchOn ? 'bg-primary border-primary text-primary-foreground scale-110 shadow-primary/40' : 'bg-card/20 border-white/10 text-white'}`}
+                            >
+                              <Zap className={`h-6 w-6 ${isTorchOn ? 'fill-current animate-pulse' : ''}`} />
+                            </Button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </TabsContent>
                 </motion.div>
