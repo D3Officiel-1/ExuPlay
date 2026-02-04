@@ -8,13 +8,15 @@ import {
   collection, 
   doc, 
   updateDoc, 
+  setDoc,
   increment, 
   serverTimestamp,
   query,
   orderBy,
   where,
   limit,
-  getDocs
+  getDocs,
+  getDoc
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -80,6 +82,7 @@ export default function HomePage() {
   const userRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
   const { data: profile } = useDoc(userRef);
 
+  // Fetch all quizzes
   const quizzesQuery = useMemo(() => {
     if (!db) return null;
     return query(collection(db, "quizzes"), orderBy("createdAt", "asc"));
@@ -87,58 +90,33 @@ export default function HomePage() {
 
   const { data: allQuizzes, loading: quizzesLoading } = useCollection(quizzesQuery);
 
+  // Fetch attempts to filter out played quizzes
+  const attemptsQuery = useMemo(() => {
+    if (!db || !user?.uid) return null;
+    return collection(db, "users", user.uid, "attempts");
+  }, [db, user?.uid]);
+
+  const { data: userAttempts, loading: attemptsLoading } = useCollection(attemptsQuery);
+
   useEffect(() => {
-    if (allQuizzes && allQuizzes.length > 0 && sessionQuizzes.length === 0) {
-      const shuffled = [...allQuizzes].sort(() => Math.random() - 0.5);
+    if (allQuizzes && userAttempts !== null && sessionQuizzes.length === 0) {
+      // Filter out quizzes that are already completed (isPlayed: true)
+      const playedQuizIds = new Set(
+        (userAttempts as any[])
+          .filter(attempt => attempt.isPlayed === true)
+          .map(attempt => attempt.id)
+      );
+
+      const availableQuizzes = allQuizzes.filter(quiz => !playedQuizIds.has(quiz.id));
+      const shuffled = [...availableQuizzes].sort(() => Math.random() - 0.5);
       setSessionQuizzes(shuffled);
     }
-  }, [allQuizzes, sessionQuizzes.length]);
+  }, [allQuizzes, userAttempts, sessionQuizzes.length]);
 
-  const finishQuiz = useCallback(async () => {
+  const finishQuizSession = useCallback(async () => {
     setQuizComplete(true);
-    if (user && score > 0 && db && profile) {
-      setUpdating(true);
-      const userDocRef = doc(db, "users", user.uid);
-      
-      const newTotalPoints = (profile.totalPoints || 0) + score;
-
-      const updatePayload: any = {
-        totalPoints: increment(score),
-        lastQuizAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      };
-
-      if (profile.referredBy && !profile.referralRewardClaimed && newTotalPoints >= 100) {
-        const referrersQuery = query(
-          collection(db, "users"), 
-          where("referralCode", "==", profile.referredBy), 
-          limit(1)
-        );
-        const referrerSnap = await getDocs(referrersQuery);
-        
-        if (!referrerSnap.empty) {
-          const referrerRef = referrerSnap.docs[0].ref;
-          updateDoc(referrerRef, {
-            totalPoints: increment(100),
-            updatedAt: serverTimestamp()
-          }).catch(() => {});
-          
-          updatePayload.referralRewardClaimed = true;
-        }
-      }
-
-      updateDoc(userDocRef, updatePayload).catch(async (error) => {
-        const permissionError = new FirestorePermissionError({
-          path: userDocRef.path,
-          operation: 'update',
-          requestResourceData: updatePayload,
-        } satisfies SecurityRuleContext);
-        errorEmitter.emit('permission-error', permissionError);
-      }).finally(() => {
-        setUpdating(false);
-      });
-    }
-  }, [user, score, db, profile]);
+    // Note: Points and referral rewards are handled during each answer submission
+  }, []);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -147,25 +125,100 @@ export default function HomePage() {
         setTimeLeft(prev => prev - 1);
       }, 1000);
     } else if (timeLeft === 0 && !isAnswered && quizStarted) {
-      setIsAnswered(true);
+      handleAnswer(-1); // Auto-fail on timeout
     }
     return () => clearInterval(timer);
   }, [quizStarted, isAnswered, timeLeft]);
 
   const handleStartChallenge = async () => {
-    setQuizStarted(true);
-    setTimeLeft(15);
+    if (!user || !db || sessionQuizzes.length === 0) return;
+    
+    const currentQuiz = sessionQuizzes[currentQuestionIdx];
+    const attemptRef = doc(db, "users", user.uid, "attempts", currentQuiz.id);
+    
+    const startTime = new Date();
+    const endTime = new Date(startTime.getTime() + 15000);
+
+    setUpdating(true);
+    try {
+      await setDoc(attemptRef, {
+        attemptedAt: startTime,
+        completedAt: endTime,
+        isPlayed: false, // Currently playing
+        status: 'started'
+      }, { merge: true });
+      
+      setQuizStarted(true);
+      setTimeLeft(15);
+    } catch (error) {
+      console.error("Error starting attempt:", error);
+    } finally {
+      setUpdating(false);
+    }
   };
 
-  const handleAnswer = (index: number) => {
-    if (!quizStarted || isAnswered || sessionQuizzes.length === 0) return;
+  const handleAnswer = async (index: number) => {
+    if (!quizStarted || isAnswered || sessionQuizzes.length === 0 || !user || !db) return;
+    
     const currentQuiz = sessionQuizzes[currentQuestionIdx];
+    const isCorrect = index === currentQuiz.correctIndex;
+    const pointsEarned = isCorrect ? (currentQuiz.points || 100) : 0;
+
     setSelectedOption(index);
     setIsAnswered(true);
     
-    const isCorrect = index === currentQuiz.correctIndex;
     if (isCorrect) {
-      setScore(prev => prev + (currentQuiz.points || 100));
+      setScore(prev => prev + pointsEarned);
+    }
+
+    // Mark as played in Firestore
+    const attemptRef = doc(db, "users", user.uid, "attempts", currentQuiz.id);
+    const userDocRef = doc(db, "users", user.uid);
+
+    setUpdating(true);
+    try {
+      // 1. Update the attempt
+      await updateDoc(attemptRef, {
+        isPlayed: true,
+        status: 'completed',
+        score: pointsEarned,
+        userAnswerIndex: index,
+        updatedAt: serverTimestamp()
+      });
+
+      // 2. Update user profile if points were earned
+      if (pointsEarned > 0) {
+        const updatePayload: any = {
+          totalPoints: increment(pointsEarned),
+          lastQuizAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+
+        // Check referral reward (only once when user reaches 100pts total)
+        if (profile && profile.referredBy && !profile.referralRewardClaimed) {
+          const newTotal = (profile.totalPoints || 0) + pointsEarned;
+          if (newTotal >= 100) {
+            const referrersQuery = query(
+              collection(db, "users"), 
+              where("referralCode", "==", profile.referredBy), 
+              limit(1)
+            );
+            const referrerSnap = await getDocs(referrersQuery);
+            if (!referrerSnap.empty) {
+              await updateDoc(referrerSnap.docs[0].ref, {
+                totalPoints: increment(100),
+                updatedAt: serverTimestamp()
+              });
+              updatePayload.referralRewardClaimed = true;
+            }
+          }
+        }
+        await updateDoc(userDocRef, updatePayload);
+      }
+    } catch (error) {
+      console.error("Error finalizing answer:", error);
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -178,15 +231,13 @@ export default function HomePage() {
       setQuizStarted(false);
       setTimeLeft(15);
     } else {
-      finishQuiz();
+      finishQuizSession();
     }
   };
 
   const resetSession = () => {
-    if (allQuizzes) {
-      const shuffled = [...allQuizzes].sort(() => Math.random() - 0.5);
-      setSessionQuizzes(shuffled);
-    }
+    // Clear current session to trigger re-fetch and re-filter
+    setSessionQuizzes([]);
     setQuizComplete(false);
     setCurrentQuestionIdx(0);
     setSelectedOption(null);
@@ -196,16 +247,31 @@ export default function HomePage() {
     setTimeLeft(15);
   };
 
-  if (quizzesLoading || (allQuizzes && sessionQuizzes.length === 0 && allQuizzes.length > 0)) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
-        <Loader2 className="h-8 w-8 animate-spin opacity-20 mb-4" />
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Connexion à l'Éveil...</p>
-      </div>
-    );
+  if (quizzesLoading || attemptsLoading || (allQuizzes && userAttempts !== null && sessionQuizzes.length === 0 && allQuizzes.length > 0)) {
+    // If we have quizzes but filtered session is empty, it might mean we've played everything or we are still filtering
+    if (allQuizzes && userAttempts !== null && sessionQuizzes.length === 0) {
+      const playedCount = (userAttempts as any[]).filter(a => a.isPlayed).length;
+      if (playedCount === allQuizzes.length) {
+        // All played - show the empty state below
+      } else {
+        return (
+          <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+            <Loader2 className="h-8 w-8 animate-spin opacity-20 mb-4" />
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Filtrage de l'Éveil...</p>
+          </div>
+        );
+      }
+    } else {
+      return (
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+          <Loader2 className="h-8 w-8 animate-spin opacity-20 mb-4" />
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Connexion à l'Éveil...</p>
+        </div>
+      );
+    }
   }
 
-  if (!allQuizzes || allQuizzes.length === 0) {
+  if (!allQuizzes || sessionQuizzes.length === 0) {
     return (
       <div className="min-h-screen bg-background flex flex-col pb-32">
         <Header />
@@ -214,9 +280,16 @@ export default function HomePage() {
             <Brain className="h-10 w-10 text-primary opacity-20" />
           </div>
           <div className="space-y-2 text-center">
-            <h2 className="text-2xl font-black uppercase tracking-tight">C'est le calme plat</h2>
-            <p className="text-xs font-medium opacity-40">Aucun défi n'est disponible pour le moment.</p>
+            <h2 className="text-2xl font-black uppercase tracking-tight">Cycle Terminé</h2>
+            <p className="text-xs font-medium opacity-40 px-8">Vous avez affronté tous les défis disponibles. Revenez plus tard pour de nouvelles épreuves.</p>
           </div>
+          <Button 
+            variant="ghost" 
+            onClick={() => router.push("/profil")}
+            className="text-[10px] font-black uppercase tracking-widest opacity-40"
+          >
+            Voir mon score total
+          </Button>
         </main>
         <BottomNav />
       </div>
@@ -288,11 +361,18 @@ export default function HomePage() {
                               >
                                 <Button 
                                   onClick={handleStartChallenge}
+                                  disabled={updating}
                                   className="h-16 px-10 rounded-2xl font-black text-xs uppercase tracking-widest gap-3 shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)] bg-primary text-primary-foreground relative overflow-hidden group"
                                 >
-                                  <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
-                                  <Play className="h-5 w-5 fill-current relative z-10" />
-                                  <span className="relative z-10">Démarrer le défi</span>
+                                  {updating ? (
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+                                      <Play className="h-5 w-5 fill-current relative z-10" />
+                                      <span className="relative z-10">Démarrer le défi</span>
+                                    </>
+                                  )}
                                 </Button>
                               </motion.div>
                             </motion.div>
@@ -312,7 +392,7 @@ export default function HomePage() {
                               whileHover={(!isAnswered && quizStarted) ? { scale: 1.02 } : {}}
                               whileTap={(!isAnswered && quizStarted) ? { scale: 0.98 } : {}}
                               onClick={() => handleAnswer(idx)}
-                              disabled={isAnswered || !quizStarted}
+                              disabled={isAnswered || !quizStarted || updating}
                               className={`
                                 w-full p-4 md:p-6 rounded-2xl text-left font-bold transition-all duration-300 flex items-center justify-between border min-h-[80px]
                                 ${!isAnswered 
@@ -344,10 +424,17 @@ export default function HomePage() {
                         >
                           <Button 
                             onClick={nextQuestion} 
+                            disabled={updating}
                             className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-widest gap-3 shadow-xl shadow-primary/20"
                           >
-                            {currentQuestionIdx === sessionQuizzes.length - 1 ? "Terminer" : "Défi Suivant"}
-                            <ArrowRight className="h-4 w-4" />
+                            {updating ? (
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                              <>
+                                {currentQuestionIdx === sessionQuizzes.length - 1 ? "Terminer" : "Défi Suivant"}
+                                <ArrowRight className="h-4 w-4" />
+                              </>
+                            )}
                           </Button>
                         </motion.div>
                       )}
@@ -385,7 +472,7 @@ export default function HomePage() {
                     className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-widest gap-3"
                   >
                     {updating ? <Loader2 className="animate-spin h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-                    Relancer les défis
+                    Actualiser les défis
                   </Button>
                 </div>
               </motion.div>
