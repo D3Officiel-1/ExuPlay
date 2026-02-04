@@ -162,7 +162,6 @@ export default function TransfertPage() {
     
     try {
       const scanner = html5QrCodeRef.current;
-      // getRunningTrack() retourne le MediaStreamTrack de la caméra
       const track = (scanner as any).getRunningTrack();
       
       if (!track) return;
@@ -178,22 +177,17 @@ export default function TransfertPage() {
       } else {
         toast({
           title: "Flash indisponible",
-          description: "Le flash n'est pas supporté par cet appareil ou ce navigateur."
+          description: "Le flash n'est pas supporté par cet appareil."
         });
       }
     } catch (err) {
       console.error("Torch toggle error:", err);
-      toast({
-        variant: "destructive",
-        title: "Erreur Flash",
-        description: "Impossible de modifier l'état de la lampe."
-      });
     }
   };
 
   const onScanSuccess = async (decodedText: string) => {
     if (decodedText === user?.uid) {
-      toast({ variant: "destructive", title: "Action impossible", description: "Vous ne pouvez pas vous envoyer de points." });
+      toast({ variant: "destructive", title: "Action impossible", description: "C'est votre propre sceau." });
       return;
     }
     
@@ -356,32 +350,14 @@ export default function TransfertPage() {
                     <div className="fixed inset-0 z-0 bg-black flex items-center justify-center">
                       <div id="reader" className="absolute inset-0 w-full h-full" />
                       
-                      <div className="absolute inset-0 pointer-events-none z-10">
-                        <div className="absolute top-24 left-6 right-6 bottom-32">
-                           <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-white/80 rounded-tl-[2rem]" />
-                           <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-white/80 rounded-tr-[2rem]" />
-                           <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-white/80 rounded-bl-[2rem]" />
-                           <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-white/80 rounded-br-[2rem]" />
-                           
-                           <motion.div 
-                             animate={{ y: ["0%", "100%", "0%"] }} 
-                             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} 
-                             className="absolute left-4 right-4 h-[2px] bg-gradient-to-r from-transparent via-white/40 to-transparent shadow-[0_0_20px_rgba(255,255,255,0.5)]" 
-                           />
-                        </div>
-
-                        <div className="absolute bottom-32 left-0 right-0 text-center">
-                          <p className="text-[10px] font-black uppercase tracking-[0.5em] text-white/40 animate-pulse">
-                            RECONNAISSANCE DU SCEAU...
-                          </p>
-                        </div>
-                      </div>
+                      {/* Viseur totalement invisible mais fonctionnel */}
+                      <div className="absolute inset-0 pointer-events-none z-10" />
 
                       {hasCameraPermission === false && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center space-y-4 bg-background/90 backdrop-blur-xl z-50">
                           <ShieldAlert className="h-12 w-12 text-destructive" />
                           <h2 className="text-xl font-black uppercase tracking-tight">Permission Requise</h2>
-                          <p className="text-xs font-medium opacity-60">L'accès à la caméra est nécessaire pour scanner.</p>
+                          <p className="text-xs font-medium opacity-60">L'accès à la caméra est nécessaire.</p>
                           <Button variant="outline" onClick={() => window.location.reload()} className="rounded-xl px-8 gap-2">
                             <RefreshCw className="h-4 w-4" />
                             Réessayer
