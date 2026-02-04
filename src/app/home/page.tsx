@@ -24,42 +24,40 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 export function SpoilerOverlay() {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 1.05 }}
+      initial={{ opacity: 0, scale: 1.02 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 1.1, filter: "blur(20px)" }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      exit={{ opacity: 0, scale: 1.05, filter: "blur(30px)" }}
+      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
       className="absolute inset-0 z-10 overflow-hidden rounded-2xl pointer-events-none"
     >
-      {/* Background Opaque + Blur Intensif */}
-      <div className="absolute inset-0 bg-card/90 backdrop-blur-[24px] z-0" />
+      {/* Background Opaque + Blur Massif */}
+      <div className="absolute inset-0 bg-card/95 backdrop-blur-[40px] z-0" />
       
-      {/* Texture de grain animé (style Telegram/Glass) */}
+      {/* Texture de grain avec clignotement ultra-doux */}
       <motion.div
         animate={{
-          opacity: [0.3, 0.5, 0.3],
-          scale: [1, 1.05, 1],
+          opacity: [0.2, 0.4, 0.2],
         }}
         transition={{
-          duration: 0.2,
+          duration: 4,
           repeat: Infinity,
-          ease: "linear",
+          ease: "easeInOut",
         }}
         className="absolute inset-0 z-10 opacity-30 pointer-events-none"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-          backgroundSize: "150px 150px",
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+          backgroundSize: "180px 180px",
         }}
       />
 
-      {/* Scintillements aléatoires */}
+      {/* Scintillements de lumière lents et organiques */}
       <motion.div 
         animate={{ 
-          opacity: [0.1, 0.3, 0.1],
-          x: ["-10%", "10%"],
-          y: ["-10%", "10%"]
+          opacity: [0.05, 0.15, 0.05],
+          rotate: [0, 45, 0],
         }}
-        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute inset-0 bg-gradient-to-tr from-primary/5 via-transparent to-primary/10 z-20"
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute inset-[-50%] bg-gradient-to-tr from-primary/10 via-transparent to-primary/5 z-20"
       />
     </motion.div>
   );
@@ -247,7 +245,7 @@ export default function HomePage() {
                             initial={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
                             animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
                             exit={{ opacity: 0, scale: 1.2, filter: "blur(15px)" }}
-                            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                             className="absolute inset-0 z-20 flex items-center justify-center"
                           >
                             <motion.div
