@@ -64,6 +64,7 @@ export function SpoilerOverlay() {
 }
 
 export default function HomePage() {
+  const [sessionQuizzes, setSessionQuizzes] = useState<any[]>([]);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -85,6 +86,14 @@ export default function HomePage() {
   }, [db]);
 
   const { data: allQuizzes, loading: quizzesLoading } = useCollection(quizzesQuery);
+
+  // Mélanger les quiz une fois chargés
+  useEffect(() => {
+    if (allQuizzes && allQuizzes.length > 0 && sessionQuizzes.length === 0) {
+      const shuffled = [...allQuizzes].sort(() => Math.random() - 0.5);
+      setSessionQuizzes(shuffled);
+    }
+  }, [allQuizzes, sessionQuizzes.length]);
 
   const finishQuiz = useCallback(async () => {
     setQuizComplete(true);
@@ -150,8 +159,8 @@ export default function HomePage() {
   };
 
   const handleAnswer = (index: number) => {
-    if (!quizStarted || isAnswered || !allQuizzes) return;
-    const currentQuiz = allQuizzes[currentQuestionIdx];
+    if (!quizStarted || isAnswered || sessionQuizzes.length === 0) return;
+    const currentQuiz = sessionQuizzes[currentQuestionIdx];
     setSelectedOption(index);
     setIsAnswered(true);
     
@@ -162,8 +171,8 @@ export default function HomePage() {
   };
 
   const nextQuestion = () => {
-    if (!allQuizzes) return;
-    if (currentQuestionIdx < allQuizzes.length - 1) {
+    if (sessionQuizzes.length === 0) return;
+    if (currentQuestionIdx < sessionQuizzes.length - 1) {
       setCurrentQuestionIdx(prev => prev + 1);
       setSelectedOption(null);
       setIsAnswered(false);
@@ -175,6 +184,11 @@ export default function HomePage() {
   };
 
   const resetSession = () => {
+    // Re-mélanger pour une nouvelle session
+    if (allQuizzes) {
+      const shuffled = [...allQuizzes].sort(() => Math.random() - 0.5);
+      setSessionQuizzes(shuffled);
+    }
     setQuizComplete(false);
     setCurrentQuestionIdx(0);
     setSelectedOption(null);
@@ -184,7 +198,7 @@ export default function HomePage() {
     setTimeLeft(15);
   };
 
-  if (quizzesLoading || !allQuizzes) {
+  if (quizzesLoading || (allQuizzes && sessionQuizzes.length === 0 && allQuizzes.length > 0)) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
         <Loader2 className="h-8 w-8 animate-spin opacity-20 mb-4" />
@@ -193,7 +207,7 @@ export default function HomePage() {
     );
   }
 
-  if (allQuizzes.length === 0) {
+  if (!allQuizzes || allQuizzes.length === 0) {
     return (
       <div className="min-h-screen bg-background flex flex-col pb-32">
         <Header />
@@ -211,7 +225,7 @@ export default function HomePage() {
     );
   }
 
-  const question = allQuizzes[currentQuestionIdx];
+  const question = sessionQuizzes[currentQuestionIdx];
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
@@ -337,7 +351,7 @@ export default function HomePage() {
                             onClick={nextQuestion} 
                             className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-widest gap-3 shadow-xl shadow-primary/20"
                           >
-                            {currentQuestionIdx === allQuizzes.length - 1 ? "Terminer" : "Défi Suivant"}
+                            {currentQuestionIdx === sessionQuizzes.length - 1 ? "Terminer" : "Défi Suivant"}
                             <ArrowRight className="h-4 w-4" />
                           </Button>
                         </motion.div>
