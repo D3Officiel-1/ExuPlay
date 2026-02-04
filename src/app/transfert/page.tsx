@@ -12,7 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { 
-  ChevronLeft, 
   QrCode, 
   Zap, 
   Loader2, 
@@ -234,16 +233,7 @@ export default function TransfertPage() {
     <div className="min-h-screen bg-background flex flex-col">
       <main className="flex-1 p-6 pt-12 space-y-8 max-w-lg mx-auto w-full pb-12">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="flex items-center gap-4 mb-8">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => router.back()}
-              className="rounded-full h-10 w-10 hover:bg-primary/5 shrink-0"
-            >
-              <ChevronLeft className="h-6 w-6" />
-            </Button>
-            
+          <div className="flex items-center mb-8">
             <TabsList className="flex-1 bg-card/40 backdrop-blur-3xl border border-primary/5 p-1 h-14 rounded-2xl grid grid-cols-2">
               <TabsTrigger value="qr" className="rounded-xl font-black text-xs uppercase tracking-widest gap-2">
                 <QrCode className="h-4 w-4" />
