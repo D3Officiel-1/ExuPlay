@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -27,6 +28,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
 import { useTheme } from "next-themes";
+import { sendPushNotification } from "@/app/actions/notifications";
 
 export default function TransfertPage() {
   const { user } = useUser();
@@ -296,6 +298,16 @@ export default function TransfertPage() {
       }
 
       await updateDoc(receiverRef, receiverUpdatePayload);
+      
+      // Envoi de la notification Push robuste
+      if (recipient.fcmToken) {
+        sendPushNotification({
+          token: recipient.fcmToken,
+          title: "Lumière Reçue !",
+          body: `@${profile?.username || 'Un esprit'} vous a envoyé ${transferAmount} PTS.`
+        });
+      }
+
       setIsSuccess(true);
     } catch (error) {
       console.error(error);
