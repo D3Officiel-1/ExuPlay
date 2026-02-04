@@ -61,7 +61,8 @@ import {
   Search,
   Sparkles,
   ShieldCheck,
-  Shield
+  Shield,
+  AlertTriangle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -271,6 +272,16 @@ export default function AdminPage() {
 
   const handleSubtractPoints = async () => {
     if (!db || !selectedAdminUser || pointsToSubtract <= 0 || isSubmitting) return;
+
+    // Vérification stricte du seuil de points
+    if (pointsToSubtract > (selectedAdminUser.totalPoints || 0)) {
+      toast({ 
+        variant: "destructive",
+        title: "Retrait impossible", 
+        description: `Vous ne pouvez pas retirer plus de points que l'utilisateur n'en possède (${selectedAdminUser.totalPoints} PTS).`
+      });
+      return;
+    }
 
     setIsSubmitting(true);
     const userRef = doc(db, "users", selectedAdminUser.id);
@@ -780,35 +791,49 @@ export default function AdminPage() {
               <div className="space-y-6">
                 <div className="space-y-2">
                   <Label className="text-xs font-black uppercase tracking-widest opacity-40">Rôle de l'Esprit</Label>
-                  <Select 
-                    value={selectedAdminUser.role} 
-                    onValueChange={(value) => handleUpdateRole(value)}
-                    disabled={isSubmitting}
-                  >
-                    <SelectTrigger className="h-14 rounded-2xl font-bold bg-background/50">
-                      <SelectValue placeholder="Sélectionner un rôle" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-2xl border-primary/5">
-                      <SelectItem value="user" className="font-bold">Joueur (Standard)</SelectItem>
-                      <SelectItem value="admin" className="font-bold">Maître (Admin)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Select 
+                      value={selectedAdminUser.role} 
+                      onValueChange={(value) => handleUpdateRole(value)}
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger className="h-14 rounded-2xl font-bold bg-background/50 flex-1">
+                        <SelectValue placeholder="Sélectionner un rôle" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-2xl border-primary/5">
+                        <SelectItem value="user" className="font-bold">Joueur (Standard)</SelectItem>
+                        <SelectItem value="admin" className="font-bold">Maître (Admin)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase tracking-widest opacity-40">Retrait de Lumière (Pénalité)</Label>
+                  <div className="flex justify-between items-center">
+                    <Label className="text-xs font-black uppercase tracking-widest opacity-40">Retrait de Lumière (Pénalité)</Label>
+                    <span className="text-[10px] font-black uppercase opacity-20">Seuil: {selectedAdminUser.totalPoints || 0} PTS</span>
+                  </div>
                   <div className="flex gap-2">
-                    <Input 
-                      type="number"
-                      placeholder="Points..."
-                      className="h-14 text-lg font-bold rounded-2xl flex-1 bg-background/50"
-                      value={pointsToSubtract || ""}
-                      onChange={(e) => setPointsToSubtract(Math.abs(parseInt(e.target.value) || 0))}
-                    />
+                    <div className="relative flex-1">
+                      <Input 
+                        type="number"
+                        placeholder="Points..."
+                        className={`h-14 text-lg font-bold rounded-2xl bg-background/50 w-full ${pointsToSubtract > (selectedAdminUser.totalPoints || 0) ? 'border-red-500 ring-red-500' : ''}`}
+                        value={pointsToSubtract || ""}
+                        max={selectedAdminUser.totalPoints || 0}
+                        onChange={(e) => setPointsToSubtract(Math.abs(parseInt(e.target.value) || 0))}
+                      />
+                      {pointsToSubtract > (selectedAdminUser.totalPoints || 0) && (
+                        <div className="absolute -bottom-5 left-2 flex items-center gap-1 text-red-500">
+                          <AlertTriangle className="h-3 w-3" />
+                          <span className="text-[9px] font-black uppercase">Dépasse le solde</span>
+                        </div>
+                      )}
+                    </div>
                     <Button 
                       onClick={handleSubtractPoints}
-                      disabled={isSubmitting || pointsToSubtract <= 0}
-                      className="h-14 px-4 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2 bg-red-500 hover:bg-red-600 text-white"
+                      disabled={isSubmitting || pointsToSubtract <= 0 || pointsToSubtract > (selectedAdminUser.totalPoints || 0)}
+                      className="h-14 px-4 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2 bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/10"
                     >
                       {isSubmitting ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
