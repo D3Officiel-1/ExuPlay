@@ -35,7 +35,8 @@ import {
   Share2,
   ShieldAlert,
   ChevronRight,
-  History
+  History,
+  ArrowRightLeft
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
@@ -410,11 +411,17 @@ export default function ProfilPage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2rem]">
+            <Card 
+              onClick={() => router.push("/echange")}
+              className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2rem] cursor-pointer hover:bg-primary/5 transition-colors group"
+            >
               <CardContent className="p-6 text-center">
-                <Trophy className="h-5 w-5 text-primary mx-auto mb-2 opacity-50" />
+                <div className="relative mb-2">
+                  <Trophy className="h-5 w-5 text-primary mx-auto opacity-50 group-hover:scale-110 transition-transform" />
+                  <ArrowRightLeft className="h-3 w-3 text-primary absolute -bottom-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
                 <p className="text-2xl font-black">{profile?.totalPoints?.toLocaleString() || 0}</p>
-                <p className="text-[8px] font-black uppercase tracking-widest opacity-40">Points Total</p>
+                <p className="text-[8px] font-black uppercase tracking-widest opacity-40">Lumière Totale</p>
               </CardContent>
             </Card>
           </motion.div>
