@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -144,7 +143,7 @@ export default function HomePage() {
         updatedAt: serverTimestamp()
       };
 
-      // Système de récompense de parrainage
+      // Système de récompense de parrainage : Déclenchement à 100 points
       if (profile.referredBy && !profile.referralRewardClaimed && newTotalPoints >= 100) {
         const referrersQuery = query(
           collection(db, "users"), 
@@ -155,10 +154,20 @@ export default function HomePage() {
         
         if (!referrerSnap.empty) {
           const referrerDoc = referrerSnap.docs[0];
-          updateDoc(referrerDoc.ref, {
+          const referrerRef = referrerDoc.ref;
+          
+          updateDoc(referrerRef, {
             totalPoints: increment(100),
             updatedAt: serverTimestamp()
+          }).catch(async (error) => {
+            const permissionError = new FirestorePermissionError({
+              path: referrerRef.path,
+              operation: 'update',
+              requestResourceData: { totalPoints: increment(100) },
+            } satisfies SecurityRuleContext);
+            errorEmitter.emit('permission-error', permissionError);
           });
+          
           updatePayload.referralRewardClaimed = true;
         }
       }

@@ -1,10 +1,9 @@
-
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser, useFirestore, useDoc } from "@/firebase";
-import { doc, getDoc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, updateDoc, increment, serverTimestamp, query, collection, where, limit, getDocs } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -56,14 +55,11 @@ export default function TransfertPage() {
   const qrStyling = useRef<any>(null);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
-  // Logic to render the QR Code
   useEffect(() => {
     if (activeTab === "qr" && qrRef.current && typeof window !== "undefined") {
       const initQr = async () => {
         const QRCodeStyling = (await import("qr-code-styling")).default;
-        
         const dotColor = resolvedTheme === 'dark' ? '#000000' : '#FFFFFF';
-        // Using a transparent pixel to leave space for our custom central badge
         const transparentPixel = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
         
         const options = {
@@ -72,53 +68,30 @@ export default function TransfertPage() {
           type: "svg" as const,
           data: user?.uid || "",
           image: transparentPixel,
-          dotsOptions: {
-            color: dotColor,
-            type: "rounded" as const,
-          },
-          backgroundOptions: {
-            color: "transparent",
-          },
-          imageOptions: {
-            hideBackgroundDots: true,
-            imageSize: 0.4,
-            margin: 0,
-          },
-          cornersSquareOptions: {
-            color: dotColor,
-            type: "extra-rounded" as const,
-          },
-          cornersDotOptions: {
-            color: dotColor,
-            type: "dot" as const,
-          },
-          qrOptions: {
-            typeNumber: 0,
-            mode: "Byte" as const,
-            errorCorrectionLevel: "H" as const,
-          },
+          dotsOptions: { color: dotColor, type: "rounded" as const },
+          backgroundOptions: { color: "transparent" },
+          imageOptions: { hideBackgroundDots: true, imageSize: 0.4, margin: 0 },
+          cornersSquareOptions: { color: dotColor, type: "extra-rounded" as const },
+          cornersDotOptions: { color: dotColor, type: "dot" as const },
+          qrOptions: { typeNumber: 0, mode: "Byte" as const, errorCorrectionLevel: "H" as const },
         };
 
-        // Clear container and always re-append to be resilient to tab switching (mounting/unmounting)
         if (qrRef.current) {
           qrRef.current.innerHTML = "";
           qrStyling.current = new QRCodeStyling(options);
           qrStyling.current.append(qrRef.current);
         }
       };
-
       initQr();
     }
   }, [activeTab, user?.uid, resolvedTheme, profile?.profileImage]);
 
-  // Logic for the Scanner
   useEffect(() => {
     if (activeTab === "scan") {
       const getCameraPermission = async () => {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true });
           setHasCameraPermission(true);
-          // Stop the stream immediately, it's just to check permission for the scanner
           stream.getTracks().forEach(track => track.stop());
 
           const scanner = new Html5QrcodeScanner(
@@ -136,24 +109,20 @@ export default function TransfertPage() {
           scanner.render(onScanSuccess, onScanFailure);
           scannerRef.current = scanner;
         } catch (error) {
-          console.error('Error accessing camera:', error);
           setHasCameraPermission(false);
         }
       };
-
       getCameraPermission();
     } else {
-      // Cleanup scanner and torch when leaving the tab
       setIsTorchOn(false);
       if (scannerRef.current) {
-        scannerRef.current.clear().catch(err => console.error("Failed to clear scanner", err));
+        scannerRef.current.clear().catch(() => {});
         scannerRef.current = null;
       }
     }
-
     return () => {
       if (scannerRef.current) {
-        scannerRef.current.clear().catch(err => console.error("Cleanup error", err));
+        scannerRef.current.clear().catch(() => {});
       }
     };
   }, [activeTab]);
@@ -161,24 +130,14 @@ export default function TransfertPage() {
   const toggleTorch = async () => {
     const videoElement = document.querySelector("#reader video") as HTMLVideoElement;
     if (!videoElement || !videoElement.srcObject) return;
-    
     const stream = videoElement.srcObject as MediaStream;
     const track = stream.getVideoTracks()[0];
-    
     const capabilities = track.getCapabilities() as any;
-    if (!capabilities.torch) {
-        toast({ title: "Flash non supporté", description: "Votre appareil ne supporte pas le flash sur ce navigateur." });
-        return;
-    }
-
+    if (!capabilities.torch) return;
     try {
-        await track.applyConstraints({
-            advanced: [{ torch: !isTorchOn }]
-        } as any);
+        await track.applyConstraints({ advanced: [{ torch: !isTorchOn }] } as any);
         setIsTorchOn(!isTorchOn);
-    } catch (err) {
-        console.error("Failed to toggle torch:", err);
-    }
+    } catch (err) {}
   };
 
   const onScanSuccess = async (decodedText: string) => {
@@ -186,11 +145,7 @@ export default function TransfertPage() {
       toast({ variant: "destructive", title: "Action impossible", description: "Vous ne pouvez pas vous envoyer de points à vous-même." });
       return;
     }
-
-    if (scannerRef.current) {
-      scannerRef.current.clear();
-    }
-
+    if (scannerRef.current) scannerRef.current.clear();
     setLoadingRecipient(true);
     try {
       const recipientRef = doc(db, "users", decodedText);
@@ -198,59 +153,81 @@ export default function TransfertPage() {
       if (recipientSnap.exists()) {
         setRecipient({ id: decodedText, ...recipientSnap.data() });
       } else {
-        toast({ variant: "destructive", title: "Esprit non trouvé", description: "Ce QR Code n'est pas reconnu par l'Éveil." });
+        toast({ variant: "destructive", title: "Esprit non trouvé" });
         setActiveTab("qr");
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Erreur", description: "Impossible de lire le sceau." });
       setActiveTab("qr");
     } finally {
       setLoadingRecipient(false);
     }
   };
 
-  const onScanFailure = (error: any) => {};
+  const onScanFailure = () => {};
 
   const handleTransfer = async () => {
     const transferAmount = parseInt(amount);
-    if (!transferAmount || transferAmount <= 0) {
-      toast({ variant: "destructive", title: "Montant invalide" });
-      return;
-    }
-
+    if (!transferAmount || transferAmount <= 0) return;
     if ((profile?.totalPoints || 0) < transferAmount) {
-      toast({ variant: "destructive", title: "Lumière insuffisante", description: "Vous ne possédez pas assez de points." });
+      toast({ variant: "destructive", title: "Lumière insuffisante" });
       return;
     }
 
     setIsProcessing(true);
+    const senderRef = doc(db, "users", user!.uid);
+    const receiverRef = doc(db, "users", recipient.id);
 
-    try {
-      const senderRef = doc(db, "users", user!.uid);
-      const receiverRef = doc(db, "users", recipient.id);
-
-      await updateDoc(senderRef, {
-        totalPoints: increment(-transferAmount),
-        updatedAt: serverTimestamp()
-      });
-
-      await updateDoc(receiverRef, {
-        totalPoints: increment(transferAmount),
-        updatedAt: serverTimestamp()
-      });
-
-      setIsSuccess(true);
-      toast({ title: "Transfert réussi", description: `${transferAmount} points envoyés à @${recipient.username}.` });
-    } catch (error) {
+    // Déduction de l'expéditeur
+    updateDoc(senderRef, {
+      totalPoints: increment(-transferAmount),
+      updatedAt: serverTimestamp()
+    }).catch(async (error) => {
       const permissionError = new FirestorePermissionError({
-        path: `users/${user?.uid}/transfer`,
-        operation: 'write',
-        requestResourceData: { amount: transferAmount, to: recipient.id },
+        path: senderRef.path,
+        operation: 'update',
+        requestResourceData: { totalPoints: increment(-transferAmount) },
       } satisfies SecurityRuleContext);
       errorEmitter.emit('permission-error', permissionError);
-    } finally {
-      setIsProcessing(false);
+    });
+
+    const receiverUpdatePayload: any = {
+      totalPoints: increment(transferAmount),
+      updatedAt: serverTimestamp()
+    };
+
+    // Logique de récompense de parrainage pour le destinataire
+    const newRecipientPoints = (recipient.totalPoints || 0) + transferAmount;
+    if (recipient.referredBy && !recipient.referralRewardClaimed && newRecipientPoints >= 100) {
+      const referrersQuery = query(
+        collection(db, "users"), 
+        where("referralCode", "==", recipient.referredBy), 
+        limit(1)
+      );
+      const referrerSnap = await getDocs(referrersQuery);
+      if (!referrerSnap.empty) {
+        const referrerDoc = referrerSnap.docs[0];
+        updateDoc(referrerDoc.ref, {
+          totalPoints: increment(100),
+          updatedAt: serverTimestamp()
+        }).catch(() => {});
+        receiverUpdatePayload.referralRewardClaimed = true;
+      }
     }
+
+    // Crédit du destinataire
+    updateDoc(receiverRef, receiverUpdatePayload).then(() => {
+      setIsSuccess(true);
+      toast({ title: "Transfert réussi", description: `${transferAmount} points envoyés à @${recipient.username}.` });
+    }).catch(async (error) => {
+      const permissionError = new FirestorePermissionError({
+        path: receiverRef.path,
+        operation: 'update',
+        requestResourceData: receiverUpdatePayload,
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    }).finally(() => {
+      setIsProcessing(false);
+    });
   };
 
   if (loading) {
@@ -351,7 +328,6 @@ export default function TransfertPage() {
                         <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center space-y-4 bg-background/80 backdrop-blur-md z-50">
                           <ShieldAlert className="h-12 w-12 text-destructive" />
                           <p className="text-sm font-bold">Caméra Bloquée</p>
-                          <p className="text-xs opacity-60">Veuillez autoriser l'accès à la caméra pour scanner les sceaux.</p>
                           <Button variant="outline" onClick={() => window.location.reload()}>Réessayer</Button>
                         </div>
                       )}
@@ -362,8 +338,6 @@ export default function TransfertPage() {
                             className="w-64 h-64 border-2 border-white/20 rounded-3xl"
                          />
                       </div>
-                      
-                      {/* Bouton de Lampe Torche */}
                       <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50">
                         <Button
                           onClick={toggleTorch}
