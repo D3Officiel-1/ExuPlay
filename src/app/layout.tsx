@@ -1,4 +1,3 @@
-
 "use client";
 
 import "./globals.css";
@@ -152,14 +151,6 @@ function OfflineOverlay() {
             </p>
           </div>
         </div>
-
-        <Button 
-          onClick={() => window.location.reload()}
-          className="h-16 px-10 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] gap-3 shadow-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 border-none"
-        >
-          <RefreshCcw className="h-4 w-4" />
-          Résonner à nouveau
-        </Button>
       </motion.div>
     </motion.div>
   );

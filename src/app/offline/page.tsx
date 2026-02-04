@@ -1,8 +1,7 @@
-
 "use client";
 
 import { motion } from "framer-motion";
-import { WifiOff, RefreshCcw, ArrowLeft } from "lucide-react";
+import { WifiOff, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { useRouter } from "next/navigation";
@@ -119,14 +118,6 @@ export default function OfflinePage() {
         </div>
 
         <motion.div variants={itemVariants} className="flex flex-col gap-4">
-          <Button 
-            onClick={() => window.location.reload()}
-            className="w-full h-16 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] gap-3 bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-[0_20px_40px_-10px_rgba(var(--destructive-rgb),0.3)] border-none"
-          >
-            <RefreshCcw className="h-4 w-4" />
-            Reconnecter l'âme
-          </Button>
-          
           <Button 
             variant="ghost" 
             onClick={() => router.push("/")}
