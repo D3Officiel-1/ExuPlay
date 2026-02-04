@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -20,7 +21,9 @@ import {
   ShieldAlert,
   Sparkles,
   X,
-  RefreshCw
+  RefreshCw,
+  Zap,
+  ZapOff
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
@@ -40,6 +43,10 @@ export default function TransfertPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [loadingRecipient, setLoadingRecipient] = useState(false);
+  
+  // Flashlight state
+  const [hasTorch, setHasTorch] = useState(false);
+  const [isTorchOn, setIsTorchOn] = useState(false);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -101,8 +108,17 @@ export default function TransfertPage() {
   const stopScanner = async () => {
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
       try {
+        if (isTorchOn) {
+          // Turn off torch before stopping if active
+          await html5QrCodeRef.current.applyVideoConstraints({
+            // @ts-ignore
+            advanced: [{ torch: false }]
+          });
+          setIsTorchOn(false);
+        }
         await html5QrCodeRef.current.stop();
         html5QrCodeRef.current = null;
+        setHasTorch(false);
       } catch (err) {
         console.error("Stop scanner error:", err);
       }
@@ -131,7 +147,19 @@ export default function TransfertPage() {
               onScanFailure
             );
             
-            if (isMounted) setHasCameraPermission(true);
+            if (isMounted) {
+              setHasCameraPermission(true);
+              // Check for torch capability
+              try {
+                const capabilities = scanner.getRunningTrackCapabilities();
+                // @ts-ignore - torch is supported by mobile browsers but might not be in the type def
+                if (capabilities.torch) {
+                  setHasTorch(true);
+                }
+              } catch (e) {
+                console.log("Torch capability check failed", e);
+              }
+            }
           } catch (error: any) {
             console.error("Scanner error:", error);
             if (isMounted && (error?.name === "NotAllowedError" || error?.name === "PermissionDeniedError")) {
@@ -152,6 +180,26 @@ export default function TransfertPage() {
       stopScanner();
     };
   }, [activeTab, recipient, isSuccess]);
+
+  const toggleTorch = async () => {
+    if (!html5QrCodeRef.current || !html5QrCodeRef.current.isScanning) return;
+    
+    try {
+      const newState = !isTorchOn;
+      await html5QrCodeRef.current.applyVideoConstraints({
+        // @ts-ignore
+        advanced: [{ torch: newState }]
+      });
+      setIsTorchOn(newState);
+    } catch (err) {
+      console.error("Erreur Torch:", err);
+      toast({
+        variant: "destructive",
+        title: "Erreur Lampe",
+        description: "Impossible d'activer le flash sur cet appareil."
+      });
+    }
+  };
 
   const onScanSuccess = async (decodedText: string) => {
     if (decodedText === user?.uid) {
@@ -318,7 +366,6 @@ export default function TransfertPage() {
                     <div className="fixed inset-0 z-0 bg-black flex items-center justify-center">
                       <div id="reader" className="absolute inset-0 w-full h-full" />
                       
-                      {/* Viseur totalement invisible mais fonctionnel */}
                       <div className="absolute inset-0 pointer-events-none z-10" />
 
                       {hasCameraPermission === false && (
@@ -331,6 +378,51 @@ export default function TransfertPage() {
                             Réessayer
                           </Button>
                         </div>
+                      )}
+
+                      {/* Floating Torch Button */}
+                      {hasTorch && hasCameraPermission && (
+                        <motion.div 
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="absolute bottom-32 right-8 z-[100]"
+                        >
+                          <Button
+                            onClick={toggleTorch}
+                            className={`h-16 w-16 rounded-full shadow-2xl transition-all duration-500 backdrop-blur-xl border ${
+                              isTorchOn 
+                                ? 'bg-primary text-primary-foreground border-primary shadow-primary/20' 
+                                : 'bg-black/20 text-white border-white/10 hover:bg-black/40'
+                            }`}
+                          >
+                            <AnimatePresence mode="wait">
+                              {isTorchOn ? (
+                                <motion.div
+                                  key="on"
+                                  initial={{ opacity: 0, rotate: -45 }}
+                                  animate={{ opacity: 1, rotate: 0 }}
+                                  exit={{ opacity: 0, rotate: 45 }}
+                                >
+                                  <Zap className="h-6 w-6 fill-current" />
+                                  <motion.div 
+                                    animate={{ opacity: [0.2, 0.5, 0.2], scale: [1, 1.2, 1] }}
+                                    transition={{ duration: 2, repeat: Infinity }}
+                                    className="absolute inset-0 bg-white/20 rounded-full blur-lg"
+                                  />
+                                </motion.div>
+                              ) : (
+                                <motion.div
+                                  key="off"
+                                  initial={{ opacity: 0, rotate: -45 }}
+                                  animate={{ opacity: 1, rotate: 0 }}
+                                  exit={{ opacity: 0, rotate: 45 }}
+                                >
+                                  <ZapOff className="h-6 w-6 opacity-60" />
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </Button>
+                        </motion.div>
                       )}
                     </div>
                   </TabsContent>
