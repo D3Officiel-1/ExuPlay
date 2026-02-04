@@ -36,7 +36,8 @@ import {
   ShieldAlert,
   ChevronRight,
   History,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Users
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
@@ -565,9 +566,20 @@ export default function ProfilPage() {
             </div>
             <CardContent className="p-8 space-y-6 relative z-10">
               <div className="flex flex-col gap-4">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-1">Votre Code de Parrainage</p>
-                  <p className="text-4xl font-black tracking-tighter">{profile?.referralCode || "------"}</p>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-1">Votre Code de Parrainage</p>
+                    <p className="text-4xl font-black tracking-tighter">{profile?.referralCode || "------"}</p>
+                  </div>
+                  <Button 
+                    variant="secondary" 
+                    size="sm"
+                    onClick={() => router.push("/parrainage")}
+                    className="h-10 px-4 rounded-xl font-black text-[9px] uppercase tracking-widest gap-2 bg-white/10 hover:bg-white/20 border-none text-white"
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    Mes Filleuls
+                  </Button>
                 </div>
                 <div className="flex gap-2">
                   <Button 
