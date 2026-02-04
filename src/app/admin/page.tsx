@@ -24,6 +24,13 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
   Table, 
   TableBody, 
   TableCell, 
@@ -52,7 +59,9 @@ import {
   User,
   MinusCircle,
   Search,
-  Sparkles
+  Sparkles,
+  ShieldCheck,
+  Shield
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -281,6 +290,33 @@ export default function AdminPage() {
         path: userRef.path,
         operation: 'update',
         requestResourceData: { totalPoints: increment(-pointsToSubtract) },
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    }).finally(() => {
+      setIsSubmitting(false);
+    });
+  };
+
+  const handleUpdateRole = async (newRole: string) => {
+    if (!db || !selectedAdminUser || isSubmitting) return;
+
+    setIsSubmitting(true);
+    const userRef = doc(db, "users", selectedAdminUser.id);
+    
+    updateDoc(userRef, {
+      role: newRole,
+      updatedAt: serverTimestamp()
+    }).then(() => {
+      toast({ 
+        title: "Rôle mis à jour", 
+        description: `@${selectedAdminUser.username} est désormais ${newRole === 'admin' ? 'un Maître' : 'un Joueur'}.`
+      });
+      setSelectedAdminUser({...selectedAdminUser, role: newRole});
+    }).catch((error) => {
+      const permissionError = new FirestorePermissionError({
+        path: userRef.path,
+        operation: 'update',
+        requestResourceData: { role: newRole },
       } satisfies SecurityRuleContext);
       errorEmitter.emit('permission-error', permissionError);
     }).finally(() => {
@@ -575,7 +611,10 @@ export default function AdminPage() {
                       >
                         <TableCell className="py-4 px-6">
                           <div className="flex flex-col">
-                            <span className="font-black text-sm md:text-base tracking-tight">@{u.username}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-black text-sm md:text-base tracking-tight">@{u.username}</span>
+                              {u.role === 'admin' && <span className="bg-primary/10 text-primary text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter flex items-center gap-1"><ShieldCheck className="h-2 w-2" /> Maître</span>}
+                            </div>
                             <span className="text-[10px] opacity-30 uppercase tracking-widest">
                               {u.phoneNumber}
                             </span>
@@ -717,7 +756,7 @@ export default function AdminPage() {
 
       {/* Dialogue de Détails de l'Utilisateur */}
       <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] bg-card/95 backdrop-blur-2xl border-primary/5 rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-10">
+        <DialogContent className="sm:max-w-[500px] bg-card/95 backdrop-blur-2xl border-primary/5 rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-10 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight flex items-center gap-3">
               <User className="h-8 w-8" />
@@ -738,32 +777,50 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase tracking-widest opacity-40">Retrait de Lumière (Pénalité)</Label>
-                  <Input 
-                    type="number"
-                    placeholder="Nombre de points à retirer"
-                    className="h-14 md:h-16 text-lg md:text-2xl font-bold rounded-2xl"
-                    value={pointsToSubtract || ""}
-                    onChange={(e) => setPointsToSubtract(Math.abs(parseInt(e.target.value) || 0))}
-                  />
+                  <Label className="text-xs font-black uppercase tracking-widest opacity-40">Rôle de l'Esprit</Label>
+                  <Select 
+                    value={selectedAdminUser.role} 
+                    onValueChange={(value) => handleUpdateRole(value)}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger className="h-14 rounded-2xl font-bold bg-background/50">
+                      <SelectValue placeholder="Sélectionner un rôle" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl border-primary/5">
+                      <SelectItem value="user" className="font-bold">Joueur (Standard)</SelectItem>
+                      <SelectItem value="admin" className="font-bold">Maître (Admin)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                <Button 
-                  onClick={handleSubtractPoints}
-                  disabled={isSubmitting || pointsToSubtract <= 0}
-                  className="w-full h-14 md:h-16 rounded-2xl md:rounded-3xl font-black text-sm uppercase tracking-widest gap-3 bg-red-500 hover:bg-red-600 text-white"
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  ) : (
-                    <>
-                      <MinusCircle className="h-6 w-6" />
-                      Soustraire {pointsToSubtract || ""} points
-                    </>
-                  )}
-                </Button>
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-widest opacity-40">Retrait de Lumière (Pénalité)</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      type="number"
+                      placeholder="Points..."
+                      className="h-14 text-lg font-bold rounded-2xl flex-1 bg-background/50"
+                      value={pointsToSubtract || ""}
+                      onChange={(e) => setPointsToSubtract(Math.abs(parseInt(e.target.value) || 0))}
+                    />
+                    <Button 
+                      onClick={handleSubtractPoints}
+                      disabled={isSubmitting || pointsToSubtract <= 0}
+                      className="h-14 px-4 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2 bg-red-500 hover:bg-red-600 text-white"
+                    >
+                      {isSubmitting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <MinusCircle className="h-4 w-4" />
+                          Retirer
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
