@@ -89,7 +89,6 @@ export default function HomePage() {
   const { data: allQuizzes, loading: quizzesLoading } = useCollection(quizzesQuery);
   const { data: attempts, loading: attemptsLoading } = useCollection(attemptsQuery);
 
-  // Charger les quiz de session (uniquement ceux non complétés)
   useEffect(() => {
     if (allQuizzes && attempts && sessionQuizzes === null) {
       const completedIds = attempts.filter(a => a.status === "completed").map(a => a.id);
@@ -98,7 +97,6 @@ export default function HomePage() {
     }
   }, [allQuizzes, attempts, sessionQuizzes]);
 
-  // Gérer la persistance du chronomètre si le quiz a déjà été démarré dans le passé
   useEffect(() => {
     if (!quizStarted && sessionQuizzes && attempts && user) {
       const currentQuiz = sessionQuizzes[currentQuestionIdx];
@@ -116,7 +114,6 @@ export default function HomePage() {
           setQuizStarted(true);
           setTimeLeft(remaining);
         } else {
-          // Si le temps est écoulé depuis longtemps mais n'a pas été marqué complété
           setQuizStarted(true);
           setTimeLeft(0);
           setIsAnswered(true);
@@ -149,7 +146,6 @@ export default function HomePage() {
     }
   }, [user, score, db]);
 
-  // Gestion du compte à rebours
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (quizStarted && !isAnswered && timeLeft > 0) {
@@ -210,6 +206,7 @@ export default function HomePage() {
       updateDoc(attemptRef, {
         status: "completed",
         score: isCorrect ? currentQuiz.points : 0,
+        userAnswerIndex: index,
         updatedAt: serverTimestamp()
       }).catch(() => {});
     }

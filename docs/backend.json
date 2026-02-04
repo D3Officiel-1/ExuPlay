@@ -19,6 +19,7 @@
         "quizId": { "type": "string" },
         "status": { "type": "string", "enum": ["started", "completed"] },
         "score": { "type": "integer" },
+        "userAnswerIndex": { "type": "integer", "description": "Index de la réponse choisie par l'utilisateur" },
         "attemptedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["quizId", "status", "attemptedAt"]
