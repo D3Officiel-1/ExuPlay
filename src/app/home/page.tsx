@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -175,23 +174,12 @@ export default function HomePage() {
             {!quizComplete ? (
               <motion.div
                 key={question.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                 className="space-y-8"
               >
-                <div className="flex justify-between items-end px-2">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Défi Mental</p>
-                    <h2 className="text-3xl font-black">Question {currentQuestionIdx + 1}</h2>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Progression</p>
-                    <p className="text-xl font-bold">{currentQuestionIdx + 1}/{quizzes.length}</p>
-                  </div>
-                </div>
-
                 <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] overflow-hidden">
                   <CardContent className="p-8 sm:p-12 space-y-10">
                     <p className="text-xl sm:text-2xl font-medium leading-tight tracking-tight text-center">
