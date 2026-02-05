@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -11,7 +12,8 @@ import { ShieldCheck, Loader2, Fingerprint, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 /**
- * @fileOverview Un écran de verrouillage biométrique global ultra-réactif avec animation de succès cinématographique.
+ * @fileOverview Un écran de verrouillage biométrique global fixe et superposé.
+ * Empêche toute interaction avec le fond et reste centré quel que soit le scroll.
  */
 
 export function BiometricLock() {
@@ -25,7 +27,6 @@ export function BiometricLock() {
   const userRef = user?.uid ? doc(db, "users", user.uid) : null;
   const { data: profile, loading: profileLoading } = useDoc(userRef);
 
-  // Fonction d'authentification mémoïsée
   const handleUnlock = useCallback(async () => {
     if (!profile?.passkeyId || authenticating || isUnlocked) return;
     
@@ -33,10 +34,7 @@ export function BiometricLock() {
     try {
       const success = await verifyPasskey(profile.passkeyId);
       if (success) {
-        // Déclencher l'animation de succès "Ultra Stylée"
         setIsUnlocked(true);
-        
-        // Laisser l'animation se jouer avant de lever le verrou
         setTimeout(() => {
           sessionStorage.setItem(`auth_${user?.uid}`, "true");
           setLocked(false);
@@ -57,7 +55,6 @@ export function BiometricLock() {
     }
   }, [profile?.passkeyId, authenticating, user?.uid, toast, isUnlocked]);
 
-  // 1. Déclenchement au montage ou changement de profil
   useEffect(() => {
     if (!authLoading && !profileLoading && profile?.biometricEnabled && profile?.passkeyId) {
       const isSessionAuthenticated = sessionStorage.getItem(`auth_${user?.uid}`);
@@ -69,7 +66,6 @@ export function BiometricLock() {
     }
   }, [authLoading, profileLoading, profile, user?.uid]);
 
-  // 2. Déclenchement automatique au verrouillage
   useEffect(() => {
     if (locked && profile?.passkeyId && !authenticating && !isUnlocked) {
       const timer = setTimeout(() => {
@@ -79,7 +75,6 @@ export function BiometricLock() {
     }
   }, [locked, profile?.passkeyId, handleUnlock, authenticating, isUnlocked]);
 
-  // 3. Gestion du retour en arrière-plan
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -110,7 +105,6 @@ export function BiometricLock() {
           }}
           className="fixed inset-0 z-[2000] bg-background flex flex-col items-center justify-center p-8 text-center overflow-hidden"
         >
-          {/* Arrière-plan éthéré */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-20">
             <motion.div 
               animate={isUnlocked ? { scale: 3, opacity: 0.4 } : { scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }}
@@ -119,7 +113,6 @@ export function BiometricLock() {
             />
           </div>
 
-          {/* Onde de choc lors du succès */}
           <AnimatePresence>
             {isUnlocked && (
               <motion.div
@@ -134,7 +127,7 @@ export function BiometricLock() {
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="space-y-12 max-sm z-10"
+            className="space-y-12 max-w-sm z-10"
           >
             <motion.div 
               animate={isUnlocked ? { y: -20, opacity: 0, scale: 0.9, filter: "blur(10px)" } : {}}
@@ -224,12 +217,6 @@ export function BiometricLock() {
                   </>
                 )}
               </Button>
-              
-              {authenticating && (
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-30 animate-pulse">
-                  Approbation en cours...
-                </p>
-              )}
             </div>
           </motion.div>
         </motion.div>

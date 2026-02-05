@@ -125,7 +125,6 @@ export default function ProfilPage() {
     if (profile?.referralCode) {
       haptic.medium();
       const baseUrl = window.location.origin;
-      // Image supprimée du lien pour une pureté technique
       const magicLink = `${baseUrl}/login?ref=${profile.referralCode}&u=${encodeURIComponent(profile.username || 'Esprit')}`;
       
       if (typeof navigator !== 'undefined' && navigator.share) {
@@ -283,7 +282,6 @@ export default function ProfilPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
       <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
-        {/* En-tête Profil */}
         <motion.div 
           style={{ opacity: mainProfileOpacity, scale: mainProfileScale }}
           className="text-center space-y-4"
@@ -364,7 +362,6 @@ export default function ProfilPage() {
           </div>
         </motion.div>
 
-        {/* Section Lumière & Transfert */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -385,14 +382,13 @@ export default function ProfilPage() {
                 className="w-full h-16 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] gap-3 shadow-2xl shadow-primary/10 group transition-all"
               >
                 <QrCode className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                Transférer de la Lumière
+                Transférer
                 <ArrowRightLeft className="h-4 w-4 opacity-40 ml-auto" />
               </Button>
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Section Administration (Si Admin) */}
         {profile?.role === 'admin' && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
             <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 pl-4">Maître de l'Éveil</h2>
@@ -415,7 +411,6 @@ export default function ProfilPage() {
           </motion.div>
         )}
 
-        {/* Section Parrainage Réinventée */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="space-y-4">
           <div className="flex items-center justify-between px-4">
             <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Expansion</h2>
@@ -465,7 +460,6 @@ export default function ProfilPage() {
           </Card>
         </motion.div>
 
-        {/* Informations Personnelles */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="space-y-4">
           <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 pl-4">Liaisons</h2>
           <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden">

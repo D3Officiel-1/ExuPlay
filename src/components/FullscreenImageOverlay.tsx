@@ -1,3 +1,4 @@
+
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,7 +14,7 @@ interface FullscreenImageOverlayProps {
 
 /**
  * @fileOverview Un composant d'overlay pour afficher une image en plein écran.
- * Utilise Framer Motion pour des transitions cinématiques.
+ * Optimisé pour rester centré sans décalage lors du scroll.
  */
 export function FullscreenImageOverlay({ src, isOpen, onClose }: FullscreenImageOverlayProps) {
   return (
@@ -24,7 +25,7 @@ export function FullscreenImageOverlay({ src, isOpen, onClose }: FullscreenImage
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-2xl flex items-center justify-center p-6 cursor-zoom-out"
+          className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-3xl flex items-center justify-center p-6 cursor-zoom-out"
         >
           <motion.div
             initial={{ scale: 0.5, opacity: 0, rotate: -5, filter: "blur(20px)" }}
@@ -39,6 +40,7 @@ export function FullscreenImageOverlay({ src, isOpen, onClose }: FullscreenImage
               alt="Profil Fullscreen" 
               fill 
               className="object-cover"
+              priority
             />
             <Button
               variant="ghost"
