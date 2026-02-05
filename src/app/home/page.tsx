@@ -27,13 +27,11 @@ import { useToast } from "@/hooks/use-toast";
 export function SpoilerOverlay() {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 1.02 }}
-      animate={{ opacity: 1, scale: 1 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       exit={{ 
-        opacity: 0, 
-        scale: 1.1, 
-        filter: "blur(40px)",
-        transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] } 
+        opacity: 0,
+        transition: { duration: 0.3 } 
       }}
       className="absolute inset-0 z-10 overflow-hidden rounded-[2rem] pointer-events-none"
     >
@@ -382,10 +380,10 @@ export default function HomePage() {
                     {showPointsPreview ? (
                       <motion.div
                         key="points-preview"
-                        initial={{ opacity: 0, scale: 0.95, filter: "blur(20px)" }}
-                        animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                        exit={{ opacity: 0, scale: 1.05, filter: "blur(20px)" }}
-                        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 1.05 }}
+                        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                         onClick={() => setShowPointsPreview(false)}
                         className="p-12 sm:p-20 text-center flex flex-col items-center justify-center space-y-10 cursor-pointer h-full min-h-[500px] bg-primary/5"
                       >
@@ -410,17 +408,17 @@ export default function HomePage() {
                         key="quiz-content"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        exit={{ opacity: 0, transition: { duration: 0.4 } }}
+                        exit={{ opacity: 0, transition: { duration: 0.3 } }}
                       >
                         <CardContent className="p-8 sm:p-12 space-y-12">
                           <div className="relative min-h-[140px] flex items-center justify-center overflow-hidden rounded-[2rem]">
-                            <AnimatePresence mode="wait">
+                            <AnimatePresence>
                               {quizStarted ? (
                                 <motion.p 
                                   key="question-text"
-                                  initial={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
-                                  animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                                  transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                                  initial={{ opacity: 0, filter: "blur(8px)" }}
+                                  animate={{ opacity: 1, filter: "blur(0px)" }}
+                                  transition={{ duration: 0.4, ease: "easeOut" }}
                                   className="text-xl sm:text-2xl font-black leading-tight tracking-tight text-center px-4"
                                 >
                                   {question?.question}
@@ -428,13 +426,13 @@ export default function HomePage() {
                               ) : (
                                 <motion.div 
                                   key="question-mask-container"
-                                  exit={{ opacity: 0, scale: 1.1, filter: "blur(20px)" }}
-                                  transition={{ duration: 0.6 }}
+                                  initial={{ opacity: 1 }}
+                                  exit={{ opacity: 0 }}
+                                  transition={{ duration: 0.3 }}
                                   className="absolute inset-0 z-20 flex items-center justify-center"
                                 >
                                   <SpoilerOverlay key="question-mask" />
                                   <motion.button
-                                    layoutId="reveal-button"
                                     onContextMenu={(e) => {
                                       e.preventDefault();
                                       setShowPointsPreview(true);
