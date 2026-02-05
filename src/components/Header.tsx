@@ -55,7 +55,7 @@ export function Header() {
         delay: 0.1
       }}
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 h-20",
+        "fixed top-0 left-0 right-0 z-40 h-20",
         "flex items-center px-6 md:px-10",
         "bg-background/10 backdrop-blur-3xl",
         "after:absolute after:bottom-0 after:left-[25%] after:right-[25%] after:h-[1px] after:bg-gradient-to-r after:from-transparent after:via-primary/5 after:to-transparent"

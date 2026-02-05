@@ -1,4 +1,3 @@
-
 "use client";
 
 import { motion } from "framer-motion";
@@ -87,7 +86,7 @@ export function PendingExchangesDialog({ open, onOpenChange }: PendingExchangesD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-background/80 backdrop-blur-2xl border-none rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
+      <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-3xl border-white/5 rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
         <div className="p-8 space-y-8 max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <div className="space-y-1">
