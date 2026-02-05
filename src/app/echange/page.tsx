@@ -19,11 +19,14 @@ import {
   Clock,
   Calendar,
   Percent,
-  Lock
+  Lock,
+  Fingerprint
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import { verifyPasskey } from "@/lib/passkey";
+import { haptic } from "@/lib/haptics";
 import Image from "next/image";
 import placeholderImages from "@/app/lib/placeholder-images.json";
 
@@ -78,6 +81,7 @@ export default function EchangePage() {
 
   const handleExchange = async () => {
     if (!isExchangeGloballyEnabled) {
+      haptic.error();
       toast({
         variant: "destructive",
         title: "Système suspendu",
@@ -87,6 +91,7 @@ export default function EchangePage() {
     }
 
     if (points < minPoints) {
+      haptic.error();
       toast({
         variant: "destructive",
         title: "Lumière insuffisante",
@@ -96,6 +101,7 @@ export default function EchangePage() {
     }
 
     if (!isWindowOpen) {
+      haptic.error();
       toast({
         variant: "destructive",
         title: "Fenêtre fermée",
@@ -105,6 +111,31 @@ export default function EchangePage() {
     }
 
     setIsProcessing(true);
+    haptic.medium();
+
+    // Étape de sécurité : Vérification du Sceau si activé
+    if (profile?.biometricEnabled && profile?.passkeyId) {
+      try {
+        const success = await verifyPasskey(profile.passkeyId);
+        if (!success) {
+          setIsProcessing(false);
+          haptic.error();
+          return;
+        }
+        haptic.success();
+      } catch (error: any) {
+        setIsProcessing(false);
+        haptic.error();
+        if (error.name !== 'AbortError') {
+          toast({
+            variant: "destructive",
+            title: "Sceau invalide",
+            description: "L'identité de l'esprit n'a pas pu être confirmée."
+          });
+        }
+        return;
+      }
+    }
     
     if (userDocRef) {
       updateDoc(userDocRef, {
@@ -113,6 +144,7 @@ export default function EchangePage() {
         updatedAt: serverTimestamp()
       }).then(() => {
         setIsSuccess(true);
+        haptic.success();
         toast({
           title: "Échange réussi",
           description: "Votre demande a été transmise au réseau Wave."
@@ -221,6 +253,15 @@ export default function EchangePage() {
                       </div>
                     )}
 
+                    {profile?.biometricEnabled && (
+                      <div className="flex gap-3 p-4 bg-primary/5 rounded-2xl border border-primary/10 items-center">
+                        <Fingerprint className="h-4 w-4 text-primary shrink-0" />
+                        <p className="text-[10px] leading-relaxed font-black opacity-60 uppercase">
+                          Validation par Sceau requise.
+                        </p>
+                      </div>
+                    )}
+
                     {points < minPoints && (
                       <div className="flex gap-3 p-4 bg-orange-500/5 rounded-2xl border border-orange-500/10 items-start">
                         <AlertCircle className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
@@ -255,7 +296,7 @@ export default function EchangePage() {
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
                     <>
-                      <ArrowRightLeft className="h-5 w-5" />
+                      {profile?.biometricEnabled ? <Fingerprint className="h-5 w-5" /> : <ArrowRightLeft className="h-5 w-5" />}
                       Convertir en Liquidité
                     </>
                   )}
