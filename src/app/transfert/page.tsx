@@ -42,7 +42,6 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
 import { useTheme } from "next-themes";
-import { sendPushNotification } from "@/app/actions/notifications";
 import { haptic } from "@/lib/haptics";
 
 export default function TransfertPage() {
@@ -341,14 +340,6 @@ export default function TransfertPage() {
         read: false
       });
       
-      if (recipient.fcmToken) {
-        sendPushNotification({
-          token: recipient.fcmToken,
-          title: "Lumière Reçue !",
-          body: `@${profile?.username || 'Un esprit'} vous a envoyé ${transferAmount} PTS.`
-        });
-      }
-
       haptic.success();
       setIsSuccess(true);
     } catch (error) {
@@ -469,6 +460,320 @@ export default function TransfertPage() {
                       )}
                     </motion.div>
                   </div>
+                </motion.div>
+              ) : !recipient && !isSuccess ? (
+                <motion.div
+                  key="selection"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="h-full"
+                >
+                  <TabsContent value="qr" className="mt-0 h-full flex flex-col items-center justify-start pt-28 px-6">
+                    <div className="relative group flex justify-center w-full max-w-[340px]">
+                      <motion.div 
+                        animate={{ scale: [1, 1.05, 1], opacity: [0.05, 0.1, 0.05] }}
+                        transition={{ duration: 4, repeat: Infinity }}
+                        className="absolute inset-0 blur-[60px] rounded-full bg-primary"
+                      />
+                      
+                      <AnimatePresence mode="wait">
+                        {!activeIncomingTransfer ? (
+                          <motion.div
+                            key="qr-view"
+                            initial={{ scale: 0.8, opacity: 0, filter: "blur(20px)" }}
+                            animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
+                            exit={{ scale: 1.2, opacity: 0, filter: "blur(40px)", rotate: 5 }}
+                            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                            className="w-full"
+                          >
+                            <Card className="border-none bg-card/60 backdrop-blur-3xl shadow-2xl rounded-[3.5rem] overflow-hidden relative w-full">
+                              <CardContent className="p-8 flex flex-col items-center gap-6">
+                                <div className="relative">
+                                  <div 
+                                    className={`w-full aspect-square rounded-[3rem] flex items-center justify-center p-4 shadow-2xl transition-colors duration-500 ${resolvedTheme === 'dark' ? 'bg-white' : 'bg-black'}`} 
+                                    ref={qrRef} 
+                                  />
+                                  
+                                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <motion.div 
+                                      initial={{ scale: 0.8, opacity: 0 }}
+                                      animate={{ scale: 1, opacity: 1 }}
+                                      className={`flex flex-col items-center gap-1 p-2 rounded-2xl border-2 shadow-2xl min-w-[90px] ${resolvedTheme === 'dark' ? 'bg-white border-black text-black' : 'bg-black border-white text-white'}`}
+                                    >
+                                      <div className="relative h-12 w-12 rounded-full overflow-hidden border-2 border-current bg-background/10">
+                                        {profile?.profileImage ? (
+                                          <img src={profile.profileImage} alt="" className="object-cover w-full h-full" />
+                                        ) : (
+                                          <User className="h-6 w-6 m-auto absolute inset-0 opacity-40" />
+                                        )}
+                                      </div>
+                                      <span className="text-[9px] font-black uppercase tracking-tighter truncate max-w-[80px]">
+                                        {profile?.username}
+                                      </span>
+                                    </motion.div>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key="transfer-animation"
+                            initial={{ scale: 0.5, opacity: 0, rotate: -15, filter: "blur(30px)" }}
+                            animate={{ scale: 1, opacity: 1, rotate: 0, filter: "blur(0px)" }}
+                            exit={{ scale: 0.8, opacity: 0, filter: "blur(20px)" }}
+                            transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                            className="w-full"
+                          >
+                            <Card className="border-none bg-primary/10 backdrop-blur-[80px] shadow-[0_40px_100px_rgba(0,0,0,0.3)] rounded-[3.5rem] overflow-hidden relative w-full border border-primary/20">
+                              <CardContent className="p-10 flex flex-col items-center gap-8 text-center">
+                                <motion.div 
+                                  initial={{ y: 20, opacity: 0 }}
+                                  animate={{ y: 0, opacity: 1 }}
+                                  transition={{ delay: 0.3 }}
+                                  className="relative"
+                                >
+                                  <div className="h-32 w-32 rounded-[2.5rem] bg-card border-2 border-primary/10 shadow-2xl overflow-hidden relative">
+                                    {activeIncomingTransfer.fromPhoto ? (
+                                      <img src={activeIncomingTransfer.fromPhoto} alt="" className="object-cover w-full h-full" />
+                                    ) : (
+                                      <User className="h-12 w-12 text-primary opacity-20 m-auto absolute inset-0" />
+                                    )}
+                                  </div>
+                                  <motion.div
+                                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                                    transition={{ duration: 2, repeat: Infinity }}
+                                    className="absolute -top-4 -right-4 h-12 w-12 bg-primary rounded-2xl flex items-center justify-center shadow-xl"
+                                  >
+                                    <Zap className="h-6 w-6 text-primary-foreground fill-current" />
+                                  </motion.div>
+                                </motion.div>
+
+                                <div className="space-y-2">
+                                  <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Résonance Établie</p>
+                                  <h2 className="text-3xl font-black tracking-tighter italic">@{activeIncomingTransfer.fromName}</h2>
+                                </div>
+
+                                <div className="p-8 bg-primary/5 rounded-[2.5rem] border border-primary/10 w-full relative">
+                                  <motion.div 
+                                    initial={{ scale: 0.5, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    transition={{ delay: 0.6, type: "spring" }}
+                                    className="flex flex-col items-center"
+                                  >
+                                    <span className="text-6xl font-black tabular-nums tracking-tighter">
+                                      +{activeIncomingTransfer.amount}
+                                    </span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-30 mt-1">Lumière Transmise</span>
+                                  </motion.div>
+                                  <Sparkles className="absolute top-4 right-4 h-5 w-5 text-primary opacity-20 animate-pulse" />
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    <Button variant="ghost" onClick={() => router.push("/profil")} className="mt-8 text-[10px] font-black uppercase tracking-[0.3em] opacity-40">
+                      <X className="h-4 w-4 mr-2" />
+                      Fermer
+                    </Button>
+                  </TabsContent>
+
+                  <TabsContent value="scan" className="mt-0 h-full">
+                    <div className="fixed inset-0 z-0 bg-black flex items-center justify-center">
+                      <div id="reader" className="absolute inset-0 w-full h-full" />
+                      
+                      {hasCameraPermission === false && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center space-y-4 bg-background/90 backdrop-blur-xl z-50">
+                          <ShieldAlert className="h-12 w-12 text-destructive" />
+                          <h2 className="text-xl font-black uppercase tracking-tight">Permission Requise</h2>
+                          <p className="text-xs font-medium opacity-60">L'accès à la caméra est nécessaire.</p>
+                          <Button variant="outline" onClick={() => window.location.reload()} className="rounded-xl px-8 gap-2">
+                            <RefreshCw className="h-4 w-4" />
+                            Réessayer
+                          </Button>
+                        </div>
+                      )}
+
+                      <AnimatePresence>
+                        {hasTorch && activeTab === "scan" && (
+                          <motion.div
+                            initial={{ y: 20, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 20, opacity: 0 }}
+                            className="absolute bottom-12 left-0 right-0 z-50 flex justify-center"
+                          >
+                            <Button
+                              onClick={toggleTorch}
+                              className={`h-16 w-16 rounded-full shadow-2xl backdrop-blur-3xl border transition-all duration-500 ${isTorchOn ? 'bg-primary border-primary text-primary-foreground scale-110 shadow-primary/40' : 'bg-card/20 border-white/10 text-white'}`}
+                            >
+                              <Zap className={`h-6 w-6 ${isTorchOn ? 'fill-current animate-pulse' : ''}`} />
+                            </Button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </TabsContent>
+                </motion.div>
+              ) : !recipient && !isSuccess ? (
+                <motion.div
+                  key="selection"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="h-full"
+                >
+                  <TabsContent value="qr" className="mt-0 h-full flex flex-col items-center justify-start pt-28 px-6">
+                    <div className="relative group flex justify-center w-full max-w-[340px]">
+                      <motion.div 
+                        animate={{ scale: [1, 1.05, 1], opacity: [0.05, 0.1, 0.05] }}
+                        transition={{ duration: 4, repeat: Infinity }}
+                        className="absolute inset-0 blur-[60px] rounded-full bg-primary"
+                      />
+                      
+                      <AnimatePresence mode="wait">
+                        {!activeIncomingTransfer ? (
+                          <motion.div
+                            key="qr-view"
+                            initial={{ scale: 0.8, opacity: 0, filter: "blur(20px)" }}
+                            animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
+                            exit={{ scale: 1.2, opacity: 0, filter: "blur(40px)", rotate: 5 }}
+                            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                            className="w-full"
+                          >
+                            <Card className="border-none bg-card/60 backdrop-blur-3xl shadow-2xl rounded-[3.5rem] overflow-hidden relative w-full">
+                              <CardContent className="p-8 flex flex-col items-center gap-6">
+                                <div className="relative">
+                                  <div 
+                                    className={`w-full aspect-square rounded-[3rem] flex items-center justify-center p-4 shadow-2xl transition-colors duration-500 ${resolvedTheme === 'dark' ? 'bg-white' : 'bg-black'}`} 
+                                    ref={qrRef} 
+                                  />
+                                  
+                                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <motion.div 
+                                      initial={{ scale: 0.8, opacity: 0 }}
+                                      animate={{ scale: 1, opacity: 1 }}
+                                      className={`flex flex-col items-center gap-1 p-2 rounded-2xl border-2 shadow-2xl min-w-[90px] ${resolvedTheme === 'dark' ? 'bg-white border-black text-black' : 'bg-black border-white text-white'}`}
+                                    >
+                                      <div className="relative h-12 w-12 rounded-full overflow-hidden border-2 border-current bg-background/10">
+                                        {profile?.profileImage ? (
+                                          <img src={profile.profileImage} alt="" className="object-cover w-full h-full" />
+                                        ) : (
+                                          <User className="h-6 w-6 m-auto absolute inset-0 opacity-40" />
+                                        )}
+                                      </div>
+                                      <span className="text-[9px] font-black uppercase tracking-tighter truncate max-w-[80px]">
+                                        {profile?.username}
+                                      </span>
+                                    </motion.div>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key="transfer-animation"
+                            initial={{ scale: 0.5, opacity: 0, rotate: -15, filter: "blur(30px)" }}
+                            animate={{ scale: 1, opacity: 1, rotate: 0, filter: "blur(0px)" }}
+                            exit={{ scale: 0.8, opacity: 0, filter: "blur(20px)" }}
+                            transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                            className="w-full"
+                          >
+                            <Card className="border-none bg-primary/10 backdrop-blur-[80px] shadow-[0_40px_100px_rgba(0,0,0,0.3)] rounded-[3.5rem] overflow-hidden relative w-full border border-primary/20">
+                              <CardContent className="p-10 flex flex-col items-center gap-8 text-center">
+                                <motion.div 
+                                  initial={{ y: 20, opacity: 0 }}
+                                  animate={{ y: 0, opacity: 1 }}
+                                  transition={{ delay: 0.3 }}
+                                  className="relative"
+                                >
+                                  <div className="h-32 w-32 rounded-[2.5rem] bg-card border-2 border-primary/10 shadow-2xl overflow-hidden relative">
+                                    {activeIncomingTransfer.fromPhoto ? (
+                                      <img src={activeIncomingTransfer.fromPhoto} alt="" className="object-cover w-full h-full" />
+                                    ) : (
+                                      <User className="h-12 w-12 text-primary opacity-20 m-auto absolute inset-0" />
+                                    )}
+                                  </div>
+                                  <motion.div
+                                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                                    transition={{ duration: 2, repeat: Infinity }}
+                                    className="absolute -top-4 -right-4 h-12 w-12 bg-primary rounded-2xl flex items-center justify-center shadow-xl"
+                                  >
+                                    <Zap className="h-6 w-6 text-primary-foreground fill-current" />
+                                  </motion.div>
+                                </motion.div>
+
+                                <div className="space-y-2">
+                                  <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Résonance Établie</p>
+                                  <h2 className="text-3xl font-black tracking-tighter italic">@{activeIncomingTransfer.fromName}</h2>
+                                </div>
+
+                                <div className="p-8 bg-primary/5 rounded-[2.5rem] border border-primary/10 w-full relative">
+                                  <motion.div 
+                                    initial={{ scale: 0.5, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    transition={{ delay: 0.6, type: "spring" }}
+                                    className="flex flex-col items-center"
+                                  >
+                                    <span className="text-6xl font-black tabular-nums tracking-tighter">
+                                      +{activeIncomingTransfer.amount}
+                                    </span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-30 mt-1">Lumière Transmise</span>
+                                  </motion.div>
+                                  <Sparkles className="absolute top-4 right-4 h-5 w-5 text-primary opacity-20 animate-pulse" />
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    <Button variant="ghost" onClick={() => router.push("/profil")} className="mt-8 text-[10px] font-black uppercase tracking-[0.3em] opacity-40">
+                      <X className="h-4 w-4 mr-2" />
+                      Fermer
+                    </Button>
+                  </TabsContent>
+
+                  <TabsContent value="scan" className="mt-0 h-full">
+                    <div className="fixed inset-0 z-0 bg-black flex items-center justify-center">
+                      <div id="reader" className="absolute inset-0 w-full h-full" />
+                      
+                      {hasCameraPermission === false && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center space-y-4 bg-background/90 backdrop-blur-xl z-50">
+                          <ShieldAlert className="h-12 w-12 text-destructive" />
+                          <h2 className="text-xl font-black uppercase tracking-tight">Permission Requise</h2>
+                          <p className="text-xs font-medium opacity-60">L'accès à la caméra est nécessaire.</p>
+                          <Button variant="outline" onClick={() => window.location.reload()} className="rounded-xl px-8 gap-2">
+                            <RefreshCw className="h-4 w-4" />
+                            Réessayer
+                          </Button>
+                        </div>
+                      )}
+
+                      <AnimatePresence>
+                        {hasTorch && activeTab === "scan" && (
+                          <motion.div
+                            initial={{ y: 20, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 20, opacity: 0 }}
+                            className="absolute bottom-12 left-0 right-0 z-50 flex justify-center"
+                          >
+                            <Button
+                              onClick={toggleTorch}
+                              className={`h-16 w-16 rounded-full shadow-2xl backdrop-blur-3xl border transition-all duration-500 ${isTorchOn ? 'bg-primary border-primary text-primary-foreground scale-110 shadow-primary/40' : 'bg-card/20 border-white/10 text-white'}`}
+                            >
+                              <Zap className={`h-6 w-6 ${isTorchOn ? 'fill-current animate-pulse' : ''}`} />
+                            </Button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </TabsContent>
                 </motion.div>
               ) : !recipient && !isSuccess ? (
                 <motion.div

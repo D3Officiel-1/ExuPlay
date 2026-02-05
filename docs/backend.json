@@ -41,10 +41,7 @@
         "theme": { "type": "string", "description": "Préférence de thème de l'utilisateur", "enum": ["light", "dark", "system"] },
         "createdAt": { "type": "string", "format": "date-time" },
         "role": { "type": "string", "description": "Rôle de l'utilisateur", "default": "user" },
-        "fcmToken": { "type": "string", "description": "Token pour notifications push" },
         "cameraAuthorized": { "type": "boolean" },
-        "notificationsEnabled": { "type": "boolean" },
-        "locationAuthorized": { "type": "boolean" },
         "biometricEnabled": { "type": "boolean", "default": false },
         "passkeyId": { "type": "string", "description": "ID de la clé biométrique enregistrée" }
       },

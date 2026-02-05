@@ -175,8 +175,6 @@ export function LoginClient() {
         referralRewardClaimed: false,
         role: "user",
         cameraAuthorized: false,
-        notificationsEnabled: false,
-        locationAuthorized: false,
         createdAt: serverTimestamp(),
         totalPoints: 0
       });
