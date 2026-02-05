@@ -89,6 +89,22 @@
         "read": { "type": "boolean", "default": false }
       },
       "required": ["fromId", "fromName", "toId", "amount", "timestamp"]
+    },
+    "Exchange": {
+      "title": "Exchange",
+      "description": "Demande de conversion de points en monnaie réelle",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "points": { "type": "integer" },
+        "amount": { "type": "integer" },
+        "status": { "type": "string", "enum": ["pending", "completed", "rejected"] },
+        "requestedAt": { "type": "string", "format": "date-time" },
+        "processedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "username", "phoneNumber", "points", "amount", "status", "requestedAt"]
     }
   },
   "auth": {
@@ -114,6 +130,10 @@
     "/transfers/{transferId}": {
       "schema": "Transfer",
       "description": "Flux des transferts de lumière"
+    },
+    "/exchanges/{exchangeId}": {
+      "schema": "Exchange",
+      "description": "Demandes de conversion financière"
     }
   }
 }

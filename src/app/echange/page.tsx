@@ -4,7 +4,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useUser, useFirestore, useDoc } from "@/firebase";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, collection, addDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -111,28 +111,44 @@ export default function EchangePage() {
       }
     }
     
-    if (userDocRef) {
-      updateDoc(userDocRef, {
-        totalPoints: 0,
-        lastExchangeAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      }).then(() => {
+    if (userDocRef && db) {
+      const exchangeData = {
+        userId: user!.uid,
+        username: profile?.username || "Anonyme",
+        phoneNumber: profile?.phoneNumber || "Non lié",
+        points: points,
+        amount: netMoneyValue,
+        status: "pending",
+        requestedAt: serverTimestamp()
+      };
+
+      try {
+        // 1. Enregistrer la demande de conversion
+        await addDoc(collection(db, "exchanges"), exchangeData);
+
+        // 2. Réinitialiser les points de l'utilisateur
+        await updateDoc(userDocRef, {
+          totalPoints: 0,
+          lastExchangeAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+
         setIsSuccess(true);
         haptic.success();
         toast({
           title: "Échange réussi",
           description: "Votre demande a été transmise au réseau Wave."
         });
-      }).catch((error) => {
+      } catch (error: any) {
         const permissionError = new FirestorePermissionError({
           path: userDocRef.path,
           operation: 'update',
           requestResourceData: { totalPoints: 0 },
         } satisfies SecurityRuleContext);
         errorEmitter.emit('permission-error', permissionError);
-      }).finally(() => {
+      } finally {
         setIsProcessing(false);
-      });
+      }
     }
   };
 

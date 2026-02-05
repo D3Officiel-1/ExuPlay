@@ -65,7 +65,8 @@ import {
   AlertTriangle,
   Zap,
   MessageSquareText,
-  DollarSign
+  DollarSign,
+  ArrowUpRight
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -301,14 +302,24 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col pb-24">
       <main className="flex-1 p-4 pt-20 space-y-6 md:space-y-8 max-w-4xl mx-auto w-full">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push("/profil")} className="rounded-full h-10 w-10 md:h-12 md:w-12">
-            <ChevronLeft className="h-6 w-6" />
-          </Button>
-          <div className="space-y-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Console</p>
-            <h1 className="text-xl md:text-2xl font-black tracking-tight">Espace Maître</h1>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => router.push("/profil")} className="rounded-full h-10 w-10 md:h-12 md:w-12">
+              <ChevronLeft className="h-6 w-6" />
+            </Button>
+            <div className="space-y-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Console</p>
+              <h1 className="text-xl md:text-2xl font-black tracking-tight">Espace Maître</h1>
+            </div>
           </div>
+          
+          <Button 
+            onClick={() => { haptic.light(); router.push("/admin/conversions"); }}
+            className="rounded-2xl h-12 px-6 font-black text-[10px] uppercase tracking-widest gap-2 shadow-xl shadow-primary/10"
+          >
+            <ArrowUpRight className="h-4 w-4" />
+            Retraits
+          </Button>
         </div>
 
         <Tabs defaultValue="stats" className="space-y-6 md:space-y-8">
@@ -337,7 +348,7 @@ export default function AdminPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData}>
                       <defs>
-                        <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                        <linearGradient id="colorCount" x1="0" x1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
                           <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
                         </linearGradient>
