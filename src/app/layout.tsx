@@ -1,4 +1,3 @@
-
 "use client";
 
 import "./globals.css";
@@ -10,7 +9,6 @@ import { WifiOff, ShieldAlert, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { InstallPwa } from "@/components/InstallPwa";
 import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
-import { IncomingTransferOverlay } from "@/components/IncomingTransferOverlay";
 import { BiometricLock } from "@/components/BiometricLock";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { doc, getDoc } from "firebase/firestore";
@@ -241,7 +239,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
       </AnimatePresence>
       <ThemeSync />
       <BiometricLock />
-      <IncomingTransferOverlay />
+      {/* IncomingTransferOverlay supprimé - logique déplacée dans /transfert */}
       {isUtilityPath ? (
         children
       ) : (

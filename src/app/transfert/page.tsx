@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -15,7 +14,8 @@ import {
   where, 
   limit, 
   getDocs,
-  addDoc
+  addDoc,
+  orderBy
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
 import { useTheme } from "next-themes";
 import { sendPushNotification } from "@/app/actions/notifications";
+import Image from "next/image";
 
 export default function TransfertPage() {
   const { user } = useUser();
@@ -61,6 +62,10 @@ export default function TransfertPage() {
   const [hasTorch, setHasTorch] = useState(false);
   const [isTorchOn, setIsTorchOn] = useState(false);
 
+  // État pour l'animation de transformation du Sceau
+  const [activeIncomingTransfer, setActiveIncomingTransfer] = useState<any>(null);
+  const lastPointsRef = useRef<number | null>(null);
+
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
     return doc(db, "users", user.uid);
@@ -68,11 +73,51 @@ export default function TransfertPage() {
 
   const { data: profile, loading } = useDoc(userDocRef);
 
+  // Effet pour détecter l'augmentation de points et déclencher l'animation
+  useEffect(() => {
+    if (!profile || !db || !user?.uid) return;
+
+    if (lastPointsRef.current !== null && profile.totalPoints > lastPointsRef.current) {
+      // Les points ont augmenté ! Cherchons le transfert correspondant.
+      const checkIncomingTransfer = async () => {
+        try {
+          const q = query(
+            collection(db, "transfers"),
+            where("toId", "==", user.uid),
+            where("read", "==", false),
+            orderBy("timestamp", "desc"),
+            limit(1)
+          );
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            const transfer = { id: snap.docs[0].id, ...snap.docs[0].data() };
+            setActiveIncomingTransfer(transfer);
+            
+            // Jouer un son éthéré
+            const audio = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_f80e052d2e.mp3");
+            audio.play().catch(() => {});
+
+            // Retour au QR Code après 6 secondes
+            setTimeout(async () => {
+              setActiveIncomingTransfer(null);
+              // Marquer comme lu
+              await updateDoc(doc(db, "transfers", transfer.id), { read: true });
+            }, 6000);
+          }
+        } catch (e) {
+          console.error("Résonance interrompue:", e);
+        }
+      };
+      checkIncomingTransfer();
+    }
+    lastPointsRef.current = profile.totalPoints;
+  }, [profile?.totalPoints, db, user?.uid, profile]);
+
   const qrRef = useRef<HTMLDivElement>(null);
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
   const generateQRCode = async () => {
-    if (!qrRef.current || !user?.uid) return;
+    if (!qrRef.current || !user?.uid || activeIncomingTransfer) return;
     
     try {
       const QRCodeStyling = (await import("qr-code-styling")).default;
@@ -112,11 +157,11 @@ export default function TransfertPage() {
   };
 
   useEffect(() => {
-    if (activeTab === "qr" && !recipient && !isSuccess && validationStatus === 'idle') {
+    if (activeTab === "qr" && !recipient && !isSuccess && validationStatus === 'idle' && !activeIncomingTransfer) {
       const timer = setTimeout(() => generateQRCode(), 100);
       return () => clearTimeout(timer);
     }
-  }, [activeTab, user?.uid, resolvedTheme, recipient, isSuccess, validationStatus]);
+  }, [activeTab, user?.uid, resolvedTheme, recipient, isSuccess, validationStatus, activeIncomingTransfer]);
 
   const stopScanner = async () => {
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
@@ -436,35 +481,103 @@ export default function TransfertPage() {
                         className="absolute inset-0 blur-[60px] rounded-full bg-primary"
                       />
                       
-                      <Card className="border-none bg-card/60 backdrop-blur-3xl shadow-2xl rounded-[3.5rem] overflow-hidden relative w-full">
-                        <CardContent className="p-8 flex flex-col items-center gap-6">
-                          <div className="relative">
-                            <div 
-                              className={`w-full aspect-square rounded-[3rem] flex items-center justify-center p-4 shadow-2xl transition-colors duration-500 ${resolvedTheme === 'dark' ? 'bg-white' : 'bg-black'}`} 
-                              ref={qrRef} 
-                            />
-                            
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                              <motion.div 
-                                initial={{ scale: 0.8, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                className={`flex flex-col items-center gap-1 p-2 rounded-2xl border-2 shadow-2xl min-w-[90px] ${resolvedTheme === 'dark' ? 'bg-white border-black text-black' : 'bg-black border-white text-white'}`}
-                              >
-                                <div className="relative h-12 w-12 rounded-full overflow-hidden border-2 border-current bg-background/10">
-                                  {profile?.profileImage ? (
-                                    <img src={profile.profileImage} alt="" className="object-cover w-full h-full" />
-                                  ) : (
-                                    <User className="h-6 w-6 m-auto absolute inset-0 opacity-40" />
-                                  )}
+                      <AnimatePresence mode="wait">
+                        {!activeIncomingTransfer ? (
+                          <motion.div
+                            key="qr-view"
+                            initial={{ scale: 0.8, opacity: 0, filter: "blur(20px)" }}
+                            animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
+                            exit={{ scale: 1.2, opacity: 0, filter: "blur(40px)", rotate: 5 }}
+                            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                            className="w-full"
+                          >
+                            <Card className="border-none bg-card/60 backdrop-blur-3xl shadow-2xl rounded-[3.5rem] overflow-hidden relative w-full">
+                              <CardContent className="p-8 flex flex-col items-center gap-6">
+                                <div className="relative">
+                                  <div 
+                                    className={`w-full aspect-square rounded-[3rem] flex items-center justify-center p-4 shadow-2xl transition-colors duration-500 ${resolvedTheme === 'dark' ? 'bg-white' : 'bg-black'}`} 
+                                    ref={qrRef} 
+                                  />
+                                  
+                                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <motion.div 
+                                      initial={{ scale: 0.8, opacity: 0 }}
+                                      animate={{ scale: 1, opacity: 1 }}
+                                      className={`flex flex-col items-center gap-1 p-2 rounded-2xl border-2 shadow-2xl min-w-[90px] ${resolvedTheme === 'dark' ? 'bg-white border-black text-black' : 'bg-black border-white text-white'}`}
+                                    >
+                                      <div className="relative h-12 w-12 rounded-full overflow-hidden border-2 border-current bg-background/10">
+                                        {profile?.profileImage ? (
+                                          <img src={profile.profileImage} alt="" className="object-cover w-full h-full" />
+                                        ) : (
+                                          <User className="h-6 w-6 m-auto absolute inset-0 opacity-40" />
+                                        )}
+                                      </div>
+                                      <span className="text-[9px] font-black uppercase tracking-tighter truncate max-w-[80px]">
+                                        {profile?.username}
+                                      </span>
+                                    </motion.div>
+                                  </div>
                                 </div>
-                                <span className="text-[9px] font-black uppercase tracking-tighter truncate max-w-[80px]">
-                                  {profile?.username}
-                                </span>
-                              </motion.div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                              </CardContent>
+                            </Card>
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key="transfer-animation"
+                            initial={{ scale: 0.5, opacity: 0, rotate: -15, filter: "blur(30px)" }}
+                            animate={{ scale: 1, opacity: 1, rotate: 0, filter: "blur(0px)" }}
+                            exit={{ scale: 0.8, opacity: 0, filter: "blur(20px)" }}
+                            transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                            className="w-full"
+                          >
+                            <Card className="border-none bg-primary/10 backdrop-blur-[80px] shadow-[0_40px_100px_rgba(0,0,0,0.3)] rounded-[3.5rem] overflow-hidden relative w-full border border-primary/20">
+                              <CardContent className="p-10 flex flex-col items-center gap-8 text-center">
+                                <motion.div 
+                                  initial={{ y: 20, opacity: 0 }}
+                                  animate={{ y: 0, opacity: 1 }}
+                                  transition={{ delay: 0.3 }}
+                                  className="relative"
+                                >
+                                  <div className="h-32 w-32 rounded-[2.5rem] bg-card border-2 border-primary/10 shadow-2xl overflow-hidden relative">
+                                    {activeIncomingTransfer.fromPhoto ? (
+                                      <img src={activeIncomingTransfer.fromPhoto} alt="" className="object-cover w-full h-full" />
+                                    ) : (
+                                      <User className="h-12 w-12 text-primary opacity-20 m-auto absolute inset-0" />
+                                    )}
+                                  </div>
+                                  <motion.div
+                                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                                    transition={{ duration: 2, repeat: Infinity }}
+                                    className="absolute -top-4 -right-4 h-12 w-12 bg-primary rounded-2xl flex items-center justify-center shadow-xl"
+                                  >
+                                    <Zap className="h-6 w-6 text-primary-foreground fill-current" />
+                                  </motion.div>
+                                </motion.div>
+
+                                <div className="space-y-2">
+                                  <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Résonance Établie</p>
+                                  <h2 className="text-3xl font-black tracking-tighter italic">@{activeIncomingTransfer.fromName}</h2>
+                                </div>
+
+                                <div className="p-8 bg-primary/5 rounded-[2.5rem] border border-primary/10 w-full relative">
+                                  <motion.div 
+                                    initial={{ scale: 0.5, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    transition={{ delay: 0.6, type: "spring" }}
+                                    className="flex flex-col items-center"
+                                  >
+                                    <span className="text-6xl font-black tabular-nums tracking-tighter">
+                                      +{activeIncomingTransfer.amount}
+                                    </span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-30 mt-1">Lumière Transmise</span>
+                                  </motion.div>
+                                  <Sparkles className="absolute top-4 right-4 h-5 w-5 text-primary opacity-20 animate-pulse" />
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
 
                     <Button variant="ghost" onClick={() => router.push("/profil")} className="mt-8 text-[10px] font-black uppercase tracking-[0.3em] opacity-40">
