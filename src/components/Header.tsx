@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo } from "react";
@@ -34,10 +33,8 @@ export function Header() {
 
   const isProfilePage = pathname === "/profil";
   
-  // On ne prend que le toast le plus récent pour l'affichage en-tête
   const activeToast = toasts.length > 0 ? toasts[0] : null;
 
-  // Animations pilotées par le scroll (actives uniquement sur la page profil)
   const defaultOpacity = useTransform(scrollY, [40, 90], [1, 0]);
   const defaultY = useTransform(scrollY, [40, 90], [0, -20]);
   const defaultScale = useTransform(scrollY, [40, 90], [1, 0.9]);
@@ -58,7 +55,7 @@ export function Header() {
         delay: 0.1
       }}
       className={cn(
-        "fixed top-0 left-0 right-0 z-[100] h-20",
+        "fixed top-0 left-0 right-0 z-50 h-20",
         "flex items-center px-6 md:px-10",
         "bg-background/10 backdrop-blur-3xl",
         "after:absolute after:bottom-0 after:left-[25%] after:right-[25%] after:h-[1px] after:bg-gradient-to-r after:from-transparent after:via-primary/5 after:to-transparent"
@@ -74,7 +71,7 @@ export function Header() {
               exit={{ opacity: 0, y: -15, filter: "blur(10px)" }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               className={cn(
-                "w-full flex items-center justify-between gap-4 z-50 px-2",
+                "w-full flex items-center justify-between gap-4 z-[60] px-2",
                 activeToast.variant === 'destructive' ? "text-destructive" : "text-foreground"
               )}
             >
@@ -122,7 +119,6 @@ export function Header() {
               transition={{ duration: 0.4 }}
               className="w-full h-full flex items-center relative"
             >
-              {/* Contenu Standard : Logo & Points */}
               <motion.div 
                 style={isProfilePage ? { 
                   opacity: defaultOpacity, 
@@ -154,7 +150,6 @@ export function Header() {
                 </button>
               </motion.div>
 
-              {/* Contenu Profil Centré (uniquement sur /profil et lors du défilement) */}
               {isProfilePage && (
                 <motion.div 
                   style={{ 
