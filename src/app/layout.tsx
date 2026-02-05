@@ -336,20 +336,39 @@ export default function RootLayout({
     }
 
     // Protection globale contre le menu contextuel (système)
-    // Cela permet d'utiliser l'appui prolongé pour les interactions de l'app sans menu parasite.
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
     };
+    
+    // Protection contre le zoom par pincement (Multi-touch)
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+
+    // Protection contre le zoom via la molette (Ctrl + Wheel)
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+      }
+    };
+
     window.addEventListener('contextmenu', handleContextMenu);
+    window.addEventListener('touchstart', handleTouchStart, { passive: false });
+    window.addEventListener('wheel', handleWheel, { passive: false });
     
     return () => {
       window.removeEventListener('contextmenu', handleContextMenu);
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('wheel', handleWheel);
     };
   }, []);
 
   return (
     <html lang="fr" suppressHydrationWarning>
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Exu Play" />
@@ -361,8 +380,8 @@ export default function RootLayout({
         {/* Texture de bruit numérique globale */}
         <div className="fixed inset-0 pointer-events-none z-[9999] opacity-[0.03] dark:opacity-[0.05]" 
           style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-            backgroundSize: "150px 150px",
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+            backgroundSize: "120px 120px",
           }}
         />
         <FirebaseClientProvider>

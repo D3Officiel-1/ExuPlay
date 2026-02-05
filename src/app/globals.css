@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -56,5 +55,6 @@
   body {
     @apply bg-background text-foreground transition-colors duration-300;
     overscroll-behavior-y: none;
+    touch-action: pan-x pan-y; /* Empêche le zoom par pincement et double-tap */
   }
 }
