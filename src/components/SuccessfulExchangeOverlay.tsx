@@ -224,8 +224,10 @@ export function SuccessfulExchangeOverlay() {
               <Button
                 onClick={handleDismiss}
                 className={cn(
-                  "h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-card hover:text-primary-foreground transition-all duration-500 shadow-2xl border group",
-                  isRejected ? "hover:bg-red-500 border-red-500/10" : "hover:bg-primary border-primary/5"
+                  "h-16 w-16 sm:h-20 sm:w-20 rounded-full transition-all duration-500 shadow-2xl border group flex items-center justify-center",
+                  isRejected 
+                    ? "bg-red-500 text-white border-red-500/10 hover:bg-red-600" 
+                    : "bg-foreground text-background border-primary/5 hover:bg-foreground/90"
                 )}
               >
                 <X className="h-6 w-6 sm:h-8 sm:w-8 transition-transform group-hover:rotate-90" />
