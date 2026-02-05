@@ -528,7 +528,7 @@ export default function ProfilPage() {
 
       {/* Dialog d'affichage de la photo en plein écran */}
       <Dialog open={isFullImageOpen} onOpenChange={setIsFullImageOpen}>
-        <DialogContent className="max-w-[95vw] sm:max-w-xl bg-transparent border-none p-0 overflow-hidden shadow-none ring-0 focus:outline-none">
+        <DialogContent className="max-w-[95vw] sm:max-w-xl bg-transparent border-none p-0 overflow-hidden shadow-none ring-0 focus:outline-none [&>button]:hidden">
           <motion.div 
             initial={{ scale: 0.9, opacity: 0, filter: "blur(20px)" }}
             animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
