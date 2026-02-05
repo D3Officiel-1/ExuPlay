@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { InstallPwa } from "@/components/InstallPwa";
 import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
 import { BiometricLock } from "@/components/BiometricLock";
+import { SuccessfulExchangeOverlay } from "@/components/SuccessfulExchangeOverlay";
 import { doc, getDoc, collection, query, orderBy, limit, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/Logo";
@@ -297,6 +298,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
       </AnimatePresence>
       <ThemeSync />
       <BiometricLock />
+      <SuccessfulExchangeOverlay />
       <AutoQuizGenerator />
       
       {showNav && <Header />}
