@@ -19,7 +19,7 @@ const GenerateQuizOutputSchema = z.object({
   question: z.string().describe('La question concise et complexe générée'),
   options: z.array(z.string()).length(4).describe('Quatre options de réponse précises et trompeuses'),
   correctIndex: z.number().min(0).max(3).describe('L\'index de la réponse exacte (0-3)'),
-  points: z.number().min(0).max(25).describe('Le nombre de points attribués selon la complexité (max 25)'),
+  points: z.number().min(0).max(10).describe('Le nombre de points attribués selon la complexité (max 10)'),
 });
 
 export type GenerateQuizOutput = z.infer<typeof GenerateQuizOutputSchema>;
@@ -40,7 +40,7 @@ const prompt = ai.definePrompt({
   4. La difficulté doit être maximale : cherche le détail technique ou le fait historique que seul un expert ivoirien absolu connaîtrait.
   5. Les 4 options de réponse doivent être extrêmement plausibles, précises et proches pour induire en erreur.
   6. Définis l'index correct (0-3).
-  7. Attribue un nombre de points (champ 'points') de 0 à 25 proportionnel à la difficulté. 25 est réservé aux questions quasi-impossibles.
+  7. Attribue un nombre de points (champ 'points') de 0 à 10 proportionnel à la difficulté. 10 est réservé aux questions quasi-impossibles.
   8. Ton froid, direct et chirurgical.`,
 });
 
