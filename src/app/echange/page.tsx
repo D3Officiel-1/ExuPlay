@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { useUser, useFirestore, useDoc } from "@/firebase";
-import { doc, updateDoc, serverTimestamp, collection, addDoc } from "firebase/firestore";
+import { useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
+import { doc, updateDoc, serverTimestamp, collection, addDoc, query, where, orderBy, deleteDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -18,7 +18,11 @@ import {
   Smartphone,
   Percent,
   Lock,
-  Fingerprint
+  Fingerprint,
+  History,
+  X,
+  Trash2,
+  Clock
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -35,6 +39,7 @@ export default function EchangePage() {
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -49,13 +54,24 @@ export default function EchangePage() {
   const { data: profile, loading: profileLoading } = useDoc(userDocRef);
   const { data: appStatus, loading: configLoading } = useDoc(appConfigRef);
   
+  const pendingExchangesQuery = useMemoFirebase(() => {
+    if (!db || !user?.uid) return null;
+    return query(
+      collection(db, "exchanges"),
+      where("userId", "==", user.uid),
+      where("status", "==", "pending"),
+      orderBy("requestedAt", "desc")
+    );
+  }, [db, user?.uid]);
+
+  const { data: pendingExchanges, loading: exchangesLoading } = useCollection(pendingExchangesQuery);
+
   const waveIcon = placeholderImages.placeholderImages.find(img => img.id === "wave-icon")?.imageUrl;
 
   const points = profile?.totalPoints || 0;
   const conversionRate = 1; // 1 point = 1 FCFA
   const grossMoneyValue = points * conversionRate;
   
-  // Calcul des frais de 1%
   const feeRate = 0.01;
   const exchangeFees = Math.ceil(grossMoneyValue * feeRate);
   const netMoneyValue = Math.max(0, grossMoneyValue - exchangeFees);
@@ -87,7 +103,6 @@ export default function EchangePage() {
     setIsProcessing(true);
     haptic.medium();
 
-    // Étape de sécurité : Vérification du Sceau si activé
     if (profile?.biometricEnabled && profile?.passkeyId) {
       try {
         const success = await verifyPasskey(profile.passkeyId);
@@ -122,34 +137,47 @@ export default function EchangePage() {
         requestedAt: serverTimestamp()
       };
 
-      try {
-        // 1. Enregistrer la demande de conversion
-        await addDoc(collection(db, "exchanges"), exchangeData);
-
-        // 2. Réinitialiser les points de l'utilisateur
-        await updateDoc(userDocRef, {
-          totalPoints: 0,
-          lastExchangeAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
+      addDoc(collection(db, "exchanges"), exchangeData)
+        .then(() => {
+          setIsSuccess(true);
+          haptic.success();
+          toast({
+            title: "Demande envoyée",
+            description: "Votre demande est en cours d'harmonisation."
+          });
+        })
+        .catch(async (error) => {
+          const permissionError = new FirestorePermissionError({
+            path: 'exchanges',
+            operation: 'create',
+            requestResourceData: exchangeData,
+          } satisfies SecurityRuleContext);
+          errorEmitter.emit('permission-error', permissionError);
+        })
+        .finally(() => {
+          setIsProcessing(false);
         });
+    }
+  };
 
-        setIsSuccess(true);
+  const handleCancelExchange = (id: string) => {
+    if (!db) return;
+    haptic.medium();
+    deleteDoc(doc(db, "exchanges", id))
+      .then(() => {
         haptic.success();
         toast({
-          title: "Échange réussi",
-          description: "Votre demande a été transmise au réseau Wave."
+          title: "Demande annulée",
+          description: "La conversion a été révoquée."
         });
-      } catch (error: any) {
+      })
+      .catch((error) => {
         const permissionError = new FirestorePermissionError({
-          path: userDocRef.path,
-          operation: 'update',
-          requestResourceData: { totalPoints: 0 },
+          path: `exchanges/${id}`,
+          operation: 'delete',
         } satisfies SecurityRuleContext);
         errorEmitter.emit('permission-error', permissionError);
-      } finally {
-        setIsProcessing(false);
-      }
-    }
+      });
   };
 
   if (profileLoading || configLoading) {
@@ -163,19 +191,35 @@ export default function EchangePage() {
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
       <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => router.back()}
-            className="rounded-full h-10 w-10 hover:bg-primary/5"
-          >
-            <ChevronLeft className="h-6 w-6" />
-          </Button>
-          <div className="space-y-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Finance</p>
-            <h1 className="text-3xl font-black tracking-tight">Conversion</h1>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => router.back()}
+              className="rounded-full h-10 w-10 hover:bg-primary/5"
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </Button>
+            <div className="space-y-1">
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Finance</p>
+              <h1 className="text-3xl font-black tracking-tight">Conversion</h1>
+            </div>
           </div>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => { haptic.light(); setShowHistory(true); }}
+            className="rounded-full h-12 w-12 bg-primary/5 relative"
+          >
+            <History className="h-5 w-5" />
+            {pendingExchanges && pendingExchanges.length > 0 && (
+              <span className="absolute top-2 right-2 h-4 w-4 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[8px] font-black">
+                {pendingExchanges.length}
+              </span>
+            )}
+          </Button>
         </div>
 
         {!isSuccess ? (
@@ -283,7 +327,7 @@ export default function EchangePage() {
             </Card>
 
             <p className="text-[10px] text-center font-bold opacity-20 uppercase tracking-[0.2em] px-10 leading-relaxed">
-              Les échanges sont traités sous 24h. Le taux est fixe à 1 point pour 1 FCFA (hors frais de service).
+              Les échanges sont traités sous 24h. Les points sont débités de votre solde uniquement après validation.
             </p>
           </motion.div>
         ) : (
@@ -302,7 +346,7 @@ export default function EchangePage() {
             <div className="space-y-2">
               <h2 className="text-3xl font-black tracking-tight">Demande Envoyée</h2>
               <p className="text-sm font-medium opacity-40 px-6">
-                Votre lumière a été convertie. Le transfert de {netMoneyValue.toLocaleString()} FCFA vers votre compte Wave est en cours d'harmonisation.
+                Votre lumière a été soumise pour conversion. Le transfert de {netMoneyValue.toLocaleString()} FCFA sera effectif après validation du Maître.
               </p>
             </div>
 
@@ -315,6 +359,86 @@ export default function EchangePage() {
             </Button>
           </motion.div>
         )}
+
+        <AnimatePresence>
+          {showHistory && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[500] bg-background/80 backdrop-blur-2xl flex flex-col p-6 overflow-hidden"
+            >
+              <div className="flex items-center justify-between mb-8">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Historique</p>
+                  <h2 className="text-2xl font-black tracking-tight">Demandes en cours</h2>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setShowHistory(false)}
+                  className="rounded-full h-12 w-12 bg-primary/5"
+                >
+                  <X className="h-6 w-6" />
+                </Button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                {exchangesLoading ? (
+                  <div className="flex justify-center p-20">
+                    <Loader2 className="h-8 w-8 animate-spin opacity-20" />
+                  </div>
+                ) : !pendingExchanges || pendingExchanges.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-20 opacity-20 space-y-4">
+                    <Zap className="h-12 w-12" />
+                    <p className="text-xs font-black uppercase tracking-widest">Aucune demande active</p>
+                  </div>
+                ) : (
+                  pendingExchanges.map((ex) => (
+                    <motion.div
+                      key={ex.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="group"
+                    >
+                      <Card className="border-none bg-card/40 backdrop-blur-xl shadow-xl rounded-[2rem] overflow-hidden border border-primary/5">
+                        <CardContent className="p-6 flex items-center justify-between gap-4">
+                          <div className="space-y-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <Zap className="h-3 w-3 text-primary opacity-40" />
+                              <span className="text-base font-black tabular-nums">{ex.amount?.toLocaleString()} FCFA</span>
+                            </div>
+                            <div className="flex items-center gap-2 opacity-40">
+                              <Clock className="h-3 w-3" />
+                              <p className="text-[9px] font-bold uppercase tracking-widest">
+                                {ex.requestedAt && typeof ex.requestedAt.toDate === 'function' ? ex.requestedAt.toDate().toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : '---'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleCancelExchange(ex.id)}
+                            className="h-12 w-12 rounded-2xl text-destructive hover:bg-destructive/10 group-hover:bg-destructive/5 transition-colors"
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))
+                )}
+              </div>
+
+              <div className="mt-8 p-6 bg-primary/5 rounded-[2.5rem] border border-primary/5">
+                <p className="text-[10px] leading-relaxed font-medium opacity-40 text-center italic">
+                  "Une demande annulée libère immédiatement votre Lumière pour d'autres usages."
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );
