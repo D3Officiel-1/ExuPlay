@@ -419,7 +419,7 @@ export default function HomePage() {
                                   initial={{ opacity: 0, filter: "blur(8px)" }}
                                   animate={{ opacity: 1, filter: "blur(0px)" }}
                                   transition={{ duration: 0.4, ease: "easeOut" }}
-                                  className="text-xl sm:text-2xl font-black leading-tight tracking-tight text-center px-4"
+                                  className="text-xl sm:text-2xl font-black leading-tight tracking-tight text-center px-4 line-clamp-4"
                                 >
                                   {question?.question}
                                 </motion.p>

@@ -447,7 +447,7 @@ export default function AdminPage() {
                     <Card key={q.id} className="border-none bg-card/20 backdrop-blur-3xl rounded-2xl group hover:bg-card/40 transition-all cursor-pointer">
                       <CardContent className="p-4 flex items-center justify-between gap-4">
                         <div className="space-y-1 flex-1 overflow-hidden">
-                          <p className="text-sm font-black truncate">{q.question}</p>
+                          <p className="text-sm font-black line-clamp-2">{q.question}</p>
                           <p className="text-[10px] font-bold opacity-30 uppercase">{q.points} PTS • {q.options.length} OPTIONS</p>
                         </div>
                         <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); haptic.medium(); deleteDoc(doc(db, "quizzes", q.id)); }} className="h-10 w-10 text-destructive rounded-xl"><Trash2 className="h-5 w-5" /></Button>
