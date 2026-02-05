@@ -16,7 +16,10 @@ import {
   Calendar,
   Sparkles,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  Zap,
+  Target,
+  TrendingUp
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -44,6 +47,18 @@ export default function ParrainagePage() {
 
   const { data: referredUsers, loading: usersLoading } = useCollection(referredUsersQuery);
 
+  const stats = useMemo(() => {
+    if (!referredUsers) return { awakened: 0, pending: 0, latentPoints: 0, totalEarned: 0 };
+    const awakened = referredUsers.filter(u => (u.totalPoints || 0) >= 100).length;
+    const pending = referredUsers.length - awakened;
+    return {
+      awakened,
+      pending,
+      latentPoints: pending * 100,
+      totalEarned: awakened * 100
+    };
+  }, [referredUsers]);
+
   if (profileLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -53,9 +68,6 @@ export default function ParrainagePage() {
   }
 
   const isLoading = profile?.referralCode && usersLoading;
-
-  // Calculer le total des récompenses réelles basées sur le seuil d'éveil de 100 pts
-  const totalRewards = referredUsers?.filter(u => (u.totalPoints || 0) >= 100).length || 0;
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
@@ -75,6 +87,41 @@ export default function ParrainagePage() {
           </div>
         </div>
 
+        {/* Expansion Summary Dashboard */}
+        {!isLoading && referredUsers && referredUsers.length > 0 && (
+          <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden border border-primary/5">
+            <CardContent className="p-8 space-y-8">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Lumière Récoltée</p>
+                  <p className="text-4xl font-black tabular-nums">+{stats.totalEarned}</p>
+                </div>
+                <div className="h-14 w-14 bg-primary/5 rounded-[1.5rem] flex items-center justify-center relative">
+                  <TrendingUp className="h-6 w-6 text-primary" />
+                  <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ duration: 2, repeat: Infinity }} className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-background" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-primary/5 rounded-2xl border border-primary/5 space-y-1">
+                  <div className="flex items-center gap-2 opacity-40">
+                    <CheckCircle2 className="h-3 w-3" />
+                    <span className="text-[9px] font-black uppercase tracking-widest">Éveillés</span>
+                  </div>
+                  <p className="text-xl font-black">{stats.awakened}</p>
+                </div>
+                <div className="p-4 bg-primary/5 rounded-2xl border border-primary/5 space-y-1">
+                  <div className="flex items-center gap-2 opacity-40">
+                    <Target className="h-3 w-3" />
+                    <span className="text-[9px] font-black uppercase tracking-widest">Latente</span>
+                  </div>
+                  <p className="text-xl font-black text-primary/40">+{stats.latentPoints}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="space-y-4">
           {isLoading ? (
             <div className="flex justify-center p-12">
@@ -82,16 +129,7 @@ export default function ParrainagePage() {
             </div>
           ) : referredUsers && referredUsers.length > 0 ? (
             <>
-              <div className="px-2 flex items-center justify-between">
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">
-                  {referredUsers.length} FILLEUL{referredUsers.length > 1 ? 'S' : ''}
-                </p>
-                <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-primary">
-                  <Sparkles className="h-3 w-3" />
-                  <span>+{totalRewards * 100} PTS RÉCOLTÉS</span>
-                </div>
-              </div>
-              
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-40 px-2">Flux des Adeptes</p>
               <div className="space-y-4">
                 {referredUsers.map((u, idx) => {
                   const points = u.totalPoints || 0;
@@ -105,11 +143,18 @@ export default function ParrainagePage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.05 }}
                     >
-                      <Card className={`border-none bg-card/40 backdrop-blur-3xl shadow-lg rounded-[2rem] overflow-hidden transition-all ${isAwakened ? 'border border-primary/5' : ''}`}>
+                      <Card className={cn(
+                        "border-none bg-card/40 backdrop-blur-3xl shadow-lg rounded-[2rem] overflow-hidden transition-all",
+                        isAwakened && "border border-primary/5"
+                      )}>
                         <CardContent className="p-6 space-y-4">
                           <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 bg-primary/5 rounded-2xl flex items-center justify-center shrink-0">
-                              <UserIcon className="h-6 w-6 text-primary opacity-40" />
+                            <div className="h-12 w-12 bg-primary/5 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden relative">
+                              {u.profileImage ? (
+                                <Image src={u.profileImage} alt="" fill className="object-cover" />
+                              ) : (
+                                <UserIcon className="h-6 w-6 text-primary opacity-40" />
+                              )}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-black text-base truncate">@{u.username}</p>
@@ -123,28 +168,22 @@ export default function ParrainagePage() {
                             <div className="text-right">
                               {isAwakened ? (
                                 <div className="flex flex-col items-end gap-1">
-                                  <CheckCircle2 className="h-5 w-5 text-green-500" />
-                                  <p className="text-[10px] font-black text-green-600 uppercase tracking-tighter">+100 PTS</p>
+                                  <div className="h-8 w-8 bg-green-500/10 rounded-full flex items-center justify-center">
+                                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                  </div>
                                 </div>
                               ) : (
-                                <p className="text-[10px] font-black opacity-30 uppercase tracking-tighter">{points}/100</p>
+                                <div className="flex flex-col items-end">
+                                  <p className="text-xs font-black">{points}/100</p>
+                                  <p className="text-[8px] font-bold opacity-30 uppercase">En éveil</p>
+                                </div>
                               )}
                             </div>
                           </div>
 
                           <div className="space-y-2">
-                            <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest opacity-30">
-                              <span>Chemin vers l'éveil</span>
-                              <span>{Math.round(progress)}%</span>
-                            </div>
                             <Progress value={progress} className="h-1.5 bg-primary/5" />
                           </div>
-
-                          {!isAwakened && (
-                            <p className="text-[8px] font-bold text-center opacity-20 uppercase tracking-[0.2em]">
-                              Récompense de 100 PTS à l'éveil complet
-                            </p>
-                          )}
                         </CardContent>
                       </Card>
                     </motion.div>

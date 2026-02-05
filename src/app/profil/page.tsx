@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
-import { useUser, useFirestore, useDoc } from "@/firebase";
+import { useUser, useFirestore, useDoc, useCollection } from "@/firebase";
 import { 
   doc, 
   updateDoc, 
@@ -11,7 +12,8 @@ import {
   query, 
   where, 
   getDocs, 
-  limit 
+  limit,
+  orderBy
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -34,7 +36,9 @@ import {
   ArrowRightLeft,
   Users,
   QrCode,
-  Zap
+  Zap,
+  Activity,
+  History
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
@@ -74,6 +78,19 @@ export default function ProfilPage() {
   }, [db, user?.uid]);
 
   const { data: profile, loading } = useDoc(userDocRef);
+
+  // Écouter les activités récentes (transferts)
+  const recentActivitiesQuery = useMemo(() => {
+    if (!db || !user?.uid) return null;
+    return query(
+      collection(db, "transfers"),
+      where("toId", "==", user.uid),
+      orderBy("timestamp", "desc"),
+      limit(3)
+    );
+  }, [db, user?.uid]);
+
+  const { data: recentActivities } = useCollection(recentActivitiesQuery);
 
   useEffect(() => {
     const savedImage = localStorage.getItem("exu_profile_image");
@@ -401,6 +418,38 @@ export default function ProfilPage() {
                 Transférer
                 <ArrowRightLeft className="h-4 w-4 opacity-40 ml-auto" />
               </Button>
+
+              {/* Flux Récent Section */}
+              {recentActivities && recentActivities.length > 0 && (
+                <div className="pt-4 border-t border-primary/5 space-y-4">
+                  <div className="flex items-center justify-between px-1">
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-30 flex items-center gap-2">
+                      <History className="h-3 w-3" />
+                      Flux Récent
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    {recentActivities.map((act) => (
+                      <div key={act.id} className="flex items-center justify-between p-3 bg-primary/5 rounded-2xl border border-primary/5">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-xl bg-background flex items-center justify-center border border-primary/5 overflow-hidden relative">
+                            {act.fromPhoto ? (
+                              <Image src={act.fromPhoto} alt="" fill className="object-cover" />
+                            ) : (
+                              <UserIcon className="h-4 w-4 opacity-20" />
+                            )}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-black uppercase tracking-tight">@{act.fromName}</span>
+                            <span className="text-[8px] font-bold opacity-30 uppercase">Réception</span>
+                          </div>
+                        </div>
+                        <span className="text-xs font-black text-green-600">+{act.amount}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
