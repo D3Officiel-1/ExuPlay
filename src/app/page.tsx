@@ -8,43 +8,64 @@ import { Logo } from "@/components/Logo";
 import { useUser, useFirestore } from "@/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
+/**
+ * @fileOverview Page de démarrage (Splash Screen) avec redirection intelligente.
+ * Gère l'accueil des utilisateurs et les oriente selon leur état de connexion et d'autorisation.
+ */
+
 export default function SplashPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useUser();
   const db = useFirestore();
-  const [isVisible, setIsVisible] = useState(true);
+  const [isMinDisplayTimeOver, setIsMinDisplayTimeOver] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
+  // Temps d'affichage minimal pour le branding et l'immersion
   useEffect(() => {
-    const splashTimer = setTimeout(() => {
-      setIsVisible(false);
-    }, 3000);
-    return () => clearTimeout(splashTimer);
+    const timer = setTimeout(() => {
+      setIsMinDisplayTimeOver(true);
+    }, 2500);
+    return () => clearTimeout(timer);
   }, []);
 
-  const handleExitComplete = async () => {
-    if (authLoading) return;
+  // Logique de navigation consolidée
+  useEffect(() => {
+    if (isMinDisplayTimeOver && !authLoading && !isNavigating) {
+      const performNavigation = async () => {
+        setIsNavigating(true);
+        
+        if (!user) {
+          router.push("/login");
+          return;
+        }
 
-    if (!user) {
-      router.push("/login");
-      return;
+        try {
+          // On vérifie l'état réel de l'utilisateur dans Firestore
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+          
+          if (!userDoc.exists()) {
+            // Cas rare: authentifié mais profil non créé
+            router.push("/login");
+            return;
+          }
+
+          const userData = userDoc.data();
+          const isFullyAuthorized = 
+            userData?.cameraAuthorized === true && 
+            userData?.notificationsEnabled === true && 
+            userData?.locationAuthorized === true;
+
+          const nextPath = isFullyAuthorized ? "/home" : "/autoriser";
+          router.push(nextPath);
+        } catch (error) {
+          console.error("Erreur lors de la redirection du splash:", error);
+          router.push("/login");
+        }
+      };
+
+      performNavigation();
     }
-
-    try {
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-      const userData = userDoc.data();
-
-      const isFullyAuthorized = 
-        userData?.cameraAuthorized === true && 
-        userData?.notificationsEnabled === true && 
-        userData?.locationAuthorized === true;
-
-      const nextPath = isFullyAuthorized ? "/home" : "/autoriser";
-      router.push(nextPath);
-    } catch (error) {
-      console.error("Error checking permissions:", error);
-      router.push("/login");
-    }
-  };
+  }, [isMinDisplayTimeOver, authLoading, user, db, router, isNavigating]);
 
   const windLineVariants = {
     animate: (i: number) => ({
@@ -61,20 +82,21 @@ export default function SplashPage() {
 
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-background">
-      <AnimatePresence onExitComplete={handleExitComplete}>
-        {isVisible && (
+      <AnimatePresence>
+        {!isNavigating && (
           <motion.div
             key="splash-content"
             initial={{ opacity: 1 }}
             exit={{ 
               opacity: 0, 
-              y: -100, 
-              scale: 1.1,
+              y: -40, 
+              scale: 1.05,
               filter: "blur(20px)",
-              transition: { duration: 1, ease: [0.22, 1, 0.36, 1] } 
+              transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] } 
             }}
             className="flex flex-col items-center justify-center w-full h-full"
           >
+            {/* Arrière-plan éthéré et dynamique */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
               {[...Array(6)].map((_, i) => (
                 <motion.div
@@ -103,6 +125,7 @@ export default function SplashPage() {
               </motion.div>
             </div>
 
+            {/* Logo Central */}
             <div className="z-10 flex flex-col items-center px-6">
               <motion.div
                 initial={{ opacity: 0, scale: 0.8, y: 20, filter: "blur(10px)" }}
@@ -124,6 +147,7 @@ export default function SplashPage() {
                 </motion.div>
               </motion.div>
 
+              {/* Barre de chargement épurée */}
               <motion.div 
                 className="mt-16 w-40 h-[2px] bg-primary/5 relative overflow-hidden rounded-full"
                 initial={{ opacity: 0, width: 0 }}
@@ -141,6 +165,16 @@ export default function SplashPage() {
                   }}
                 />
               </motion.div>
+              
+              {authLoading && (
+                <motion.p 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 0.3 }}
+                  className="mt-4 text-[9px] font-black uppercase tracking-[0.4em]"
+                >
+                  Synchronisation...
+                </motion.p>
+              )}
             </div>
           </motion.div>
         )}
