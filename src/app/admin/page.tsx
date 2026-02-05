@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -61,7 +62,6 @@ import {
   Search,
   Sparkles,
   ShieldCheck,
-  Shield,
   AlertTriangle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -273,7 +273,6 @@ export default function AdminPage() {
   const handleSubtractPoints = async () => {
     if (!db || !selectedAdminUser || pointsToSubtract <= 0 || isSubmitting) return;
 
-    // Vérification stricte du seuil de points
     if (pointsToSubtract > (selectedAdminUser.totalPoints || 0)) {
       toast({ 
         variant: "destructive",
@@ -852,10 +851,6 @@ export default function AdminPage() {
                 <div className="p-4 bg-background/50 rounded-2xl border border-primary/5 text-center">
                   <p className="text-[10px] font-black uppercase tracking-widest opacity-30 mb-1">Genre</p>
                   <p className="text-sm md:text-base font-bold capitalize">{selectedAdminUser.gender}</p>
-                </div>
-                <div className="p-4 bg-background/50 rounded-2xl border border-primary/5 text-center">
-                  <p className="text-[10px] font-black uppercase tracking-widest opacity-30 mb-1">Sceau</p>
-                  <p className="text-sm md:text-base font-bold capitalize">{selectedAdminUser.biometricEnabled ? "Activé" : "Inactif"}</p>
                 </div>
               </div>
             </div>

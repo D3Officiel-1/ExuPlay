@@ -16,13 +16,11 @@ import {
   Moon, 
   Sun, 
   Monitor, 
-  ShieldCheck, 
   ChevronRight, 
   Info, 
   Scale,
   Settings,
-  Zap,
-  Fingerprint
+  Zap
 } from "lucide-react";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
@@ -121,36 +119,6 @@ export default function ParametresPage() {
                     </div>
                   ))}
                 </RadioGroup>
-              </CardContent>
-            </Card>
-          </motion.section>
-
-          <motion.section variants={itemVariants} className="space-y-4">
-            <div className="flex items-center gap-3 pl-2">
-              <ShieldCheck className="h-4 w-4 text-primary opacity-60" />
-              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Confidentialité</h2>
-            </div>
-            <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem]">
-              <CardContent className="p-2">
-                <button 
-                  onClick={() => router.push("/parametres/securite")}
-                  className="w-full flex items-center justify-between p-4 hover:bg-primary/5 transition-colors rounded-2xl group text-left"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
-                      <Fingerprint className="h-5 w-5 text-primary opacity-60" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold">Sceau Biométrique</p>
-                      <p className="text-[10px] opacity-40 font-medium">Statut : {profile?.biometricEnabled ? "Activé" : "Non configuré"}</p>
-                    </div>
-                  </div>
-                  {profile?.biometricEnabled ? (
-                    <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse mr-2" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 opacity-20 group-hover:opacity-60 transition-opacity" />
-                  )}
-                </button>
               </CardContent>
             </Card>
           </motion.section>

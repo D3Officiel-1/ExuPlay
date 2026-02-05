@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/Logo";
-import { Camera, Bell, MapPin, Fingerprint, ChevronRight, Loader2, Lock } from "lucide-react";
+import { Camera, Bell, MapPin, ChevronRight, Loader2 } from "lucide-react";
 import { useUser, useFirestore, useFirebaseApp } from "@/firebase";
 import { getMessaging, getToken } from "firebase/messaging";
 import { doc, updateDoc, serverTimestamp, getDoc, DocumentData } from "firebase/firestore";
@@ -32,9 +32,7 @@ export default function AutoriserPage() {
     if (!data.cameraAuthorized) return 1;
     if (!data.notificationsEnabled) return 2;
     if (!data.locationAuthorized) return 3;
-    const isBiometricDone = data.biometricEnabled === true || localStorage.getItem("exu_biometric_enabled") === "true";
-    if (!isBiometricDone) return 4;
-    return 5;
+    return 4;
   };
 
   useEffect(() => {
@@ -50,7 +48,7 @@ export default function AutoriserPage() {
         const data = userDoc.data();
         const nextStep = determineNextStep(data);
         
-        if (nextStep === 5) {
+        if (nextStep === 4) {
           router.push("/home");
         } else {
           setStep(nextStep);
@@ -83,7 +81,7 @@ export default function AutoriserPage() {
     if (!user) return;
     const userDoc = await getDoc(doc(db, "users", user.uid));
     const nextStep = determineNextStep(userDoc.data());
-    if (nextStep === 5) {
+    if (nextStep === 4) {
       router.push("/home");
     } else {
       setStep(nextStep);
@@ -161,52 +159,6 @@ export default function AutoriserPage() {
     );
   };
 
-  const handleCreatePasskey = async () => {
-    setLoading(true);
-    try {
-      const challenge = new Uint8Array(32);
-      window.crypto.getRandomValues(challenge);
-
-      const userId = user?.uid || "anonymous";
-      const userEmail = user?.email || `${userId}@exuplay.app`;
-
-      const createCredentialOptions: PublicKeyCredentialCreationOptions = {
-        challenge,
-        rp: { name: "Exu Play", id: window.location.hostname },
-        user: {
-          id: Uint8Array.from(userId, c => c.charCodeAt(0)),
-          name: userEmail,
-          displayName: user?.displayName || "Joueur Exu Play",
-        },
-        pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
-        authenticatorSelection: { 
-          authenticatorAttachment: "platform", 
-          userVerification: "required",
-          residentKey: "required"
-        },
-        timeout: 60000,
-      };
-
-      const credential = await navigator.credentials.create({ publicKey: createCredentialOptions });
-
-      if (credential) {
-        localStorage.setItem("exu_biometric_enabled", "true");
-        if (user) {
-          await updateDoc(doc(db, "users", user.uid), { 
-            biometricEnabled: true,
-            updatedAt: serverTimestamp() 
-          });
-        }
-        toast({ title: "Sceau biométrique activé", description: "Identité sécurisée." });
-        router.push("/home");
-      }
-    } catch (error: any) {
-      router.push("/home");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (initializing || step === null) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-background">
@@ -233,7 +185,7 @@ export default function AutoriserPage() {
         </div>
 
         <div className="mb-12 flex justify-center gap-3">
-          {[1, 2, 3, 4].map(i => (
+          {[1, 2, 3].map(i => (
             <motion.div 
               key={i} 
               animate={{ width: step === i ? 40 : 10, backgroundColor: step === i ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.1)" }}
@@ -325,33 +277,6 @@ export default function AutoriserPage() {
                     <Button onClick={handleRequestLocation} disabled={loading} className="w-full h-16 rounded-2xl font-black text-lg">
                       {loading ? <Loader2 className="animate-spin" /> : "Partager ma position"}
                     </Button>
-                  </CardFooter>
-                </>
-              )}
-
-              {step === 4 && (
-                <>
-                  <CardHeader className="text-center pt-12 space-y-4">
-                    <div className="mx-auto w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-2">
-                      <Fingerprint className="h-10 w-10 text-primary" />
-                    </div>
-                    <div className="space-y-2">
-                      <CardTitle className="text-3xl font-black tracking-tight">Sceau Final</CardTitle>
-                      <CardDescription className="text-base font-medium opacity-60">Sécurisez votre progression avec votre biométrie native.</CardDescription>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="py-12 px-8">
-                    <div className="p-8 bg-primary/5 rounded-[2.5rem] border border-primary/10 text-center">
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mb-3">Sécurité Matérielle</p>
-                      <p className="text-sm font-semibold leading-relaxed">Face ID, Touch ID ou Windows Hello. Votre identité reste dans votre appareil.</p>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="pb-12 px-8 flex flex-col gap-3">
-                    <Button onClick={handleCreatePasskey} disabled={loading} className="w-full h-16 rounded-2xl font-black text-lg">
-                      {loading ? <Loader2 className="animate-spin mr-2" /> : <Lock className="mr-3 h-6 w-6" />}
-                      Activer ma Passkey
-                    </Button>
-                    <Button variant="ghost" onClick={() => router.push("/home")} className="w-full h-12 text-muted-foreground font-bold text-[10px] uppercase tracking-widest">Plus tard</Button>
                   </CardFooter>
                 </>
               )}

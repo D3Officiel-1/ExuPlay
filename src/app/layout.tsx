@@ -6,17 +6,14 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { FirebaseClientProvider, useUser, useFirestore, useDoc } from "@/firebase";
 import { Toaster } from "@/components/ui/toaster";
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { WifiOff, ShieldAlert, Sparkles, Loader2, RefreshCcw } from "lucide-react";
-import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
-import { PrivacyShield } from "@/components/PrivacyShield";
-import { BiometricLock } from "@/components/BiometricLock";
+import { WifiOff, ShieldAlert, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { InstallPwa } from "@/components/InstallPwa";
 import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
 import { doc, getDoc } from "firebase/firestore";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/Logo";
 import { usePathname, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 
 function ThemeSync() {
   const { user } = useUser();
@@ -158,7 +155,6 @@ function OfflineOverlay() {
 
 function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const [isOffline, setIsOffline] = useState(false);
-  const [isAppLocked, setIsAppLocked] = useState(false);
   const [showPwaPrompt, setShowPwaPrompt] = useState(false);
   const { user, isLoading: isAuthLoading } = useUser();
   const db = useFirestore();
@@ -191,22 +187,6 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     }
   }, [user, isAuthLoading, pathname, router]);
 
-  const checkLockRequirement = useCallback(async () => {
-    if (!user || pathname === "/autoriser" || pathname === "/login") return;
-    const isBiometricLocal = localStorage.getItem("exu_biometric_enabled") === "true";
-    if (isBiometricLocal) {
-      setIsAppLocked(true);
-    } else {
-      const snap = await getDoc(doc(db, "users", user.uid));
-      if (snap.exists() && snap.data().biometricEnabled) {
-        localStorage.setItem("exu_biometric_enabled", "true");
-        setIsAppLocked(true);
-      } else {
-        setShowPwaPrompt(true);
-      }
-    }
-  }, [user, db, pathname]);
-
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -214,28 +194,15 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     window.addEventListener('offline', handleOffline);
     setIsOffline(!navigator.onLine);
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        checkLockRequirement();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    if (document.visibilityState === 'visible') {
-      checkLockRequirement();
+    if (user && !["/", "/login", "/offline", "/autoriser"].includes(pathname)) {
+      setShowPwaPrompt(true);
     }
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [checkLockRequirement]);
-
-  const handleUnlockSuccess = () => {
-    setIsAppLocked(false);
-    setShowPwaPrompt(true);
-  };
+  }, [user, pathname]);
 
   const isMaintenanceActive = appStatus?.maintenanceMode === true;
   const isStandardUser = profile?.role === 'user';
@@ -257,14 +224,11 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <PrivacyShield />
       <AnimatePresence mode="wait">
         {showOffline ? (
           <OfflineOverlay key="offline" />
         ) : showMaintenance ? (
           <MaintenanceOverlay key="maintenance" />
-        ) : isAppLocked ? (
-          <BiometricLock key="lock" onSuccess={handleUnlockSuccess} />
         ) : canShowPwa ? (
           <InstallPwa key="pwa-prompt" />
         ) : null}

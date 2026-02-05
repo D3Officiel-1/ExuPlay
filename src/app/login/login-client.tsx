@@ -177,7 +177,6 @@ export function LoginClient() {
         cameraAuthorized: false,
         notificationsEnabled: false,
         locationAuthorized: false,
-        biometricEnabled: false,
         createdAt: serverTimestamp(),
         totalPoints: 0
       });
@@ -242,11 +241,11 @@ export function LoginClient() {
                     <CardContent className="p-6">
                       <div className="space-y-4">
                         <div className="relative">
-                          <Input 
+                          <input 
                             placeholder="ex: aristote" 
                             value={formData.username}
                             onChange={(e) => setFormData({...formData, username: e.target.value.replace(/\s/g, '').toLowerCase()})}
-                            className="h-14 bg-background/50 pl-5 pr-12"
+                            className="flex h-14 w-full rounded-md border border-input bg-background/50 px-5 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2">
                             {checkingUsername ? <Loader2 className="h-5 w-5 animate-spin" /> : (
@@ -313,9 +312,9 @@ export function LoginClient() {
                       <div className="flex gap-3">
                         <div className="relative w-[120px]">
                           <div className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-8 rounded overflow-hidden shadow-sm">{civFlag && <Image src={civFlag} alt="CIV" fill className="object-cover" />}</div>
-                          <Input readOnly value={formData.countryCode} className="h-14 bg-muted/50 pl-14 font-bold opacity-80" />
+                          <input readOnly value={formData.countryCode} className="flex h-14 w-full rounded-md border border-input bg-muted/50 pl-14 py-2 text-base font-bold opacity-80" />
                         </div>
-                        <Input type="tel" placeholder="07..." value={formData.phoneNumber} onChange={(e) => setFormData({...formData, phoneNumber: e.target.value.replace(/\D/g, '').slice(0, 10)})} className="h-14 flex-1 text-lg" autoFocus />
+                        <input type="tel" placeholder="07..." value={formData.phoneNumber} onChange={(e) => setFormData({...formData, phoneNumber: e.target.value.replace(/\D/g, '').slice(0, 10)})} className="flex h-14 w-full rounded-md border border-input bg-background px-3 py-2 text-lg ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" autoFocus />
                       </div>
                     </CardContent>
                     <CardFooter className="flex gap-4 p-6">
@@ -397,12 +396,12 @@ export function LoginClient() {
                             className="overflow-hidden"
                           >
                             <div className="relative">
-                              <Input 
+                              <input 
                                 placeholder="CODE6X" 
                                 value={formData.referredBy}
                                 onChange={(e) => setFormData({...formData, referredBy: e.target.value.toUpperCase()})}
                                 maxLength={6}
-                                className="h-14 text-center text-xl font-black tracking-widest"
+                                className="flex h-14 w-full rounded-md border border-input bg-background px-3 py-2 text-center text-xl font-black tracking-widest ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                               />
                               <div className="absolute right-4 top-1/2 -translate-y-1/2">
                                 {checkingReferral ? <Loader2 className="h-5 w-5 animate-spin" /> : (
