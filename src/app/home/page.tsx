@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
-import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, Brain, Timer, Zap, Users } from "lucide-react";
+import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, Brain, Timer, Zap, Users, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 
@@ -263,6 +263,9 @@ export default function HomePage() {
     } else {
       setQuizComplete(true);
       haptic.impact();
+      if (score === sessionQuizzes.length * 100) {
+        haptic.success();
+      }
     }
   };
 
@@ -472,12 +475,25 @@ export default function HomePage() {
                 <div className="relative inline-block">
                   <div className="absolute inset-0 bg-primary/20 blur-[100px] rounded-full scale-150 animate-pulse" />
                   <div className="relative h-40 w-40 bg-card rounded-[3.5rem] flex items-center justify-center border border-primary/10 shadow-[0_32px_128px_-16px_rgba(0,0,0,0.4)]">
-                    <Trophy className="h-20 w-20 text-primary" />
+                    {score === sessionQuizzes.length * 100 ? (
+                      <div className="relative">
+                        <Star className="h-20 w-20 text-yellow-500 fill-current" />
+                        <motion.div 
+                          animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                          className="absolute inset-0 bg-yellow-500/20 rounded-full blur-xl"
+                        />
+                      </div>
+                    ) : (
+                      <Trophy className="h-20 w-20 text-primary" />
+                    )}
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <h2 className="text-5xl font-black tracking-tighter italic">Éclat Final</h2>
+                  <h2 className="text-5xl font-black tracking-tighter italic">
+                    {score === sessionQuizzes.length * 100 ? "Oracle Absolu" : "Éclat Final"}
+                  </h2>
                   <p className="text-muted-foreground font-medium text-lg">Votre esprit a rayonné avec une intensité de {score} points.</p>
                 </div>
 

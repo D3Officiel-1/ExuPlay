@@ -1,3 +1,4 @@
+
 "use client";
 
 import "./globals.css";
@@ -14,6 +15,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/Logo";
 import { usePathname, useRouter } from "next/navigation";
+import { PageTransition } from "@/components/PageTransition";
 
 function ThemeSync() {
   const { user } = useUser();
@@ -238,7 +240,9 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
       </AnimatePresence>
       <ThemeSync />
       <BiometricLock />
-      {children}
+      <PageTransition>
+        {children}
+      </PageTransition>
     </>
   );
 }
@@ -269,7 +273,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
         <link rel="manifest" href="/manifest.json" />
       </head>
-      <body className="antialiased font-sans">
+      <body className="antialiased font-sans overflow-x-hidden">
         <FirebaseClientProvider>
           <ThemeProvider
             attribute="class"

@@ -2,14 +2,16 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Trophy, User, Settings } from "lucide-react";
+import { Trophy, User, Settings, Medal } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { haptic } from "@/lib/haptics";
 
 const NAV_ITEMS = [
   { name: "Réglages", href: "/parametres", icon: Settings },
-  { name: "Quiz", href: "/home", icon: Trophy },
+  { name: "Défis", href: "/home", icon: Trophy },
+  { name: "Hall", href: "/classement", icon: Medal },
   { name: "Profil", href: "/profil", icon: User },
 ];
 
@@ -33,6 +35,7 @@ export function BottomNav() {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={() => haptic.light()}
                 className="relative flex-1 group"
               >
                 <div className={cn(
@@ -60,7 +63,7 @@ export function BottomNav() {
                   {isActive && (
                     <motion.div
                       layoutId="nav-pill"
-                      className="absolute inset-0 bg-primary rounded-[1.75rem] shadow-[0_6px_20px_rgba(var(--primary-rgb),0.25)]"
+                      className="absolute inset-0 bg-primary rounded-[1.75rem] shadow-[0_6px_20px_rgba(0,0,0,0.25)]"
                       transition={{ 
                         type: "spring", 
                         bounce: 0.25, 
