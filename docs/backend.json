@@ -55,7 +55,8 @@
       "description": "Configuration globale de l'application",
       "type": "object",
       "properties": {
-        "maintenanceMode": { "type": "boolean", "default": false }
+        "maintenanceMode": { "type": "boolean", "default": false },
+        "exchangeEnabled": { "type": "boolean", "default": false }
       }
     },
     "Quiz": {

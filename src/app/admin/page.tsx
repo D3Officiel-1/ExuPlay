@@ -64,7 +64,8 @@ import {
   ShieldCheck,
   AlertTriangle,
   Zap,
-  MessageSquareText
+  MessageSquareText,
+  DollarSign
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -186,10 +187,10 @@ export default function AdminPage() {
   const handleToggleMaintenance = async (checked: boolean) => {
     if (!appConfigRef) return;
     haptic.medium();
-    setDoc(appConfigRef, {
+    updateDoc(appConfigRef, {
       maintenanceMode: checked,
       updatedAt: serverTimestamp()
-    }, { merge: true }).catch((error) => {
+    }).catch((error) => {
       const permissionError = new FirestorePermissionError({
         path: appConfigRef.path,
         operation: 'update',
@@ -200,6 +201,26 @@ export default function AdminPage() {
     toast({
       title: checked ? "Maintenance activée" : "Maintenance désactivée",
       description: checked ? "L'application est en mode privé." : "L'application est accessible à tous."
+    });
+  };
+
+  const handleToggleExchange = async (checked: boolean) => {
+    if (!appConfigRef) return;
+    haptic.medium();
+    updateDoc(appConfigRef, {
+      exchangeEnabled: checked,
+      updatedAt: serverTimestamp()
+    }).catch((error) => {
+      const permissionError = new FirestorePermissionError({
+        path: appConfigRef.path,
+        operation: 'update',
+        requestResourceData: { exchangeEnabled: checked },
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    });
+    toast({
+      title: checked ? "Échanges activés" : "Échanges suspendus",
+      description: checked ? "Les esprits peuvent convertir leur lumière." : "Le système de conversion est verrouillé."
     });
   };
 
@@ -430,16 +451,32 @@ export default function AdminPage() {
           <TabsContent value="system" className="space-y-6">
             <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2rem]">
               <CardHeader className="p-8 pb-4">
-                <CardTitle className="text-xl font-black">Sécurité Globale</CardTitle>
-                <CardDescription className="text-sm">Gérez l'accès des esprits au système.</CardDescription>
+                <CardTitle className="text-xl font-black">Sécurité & Flux</CardTitle>
+                <CardDescription className="text-sm">Gérez l'accès et les échanges des esprits.</CardDescription>
               </CardHeader>
               <CardContent className="p-8 pt-0 space-y-8">
-                <div className="flex items-center justify-between p-6 bg-background/50 rounded-3xl border border-primary/5">
-                  <div className="space-y-1">
-                    <p className="font-black text-sm uppercase tracking-widest">Mode Maintenance</p>
-                    <p className="text-xs opacity-40 font-medium italic">"Éveil en pause..."</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between p-6 bg-background/50 rounded-3xl border border-primary/5">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4 opacity-40" />
+                        <p className="font-black text-sm uppercase tracking-widest">Maintenance</p>
+                      </div>
+                      <p className="text-[10px] opacity-40 font-medium italic">Accès restreint</p>
+                    </div>
+                    <Switch checked={appStatus?.maintenanceMode || false} onCheckedChange={handleToggleMaintenance} className="scale-110" />
                   </div>
-                  <Switch checked={appStatus?.maintenanceMode || false} onCheckedChange={handleToggleMaintenance} className="scale-110 md:scale-125" />
+
+                  <div className="flex items-center justify-between p-6 bg-background/50 rounded-3xl border border-primary/5">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 opacity-40" />
+                        <p className="font-black text-sm uppercase tracking-widest">Flux Financier</p>
+                      </div>
+                      <p className="text-[10px] opacity-40 font-medium italic">Ouverture des retraits</p>
+                    </div>
+                    <Switch checked={appStatus?.exchangeEnabled || false} onCheckedChange={handleToggleExchange} className="scale-110" />
+                  </div>
                 </div>
 
                 <div className="space-y-4 p-6 bg-background/50 rounded-3xl border border-primary/5">

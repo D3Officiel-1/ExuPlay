@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -17,7 +18,8 @@ import {
   Smartphone,
   Clock,
   Calendar,
-  Percent
+  Percent,
+  Lock
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -52,7 +54,13 @@ export default function EchangePage() {
     return doc(db, "users", user.uid);
   }, [db, user?.uid]);
 
-  const { data: profile, loading } = useDoc(userDocRef);
+  const appConfigRef = useMemo(() => {
+    if (!db) return null;
+    return doc(db, "appConfig", "status");
+  }, [db]);
+
+  const { data: profile, loading: profileLoading } = useDoc(userDocRef);
+  const { data: appStatus, loading: configLoading } = useDoc(appConfigRef);
   
   const waveIcon = placeholderImages.placeholderImages.find(img => img.id === "wave-icon")?.imageUrl;
 
@@ -66,8 +74,18 @@ export default function EchangePage() {
   const netMoneyValue = Math.max(0, grossMoneyValue - exchangeFees);
   
   const minPoints = 1000;
+  const isExchangeGloballyEnabled = appStatus?.exchangeEnabled === true;
 
   const handleExchange = async () => {
+    if (!isExchangeGloballyEnabled) {
+      toast({
+        variant: "destructive",
+        title: "Système suspendu",
+        description: "Les conversions sont temporairement fermées par l'administrateur."
+      });
+      return;
+    }
+
     if (points < minPoints) {
       toast({
         variant: "destructive",
@@ -112,7 +130,7 @@ export default function EchangePage() {
     }
   };
 
-  if (loading) {
+  if (profileLoading || configLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin opacity-20" />
@@ -194,6 +212,15 @@ export default function EchangePage() {
                   </div>
 
                   <div className="space-y-2">
+                    {!isExchangeGloballyEnabled && (
+                      <div className="flex gap-3 p-4 bg-red-500/10 rounded-2xl border border-red-500/20 items-center">
+                        <Lock className="h-4 w-4 text-red-500 shrink-0" />
+                        <p className="text-[10px] leading-relaxed font-black text-red-600 uppercase">
+                          Système fermé par le Maître.
+                        </p>
+                      </div>
+                    )}
+
                     {points < minPoints && (
                       <div className="flex gap-3 p-4 bg-orange-500/5 rounded-2xl border border-orange-500/10 items-start">
                         <AlertCircle className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
@@ -221,7 +248,7 @@ export default function EchangePage() {
               <CardFooter className="px-8 pb-10">
                 <Button 
                   onClick={handleExchange}
-                  disabled={isProcessing || points < minPoints || !isWindowOpen}
+                  disabled={isProcessing || points < minPoints || !isWindowOpen || !isExchangeGloballyEnabled}
                   className="w-full h-16 rounded-2xl font-black text-sm uppercase tracking-widest gap-3 shadow-xl shadow-primary/20"
                 >
                   {isProcessing ? (
