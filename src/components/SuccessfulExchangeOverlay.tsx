@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -11,12 +12,24 @@ import { haptic } from "@/lib/haptics";
 /**
  * @fileOverview Oracle de Prospérité.
  * Overlay cinématique plein écran qui s'affiche lors de la validation d'une conversion.
+ * Gère l'affichage différé pour les transactions validées pendant l'absence de l'utilisateur.
  */
 
 export function SuccessfulExchangeOverlay() {
-  const { user } = useUser();
+  const { user, isLoading: authLoading } = useUser();
   const db = useFirestore();
   const [activeExchange, setActiveExchange] = useState<any>(null);
+  const [isReady, setIsReady] = useState(false);
+
+  // Attendre que l'application soit stable avant de déclencher l'overlay
+  useEffect(() => {
+    if (!authLoading && user) {
+      const timer = setTimeout(() => setIsReady(true), 2000);
+      return () => clearTimeout(timer);
+    } else {
+      setIsReady(false);
+    }
+  }, [authLoading, user]);
 
   // Écouter les échanges complétés pour l'utilisateur
   const exchangesQuery = useMemo(() => {
@@ -33,23 +46,30 @@ export function SuccessfulExchangeOverlay() {
   const { data: completedExchanges } = useCollection(exchangesQuery);
 
   useEffect(() => {
-    if (!completedExchanges || completedExchanges.length === 0) return;
+    // Ne rien faire si pas prêt, pas de données, ou si un overlay est déjà affiché
+    if (!isReady || !completedExchanges || completedExchanges.length === 0 || activeExchange) return;
 
-    // Récupérer la liste des IDs déjà vus depuis le localStorage
-    const seenIds = JSON.parse(localStorage.getItem("seen_exchanges") || "[]");
-    
-    // Trouver le premier échange complété non encore affiché
-    const newExchange = completedExchanges.find(ex => !seenIds.includes(ex.id));
-
-    if (newExchange && !activeExchange) {
-      haptic.success();
-      setActiveExchange(newExchange);
+    try {
+      // Récupérer la liste des IDs déjà vus depuis le stockage local
+      const seenIdsRaw = localStorage.getItem("seen_exchanges");
+      const seenIds: string[] = seenIdsRaw ? JSON.parse(seenIdsRaw) : [];
       
-      // Marquer comme vu immédiatement
-      const updatedSeenIds = [...seenIds, newExchange.id];
-      localStorage.setItem("seen_exchanges", JSON.stringify(updatedSeenIds));
+      // Trouver l'échange le plus récent qui n'a pas encore été célébré
+      // completedExchanges est trié par processedAt DESC par la requête Firestore
+      const unseenExchange = completedExchanges.find(ex => !seenIds.includes(ex.id));
+
+      if (unseenExchange) {
+        haptic.success();
+        setActiveExchange(unseenExchange);
+        
+        // Marquer comme vu immédiatement pour éviter les boucles
+        const updatedSeenIds = [...seenIds, unseenExchange.id];
+        localStorage.setItem("seen_exchanges", JSON.stringify(updatedSeenIds));
+      }
+    } catch (error) {
+      console.warn("Échec de synchronisation de l'Oracle:", error);
     }
-  }, [completedExchanges, activeExchange]);
+  }, [completedExchanges, activeExchange, isReady]);
 
   const handleDismiss = () => {
     haptic.light();
@@ -62,7 +82,12 @@ export function SuccessfulExchangeOverlay() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0, filter: "blur(20px)" }}
+          exit={{ 
+            opacity: 0, 
+            filter: "blur(40px)",
+            scale: 1.1,
+            transition: { duration: 0.8, ease: "easeIn" }
+          }}
           className="fixed inset-0 z-[3000] bg-background/80 backdrop-blur-[40px] flex flex-col items-center justify-center p-8 overflow-hidden"
         >
           {/* Effets de fond éthérés */}
@@ -96,7 +121,7 @@ export function SuccessfulExchangeOverlay() {
               filter: "blur(0px)",
               transition: { type: "spring", damping: 20, stiffness: 100, delay: 0.2 } 
             }}
-            className="relative z-10 w-full max-w-sm flex flex-col items-center text-center space-y-12"
+            className="relative z-10 w-full max-sm flex flex-col items-center text-center space-y-12"
           >
             <div className="relative">
               <motion.div
