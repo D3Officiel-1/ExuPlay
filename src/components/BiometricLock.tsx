@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser, useFirestore, useDoc } from "@/firebase";
 import { doc } from "firebase/firestore";
@@ -13,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 
 /**
  * @fileOverview Un écran de verrouillage biométrique global qui intercepte l'accès si activé.
+ * Déclenche automatiquement l'authentification au montage.
  */
 
 export function BiometricLock() {
@@ -21,22 +21,26 @@ export function BiometricLock() {
   const { toast } = useToast();
   const [locked, setLocked] = useState(false);
   const [authenticating, setAuthenticating] = useState(false);
+  const hasAttemptedAutoAuth = useRef(false);
 
   const userRef = user?.uid ? doc(db, "users", user.uid) : null;
   const { data: profile, loading: profileLoading } = useDoc(userRef);
 
+  // Déterminer l'état de verrouillage
   useEffect(() => {
     if (!authLoading && !profileLoading && profile?.biometricEnabled && profile?.passkeyId) {
-      // Vérifier si nous avons déjà authentifié dans cette session
       const isSessionAuthenticated = sessionStorage.getItem(`auth_${user?.uid}`);
       if (!isSessionAuthenticated) {
         setLocked(true);
       }
+    } else if (!authLoading && !profileLoading) {
+      setLocked(false);
     }
   }, [authLoading, profileLoading, profile, user?.uid]);
 
+  // Authentification
   const handleUnlock = async () => {
-    if (!profile?.passkeyId) return;
+    if (!profile?.passkeyId || authenticating) return;
     
     setAuthenticating(true);
     try {
@@ -46,17 +50,28 @@ export function BiometricLock() {
         setLocked(false);
         toast({ title: "Accès autorisé", description: "Votre Sceau a été reconnu." });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Auth error:", error);
-      toast({ 
-        variant: "destructive", 
-        title: "Échec d'identification", 
-        description: "Le Sceau n'a pas pu être validé." 
-      });
+      // On ne montre pas d'erreur si c'est juste une annulation de l'utilisateur lors de l'auto-prompt
+      if (error.name !== 'NotAllowedError' && error.name !== 'AbortError') {
+        toast({ 
+          variant: "destructive", 
+          title: "Échec d'identification", 
+          description: "Le Sceau n'a pas pu être validé." 
+        });
+      }
     } finally {
       setAuthenticating(false);
     }
   };
+
+  // Déclenchement automatique au montage dès que possible
+  useEffect(() => {
+    if (locked && profile?.passkeyId && !hasAttemptedAutoAuth.current && !authenticating) {
+      hasAttemptedAutoAuth.current = true;
+      handleUnlock();
+    }
+  }, [locked, profile?.passkeyId]);
 
   if (!locked) return null;
 
@@ -101,20 +116,28 @@ export function BiometricLock() {
             </div>
           </div>
 
-          <Button 
-            onClick={handleUnlock} 
-            disabled={authenticating}
-            className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-[0.4em] gap-3 shadow-2xl shadow-primary/20"
-          >
-            {authenticating ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <>
-                <Fingerprint className="h-5 w-5" />
-                Débloquer l'Esprit
-              </>
+          <div className="space-y-4">
+            <Button 
+              onClick={handleUnlock} 
+              disabled={authenticating}
+              className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-[0.4em] gap-3 shadow-2xl shadow-primary/20"
+            >
+              {authenticating ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <>
+                  <Fingerprint className="h-5 w-5" />
+                  Débloquer l'Esprit
+                </>
+              )}
+            </Button>
+            
+            {authenticating && (
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-30 animate-pulse">
+                Approbation en cours...
+              </p>
             )}
-          </Button>
+          </div>
         </motion.div>
       </motion.div>
     </AnimatePresence>

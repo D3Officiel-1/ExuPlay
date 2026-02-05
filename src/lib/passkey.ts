@@ -1,6 +1,6 @@
-
 /**
  * @fileOverview Utilitaires pour la gestion des Passkeys (WebAuthn).
+ * Optimisé pour un usage à clé unique sans sélection manuelle.
  */
 
 export async function createPasskey(username: string): Promise<string> {
@@ -61,6 +61,8 @@ export async function verifyPasskey(credentialId: string): Promise<boolean> {
     timeout: 60000,
   };
 
+  // On utilise l'option de médiation 'optional' par défaut, mais avec allowCredentials défini, 
+  // la plupart des navigateurs iront directement au prompt biométrique.
   const assertion = await navigator.credentials.get({
     publicKey: options,
   });
