@@ -116,24 +116,29 @@ export default function ConversionsAdminPage() {
       })
       .finally(() => setProcessingId(null));
     } else {
-      // Pour un refus, on rend les points et on supprime le document
+      // Pour un refus, on rend les points et on marque comme rejeté
+      // On ne supprime plus le doc immédiatement pour permettre l'affichage de l'overlay chez l'utilisateur
       updateDoc(userRef, {
         totalPoints: increment(exchange.points || 0),
         updatedAt: serverTimestamp()
       })
       .then(() => {
-        deleteDoc(exchangeRef)
-          .then(() => {
-            haptic.success();
-            toast({ title: "Demande rejetée", description: "Les points ont été rendus à l'utilisateur." });
-          })
-          .catch(async (error) => {
-            const permissionError = new FirestorePermissionError({
-              path: exchangeRef.path,
-              operation: 'delete',
-            } satisfies SecurityRuleContext);
-            errorEmitter.emit('permission-error', permissionError);
-          });
+        updateDoc(exchangeRef, {
+          status: 'rejected',
+          processedAt: serverTimestamp()
+        })
+        .then(() => {
+          haptic.success();
+          toast({ title: "Demande rejetée", description: "Les points ont été rendus à l'utilisateur." });
+        })
+        .catch(async (error) => {
+          const permissionError = new FirestorePermissionError({
+            path: exchangeRef.path,
+            operation: 'update',
+            requestResourceData: { status: 'rejected' },
+          } satisfies SecurityRuleContext);
+          errorEmitter.emit('permission-error', permissionError);
+        });
       })
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
