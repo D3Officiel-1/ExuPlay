@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser, useFirestore, useCollection, useDoc } from "@/firebase";
 import { 
@@ -109,6 +109,8 @@ export default function HomePage() {
   const [updating, setUpdating] = useState(false);
   const [quizStarted, setQuizStarted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(15);
+  const [showPointsPreview, setShowPointsPreview] = useState(false);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   
   const { user } = useUser();
   const db = useFirestore();
@@ -176,11 +178,26 @@ export default function HomePage() {
       }, { merge: true });
       
       setQuizStarted(true);
+      setShowPointsPreview(false);
       setTimeLeft(15);
     } catch (error) {
       console.error("Erreur lors du démarrage du défi:", error);
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleLongPressStart = () => {
+    if (updating || quizStarted) return;
+    longPressTimer.current = setTimeout(() => {
+      haptic.light();
+      setShowPointsPreview(true);
+    }, 600);
+  };
+
+  const handleLongPressEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
     }
   };
 
@@ -192,7 +209,6 @@ export default function HomePage() {
     const isTimeout = index === -1;
     const pointsEarned = isCorrect ? (currentQuiz.points || 100) : 0;
 
-    // Logique de pénalité en cas de temps écoulé
     let penalty = 0;
     if (isTimeout && profile && (profile.totalPoints || 0) > 10) {
       penalty = -10;
@@ -271,6 +287,7 @@ export default function HomePage() {
       setSelectedOption(null);
       setIsAnswered(false);
       setQuizStarted(false);
+      setShowPointsPreview(false);
       setTimeLeft(15);
     } else {
       setQuizComplete(true);
@@ -289,13 +306,14 @@ export default function HomePage() {
     setSelectedOption(null);
     setIsAnswered(false);
     setQuizStarted(false);
+    setShowPointsPreview(false);
     setScore(0);
     setTimeLeft(15);
   };
 
   if (quizzesLoading || attemptsLoading || (allQuizzes && userAttempts !== null && sessionQuizzes.length === 0 && allQuizzes.length > 0)) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+      <div className="min-h-screen bg-background flex flex-col pb-32 items-center justify-center p-6 text-center">
         <Loader2 className="h-10 w-10 animate-spin opacity-20 mb-6" />
         <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 animate-pulse">Synchronisation de l'Éveil</p>
       </div>
@@ -388,17 +406,55 @@ export default function HomePage() {
                               className="absolute inset-0 z-20 flex items-center justify-center"
                             >
                               <div className="text-center">
-                                <Button 
-                                  onClick={handleStartChallenge}
-                                  disabled={updating}
-                                  className="h-16 px-12 rounded-2xl font-black text-[10px] uppercase tracking-[0.4em] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-500 active:scale-95 group"
-                                >
-                                  {updating ? (
-                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                <AnimatePresence mode="wait">
+                                  {!showPointsPreview ? (
+                                    <motion.button
+                                      key="reveal-button"
+                                      layoutId="reveal-element"
+                                      onContextMenu={(e) => {
+                                        e.preventDefault();
+                                        haptic.light();
+                                        setShowPointsPreview(true);
+                                      }}
+                                      onPointerDown={handleLongPressStart}
+                                      onPointerUp={handleLongPressEnd}
+                                      onPointerLeave={handleLongPressEnd}
+                                      onClick={handleStartChallenge}
+                                      disabled={updating}
+                                      className="h-16 px-12 rounded-2xl font-black text-[10px] uppercase tracking-[0.4em] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-500 active:scale-95 group relative overflow-hidden"
+                                    >
+                                      {updating ? (
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                      ) : (
+                                        "Dévoiler l'Inconnu"
+                                      )}
+                                    </motion.button>
                                   ) : (
-                                    "Dévoiler l'Inconnu"
+                                    <motion.div
+                                      key="points-preview"
+                                      layoutId="reveal-element"
+                                      onClick={() => {
+                                        haptic.light();
+                                        setShowPointsPreview(false);
+                                      }}
+                                      className="bg-primary text-primary-foreground p-6 rounded-[2rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] flex flex-col items-center justify-center gap-3 cursor-pointer border border-white/10 min-w-[200px]"
+                                    >
+                                      <motion.div
+                                        animate={{ 
+                                          scale: [1, 1.2, 1],
+                                          opacity: [0.5, 1, 0.5]
+                                        }}
+                                        transition={{ duration: 2, repeat: Infinity }}
+                                      >
+                                        <Zap className="h-6 w-6 text-yellow-400 fill-current" />
+                                      </motion.div>
+                                      <div className="space-y-0.5">
+                                        <p className="text-3xl font-black tabular-nums tracking-tighter">+{question?.points || 100} PTS</p>
+                                        <p className="text-[8px] font-black uppercase tracking-[0.3em] opacity-40">Récompense éveil</p>
+                                      </div>
+                                    </motion.div>
                                   )}
-                                </Button>
+                                </AnimatePresence>
                               </div>
                             </motion.div>
                           </>
