@@ -310,9 +310,13 @@ export function LoginClient() {
                     </CardHeader>
                     <CardContent className="p-6 space-y-4">
                       <div className="flex gap-3">
-                        <div className="relative w-[120px]">
-                          <div className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-8 rounded overflow-hidden shadow-sm">{civFlag && <Image src={civFlag} alt="CIV" fill className="object-cover" />}</div>
-                          <input readOnly value={formData.countryCode} className="flex h-14 w-full rounded-md border border-input bg-muted/50 pl-14 py-2 text-base font-bold opacity-80" />
+                        <div className="relative flex-shrink-0 w-32">
+                          <div className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-8 rounded overflow-hidden shadow-sm pointer-events-none">
+                            {civFlag && <Image src={civFlag} alt="CIV" fill className="object-cover" />}
+                          </div>
+                          <div className="flex items-center justify-end pr-4 h-14 w-full rounded-md border border-input bg-muted/50 text-base font-bold opacity-80 pl-14 select-none">
+                            {formData.countryCode}
+                          </div>
                         </div>
                         <input type="tel" placeholder="07..." value={formData.phoneNumber} onChange={(e) => setFormData({...formData, phoneNumber: e.target.value.replace(/\D/g, '').slice(0, 10)})} className="flex h-14 w-full rounded-md border border-input bg-background px-3 py-2 text-lg ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" autoFocus />
                       </div>
