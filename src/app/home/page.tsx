@@ -393,7 +393,7 @@ export default function HomePage() {
                         {question?.question}
                       </p>
 
-                      <AnimatePresence>
+                      <AnimatePresence initial={false}>
                         {!quizStarted && (
                           <>
                             <SpoilerOverlay key="question-mask" />
@@ -405,7 +405,7 @@ export default function HomePage() {
                               className="absolute inset-0 z-20 flex items-center justify-center"
                             >
                               <div className="text-center">
-                                <AnimatePresence initial={false}>
+                                <AnimatePresence mode="wait" initial={false}>
                                   {!showPointsPreview ? (
                                     <motion.button
                                       key="reveal-button"
@@ -421,6 +421,10 @@ export default function HomePage() {
                                       onClick={handleStartChallenge}
                                       disabled={updating}
                                       className="h-16 px-12 rounded-2xl font-black text-[10px] uppercase tracking-[0.4em] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-500 active:scale-95 group relative overflow-hidden"
+                                      initial={{ opacity: 0, scale: 0.8 }}
+                                      animate={{ opacity: 1, scale: 1 }}
+                                      exit={{ opacity: 0, scale: 0.8 }}
+                                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
                                     >
                                       {updating ? (
                                         <Loader2 className="h-5 w-5 animate-spin" />
@@ -441,6 +445,10 @@ export default function HomePage() {
                                       onPointerUp={handleLongPressEnd}
                                       onPointerLeave={handleLongPressEnd}
                                       className="bg-primary text-primary-foreground h-16 px-12 rounded-2xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] flex items-center justify-center gap-3 cursor-default border border-white/10 overflow-hidden"
+                                      initial={{ opacity: 0, scale: 0.8 }}
+                                      animate={{ opacity: 1, scale: 1 }}
+                                      exit={{ opacity: 0, scale: 0.8 }}
+                                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
                                     >
                                       <motion.div
                                         animate={{ 
