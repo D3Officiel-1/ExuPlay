@@ -5,13 +5,12 @@ import { useMemo } from "react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
-import { Trophy, User as UserIcon, X } from "lucide-react";
+import { Trophy, User as UserIcon, X, Bell, AlertTriangle } from "lucide-react";
 import { useUser, useFirestore, useDoc } from "@/firebase";
 import { doc } from "firebase/firestore";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { Toast, ToastTitle, ToastDescription, ToastClose } from "@/components/ui/toast";
 
 export function Header() {
   const { user } = useUser();
@@ -30,7 +29,9 @@ export function Header() {
   const totalPoints = profile?.totalPoints || 0;
 
   const isProfilePage = pathname === "/profil";
-  const hasToasts = toasts.length > 0;
+  
+  // On ne prend que le toast le plus récent pour l'affichage en-tête
+  const activeToast = toasts.length > 0 ? toasts[0] : null;
 
   // Animations pilotées par le scroll (actives uniquement sur la page profil)
   const defaultOpacity = useTransform(scrollY, [40, 90], [1, 0]);
@@ -61,34 +62,56 @@ export function Header() {
     >
       <div className="max-w-screen-2xl mx-auto w-full relative h-full flex items-center">
         <AnimatePresence mode="wait">
-          {hasToasts ? (
+          {activeToast ? (
             <motion.div
-              key="toast-container"
-              initial={{ opacity: 0, y: 10, filter: "blur(10px)" }}
+              key={`toast-${activeToast.id}`}
+              initial={{ opacity: 0, y: 15, filter: "blur(10px)" }}
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              exit={{ opacity: 0, y: -10, filter: "blur(10px)" }}
-              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full flex justify-center relative z-50"
+              exit={{ opacity: 0, y: -15, filter: "blur(10px)" }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full flex justify-center z-50"
             >
-              {toasts.map(({ id, title, description, action, ...props }) => (
-                <Toast key={id} {...props} className="bg-primary/5 border-none shadow-none w-full max-w-xl">
-                  <div className="flex flex-1 items-center justify-between gap-4">
-                    <div className="flex flex-col gap-0.5">
-                      {title && <ToastTitle className="text-primary">{title}</ToastTitle>}
-                      {description && (
-                        <ToastDescription className="text-[10px] opacity-60">{description}</ToastDescription>
-                      )}
-                    </div>
-                    {action}
-                    <button 
-                      onClick={() => dismiss(id)}
-                      className="h-8 w-8 rounded-full bg-primary/5 flex items-center justify-center hover:bg-primary/10 transition-colors"
-                    >
-                      <X className="h-4 w-4 opacity-40" />
-                    </button>
+              <div className={cn(
+                "w-full max-w-xl flex items-center justify-between gap-4 p-3 rounded-[1.5rem] border shadow-2xl backdrop-blur-2xl",
+                activeToast.variant === 'destructive' 
+                  ? "bg-destructive/10 border-destructive/20 text-destructive" 
+                  : "bg-card/80 border-primary/10 text-foreground"
+              )}>
+                <div className="flex items-center gap-3 pl-2">
+                  <div className={cn(
+                    "h-8 w-8 rounded-full flex items-center justify-center",
+                    activeToast.variant === 'destructive' ? "bg-destructive/20" : "bg-primary/10"
+                  )}>
+                    {activeToast.variant === 'destructive' ? (
+                      <AlertTriangle className="h-4 w-4" />
+                    ) : (
+                      <Bell className="h-4 w-4 text-primary" />
+                    )}
                   </div>
-                </Toast>
-              ))}
+                  <div className="flex flex-col">
+                    {activeToast.title && (
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] leading-none mb-0.5">
+                        {activeToast.title}
+                      </span>
+                    )}
+                    {activeToast.description && (
+                      <span className="text-[9px] font-medium opacity-60 line-clamp-1 leading-tight">
+                        {activeToast.description}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {activeToast.action}
+                  <button 
+                    onClick={() => dismiss(activeToast.id)}
+                    className="h-8 w-8 rounded-full bg-primary/5 flex items-center justify-center hover:bg-primary/10 transition-colors"
+                  >
+                    <X className="h-4 w-4 opacity-40" />
+                  </button>
+                </div>
+              </div>
             </motion.div>
           ) : (
             <motion.div
