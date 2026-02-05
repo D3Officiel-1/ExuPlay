@@ -10,11 +10,11 @@ import {
   query,
   orderBy,
   updateDoc,
-  where
+  increment
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   Table, 
   TableBody, 
@@ -26,15 +26,11 @@ import {
 import { 
   ChevronLeft, 
   Loader2, 
-  CheckCircle2, 
-  XCircle, 
-  Clock, 
   Search,
   Zap,
   Smartphone,
   Check,
-  X,
-  RefreshCcw
+  X
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -42,6 +38,8 @@ import { haptic } from "@/lib/haptics";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export default function ConversionsAdminPage() {
   const { user, isLoading: authLoading } = useUser();
@@ -78,31 +76,64 @@ export default function ConversionsAdminPage() {
     const q = search.toLowerCase().trim();
     if (!q) return exchanges;
     return exchanges.filter(ex => 
-      ex.username.toLowerCase().includes(q) || 
-      ex.phoneNumber.includes(q)
+      (ex.username?.toLowerCase() || "").includes(q) || 
+      (ex.phoneNumber || "").includes(q)
     );
   }, [exchanges, search]);
 
-  const handleUpdateStatus = async (id: string, newStatus: 'completed' | 'rejected') => {
+  const handleUpdateStatus = (id: string, newStatus: 'completed' | 'rejected') => {
     if (!db) return;
     setProcessingId(id);
     haptic.medium();
-    try {
-      await updateDoc(doc(db, "exchanges", id), {
-        status: newStatus,
-        processedAt: serverTimestamp()
-      });
+
+    const exchange = exchanges?.find(e => e.id === id);
+    if (!exchange) {
+      setProcessingId(null);
+      return;
+    }
+
+    const exchangeRef = doc(db, "exchanges", id);
+    const userRef = doc(db, "users", exchange.userId);
+
+    // 1. Mise à jour du statut de l'échange
+    updateDoc(exchangeRef, {
+      status: newStatus,
+      processedAt: serverTimestamp()
+    })
+    .then(() => {
+      // 2. Si validé, on déduit les points du profil utilisateur
+      if (newStatus === 'completed' && exchange.userId && exchange.points) {
+        updateDoc(userRef, {
+          totalPoints: increment(-exchange.points),
+          updatedAt: serverTimestamp()
+        }).catch(async (error) => {
+          const permissionError = new FirestorePermissionError({
+            path: userRef.path,
+            operation: 'update',
+            requestResourceData: { totalPoints: `decrement ${exchange.points}` },
+          } satisfies SecurityRuleContext);
+          errorEmitter.emit('permission-error', permissionError);
+        });
+      }
+
       haptic.success();
       toast({
         title: newStatus === 'completed' ? "Demande validée" : "Demande rejetée",
         description: `La transaction a été marquée comme ${newStatus === 'completed' ? 'traitée' : 'annulée'}.`
       });
-    } catch (error) {
-      haptic.error();
+    })
+    .catch(async (error) => {
+      const permissionError = new FirestorePermissionError({
+        path: exchangeRef.path,
+        operation: 'update',
+        requestResourceData: { status: newStatus },
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
       toast({ variant: "destructive", title: "Erreur", description: "Impossible de mettre à jour le statut." });
-    } finally {
+    })
+    .finally(() => {
       setProcessingId(null);
-    }
+    });
   };
 
   if (authLoading || profileLoading || profile?.role !== 'admin') {
@@ -140,7 +171,7 @@ export default function ConversionsAdminPage() {
 
         <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2rem] overflow-hidden">
           <CardHeader className="p-8 pb-4">
-            <CardTitle className="text-sm font-black uppercase tracking-widest opacity-40">Demandes en attente</CardTitle>
+            <CardTitle className="text-sm font-black uppercase tracking-widest opacity-40">Demandes de Retrait</CardTitle>
           </CardHeader>
           <div className="overflow-x-auto">
             <Table>
@@ -192,8 +223,8 @@ export default function ConversionsAdminPage() {
                       </TableCell>
                       <TableCell className="px-8 py-6">
                         <div className="flex flex-col text-[10px] font-bold opacity-40">
-                          <span>{ex.requestedAt && format(ex.requestedAt.toDate(), "dd MMM yyyy", { locale: fr })}</span>
-                          <span>{ex.requestedAt && format(ex.requestedAt.toDate(), "HH:mm")}</span>
+                          <span>{ex.requestedAt && typeof ex.requestedAt.toDate === 'function' ? format(ex.requestedAt.toDate(), "dd MMM yyyy", { locale: fr }) : "---"}</span>
+                          <span>{ex.requestedAt && typeof ex.requestedAt.toDate === 'function' ? format(ex.requestedAt.toDate(), "HH:mm") : ""}</span>
                         </div>
                       </TableCell>
                       <TableCell className="px-8 py-6">
@@ -237,7 +268,7 @@ export default function ConversionsAdminPage() {
                         )}
                         {ex.status !== 'pending' && (
                           <div className="text-[10px] font-black opacity-20 uppercase tracking-widest">
-                            Traité le {ex.processedAt && format(ex.processedAt.toDate(), "dd/MM")}
+                            Traité le {ex.processedAt && typeof ex.processedAt.toDate === 'function' ? format(ex.processedAt.toDate(), "dd/MM") : "---"}
                           </div>
                         )}
                       </TableCell>

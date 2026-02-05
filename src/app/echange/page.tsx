@@ -4,10 +4,10 @@
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
-import { doc, updateDoc, serverTimestamp, collection, addDoc, query, where, orderBy, deleteDoc } from "firebase/firestore";
+import { doc, serverTimestamp, collection, addDoc, query, where, orderBy, deleteDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { 
   ChevronLeft, 
   Zap, 
@@ -126,9 +126,9 @@ export default function EchangePage() {
       }
     }
     
-    if (userDocRef && db) {
+    if (userDocRef && db && user) {
       const exchangeData = {
-        userId: user!.uid,
+        userId: user.uid,
         username: profile?.username || "Anonyme",
         phoneNumber: profile?.phoneNumber || "Non lié",
         points: points,
@@ -327,7 +327,7 @@ export default function EchangePage() {
             </Card>
 
             <p className="text-[10px] text-center font-bold opacity-20 uppercase tracking-[0.2em] px-10 leading-relaxed">
-              Les échanges sont traités sous 24h. Les points sont débités de votre solde uniquement après validation.
+              Les échanges sont traités sous 24h. Votre Lumière restera visible jusqu'à la validation finale du Maître.
             </p>
           </motion.div>
         ) : (
@@ -346,7 +346,7 @@ export default function EchangePage() {
             <div className="space-y-2">
               <h2 className="text-3xl font-black tracking-tight">Demande Envoyée</h2>
               <p className="text-sm font-medium opacity-40 px-6">
-                Votre lumière a été soumise pour conversion. Le transfert de {netMoneyValue.toLocaleString()} FCFA sera effectif après validation du Maître.
+                Votre lumière a été soumise pour conversion. Le transfert de {netMoneyValue.toLocaleString()} FCFA sera effectif après validation.
               </p>
             </div>
 
