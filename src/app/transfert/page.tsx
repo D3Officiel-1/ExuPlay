@@ -259,11 +259,11 @@ export default function TransfertPage() {
       if (recipientSnap.exists()) {
         const data = recipientSnap.data();
 
-        // SÉCURITÉ : Blocage transfert vers filleul non éveillé
-        const isFilleul = data.referredBy === profile?.referralCode;
+        // SÉCURITÉ : Blocage transfert vers TOUT filleul (le mien ou celui d'un autre) non éveillé
+        const hasParrain = !!data.referredBy;
         const isAwakened = data.referralRewardClaimed === true;
 
-        if (isFilleul && !isAwakened) {
+        if (hasParrain && !isAwakened) {
           haptic.error();
           setErrorMessage("Éveil requis (100 PTS quiz)");
           setValidationStatus('error');
