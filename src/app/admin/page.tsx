@@ -68,7 +68,10 @@ import {
   DollarSign,
   ArrowUpRight,
   CheckCircle2,
-  Circle
+  Circle,
+  X,
+  Save,
+  Wand2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -86,6 +89,7 @@ import {
   AreaChart,
   Area
 } from 'recharts';
+import { AnimatePresence, motion } from "framer-motion";
 
 export default function AdminPage() {
   const { user, isLoading: authLoading } = useUser();
@@ -102,7 +106,10 @@ export default function AdminPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  
   const [selectedQuizForView, setSelectedQuizForView] = useState<any | null>(null);
+  const [isEditingQuiz, setIsEditingQuiz] = useState(false);
+  const [editedQuiz, setEditedQuiz] = useState<any>(null);
   
   const [maintenanceMessageInput, setMaintenanceMessageInput] = useState("");
   const [isSavingMessage, setIsSavingMessage] = useState(false);
@@ -294,6 +301,73 @@ export default function AdminPage() {
     }
   };
 
+  // --- Fonctions d'édition ---
+  const handleSelectQuiz = (q: any) => {
+    haptic.light();
+    setSelectedQuizForView(q);
+    setIsEditingQuiz(false);
+  };
+
+  const handleStartEdit = () => {
+    haptic.light();
+    setEditedQuiz({ ...selectedQuizForView });
+    setIsEditingQuiz(true);
+  };
+
+  const handleCancelEdit = () => {
+    haptic.light();
+    setIsEditingQuiz(false);
+    setEditedQuiz(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!db || !selectedQuizForView?.id || !editedQuiz || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    haptic.medium();
+    try {
+      const quizRef = doc(db, "quizzes", selectedQuizForView.id);
+      await updateDoc(quizRef, {
+        question: editedQuiz.question,
+        options: editedQuiz.options,
+        correctIndex: editedQuiz.correctIndex,
+        points: editedQuiz.points,
+        updatedAt: serverTimestamp()
+      });
+      haptic.success();
+      setSelectedQuizForView({ ...editedQuiz, id: selectedQuizForView.id });
+      setIsEditingQuiz(false);
+      toast({ title: "Mise à jour réussie", description: "Le défi a été harmonisé." });
+    } catch (error) {
+      console.error(error);
+      toast({ variant: "destructive", title: "Échec", description: "Impossible de sauvegarder les modifications." });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAiGenerateForEdit = async () => {
+    setIsGenerating(true);
+    haptic.light();
+    try {
+      const result = await generateQuiz({});
+      setEditedQuiz({
+        ...editedQuiz,
+        question: result.question,
+        options: result.options,
+        correctIndex: result.correctIndex,
+        points: result.points
+      });
+      haptic.success();
+      toast({ title: "Réécriture IA", description: "Le défi a été transfiguré par l'Oracle." });
+    } catch (error) {
+      haptic.error();
+      toast({ variant: "destructive", title: "Dissonance IA", description: "L'IA n'a pas pu s'exprimer." });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   if (authLoading || profileLoading || profile?.role !== 'admin') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -396,7 +470,7 @@ export default function AdminPage() {
                       <Plus className="h-4 w-4" /> Nouveau défi
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[600px] bg-card/95 backdrop-blur-2xl rounded-[2.5rem] p-8 max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="sm:max-w-[600px] bg-card/95 backdrop-blur-2xl rounded-[2.5rem] p-8 max-h-[90vh] overflow-y-auto border-none">
                     <DialogHeader>
                       <div className="flex justify-between items-start">
                         <div className="space-y-1">
@@ -405,14 +479,14 @@ export default function AdminPage() {
                         </div>
                         <Button type="button" variant="secondary" onClick={handleAiGenerate} disabled={isGenerating} className="h-10 px-4 rounded-xl font-black text-[10px] uppercase gap-2 bg-primary/5">
                           {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3 text-primary" />}
-                          Générer avec l'IA
+                          IA
                         </Button>
                       </div>
                     </DialogHeader>
                     <form onSubmit={handleAddQuiz} className="space-y-6 pt-6">
                       <div className="space-y-2">
                         <Label className="text-xs font-black uppercase tracking-widest opacity-40">La Question</Label>
-                        <Input placeholder="Ex: Quelle est l'essence du désir ?" className="h-12 rounded-2xl" value={newQuiz.question} onChange={e => setNewQuiz({...newQuiz, question: e.target.value})} />
+                        <Textarea placeholder="Ex: Quelle est l'essence du désir ?" className="min-h-[100px] rounded-2xl" value={newQuiz.question} onChange={e => setNewQuiz({...newQuiz, question: e.target.value})} />
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {newQuiz.options.map((opt, idx) => (
@@ -449,7 +523,7 @@ export default function AdminPage() {
                   {filteredQuizzes.map(q => (
                     <Card 
                       key={q.id} 
-                      onClick={() => { haptic.light(); setSelectedQuizForView(q); }}
+                      onClick={() => handleSelectQuiz(q)}
                       className="border-none bg-card/20 backdrop-blur-3xl rounded-2xl group hover:bg-card/40 transition-all cursor-pointer"
                     >
                       <CardContent className="p-4 flex items-center justify-between gap-4">
@@ -560,80 +634,193 @@ export default function AdminPage() {
         </Tabs>
       </main>
 
-      {/* Dialogue de consultation du défi */}
-      <Dialog open={!!selectedQuizForView} onOpenChange={(open) => !open && setSelectedQuizForView(null)}>
-        <DialogContent className="sm:max-w-[600px] bg-card/95 backdrop-blur-2xl rounded-[2.5rem] p-8 max-h-[90vh] overflow-y-auto">
+      {/* Dialogue de consultation et modification du défi */}
+      <Dialog open={!!selectedQuizForView} onOpenChange={(open) => !open && (setSelectedQuizForView(null), setIsEditingQuiz(false))}>
+        <DialogContent className="sm:max-w-[600px] bg-card/95 backdrop-blur-2xl rounded-[2.5rem] p-8 max-h-[90vh] overflow-y-auto border-none">
           <DialogHeader>
-            <div className="space-y-1">
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Fiche d'Épreuve</p>
-              <DialogTitle className="text-2xl font-black tracking-tight">Détails du Défi</DialogTitle>
+            <div className="flex justify-between items-center w-full">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">
+                  {isEditingQuiz ? "Édition du Défi" : "Fiche d'Épreuve"}
+                </p>
+                <DialogTitle className="text-2xl font-black tracking-tight">
+                  {isEditingQuiz ? "Harmonisation" : "Détails du Défi"}
+                </DialogTitle>
+              </div>
+              
+              {isEditingQuiz && (
+                <Button 
+                  variant="secondary" 
+                  onClick={handleAiGenerateForEdit} 
+                  disabled={isGenerating} 
+                  className="h-10 px-4 rounded-xl font-black text-[10px] uppercase gap-2 bg-primary/5"
+                >
+                  {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3 text-primary" />}
+                  Inspiration IA
+                </Button>
+              )}
             </div>
           </DialogHeader>
 
           {selectedQuizForView && (
             <div className="space-y-8 py-6">
-              <div className="p-6 bg-primary/5 rounded-[2rem] border border-primary/5">
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3">La Question</p>
-                <p className="text-xl font-black leading-tight tracking-tight">{selectedQuizForView.question}</p>
-              </div>
+              <AnimatePresence mode="wait">
+                {isEditingQuiz ? (
+                  <motion.div 
+                    key="edit-form"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="space-y-6"
+                  >
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">La Question</Label>
+                      <Textarea 
+                        className="min-h-[120px] rounded-2xl bg-primary/5 border-none text-lg font-bold p-6"
+                        value={editedQuiz?.question}
+                        onChange={e => setEditedQuiz({...editedQuiz, question: e.target.value})}
+                      />
+                    </div>
 
-              <div className="space-y-4">
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-40 px-2">Options de Résonance</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {selectedQuizForView.options.map((opt: string, idx: number) => {
-                    const isCorrect = idx === selectedQuizForView.correctIndex;
-                    return (
-                      <div 
-                        key={idx} 
-                        className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
-                          isCorrect 
-                            ? "bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400" 
-                            : "bg-background/40 border-primary/5 opacity-60"
-                        }`}
-                      >
-                        {isCorrect ? <CheckCircle2 className="h-5 w-5 shrink-0" /> : <Circle className="h-5 w-5 shrink-0 opacity-20" />}
-                        <span className="font-bold text-sm leading-tight">{opt}</span>
+                    <div className="space-y-4">
+                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Options de Résonance</Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {editedQuiz?.options.map((opt: string, idx: number) => (
+                          <div key={idx} className="relative group">
+                            <Input 
+                              className={`h-14 rounded-2xl bg-primary/5 border-none pl-12 font-bold ${editedQuiz.correctIndex === idx ? 'ring-2 ring-green-500/30' : ''}`}
+                              value={opt}
+                              onChange={e => {
+                                const newOpts = [...editedQuiz.options];
+                                newOpts[idx] = e.target.value;
+                                setEditedQuiz({...editedQuiz, options: newOpts});
+                              }}
+                            />
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                              <input 
+                                type="radio" 
+                                name="edit-correct" 
+                                checked={editedQuiz.correctIndex === idx} 
+                                onChange={() => { haptic.light(); setEditedQuiz({...editedQuiz, correctIndex: idx}); }}
+                                className="h-4 w-4 accent-primary"
+                              />
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
+                    </div>
 
-              <div className="flex items-center justify-between p-6 bg-background rounded-[2rem] border border-primary/5 shadow-inner">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
-                    <Zap className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Récompense</p>
-                    <p className="text-lg font-black">{selectedQuizForView.points} PTS <span className="text-[10px] opacity-30 tracking-normal">de Lumière</span></p>
-                  </div>
-                </div>
-                
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => {
-                    haptic.medium();
-                    deleteDoc(doc(db, "quizzes", selectedQuizForView.id));
-                    setSelectedQuizForView(null);
-                    toast({ title: "Défi supprimé", description: "L'épreuve a été retirée de la base." });
-                  }}
-                  className="h-12 w-12 rounded-2xl text-destructive hover:bg-destructive/5"
-                >
-                  <Trash2 className="h-5 w-5" />
-                </Button>
-              </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Intensité de la Lumière (Points)</Label>
+                      <Input 
+                        type="number"
+                        className="h-14 rounded-2xl bg-primary/5 border-none font-black text-xl text-center"
+                        value={editedQuiz?.points}
+                        onChange={e => setEditedQuiz({...editedQuiz, points: parseInt(e.target.value) || 0})}
+                      />
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    key="view-content"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="space-y-8"
+                  >
+                    <div className="p-6 bg-primary/5 rounded-[2rem] border border-primary/5 shadow-inner">
+                      <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3">La Question</p>
+                      <p className="text-xl font-black leading-tight tracking-tight">{selectedQuizForView.question}</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <p className="text-[10px] font-black uppercase tracking-widest opacity-40 px-2">Options de Résonance</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {selectedQuizForView.options.map((opt: string, idx: number) => {
+                          const isCorrect = idx === selectedQuizForView.correctIndex;
+                          return (
+                            <div 
+                              key={idx} 
+                              className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
+                                isCorrect 
+                                  ? "bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400" 
+                                  : "bg-background/40 border-primary/5 opacity-60"
+                              }`}
+                            >
+                              {isCorrect ? <CheckCircle2 className="h-5 w-5 shrink-0" /> : <Circle className="h-5 w-5 shrink-0 opacity-20" />}
+                              <span className="font-bold text-sm leading-tight">{opt}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-6 bg-background rounded-[2rem] border border-primary/5 shadow-inner">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
+                          <Zap className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Récompense</p>
+                          <p className="text-lg font-black">{selectedQuizForView.points} PTS <span className="text-[10px] opacity-30 tracking-normal">de Lumière</span></p>
+                        </div>
+                      </div>
+                      
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => {
+                          haptic.medium();
+                          deleteDoc(doc(db, "quizzes", selectedQuizForView.id));
+                          setSelectedQuizForView(null);
+                          toast({ title: "Défi supprimé", description: "L'épreuve a été retirée de la base." });
+                        }}
+                        className="h-12 w-12 rounded-2xl text-destructive hover:bg-destructive/5"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
 
-          <div className="pt-4">
-            <Button 
-              onClick={() => setSelectedQuizForView(null)}
-              className="w-full h-14 rounded-2xl font-black text-sm uppercase tracking-widest"
-            >
-              Fermer la Fiche
-            </Button>
+          <div className="pt-4 flex gap-3">
+            {isEditingQuiz ? (
+              <>
+                <Button 
+                  variant="outline" 
+                  onClick={handleCancelEdit}
+                  className="flex-1 h-14 rounded-2xl font-black text-xs uppercase tracking-widest gap-2"
+                >
+                  <X className="h-4 w-4" /> Annuler
+                </Button>
+                <Button 
+                  onClick={handleSaveEdit}
+                  disabled={isSubmitting}
+                  className="flex-[2] h-14 rounded-2xl font-black text-xs uppercase tracking-widest gap-2 shadow-xl shadow-primary/20"
+                >
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Sauvegarder
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button 
+                  variant="outline"
+                  onClick={() => setSelectedQuizForView(null)}
+                  className="flex-1 h-14 rounded-2xl font-black text-xs uppercase tracking-widest"
+                >
+                  Fermer
+                </Button>
+                <Button 
+                  onClick={handleStartEdit}
+                  className="flex-[2] h-14 rounded-2xl font-black text-xs uppercase tracking-widest gap-2 shadow-xl shadow-primary/20"
+                >
+                  <Edit3 className="h-4 w-4" /> Modifier le défi
+                </Button>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
