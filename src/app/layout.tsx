@@ -10,7 +10,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { InstallPwa } from "@/components/InstallPwa";
 import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
 import { BiometricLock } from "@/components/BiometricLock";
-import { PullToRefresh } from "@/components/PullToRefresh";
 import { doc, getDoc } from "firebase/firestore";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/Logo";
@@ -223,9 +222,6 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // On applique le PullToRefresh uniquement sur les pages de contenu pour éviter les conflits
-  const isContentPage = !["/", "/login", "/autoriser", "/offline"].includes(pathname);
-
   return (
     <>
       <AnimatePresence mode="wait">
@@ -239,11 +235,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
       </AnimatePresence>
       <ThemeSync />
       <BiometricLock />
-      {isContentPage ? (
-        <PullToRefresh>{children}</PullToRefresh>
-      ) : (
-        children
-      )}
+      {children}
     </>
   );
 }
