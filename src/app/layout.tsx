@@ -11,13 +11,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { InstallPwa } from "@/components/InstallPwa";
 import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
 import { BiometricLock } from "@/components/BiometricLock";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, orderBy, limit, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/Logo";
 import { usePathname, useRouter } from "next/navigation";
 import { PageTransition } from "@/components/PageTransition";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
+import { generateQuiz } from "@/ai/flows/generate-quiz-flow";
 
 function ThemeSync() {
   const { user } = useUser();
@@ -37,6 +38,68 @@ function ThemeSync() {
     };
     syncTheme();
   }, [user, db, setTheme, theme]);
+
+  return null;
+}
+
+/**
+ * @fileOverview Oracle Autonome. 
+ * Surveille le flux des quiz et déclenche une génération IA si le dernier défi date de plus de 30 minutes.
+ */
+function AutoQuizGenerator() {
+  const { user } = useUser();
+  const db = useFirestore();
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  useEffect(() => {
+    if (!user || !db) return;
+
+    const checkAndGenerate = async () => {
+      if (isGenerating) return;
+      
+      try {
+        const quizzesRef = collection(db, "quizzes");
+        const q = query(quizzesRef, orderBy("createdAt", "desc"), limit(1));
+        const querySnapshot = await getDocs(q);
+        
+        let shouldGenerate = false;
+        const now = Date.now();
+        const thirtyMinutes = 30 * 60 * 1000;
+
+        if (querySnapshot.empty) {
+          shouldGenerate = true;
+        } else {
+          const lastQuiz = querySnapshot.docs[0].data();
+          const lastCreatedAt = lastQuiz.createdAt?.toMillis() || 0;
+          if (now - lastCreatedAt > thirtyMinutes) {
+            shouldGenerate = true;
+          }
+        }
+
+        if (shouldGenerate) {
+          setIsGenerating(true);
+          const result = await generateQuiz({});
+          if (result) {
+            await addDoc(collection(db, "quizzes"), {
+              ...result,
+              createdAt: serverTimestamp(),
+              generatedAuto: true
+            });
+            console.log("[Oracle] Nouveau défi auto-généré pour l'éveil.");
+          }
+        }
+      } catch (error) {
+        console.error("[Oracle] Dissonance lors de l'auto-génération:", error);
+      } finally {
+        setIsGenerating(false);
+      }
+    };
+
+    // Vérification immédiate puis toutes les 5 minutes
+    checkAndGenerate();
+    const interval = setInterval(checkAndGenerate, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [user, db, isGenerating]);
 
   return null;
 }
@@ -246,6 +309,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
       </AnimatePresence>
       <ThemeSync />
       <BiometricLock />
+      <AutoQuizGenerator />
       
       {showNav && <Header />}
       
