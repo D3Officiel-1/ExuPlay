@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { FirebaseClientProvider, useUser, useFirestore, useDoc } from "@/firebase";
 import { Toaster } from "@/components/ui/toaster";
+import { ToastProvider } from "@/components/ui/toast";
 import { useEffect, useState, useMemo } from "react";
 import { WifiOff, ShieldAlert, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -383,11 +384,13 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <FirebaseErrorListener />
-            <SecurityWrapper>
-              {children}
-            </SecurityWrapper>
-            <Toaster />
+            <ToastProvider>
+              <FirebaseErrorListener />
+              <SecurityWrapper>
+                {children}
+              </SecurityWrapper>
+              <Toaster />
+            </ToastProvider>
           </ThemeProvider>
         </FirebaseClientProvider>
       </body>
