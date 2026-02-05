@@ -405,7 +405,7 @@ export default function HomePage() {
                               className="absolute inset-0 z-20 flex items-center justify-center"
                             >
                               <div className="text-center">
-                                <AnimatePresence mode="wait">
+                                <AnimatePresence initial={false}>
                                   {!showPointsPreview ? (
                                     <motion.button
                                       key="reveal-button"
@@ -440,7 +440,7 @@ export default function HomePage() {
                                       onPointerDown={handleLongPressStart}
                                       onPointerUp={handleLongPressEnd}
                                       onPointerLeave={handleLongPressEnd}
-                                      className="bg-primary text-primary-foreground h-16 px-12 rounded-2xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] flex items-center justify-center gap-3 cursor-default border border-white/10"
+                                      className="bg-primary text-primary-foreground h-16 px-12 rounded-2xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] flex items-center justify-center gap-3 cursor-default border border-white/10 overflow-hidden"
                                     >
                                       <motion.div
                                         animate={{ 
