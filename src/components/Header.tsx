@@ -12,6 +12,10 @@ import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 
+/**
+ * @fileOverview En-tête cinématique du Sanctuaire.
+ * Fusionne intelligemment le branding, les points de l'esprit et le système de notifications.
+ */
 export function Header() {
   const { user } = useUser();
   const db = useFirestore();
@@ -69,48 +73,44 @@ export function Header() {
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
               exit={{ opacity: 0, y: -15, filter: "blur(10px)" }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full flex justify-center z-50"
+              className={cn(
+                "w-full flex items-center justify-between gap-4 z-50 px-2",
+                activeToast.variant === 'destructive' ? "text-destructive" : "text-foreground"
+              )}
             >
-              <div className={cn(
-                "w-full max-w-xl flex items-center justify-between gap-4 p-3 rounded-[1.5rem] border shadow-2xl backdrop-blur-2xl",
-                activeToast.variant === 'destructive' 
-                  ? "bg-destructive/10 border-destructive/20 text-destructive" 
-                  : "bg-card/80 border-primary/10 text-foreground"
-              )}>
-                <div className="flex items-center gap-3 pl-2">
-                  <div className={cn(
-                    "h-8 w-8 rounded-full flex items-center justify-center",
-                    activeToast.variant === 'destructive' ? "bg-destructive/20" : "bg-primary/10"
-                  )}>
-                    {activeToast.variant === 'destructive' ? (
-                      <AlertTriangle className="h-4 w-4" />
-                    ) : (
-                      <Bell className="h-4 w-4 text-primary" />
-                    )}
-                  </div>
-                  <div className="flex flex-col">
-                    {activeToast.title && (
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em] leading-none mb-0.5">
-                        {activeToast.title}
-                      </span>
-                    )}
-                    {activeToast.description && (
-                      <span className="text-[9px] font-medium opacity-60 line-clamp-1 leading-tight">
-                        {activeToast.description}
-                      </span>
-                    )}
-                  </div>
+              <div className="flex items-center gap-3 pl-2">
+                <div className={cn(
+                  "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
+                  activeToast.variant === 'destructive' ? "bg-destructive/20" : "bg-primary/10"
+                )}>
+                  {activeToast.variant === 'destructive' ? (
+                    <AlertTriangle className="h-4 w-4" />
+                  ) : (
+                    <Bell className="h-4 w-4 text-primary" />
+                  )}
                 </div>
+                <div className="flex flex-col">
+                  {activeToast.title && (
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] leading-none mb-0.5">
+                      {activeToast.title}
+                    </span>
+                  )}
+                  {activeToast.description && (
+                    <span className="text-[9px] font-medium opacity-60 line-clamp-1 leading-tight">
+                      {activeToast.description}
+                    </span>
+                  )}
+                </div>
+              </div>
 
-                <div className="flex items-center gap-2">
-                  {activeToast.action}
-                  <button 
-                    onClick={() => dismiss(activeToast.id)}
-                    className="h-8 w-8 rounded-full bg-primary/5 flex items-center justify-center hover:bg-primary/10 transition-colors"
-                  >
-                    <X className="h-4 w-4 opacity-40" />
-                  </button>
-                </div>
+              <div className="flex items-center gap-2">
+                {activeToast.action}
+                <button 
+                  onClick={() => dismiss(activeToast.id)}
+                  className="h-8 w-8 rounded-full bg-primary/5 flex items-center justify-center hover:bg-primary/10 transition-colors"
+                >
+                  <X className="h-4 w-4 opacity-40" />
+                </button>
               </div>
             </motion.div>
           ) : (
