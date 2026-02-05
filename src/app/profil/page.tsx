@@ -15,8 +15,6 @@ import {
   limit 
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { Header } from "@/components/Header";
-import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -277,8 +275,6 @@ export default function ProfilPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
-      <Header />
-      
       <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
         <motion.div 
           style={{ opacity: mainProfileOpacity, scale: mainProfileScale }}
@@ -653,8 +649,6 @@ export default function ProfilPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <BottomNav />
     </div>
   );
 }

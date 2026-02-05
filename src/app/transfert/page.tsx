@@ -42,7 +42,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
 import { useTheme } from "next-themes";
 import { sendPushNotification } from "@/app/actions/notifications";
-import Image from "next/image";
 import { haptic } from "@/lib/haptics";
 
 export default function TransfertPage() {

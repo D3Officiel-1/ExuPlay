@@ -16,6 +16,8 @@ import { useTheme } from "next-themes";
 import { Logo } from "@/components/Logo";
 import { usePathname, useRouter } from "next/navigation";
 import { PageTransition } from "@/components/PageTransition";
+import { Header } from "@/components/Header";
+import { BottomNav } from "@/components/BottomNav";
 
 function ThemeSync() {
   const { user } = useUser();
@@ -219,6 +221,11 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const showOffline = isOffline && !isOfflineAllowedPath;
 
   const isProtectedPath = !["/", "/login", "/offline", "/autoriser"].includes(pathname);
+  
+  // Logic for persistent Navigation UI
+  const showNav = user && !["/", "/login", "/autoriser", "/offline", "/transfert"].includes(pathname);
+  const showBottomNav = user && !["/", "/login", "/autoriser", "/offline", "/transfert", "/echange"].includes(pathname);
+
   if (isAuthLoading && isProtectedPath) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -240,9 +247,14 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
       </AnimatePresence>
       <ThemeSync />
       <BiometricLock />
+      
+      {showNav && <Header />}
+      
       <PageTransition>
         {children}
       </PageTransition>
+
+      {showBottomNav && <BottomNav />}
     </>
   );
 }

@@ -17,8 +17,6 @@ import {
   limit
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { Header } from "@/components/Header";
-import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -260,8 +258,6 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-24">
-      <Header />
-      
       <main className="flex-1 p-4 pt-20 space-y-6 md:space-y-8 max-w-4xl mx-auto w-full">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.push("/profil")} className="rounded-full h-10 w-10 md:h-12 md:w-12">
@@ -459,8 +455,6 @@ export default function AdminPage() {
           </TabsContent>
         </Tabs>
       </main>
-
-      <BottomNav />
     </div>
   );
 }

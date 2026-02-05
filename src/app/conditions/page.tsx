@@ -2,8 +2,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Header } from "@/components/Header";
-import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronLeft, Scale, Shield, Users, BookOpen, Zap } from "lucide-react";
@@ -57,8 +55,6 @@ export default function ConditionsPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
-      <Header />
-      
       <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
         <div className="flex items-center gap-4">
           <Button 
@@ -107,8 +103,6 @@ export default function ConditionsPage() {
           </motion.div>
         </motion.div>
       </main>
-
-      <BottomNav />
     </div>
   );
 }

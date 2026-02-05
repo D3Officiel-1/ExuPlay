@@ -19,15 +19,9 @@ import {
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { BottomNav } from "@/components/BottomNav";
-import { Header } from "@/components/Header";
 import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, Brain, Timer, Zap, Users, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
-
-/**
- * @fileOverview Un masque de question ultra-stylisé avec des animations complexes pour la mise à jour majeure.
- */
 
 export function SpoilerOverlay() {
   return (
@@ -292,8 +286,7 @@ export default function HomePage() {
 
   if (!allQuizzes || sessionQuizzes.length === 0) {
     return (
-      <div className="min-h-screen bg-background flex flex-col pb-32">
-        <Header />
+      <div className="min-h-screen bg-background flex flex-col">
         <main className="flex-1 flex flex-col items-center justify-center p-6 pt-24 space-y-10">
           <div className="relative">
             <div className="absolute inset-0 bg-primary/10 blur-3xl rounded-full scale-150" />
@@ -313,7 +306,6 @@ export default function HomePage() {
             Consulter mon Sceau
           </Button>
         </main>
-        <BottomNav />
       </div>
     );
   }
@@ -322,8 +314,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
-      <Header />
-      
       <main className="flex-1 flex flex-col items-center justify-center p-6 pt-24 space-y-6">
         <GlobalActivityTicker />
 
@@ -516,8 +506,6 @@ export default function HomePage() {
           </AnimatePresence>
         </div>
       </main>
-
-      <BottomNav />
     </div>
   );
 }

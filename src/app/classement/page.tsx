@@ -5,8 +5,6 @@ import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { useFirestore, useCollection, useUser } from "@/firebase";
 import { collection, query, orderBy, limit } from "firebase/firestore";
-import { Header } from "@/components/Header";
-import { BottomNav } from "@/components/BottomNav";
 import { Card, CardContent } from "@/components/ui/card";
 import { Trophy, Medal, Star, User as UserIcon, Loader2, Zap } from "lucide-react";
 import Image from "next/image";
@@ -51,8 +49,6 @@ export default function ClassementPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
-      <Header />
-      
       <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
         <div className="space-y-1">
           <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Hiérarchie</p>
@@ -122,8 +118,6 @@ export default function ClassementPage() {
           })}
         </motion.div>
       </main>
-
-      <BottomNav />
     </div>
   );
 }
