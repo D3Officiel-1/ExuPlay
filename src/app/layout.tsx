@@ -1,3 +1,4 @@
+
 "use client";
 
 import "./globals.css";
@@ -194,8 +195,12 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     window.addEventListener('offline', handleOffline);
     setIsOffline(!navigator.onLine);
 
+    // On déclenche la détection PWA après une petite tempo et si l'utilisateur est connecté sur une page interne
     if (user && !["/", "/login", "/offline", "/autoriser"].includes(pathname)) {
-      setShowPwaPrompt(true);
+      const timer = setTimeout(() => {
+        setShowPwaPrompt(true);
+      }, 3000);
+      return () => clearTimeout(timer);
     }
 
     return () => {
@@ -259,7 +264,6 @@ export default function RootLayout({
   return (
     <html lang="fr" suppressHydrationWarning>
       <head>
-        <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Exu Play" />
