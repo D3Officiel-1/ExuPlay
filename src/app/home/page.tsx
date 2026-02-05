@@ -180,7 +180,6 @@ export default function HomePage() {
   const handleLongPressStart = () => {
     if (updating || quizStarted) return;
     longPressTimer.current = setTimeout(() => {
-      haptic.light(); // Vibration optique lors du basculement
       setShowPointsPreview(prev => !prev);
     }, 600);
   };
@@ -410,7 +409,6 @@ export default function HomePage() {
                                       layoutId="reveal-element"
                                       onContextMenu={(e) => {
                                         e.preventDefault();
-                                        haptic.light(); // Vibration optique au clic droit
                                         setShowPointsPreview(true);
                                       }}
                                       onPointerDown={handleLongPressStart}
@@ -436,7 +434,6 @@ export default function HomePage() {
                                       layoutId="reveal-element"
                                       onContextMenu={(e) => {
                                         e.preventDefault();
-                                        haptic.light(); // Vibration optique lors de la désélection
                                         setShowPointsPreview(false);
                                       }}
                                       onPointerDown={handleLongPressStart}
@@ -448,15 +445,7 @@ export default function HomePage() {
                                       exit={{ opacity: 0, scale: 0.8 }}
                                       transition={transmutationTransition}
                                     >
-                                      <motion.div
-                                        animate={{ 
-                                          scale: [1, 1.2, 1],
-                                          opacity: [0.5, 1, 0.5]
-                                        }}
-                                        transition={{ duration: 2, repeat: Infinity }}
-                                      >
-                                        <Zap className="h-5 w-5 text-yellow-400 fill-current" />
-                                      </motion.div>
+                                      <Zap className="h-5 w-5 text-yellow-400 fill-current" />
                                       <div className="flex items-baseline gap-1">
                                         <p className="text-2xl font-black tabular-nums tracking-tighter">+{question?.points || 100}</p>
                                         <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-40">PTS</p>
