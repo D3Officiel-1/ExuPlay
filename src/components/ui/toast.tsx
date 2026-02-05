@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -25,13 +26,13 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full max-w-sm items-center justify-between space-x-4 overflow-hidden rounded-full border p-4 pr-12 shadow-[0_20px_50px_rgba(0,0,0,0.2)] bg-card/60 backdrop-blur-3xl transition-all",
+  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-2xl p-3 transition-all",
   {
     variants: {
       variant: {
-        default: "border-primary/10 text-foreground",
+        default: "bg-transparent text-foreground",
         destructive:
-          "border-destructive/20 bg-destructive/10 text-destructive",
+          "bg-destructive/10 text-destructive",
       },
     },
     defaultVariants: {
@@ -77,7 +78,7 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      "absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-2 text-foreground/30 transition-all hover:text-foreground hover:bg-primary/5 focus:opacity-100 focus:outline-none focus:ring-2",
+      "rounded-full p-2 text-foreground/30 transition-all hover:text-foreground hover:bg-primary/5 focus:opacity-100 focus:outline-none focus:ring-2",
       className
     )}
     toast-close=""
@@ -94,7 +95,7 @@ const ToastTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Title
     ref={ref}
-    className={cn("text-[10px] font-black uppercase tracking-[0.2em]", className)}
+    className={cn("text-[10px] font-black uppercase tracking-[0.2em] leading-none", className)}
     {...props}
   />
 ))
@@ -106,7 +107,7 @@ const ToastDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Description
     ref={ref}
-    className={cn("text-xs font-medium opacity-60 line-clamp-1", className)}
+    className={cn("text-[9px] font-medium opacity-60 line-clamp-1 leading-tight", className)}
     {...props}
   />
 ))
