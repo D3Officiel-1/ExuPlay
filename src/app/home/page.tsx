@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -441,8 +440,8 @@ export default function HomePage() {
                                       onPointerDown={handleLongPressStart}
                                       onPointerUp={handleLongPressEnd}
                                       onPointerLeave={handleLongPressEnd}
-                                      onClick={handleStartChallenge}
-                                      className="bg-primary text-primary-foreground p-6 rounded-[2rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] flex flex-col items-center justify-center gap-3 cursor-pointer border border-white/10 min-w-[200px]"
+                                      // Clic normal désactivé sur la carte des points pour forcer le retour au bouton "Dévoiler"
+                                      className="bg-primary text-primary-foreground p-6 rounded-[2rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] flex flex-col items-center justify-center gap-3 cursor-default border border-white/10 min-w-[200px]"
                                     >
                                       <motion.div
                                         animate={{ 
