@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 /**
  * @fileOverview Oracle de Flux.
  * Overlay cinématique plein écran qui s'affiche lors de la validation ou du rejet d'une conversion.
- * Optimisé pour s'adapter à toutes les tailles d'écran sans débordement.
+ * Optimisé pour s'adapter à toutes les tailles d'écran sans débordement et bloque le scroll de fond.
  */
 
 export function SuccessfulExchangeOverlay() {
@@ -45,6 +45,18 @@ export function SuccessfulExchangeOverlay() {
   }, [db, user?.uid]);
 
   const { data: processedExchanges } = useCollection(exchangesQuery);
+
+  // Gestion du verrouillage du scroll en arrière-plan
+  useEffect(() => {
+    if (activeExchange) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [activeExchange]);
 
   useEffect(() => {
     if (!isReady || !processedExchanges || processedExchanges.length === 0 || activeExchange) return;
@@ -184,7 +196,7 @@ export function SuccessfulExchangeOverlay() {
                     "text-5xl sm:text-6xl font-black tabular-nums tracking-tighter",
                     isRejected ? "text-red-500" : "text-primary"
                   )}>
-                    {activeExchange.amount?.toLocaleString()}
+                    {activeExchange?.amount?.toLocaleString()}
                   </span>
                   <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest opacity-30">Francs CFA</p>
                 </div>
@@ -200,7 +212,7 @@ export function SuccessfulExchangeOverlay() {
                     isRejected ? "bg-red-500/5 border-red-500/5" : "bg-primary/5 border-primary/5"
                   )}>
                     <Smartphone className="h-3 w-3 opacity-40" />
-                    <span className="text-[11px] sm:text-xs font-black tracking-tight">{activeExchange.phoneNumber}</span>
+                    <span className="text-[11px] sm:text-xs font-black tracking-tight">{activeExchange?.phoneNumber}</span>
                   </div>
                   <p className="text-[8px] sm:text-[9px] font-bold opacity-30 uppercase tracking-[0.1em] px-4 leading-relaxed">
                     {isRejected 
