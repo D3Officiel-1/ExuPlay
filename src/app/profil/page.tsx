@@ -23,7 +23,6 @@ import {
   Phone, 
   Gift, 
   Copy, 
-  Trophy, 
   Calendar,
   Camera,
   Loader2,
@@ -42,7 +41,6 @@ import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
-import { FullscreenImageOverlay } from "@/components/FullscreenImageOverlay";
 import { haptic } from "@/lib/haptics";
 
 export default function ProfilPage() {
@@ -53,7 +51,6 @@ export default function ProfilPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [localProfileImage, setLocalProfileImage] = useState<string | null>(null);
-  const [isFullscreenImageOpen, setIsFullscreenImageOpen] = useState(false);
   
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedUsername, setEditedUsername] = useState("");
@@ -290,10 +287,6 @@ export default function ProfilPage() {
             <div className="absolute inset-0 bg-primary/10 blur-3xl rounded-full scale-150" />
             <button 
               onClick={handleImageClick}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                if (currentImage) setIsFullscreenImageOpen(true);
-              }}
               className="relative h-28 w-28 bg-card rounded-[2.5rem] flex items-center justify-center border border-primary/10 shadow-2xl mx-auto overflow-hidden group transition-transform active:scale-95"
             >
               {currentImage ? (
@@ -505,8 +498,6 @@ export default function ProfilPage() {
           </Card>
         </motion.div>
       </main>
-
-      <FullscreenImageOverlay src={currentImage} isOpen={isFullscreenImageOpen} onClose={() => setIsFullscreenImageOpen(false)} />
     </div>
   );
 }
