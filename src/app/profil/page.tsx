@@ -19,6 +19,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { 
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
+import { 
   User as UserIcon, 
   Phone, 
   Gift, 
@@ -49,8 +53,10 @@ export default function ProfilPage() {
   const router = useRouter();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   
   const [localProfileImage, setLocalProfileImage] = useState<string | null>(null);
+  const [isFullImageOpen, setIsFullImageOpen] = useState(false);
   
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedUsername, setEditedUsername] = useState("");
@@ -156,6 +162,19 @@ export default function ProfilPage() {
   const handleImageClick = () => {
     haptic.light();
     fileInputRef.current?.click();
+  };
+
+  const handleLongPressStart = () => {
+    longPressTimer.current = setTimeout(() => {
+      haptic.medium();
+      setIsFullImageOpen(true);
+    }, 600);
+  };
+
+  const handleLongPressEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -287,6 +306,14 @@ export default function ProfilPage() {
             <div className="absolute inset-0 bg-primary/10 blur-3xl rounded-full scale-150" />
             <button 
               onClick={handleImageClick}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                haptic.medium();
+                setIsFullImageOpen(true);
+              }}
+              onPointerDown={handleLongPressStart}
+              onPointerUp={handleLongPressEnd}
+              onPointerLeave={handleLongPressEnd}
               className="relative h-28 w-28 bg-card rounded-[2.5rem] flex items-center justify-center border border-primary/10 shadow-2xl mx-auto overflow-hidden group transition-transform active:scale-95"
             >
               {currentImage ? (
@@ -498,6 +525,46 @@ export default function ProfilPage() {
           </Card>
         </motion.div>
       </main>
+
+      {/* Dialog d'affichage de la photo en plein écran */}
+      <Dialog open={isFullImageOpen} onOpenChange={setIsFullImageOpen}>
+        <DialogContent className="max-w-[95vw] sm:max-w-xl bg-transparent border-none p-0 overflow-hidden shadow-none ring-0 focus:outline-none">
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0, filter: "blur(20px)" }}
+            animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
+            exit={{ scale: 0.9, opacity: 0, filter: "blur(20px)" }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="relative w-full aspect-square bg-card/20 backdrop-blur-3xl rounded-[3rem] border border-white/10 shadow-2xl overflow-hidden"
+          >
+            {currentImage ? (
+              <Image 
+                src={currentImage} 
+                alt="Portrait" 
+                fill 
+                className="object-cover"
+                priority
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <UserIcon className="h-32 w-32 text-primary opacity-20" />
+              </div>
+            )}
+            
+            <div className="absolute top-6 left-6 flex items-center gap-3">
+              <div className="bg-background/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
+                <p className="text-[10px] font-black uppercase tracking-widest">@{profile?.username}</p>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => setIsFullImageOpen(false)}
+              className="absolute top-6 right-6 h-10 w-10 bg-background/40 backdrop-blur-md rounded-full border border-white/10 flex items-center justify-center hover:bg-background/60 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </motion.div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
