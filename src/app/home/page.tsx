@@ -19,9 +19,10 @@ import {
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, Brain, Timer, Zap, Users, Star } from "lucide-react";
+import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, Brain, Timer, Zap, Users, Star, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
+import { useToast } from "@/hooks/use-toast";
 
 export function SpoilerOverlay() {
   return (
@@ -98,6 +99,7 @@ function GlobalActivityTicker() {
 
 export default function HomePage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [sessionQuizzes, setSessionQuizzes] = useState<any[]>([]);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -187,9 +189,22 @@ export default function HomePage() {
     
     const currentQuiz = sessionQuizzes[currentQuestionIdx];
     const isCorrect = index === currentQuiz.correctIndex;
+    const isTimeout = index === -1;
     const pointsEarned = isCorrect ? (currentQuiz.points || 100) : 0;
 
-    if (isCorrect) haptic.success(); else haptic.error();
+    // Logique de pénalité en cas de temps écoulé
+    let penalty = 0;
+    if (isTimeout && profile && (profile.totalPoints || 0) > 10) {
+      penalty = -10;
+      toast({
+        variant: "destructive",
+        title: "Temps Épuisé",
+        description: "Votre esprit a hésité. -10 PTS de Lumière.",
+      });
+    }
+
+    if (isCorrect) haptic.success(); 
+    else haptic.error();
 
     setSelectedOption(index);
     setIsAnswered(true);
@@ -208,17 +223,20 @@ export default function HomePage() {
         status: 'completed',
         score: pointsEarned,
         userAnswerIndex: index,
+        isTimeout: isTimeout,
         updatedAt: serverTimestamp()
       });
 
-      if (pointsEarned > 0) {
+      const totalChange = pointsEarned + penalty;
+      
+      if (totalChange !== 0) {
         const updatePayload: any = {
-          totalPoints: increment(pointsEarned),
+          totalPoints: increment(totalChange),
           lastQuizAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         };
 
-        if (profile && profile.referredBy && !profile.referralRewardClaimed) {
+        if (pointsEarned > 0 && profile && profile.referredBy && !profile.referralRewardClaimed) {
           const newTotal = (profile.totalPoints || 0) + pointsEarned;
           if (newTotal >= 100) {
             const referrersQuery = query(
