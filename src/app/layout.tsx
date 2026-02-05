@@ -354,14 +354,21 @@ export default function RootLayout({
       }
     };
 
+    // Interdire totalement la sélection de texte au niveau système
+    const handleSelectStart = (e: Event) => {
+      e.preventDefault();
+    };
+
     window.addEventListener('contextmenu', handleContextMenu);
     window.addEventListener('touchstart', handleTouchStart, { passive: false });
     window.addEventListener('wheel', handleWheel, { passive: false });
+    window.addEventListener('selectstart', handleSelectStart);
     
     return () => {
       window.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('selectstart', handleSelectStart);
     };
   }, []);
 
