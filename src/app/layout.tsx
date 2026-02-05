@@ -1,4 +1,3 @@
-
 "use client";
 
 import "./globals.css";
@@ -95,7 +94,6 @@ function AutoQuizGenerator() {
       }
     };
 
-    // Vérification immédiate puis toutes les 5 minutes
     checkAndGenerate();
     const interval = setInterval(checkAndGenerate, 5 * 60 * 1000);
     return () => clearInterval(interval);
@@ -336,6 +334,17 @@ export default function RootLayout({
         );
       });
     }
+
+    // Protection globale contre le menu contextuel (système)
+    // Cela permet d'utiliser l'appui prolongé pour les interactions de l'app sans menu parasite.
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener('contextmenu', handleContextMenu);
+    
+    return () => {
+      window.removeEventListener('contextmenu', handleContextMenu);
+    };
   }, []);
 
   return (
@@ -349,6 +358,13 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="antialiased font-sans overflow-x-hidden">
+        {/* Texture de bruit numérique globale */}
+        <div className="fixed inset-0 pointer-events-none z-[9999] opacity-[0.03] dark:opacity-[0.05]" 
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+            backgroundSize: "150px 150px",
+          }}
+        />
         <FirebaseClientProvider>
           <ThemeProvider
             attribute="class"
