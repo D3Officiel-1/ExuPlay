@@ -189,7 +189,7 @@ export default function HomePage() {
   const handleLongPressStart = () => {
     if (updating || quizStarted) return;
     longPressTimer.current = setTimeout(() => {
-      haptic.light();
+      haptic.light(); // Vibration optique lors du basculement
       setShowPointsPreview(prev => !prev);
     }, 600);
   };
@@ -347,6 +347,13 @@ export default function HomePage() {
 
   const question = sessionQuizzes[currentQuestionIdx];
 
+  const transmutationTransition = {
+    type: "spring",
+    stiffness: 300,
+    damping: 25,
+    mass: 0.8
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
       <main className="flex-1 flex flex-col items-center justify-center p-6 pt-24 space-y-6">
@@ -405,14 +412,14 @@ export default function HomePage() {
                               className="absolute inset-0 z-20 flex items-center justify-center"
                             >
                               <div className="text-center">
-                                <AnimatePresence mode="wait" initial={false}>
+                                <AnimatePresence initial={false}>
                                   {!showPointsPreview ? (
                                     <motion.button
                                       key="reveal-button"
                                       layoutId="reveal-element"
                                       onContextMenu={(e) => {
                                         e.preventDefault();
-                                        haptic.light();
+                                        haptic.light(); // Vibration optique au clic droit
                                         setShowPointsPreview(true);
                                       }}
                                       onPointerDown={handleLongPressStart}
@@ -424,7 +431,7 @@ export default function HomePage() {
                                       initial={{ opacity: 0, scale: 0.8 }}
                                       animate={{ opacity: 1, scale: 1 }}
                                       exit={{ opacity: 0, scale: 0.8 }}
-                                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                                      transition={transmutationTransition}
                                     >
                                       {updating ? (
                                         <Loader2 className="h-5 w-5 animate-spin" />
@@ -438,7 +445,7 @@ export default function HomePage() {
                                       layoutId="reveal-element"
                                       onContextMenu={(e) => {
                                         e.preventDefault();
-                                        haptic.light();
+                                        haptic.light(); // Vibration optique lors de la désélection
                                         setShowPointsPreview(false);
                                       }}
                                       onPointerDown={handleLongPressStart}
@@ -448,7 +455,7 @@ export default function HomePage() {
                                       initial={{ opacity: 0, scale: 0.8 }}
                                       animate={{ opacity: 1, scale: 1 }}
                                       exit={{ opacity: 0, scale: 0.8 }}
-                                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                                      transition={transmutationTransition}
                                     >
                                       <motion.div
                                         animate={{ 
@@ -486,7 +493,7 @@ export default function HomePage() {
                             onClick={() => handleAnswer(idx)}
                             disabled={isAnswered || !quizStarted || updating}
                             className={`
-                              relative w-full p-4 sm:p-6 rounded-2xl text-center font-black transition-all duration-500 flex flex-col items-center justify-center border min-h-[100px] sm:min-h-[120px] overflow-hidden
+                              relative w-full p-4 sm:p-6 rounded-2xl text-center font-black transition-all duration-500 flex flex-col items-center justify-center border min-h-[120px] sm:min-h-[140px] overflow-hidden
                               ${!isAnswered 
                                 ? "bg-background/20 border-primary/5" 
                                 : isCorrect 
@@ -496,7 +503,7 @@ export default function HomePage() {
                                     : "bg-background/10 border-transparent opacity-20 scale-95"}
                             `}
                           >
-                            <span className="text-sm sm:text-xl leading-tight relative z-10">{option}</span>
+                            <span className="text-lg sm:text-2xl leading-tight relative z-10">{option}</span>
                             <div className="absolute top-3 right-3 z-10">
                               {isAnswered && isCorrect && <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />}
                               {isAnswered && isSelected && !isCorrect && <XCircle className="h-4 w-4 sm:h-5 sm:w-5" />}
