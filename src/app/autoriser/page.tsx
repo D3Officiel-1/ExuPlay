@@ -115,22 +115,39 @@ export default function AutoriserPage() {
     setLoading(true);
     try {
       const permission = await Notification.requestPermission();
+      
+      let token = null;
       if (permission === "granted") {
-        const messaging = getMessaging(app);
-        const token = await getToken(messaging, { vapidKey: VAPID_KEY });
-        if (user) {
-          await updateDoc(doc(db, "users", user.uid), {
-            fcmToken: token || null,
-            notificationsEnabled: true,
-            updatedAt: serverTimestamp()
-          });
+        try {
+          const messaging = getMessaging(app);
+          token = await getToken(messaging, { vapidKey: VAPID_KEY });
+        } catch (tokenErr) {
+          console.warn("Échec de récupération du token FCM:", tokenErr);
+          // On continue quand même car la permission a été accordée
         }
+      }
+
+      if (user) {
+        await updateDoc(doc(db, "users", user.uid), {
+          fcmToken: token,
+          notificationsEnabled: true, // On marque l'étape comme faite quoi qu'il arrive
+          updatedAt: serverTimestamp()
+        });
+      }
+
+      if (permission === "granted") {
         toast({ title: "Notifications activées", description: "Liaison établie." });
       } else {
-        if (user) await updateDoc(doc(db, "users", user.uid), { notificationsEnabled: true });
+        toast({ title: "Étape complétée", description: "Vous pourrez activer les notifications plus tard dans les réglages." });
       }
-      refreshUserDataAndStep();
+
+      setTimeout(() => refreshUserDataAndStep(), 1000);
     } catch (error) {
+      console.error("Erreur notifications:", error);
+      // En cas d'erreur fatale, on tente quand même de passer à l'étape suivante si possible
+      if (user) {
+        await updateDoc(doc(db, "users", user.uid), { notificationsEnabled: true });
+      }
       refreshUserDataAndStep();
     } finally {
       setLoading(false);
@@ -148,14 +165,19 @@ export default function AutoriserPage() {
           });
         }
         toast({ title: "Position partagée", description: "Ancrage réussi." });
-        refreshUserDataAndStep();
-        setLoading(false);
+        setTimeout(() => refreshUserDataAndStep(), 1000);
       },
-      async () => {
-        if (user) await updateDoc(doc(db, "users", user.uid), { locationAuthorized: true });
+      async (err) => {
+        console.warn("Localisation refusée ou indisponible:", err);
+        if (user) {
+          await updateDoc(doc(db, "users", user.uid), {
+            locationAuthorized: true, // On marque comme fait pour laisser entrer
+            updatedAt: serverTimestamp()
+          });
+        }
         refreshUserDataAndStep();
-        setLoading(false);
-      }
+      },
+      { timeout: 5000 }
     );
   };
 
