@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -102,7 +101,7 @@ export function SuccessfulExchangeOverlay() {
             transition: { duration: 0.8, ease: "easeIn" }
           }}
           className={cn(
-            "fixed inset-0 z-[3000] backdrop-blur-[40px] overflow-y-auto",
+            "fixed inset-0 z-[10000] backdrop-blur-[40px] overflow-y-auto",
             isRejected ? "bg-destructive/10" : "bg-background/80"
           )}
         >
