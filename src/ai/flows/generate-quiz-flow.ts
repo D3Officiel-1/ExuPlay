@@ -1,4 +1,3 @@
-
 'use server';
 
 /**
@@ -20,7 +19,7 @@ const GenerateQuizOutputSchema = z.object({
   question: z.string().describe('La question concise et complexe générée'),
   options: z.array(z.string()).length(4).describe('Quatre options de réponse précises et trompeuses'),
   correctIndex: z.number().min(0).max(3).describe('L\'index de la réponse exacte (0-3)'),
-  points: z.number().min(1).max(100).describe('Le nombre de points attribués, le plus petit possible en fonction de la complexité (max 100)'),
+  points: z.number().min(0).max(25).describe('Le nombre de points attribués selon la complexité (max 25)'),
 });
 
 export type GenerateQuizOutput = z.infer<typeof GenerateQuizOutputSchema>;
@@ -32,13 +31,16 @@ const prompt = ai.definePrompt({
   prompt: `Tu es l'Oracle de l'Inconnu, expert absolu de la Terre d'Éburnie. Ta mission est de générer une épreuve de savoir sur la Côte d'Ivoire.
   
   Instructions impératives :
-  1. La question doit porter EXCLUSIVEMENT sur la Côte d'Ivoire (Vie, Culture, Phénomènes de société, Politique, Économie, Stars, Joueurs, Artistes, Dirigeants).
-  2. La question doit être en Français et extrêmement CONCISE (maximum 12-15 mots).
-  3. La difficulté doit être maximale : cherche le détail technique, le chiffre précis ou le fait historique que seul un expert ivoirien absolu connaîtrait.
-  4. Génère de manière autonome un sujet aléatoire parmi les domaines cités, sans assistance externe.
-  5. Les 4 options de réponse doivent être extrêmement plausibles, précises et proches (chiffres exacts, noms similaires) pour induire en erreur.
+  1. La question doit porter EXCLUSIVEMENT sur la Côte d'Ivoire.
+  2. Sujets prioritaires : 
+     - Sociétés Ivoiriennes (CIE, SODECI, Orange CI, SIR, SIFCA, etc. : dates de création, dirigeants historiques, chiffres clés).
+     - Équipe Nationale de Football (Les Éléphants, CAN, joueurs de légende, statistiques de matchs historiques, records).
+     - Culture, Politique, Économie, Stars et Dirigeants.
+  3. La question doit être en Français et extrêmement CONCISE (maximum 12-15 mots).
+  4. La difficulté doit être maximale : cherche le détail technique ou le fait historique que seul un expert ivoirien absolu connaîtrait.
+  5. Les 4 options de réponse doivent être extrêmement plausibles, précises et proches pour induire en erreur.
   6. Définis l'index correct (0-3).
-  7. Attribue un nombre de points (champ 'points') proportionnel à la difficulté, mais garde-le le plus PETIT possible sans JAMAIS dépasser 100 pts.
+  7. Attribue un nombre de points (champ 'points') de 0 à 25 proportionnel à la difficulté. 25 est réservé aux questions quasi-impossibles.
   8. Ton froid, direct et chirurgical.`,
 });
 
