@@ -12,6 +12,7 @@ import { InstallPwa } from "@/components/InstallPwa";
 import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
 import { IncomingTransferOverlay } from "@/components/IncomingTransferOverlay";
 import { BiometricLock } from "@/components/BiometricLock";
+import { PullToRefresh } from "@/components/PullToRefresh";
 import { doc, getDoc } from "firebase/firestore";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/Logo";
@@ -224,6 +225,9 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Les chemins publics ou utilitaires n'ont pas besoin de pull-to-refresh
+  const isUtilityPath = ["/", "/login", "/autoriser", "/offline"].includes(pathname);
+
   return (
     <>
       <AnimatePresence mode="wait">
@@ -238,7 +242,13 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
       <ThemeSync />
       <BiometricLock />
       <IncomingTransferOverlay />
-      {children}
+      {isUtilityPath ? (
+        children
+      ) : (
+        <PullToRefresh>
+          {children}
+        </PullToRefresh>
+      )}
     </>
   );
 }
