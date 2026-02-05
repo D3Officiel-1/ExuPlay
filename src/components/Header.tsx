@@ -68,7 +68,7 @@ export function Header() {
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
               exit={{ opacity: 0, y: -10, filter: "blur(10px)" }}
               transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full flex justify-center"
+              className="w-full flex justify-center relative z-50"
             >
               {toasts.map(({ id, title, description, action, ...props }) => (
                 <Toast key={id} {...props} className="bg-primary/5 border-none shadow-none w-full max-w-xl">
