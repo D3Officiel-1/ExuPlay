@@ -257,8 +257,25 @@ export default function TransfertPage() {
       const recipientSnap = await getDoc(recipientRef);
       
       if (recipientSnap.exists()) {
-        haptic.success();
         const data = recipientSnap.data();
+
+        // SÉCURITÉ : Blocage transfert vers filleul non éveillé
+        const isFilleul = data.referredBy === profile?.referralCode;
+        const isAwakened = data.referralRewardClaimed === true;
+
+        if (isFilleul && !isAwakened) {
+          haptic.error();
+          setErrorMessage("Éveil requis (100 PTS quiz)");
+          setValidationStatus('error');
+          setTimeout(() => {
+            setValidationStatus('idle');
+            setErrorMessage("");
+            setActiveTab("scan");
+          }, 3500);
+          return;
+        }
+
+        haptic.success();
         setRecipient({ id: decodedText, ...data });
         setValidationStatus('success');
         setTimeout(() => {
@@ -428,7 +445,7 @@ export default function TransfertPage() {
                       initial={{ y: 20, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
                       transition={{ delay: 0.4 }}
-                      className="mt-8 text-center"
+                      className="mt-8 text-center px-6"
                     >
                       {validationStatus === 'error' ? (
                         <>
