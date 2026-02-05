@@ -3,8 +3,8 @@
 
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
-import { doc, serverTimestamp, collection, addDoc, query, where, orderBy, deleteDoc, updateDoc, increment } from "firebase/firestore";
+import { useUser, useFirestore, useDoc } from "@/firebase";
+import { doc, serverTimestamp, collection, addDoc, increment, updateDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -19,16 +19,14 @@ import {
   Percent,
   Lock,
   Fingerprint,
-  History,
-  X,
-  Trash2,
-  Clock
+  History
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { verifyPasskey } from "@/lib/passkey";
 import { haptic } from "@/lib/haptics";
+import { PendingExchangesDialog } from "@/components/PendingExchangesDialog";
 import Image from "next/image";
 import placeholderImages from "@/app/lib/placeholder-images.json";
 
@@ -54,18 +52,6 @@ export default function EchangePage() {
   const { data: profile, loading: profileLoading } = useDoc(userDocRef);
   const { data: appStatus, loading: configLoading } = useDoc(appConfigRef);
   
-  const pendingExchangesQuery = useMemoFirebase(() => {
-    if (!db || !user?.uid) return null;
-    return query(
-      collection(db, "exchanges"),
-      where("userId", "==", user.uid),
-      where("status", "==", "pending"),
-      orderBy("requestedAt", "desc")
-    );
-  }, [db, user?.uid]);
-
-  const { data: pendingExchanges, loading: exchangesLoading } = useCollection(pendingExchangesQuery);
-
   const waveIcon = placeholderImages.placeholderImages.find(img => img.id === "wave-icon")?.imageUrl;
 
   const points = profile?.totalPoints || 0;
@@ -179,46 +165,6 @@ export default function EchangePage() {
     }
   };
 
-  const handleCancelExchange = (id: string) => {
-    if (!db || !user?.uid) return;
-    
-    const exchange = pendingExchanges?.find(e => e.id === id);
-    if (!exchange) return;
-
-    haptic.medium();
-    const userRef = doc(db, "users", user.uid);
-
-    // 1. Restituer les points
-    updateDoc(userRef, {
-      totalPoints: increment(exchange.points || 0),
-      updatedAt: serverTimestamp()
-    }).then(() => {
-      // 2. Supprimer le document
-      deleteDoc(doc(db, "exchanges", id))
-        .then(() => {
-          haptic.success();
-          toast({
-            title: "Demande annulée",
-            description: "Votre lumière vous a été restituée."
-          });
-        })
-        .catch((error) => {
-          const permissionError = new FirestorePermissionError({
-            path: `exchanges/${id}`,
-            operation: 'delete',
-          } satisfies SecurityRuleContext);
-          errorEmitter.emit('permission-error', permissionError);
-        });
-    }).catch(async (error) => {
-      const permissionError = new FirestorePermissionError({
-        path: userRef.path,
-        operation: 'update',
-        requestResourceData: { totalPoints: `increment ${exchange.points}` },
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
-    });
-  };
-
   if (profileLoading || configLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -253,11 +199,6 @@ export default function EchangePage() {
             className="rounded-full h-12 w-12 bg-primary/5 relative"
           >
             <History className="h-5 w-5" />
-            {pendingExchanges && pendingExchanges.length > 0 && (
-              <span className="absolute top-2 right-2 h-4 w-4 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[8px] font-black">
-                {pendingExchanges.length}
-              </span>
-            )}
           </Button>
         </div>
 
@@ -399,85 +340,10 @@ export default function EchangePage() {
           </motion.div>
         )}
 
-        <AnimatePresence>
-          {showHistory && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[500] bg-background/80 backdrop-blur-2xl flex flex-col p-6 overflow-hidden"
-            >
-              <div className="flex items-center justify-between mb-8">
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Historique</p>
-                  <h2 className="text-2xl font-black tracking-tight">Demandes en cours</h2>
-                </div>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => setShowHistory(false)}
-                  className="rounded-full h-12 w-12 bg-primary/5"
-                >
-                  <X className="h-6 w-6" />
-                </Button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-                {exchangesLoading ? (
-                  <div className="flex justify-center p-20">
-                    <Loader2 className="h-8 w-8 animate-spin opacity-20" />
-                  </div>
-                ) : !pendingExchanges || pendingExchanges.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-20 opacity-20 space-y-4">
-                    <Zap className="h-12 w-12" />
-                    <p className="text-xs font-black uppercase tracking-widest">Aucune demande active</p>
-                  </div>
-                ) : (
-                  pendingExchanges.map((ex) => (
-                    <motion.div
-                      key={ex.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="group"
-                    >
-                      <Card className="border-none bg-card/40 backdrop-blur-xl shadow-xl rounded-[2rem] overflow-hidden border border-primary/5">
-                        <CardContent className="p-6 flex items-center justify-between gap-4">
-                          <div className="space-y-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <Zap className="h-3 w-3 text-primary opacity-40" />
-                              <span className="text-base font-black tabular-nums">{ex.amount?.toLocaleString()} FCFA</span>
-                            </div>
-                            <div className="flex items-center gap-2 opacity-40">
-                              <Clock className="h-3 w-3" />
-                              <p className="text-[9px] font-bold uppercase tracking-widest">
-                                {ex.requestedAt && typeof ex.requestedAt.toDate === 'function' ? ex.requestedAt.toDate().toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : '---'}
-                              </p>
-                            </div>
-                          </div>
-
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleCancelExchange(ex.id)}
-                            className="h-12 w-12 rounded-2xl text-destructive hover:bg-destructive/10 group-hover:bg-destructive/5 transition-colors"
-                          >
-                            <Trash2 className="h-5 w-5" />
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))
-                )}
-              </div>
-
-              <div className="mt-8 p-6 bg-primary/5 rounded-[2.5rem] border border-primary/5">
-                <p className="text-[10px] leading-relaxed font-medium opacity-40 text-center italic">
-                  "Une demande annulée libère immédiatement votre Lumière mise en séquestre."
-                </p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <PendingExchangesDialog 
+          open={showHistory} 
+          onOpenChange={setShowHistory} 
+        />
       </main>
     </div>
   );
