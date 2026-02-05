@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
@@ -34,16 +35,18 @@ import {
   ChevronRight,
   ArrowRightLeft,
   Users,
-  QrCode
+  QrCode,
+  Zap
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { FullscreenImageOverlay } from "@/components/FullscreenImageOverlay";
+import { haptic } from "@/lib/haptics";
 
 export default function ProfilPage() {
-  const { user } = useUser();
+  const { user } = user();
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
@@ -103,8 +106,24 @@ export default function ProfilPage() {
     return () => clearTimeout(timeoutId);
   }, [editedUsername, db, isEditingName, profile?.username]);
 
+  const handleCopyCode = async () => {
+    if (profile?.referralCode) {
+      haptic.light();
+      try {
+        await navigator.clipboard.writeText(profile.referralCode);
+        toast({
+          title: "Code copié",
+          description: "Le sceau de parrainage est prêt à être partagé."
+        });
+      } catch (err) {
+        toast({ variant: "destructive", title: "Erreur", description: "Impossible de copier le code." });
+      }
+    }
+  };
+
   const copyMagicLink = async () => {
     if (profile?.referralCode) {
+      haptic.medium();
       const baseUrl = window.location.origin;
       const magicLink = `${baseUrl}/login?ref=${profile.referralCode}&u=${encodeURIComponent(profile.username || 'Esprit')}${profile.profileImage ? `&img=${encodeURIComponent(profile.profileImage)}` : ''}`;
       
@@ -129,19 +148,16 @@ export default function ProfilPage() {
         await navigator.clipboard.writeText(magicLink);
         toast({
           title: "Lien magique copié",
-          description: "Le lien inclut désormais votre signature visuelle pour un partage optimal."
+          description: "Le lien inclut désormais votre signature visuelle."
         });
       } catch (err) {
-        toast({
-          variant: "destructive",
-          title: "Erreur",
-          description: "Impossible de copier le lien."
-        });
+        toast({ variant: "destructive", title: "Erreur", description: "Impossible de copier le lien." });
       }
     }
   };
 
   const handleImageClick = () => {
+    haptic.light();
     fileInputRef.current?.click();
   };
 
@@ -183,6 +199,7 @@ export default function ProfilPage() {
   };
 
   const startEditingName = () => {
+    haptic.light();
     setEditedUsername(profile?.username || "");
     setIsEditingName(true);
   };
@@ -196,6 +213,7 @@ export default function ProfilPage() {
     if (usernameStatus !== 'available' || !user?.uid) return;
     
     setIsSavingName(true);
+    haptic.medium();
     try {
       const userRef = doc(db, "users", user.uid);
       await updateDoc(userRef, {
@@ -205,21 +223,17 @@ export default function ProfilPage() {
       setIsEditingName(false);
       toast({
         title: "Profil mis à jour",
-        description: "Votre nom d'utilisateur a été modifié avec succès."
+        description: "Votre nom d'utilisateur a été modifié."
       });
     } catch (error) {
-      const permissionError = new FirestorePermissionError({
-        path: `users/${user.uid}`,
-        operation: 'update',
-        requestResourceData: { username: editedUsername },
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
+      console.error(error);
     } finally {
       setIsSavingName(false);
     }
   };
 
   const startEditingPhone = () => {
+    haptic.light();
     const rawPhone = profile?.phoneNumber?.replace("+225", "") || "";
     setEditedPhone(rawPhone);
     setIsEditingPhone(true);
@@ -235,6 +249,7 @@ export default function ProfilPage() {
     if (!isValidPhoneNumber(editedPhone) || !user?.uid) return;
     
     setIsSavingPhone(true);
+    haptic.medium();
     try {
       const userRef = doc(db, "users", user.uid);
       const fullPhoneNumber = `+225${editedPhone}`;
@@ -245,15 +260,10 @@ export default function ProfilPage() {
       setIsEditingPhone(false);
       toast({
         title: "Numéro mis à jour",
-        description: "Votre numéro Wave a été modifié avec succès."
+        description: "Votre numéro Wave a été modifié."
       });
     } catch (error) {
-      const permissionError = new FirestorePermissionError({
-        path: `users/${user.uid}`,
-        operation: 'update',
-        requestResourceData: { phoneNumber: editedPhone },
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
+      console.error(error);
     } finally {
       setIsSavingPhone(false);
     }
@@ -262,11 +272,7 @@ export default function ProfilPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <motion.div 
-          animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.7, 0.3] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="h-12 w-12 bg-primary/20 rounded-full blur-xl"
-        />
+        <Loader2 className="h-8 w-8 animate-spin opacity-20" />
       </div>
     );
   }
@@ -276,6 +282,7 @@ export default function ProfilPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
       <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
+        {/* En-tête Profil */}
         <motion.div 
           style={{ opacity: mainProfileOpacity, scale: mainProfileScale }}
           className="text-center space-y-4"
@@ -288,29 +295,18 @@ export default function ProfilPage() {
                 e.preventDefault();
                 if (currentImage) setIsFullscreenImageOpen(true);
               }}
-              className="relative h-24 w-24 bg-card rounded-[2rem] flex items-center justify-center border border-primary/10 shadow-2xl mx-auto overflow-hidden group transition-transform active:scale-95"
+              className="relative h-28 w-28 bg-card rounded-[2.5rem] flex items-center justify-center border border-primary/10 shadow-2xl mx-auto overflow-hidden group transition-transform active:scale-95"
             >
               {currentImage ? (
-                <Image 
-                  src={currentImage} 
-                  alt="Profil" 
-                  fill 
-                  className="object-cover transition-opacity group-hover:opacity-60"
-                />
+                <Image src={currentImage} alt="Profil" fill className="object-cover transition-opacity group-hover:opacity-60" />
               ) : (
-                <UserIcon className="h-10 w-10 text-primary transition-opacity group-hover:opacity-40" />
+                <UserIcon className="h-12 w-12 text-primary transition-opacity group-hover:opacity-40" />
               )}
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
                 <Camera className="h-6 w-6 text-white" />
               </div>
             </button>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileChange} 
-              accept="image/*" 
-              className="hidden" 
-            />
+            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
           </div>
 
           <div className="space-y-2 flex flex-col items-center">
@@ -353,20 +349,8 @@ export default function ProfilPage() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      onClick={cancelEditingName}
-                      className="rounded-xl h-9 px-4 font-bold opacity-60"
-                    >
-                      Annuler
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      onClick={saveNewUsername}
-                      disabled={usernameStatus !== 'available' || isSavingName}
-                      className="rounded-xl h-9 px-6 font-bold"
-                    >
+                    <Button size="sm" variant="ghost" onClick={cancelEditingName} className="rounded-xl h-9 px-4 font-bold opacity-60">Annuler</Button>
+                    <Button size="sm" onClick={saveNewUsername} disabled={usernameStatus !== 'available' || isSavingName} className="rounded-xl h-9 px-6 font-bold">
                       {isSavingName ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enregistrer"}
                     </Button>
                   </div>
@@ -379,19 +363,41 @@ export default function ProfilPage() {
           </div>
         </motion.div>
 
+        {/* Section Lumière & Transfert */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden">
+            <CardContent className="p-8 space-y-8">
+              <div className="text-center space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Votre Lumière</p>
+                <div className="flex items-center justify-center gap-3">
+                  <Zap className="h-6 w-6 text-primary fill-current opacity-20" />
+                  <h2 className="text-5xl font-black tabular-nums tracking-tighter">{profile?.totalPoints?.toLocaleString() || 0}</h2>
+                </div>
+              </div>
+              
+              <Button 
+                onClick={() => { haptic.medium(); router.push("/transfert"); }}
+                className="w-full h-16 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] gap-3 shadow-2xl shadow-primary/10 group transition-all"
+              >
+                <QrCode className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                Transférer de la Lumière
+                <ArrowRightLeft className="h-4 w-4 opacity-40 ml-auto" />
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Section Administration (Si Admin) */}
         {profile?.role === 'admin' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-4"
-          >
-            <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 pl-2">Maître de l'Éveil</h2>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+            <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 pl-4">Maître de l'Éveil</h2>
             <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden border border-primary/10">
               <CardContent className="p-2">
-                <button 
-                  onClick={() => router.push("/admin")}
-                  className="w-full flex items-center justify-between p-4 hover:bg-primary/5 transition-colors rounded-2xl group text-left"
-                >
+                <button onClick={() => { haptic.light(); router.push("/admin"); }} className="w-full flex items-center justify-between p-4 hover:bg-primary/5 transition-colors rounded-2xl group text-left">
                   <div className="flex items-center gap-4">
                     <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
                       <ShieldAlert className="h-5 w-5 text-primary opacity-60" />
@@ -408,217 +414,104 @@ export default function ProfilPage() {
           </motion.div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card 
-              className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2rem] overflow-hidden h-full"
-            >
-              <CardContent className="p-6 text-center space-y-4 flex flex-col h-full justify-between">
-                <div className="space-y-4">
-                  <div className="relative">
-                    <Trophy className="h-8 w-8 text-primary mx-auto opacity-20" />
-                    <motion.div 
-                      animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.3, 0.1] }}
-                      transition={{ duration: 4, repeat: Infinity }}
-                      className="absolute inset-0 bg-primary/20 rounded-full blur-xl"
-                    />
-                  </div>
-                  <div>
-                    <p className="text-3xl font-black tabular-nums">{profile?.totalPoints?.toLocaleString() || 0}</p>
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Lumière Totale</p>
-                  </div>
-                </div>
-                <div className="flex flex-col xs:flex-row gap-2 pt-2">
-                  <Button 
-                    variant="outline"
-                    onClick={() => router.push("/transfert")}
-                    className="flex-1 h-12 rounded-2xl font-black text-[9px] uppercase tracking-widest gap-2 min-w-0"
+        {/* Section Parrainage Réinventée */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="space-y-4">
+          <div className="flex items-center justify-between px-4">
+            <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Expansion</h2>
+            <button onClick={() => { haptic.light(); router.push("/parrainage"); }} className="text-[9px] font-black uppercase tracking-widest text-primary flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
+              <Users className="h-3 w-3" />
+              Mes Filleuls
+            </button>
+          </div>
+          
+          <Card className="border-none bg-primary text-primary-foreground shadow-2xl rounded-[3rem] overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-8 opacity-5">
+              <Gift className="h-40 w-40" />
+            </div>
+            <CardContent className="p-8 space-y-8 relative z-10">
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50">Sceau de Parrainage</p>
+                  <motion.div 
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleCopyCode}
+                    className="group bg-primary-foreground/10 hover:bg-primary-foreground/20 border border-primary-foreground/5 p-6 rounded-[2.5rem] flex items-center justify-between cursor-pointer transition-colors"
                   >
-                    <QrCode className="h-4 w-4 shrink-0" />
-                    <span className="truncate">Transférer</span>
-                  </Button>
-                  <Button 
-                    onClick={() => router.push("/echange")}
-                    className="flex-1 h-12 rounded-2xl font-black text-[9px] uppercase tracking-widest gap-2 min-w-0"
-                  >
-                    <ArrowRightLeft className="h-4 w-4 shrink-0" />
-                    <span className="truncate">Échanger</span>
-                  </Button>
+                    <span className="text-4xl font-black tracking-tighter">{profile?.referralCode || "------"}</span>
+                    <div className="h-10 w-10 bg-primary-foreground/10 rounded-2xl flex items-center justify-center group-hover:bg-primary-foreground/20 transition-colors">
+                      <Copy className="h-4 w-4" />
+                    </div>
+                  </motion.div>
+                  <p className="text-[9px] font-bold text-center opacity-30 uppercase tracking-[0.2em]">Appuyez sur le code pour copier</p>
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="hidden sm:block"
-          >
-            <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2rem] h-full flex items-center justify-center">
-              <CardContent className="p-6 text-center">
-                <Calendar className="h-6 w-6 text-primary mx-auto mb-2 opacity-20" />
-                <p className="text-lg font-black">
-                  {profile?.createdAt ? new Date(profile.createdAt.toDate()).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : 'N/A'}
-                </p>
-                <p className="text-[8px] font-black uppercase tracking-widest opacity-40">Membre depuis</p>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-          className="space-y-4"
-        >
-          <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 pl-2">Informations</h2>
+                <Button 
+                  variant="secondary" 
+                  onClick={copyMagicLink}
+                  className="w-full h-16 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] gap-3 bg-primary-foreground text-primary hover:bg-primary-foreground/90 transition-all"
+                >
+                  <Share2 className="h-5 w-5" />
+                  Envoyer le Lien Magique
+                </Button>
+              </div>
+              
+              <div className="p-5 bg-primary-foreground/5 rounded-2xl border border-primary-foreground/5">
+                <p className="text-[11px] font-medium opacity-80 leading-relaxed text-center italic">
+                  "Chaque esprit éveillé grâce à vous renforce votre propre Lumière de 100 PTS."
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Informations Personnelles */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="space-y-4">
+          <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 pl-4">Liaisons</h2>
           <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden">
             <CardContent className="p-2 space-y-1">
               <AnimatePresence mode="wait">
                 {!isEditingPhone ? (
-                  <motion.div 
-                    key="phone-display"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    onClick={startEditingPhone}
-                    className="flex items-center gap-4 p-4 hover:bg-primary/5 transition-colors rounded-2xl group cursor-pointer"
-                  >
+                  <motion.div key="phone-display" onClick={startEditingPhone} className="flex items-center gap-4 p-5 hover:bg-primary/5 transition-colors rounded-[2rem] group cursor-pointer">
                     <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
                       <Phone className="h-5 w-5 text-primary opacity-60" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-[8px] font-black uppercase tracking-widest opacity-40">Téléphone Liaison (Wave)</p>
+                      <p className="text-[8px] font-black uppercase tracking-widest opacity-40">Téléphone Wave</p>
                       <p className="text-sm font-bold">{profile?.phoneNumber || "Non renseigné"}</p>
                     </div>
                     <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-40 transition-opacity" />
                   </motion.div>
                 ) : (
-                  <motion.div 
-                    key="phone-edit"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="p-4 space-y-3"
-                  >
+                  <motion.div key="phone-edit" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="p-5 space-y-4">
                     <p className="text-[8px] font-black uppercase tracking-widest opacity-40">Nouveau numéro Wave</p>
                     <div className="flex gap-2">
-                      <div className="flex-1 relative">
-                        <Input 
-                          value={editedPhone}
-                          onChange={(e) => setEditedPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                          className="h-10 text-sm font-bold bg-background/50 rounded-xl"
-                          placeholder="07..."
-                          autoFocus
-                        />
-                        {editedPhone.length === 10 && isValidPhoneNumber(editedPhone) && (
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                            <Check className="h-3 w-3 text-green-500" />
-                          </div>
-                        )}
-                      </div>
-                      <Button size="icon" variant="ghost" onClick={() => setIsEditingPhone(false)} className="h-10 w-10 rounded-xl">
-                        <X className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        size="icon" 
-                        onClick={saveNewPhone}
-                        disabled={!isValidPhoneNumber(editedPhone) || isSavingPhone}
-                        className="h-10 w-10 rounded-xl"
-                      >
+                      <Input value={editedPhone} onChange={(e) => setEditedPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} className="h-12 font-bold bg-background/50 rounded-xl" placeholder="07..." autoFocus />
+                      <Button size="icon" variant="ghost" onClick={() => setIsEditingPhone(false)} className="h-12 w-12 rounded-xl"><X className="h-4 w-4" /></Button>
+                      <Button size="icon" onClick={saveNewPhone} disabled={!isValidPhoneNumber(editedPhone) || isSavingPhone} className="h-12 w-12 rounded-xl">
                         {isSavingPhone ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                       </Button>
                     </div>
-                    <p className="text-[10px] opacity-40 font-medium">Format: 10 chiffres (01, 05 ou 07)</p>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              <div className="flex items-center gap-4 p-4 hover:bg-primary/5 transition-colors rounded-2xl group">
+              <div className="flex items-center gap-4 p-5 rounded-[2rem]">
                 <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
-                  <UserIcon className="h-5 w-5 text-primary opacity-60" />
+                  <Calendar className="h-5 w-5 text-primary opacity-60" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-[8px] font-black uppercase tracking-widest opacity-40">Genre</p>
-                  <p className="text-sm font-bold capitalize">{profile?.gender || "Non spécifié"}</p>
+                  <p className="text-[8px] font-black uppercase tracking-widest opacity-40">Éveil Initial</p>
+                  <p className="text-sm font-bold">
+                    {profile?.createdAt ? new Date(profile.createdAt.toDate()).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A'}
+                  </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="space-y-4"
-        >
-          <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 pl-2">Expansion</h2>
-          <Card className="border-none bg-primary text-primary-foreground shadow-2xl rounded-[2.5rem] overflow-hidden relative">
-            <div className="absolute top-0 right-0 p-8 opacity-10">
-              <Gift className="h-32 w-32" />
-            </div>
-            <CardContent className="p-8 space-y-6 relative z-10">
-              <div className="flex flex-col gap-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-1">Votre Code de Parrainage</p>
-                    <p className="text-4xl font-black tracking-tighter">{profile?.referralCode || "------"}</p>
-                  </div>
-                  <Button 
-                    variant="secondary" 
-                    size="sm"
-                    onClick={() => router.push("/parrainage")}
-                    className="h-10 px-4 rounded-xl font-black text-[9px] uppercase tracking-widest gap-2 bg-primary-foreground/10 hover:bg-primary-foreground/20 border-none text-primary-foreground"
-                  >
-                    <Users className="h-3.5 w-3.5" />
-                    Mes Filleuls
-                  </Button>
-                </div>
-                <div className="flex flex-col xs:flex-row gap-2">
-                  <Button 
-                    variant="secondary" 
-                    onClick={copyMagicLink}
-                    className="flex-1 h-12 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2"
-                  >
-                    <Share2 className="h-4 w-4" />
-                    Partager le Lien Magique
-                  </Button>
-                  <Button 
-                    variant="secondary" 
-                    size="icon" 
-                    onClick={async () => {
-                      if (profile?.referralCode) {
-                        const baseUrl = window.location.origin;
-                        const magicLink = `${baseUrl}/login?ref=${profile.referralCode}&u=${encodeURIComponent(profile.username || 'Esprit')}${profile.profileImage ? `&img=${encodeURIComponent(profile.profileImage)}` : ''}`;
-                        await navigator.clipboard.writeText(magicLink);
-                        toast({ title: "Lien copié" });
-                      }
-                    }}
-                    className="h-12 w-12 rounded-2xl shrink-0"
-                  >
-                    <Copy className="h-5 w-5" />
-                  </Button>
-                </div>
-              </div>
-              <p className="text-xs font-medium opacity-80 leading-relaxed">
-                Partagez votre <span className="underline decoration-primary-foreground/30">lien magique</span>. Chaque nouvel esprit éveillé vous rapporte <span className="font-bold">100 points</span> dès qu'il atteint lui-même l'éveil (100 pts).
-              </p>
             </CardContent>
           </Card>
         </motion.div>
       </main>
 
-      <FullscreenImageOverlay 
-        src={currentImage} 
-        isOpen={isFullscreenImageOpen} 
-        onClose={() => setIsFullscreenImageOpen(false)} 
-      />
+      <FullscreenImageOverlay src={currentImage} isOpen={isFullscreenImageOpen} onClose={() => setIsFullscreenImageOpen(false)} />
     </div>
   );
 }
