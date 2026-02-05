@@ -36,7 +36,8 @@ import {
   X,
   RefreshCw,
   Zap,
-  AlertCircle
+  AlertCircle,
+  ArrowDown
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
@@ -72,6 +73,11 @@ export default function TransfertPage() {
   }, [db, user?.uid]);
 
   const { data: profile, loading } = useDoc(userDocRef);
+
+  // Calcul des frais
+  const transferAmount = parseInt(amount) || 0;
+  const fees = Math.floor(transferAmount * 0.1);
+  const totalCost = transferAmount + fees;
 
   useEffect(() => {
     if (!profile || !db || !user?.uid) return;
@@ -282,11 +288,10 @@ export default function TransfertPage() {
   const onScanFailure = () => {};
 
   const handleTransfer = async () => {
-    const transferAmount = parseInt(amount);
     if (!transferAmount || transferAmount <= 0 || !user?.uid || !recipient?.id) return;
-    if ((profile?.totalPoints || 0) < transferAmount) {
+    if ((profile?.totalPoints || 0) < totalCost) {
       haptic.error();
-      toast({ variant: "destructive", title: "Lumière insuffisante" });
+      toast({ variant: "destructive", title: "Lumière insuffisante", description: "Le coût total (montant + frais) dépasse votre solde." });
       return;
     }
 
@@ -296,11 +301,13 @@ export default function TransfertPage() {
     const receiverRef = doc(db, "users", recipient.id);
 
     try {
+      // Déduire le montant total (Transfert + Frais)
       await updateDoc(senderRef, {
-        totalPoints: increment(-transferAmount),
+        totalPoints: increment(-totalCost),
         updatedAt: serverTimestamp()
       });
 
+      // Le destinataire reçoit le montant exact
       await updateDoc(receiverRef, {
         totalPoints: increment(transferAmount),
         updatedAt: serverTimestamp()
@@ -312,6 +319,7 @@ export default function TransfertPage() {
         fromPhoto: profile?.profileImage || "",
         toId: recipient.id,
         amount: transferAmount,
+        fees: fees,
         timestamp: new Date().toISOString(),
         read: false
       });
@@ -625,25 +633,56 @@ export default function TransfertPage() {
                     </CardHeader>
                     
                     <CardContent className="px-8 pb-10 space-y-8">
-                      <div className="space-y-4">
+                      <div className="space-y-6">
                         <div className="text-center">
                           <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1">Votre Solde Actuel</p>
                           <p className="text-xl font-black">{profile?.totalPoints?.toLocaleString()} <span className="text-xs opacity-20">PTS</span></p>
                         </div>
 
-                        <div className="space-y-2">
-                          <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Montant du transfert</Label>
-                          <div className="relative">
-                            <Input 
-                              type="number" 
-                              placeholder="0" 
-                              value={amount}
-                              onChange={(e) => setAmount(e.target.value)}
-                              className="h-16 text-3xl font-black text-center rounded-2xl bg-primary/5 border-none focus-visible:ring-primary/20"
-                              autoFocus
-                            />
-                            <div className="absolute right-6 top-1/2 -translate-y-1/2 text-xs font-black opacity-20">PTS</div>
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Montant du transfert</Label>
+                            <div className="relative">
+                              <Input 
+                                type="number" 
+                                placeholder="0" 
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                                className="h-16 text-3xl font-black text-center rounded-2xl bg-primary/5 border-none focus-visible:ring-primary/20"
+                                autoFocus
+                              />
+                              <div className="absolute right-6 top-1/2 -translate-y-1/2 text-xs font-black opacity-20">PTS</div>
+                            </div>
                           </div>
+
+                          <AnimatePresence>
+                            {transferAmount > 0 && (
+                              <motion.div 
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="space-y-3 pt-2"
+                              >
+                                <div className="flex items-center justify-between px-2">
+                                  <span className="text-[10px] font-bold uppercase opacity-40">Frais de résonance (10%)</span>
+                                  <span className="text-[10px] font-black">+{fees} PTS</span>
+                                </div>
+                                <div className="h-px bg-primary/5 w-full" />
+                                <div className="flex items-center justify-between px-2">
+                                  <span className="text-[10px] font-black uppercase">Coût total de l'envoi</span>
+                                  <span className={`text-sm font-black ${profile?.totalPoints && totalCost > profile.totalPoints ? 'text-red-500' : 'text-primary'}`}>
+                                    {totalCost} PTS
+                                  </span>
+                                </div>
+                                {profile?.totalPoints && totalCost > profile.totalPoints && (
+                                  <div className="flex items-center gap-2 px-2 text-red-500">
+                                    <AlertCircle className="h-3 w-3" />
+                                    <p className="text-[9px] font-bold uppercase">Lumière insuffisante pour couvrir les frais</p>
+                                  </div>
+                                )}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
                       </div>
                     </CardContent>
@@ -651,7 +690,7 @@ export default function TransfertPage() {
                     <CardFooter className="px-8 pb-10 flex flex-col gap-3">
                       <Button 
                         onClick={handleTransfer}
-                        disabled={isProcessing || !amount || parseInt(amount) <= 0 || parseInt(amount) > (profile?.totalPoints || 0)}
+                        disabled={isProcessing || !amount || transferAmount <= 0 || (profile?.totalPoints || 0) < totalCost}
                         className="w-full h-16 rounded-2xl font-black text-sm uppercase tracking-widest gap-3 shadow-xl shadow-primary/20"
                       >
                         {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
@@ -682,9 +721,16 @@ export default function TransfertPage() {
                     <p className="text-sm font-medium opacity-40 px-6">Votre lumière a été partagée avec @{recipient?.username}.</p>
                   </div>
 
-                  <div className="p-8 bg-card/40 backdrop-blur-3xl rounded-[2.5rem] border border-primary/5 w-full max-w-xs mx-auto">
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-30 mb-1">Montant envoyé</p>
-                    <p className="text-4xl font-black tabular-nums">{amount} <span className="text-xs opacity-20">PTS</span></p>
+                  <div className="p-8 bg-card/40 backdrop-blur-3xl rounded-[2.5rem] border border-primary/5 w-full max-w-xs mx-auto space-y-4">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest opacity-30 mb-1">Montant envoyé</p>
+                      <p className="text-4xl font-black tabular-nums">{transferAmount} <span className="text-xs opacity-20">PTS</span></p>
+                    </div>
+                    <div className="h-px bg-primary/5" />
+                    <div className="flex justify-between items-center text-[10px] font-bold opacity-40 uppercase">
+                      <span>Frais inclus</span>
+                      <span>{fees} PTS</span>
+                    </div>
                   </div>
 
                   <Button variant="outline" onClick={() => { haptic.medium(); router.push("/profil"); }} className="h-14 px-8 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2">
