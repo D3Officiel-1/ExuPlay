@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -180,7 +181,7 @@ export default function HomePage() {
   const handleLongPressStart = () => {
     if (updating || quizStarted) return;
     longPressTimer.current = setTimeout(() => {
-      setShowPointsPreview(prev => !prev);
+      setShowPointsPreview(true);
     }, 600);
   };
 
@@ -337,13 +338,6 @@ export default function HomePage() {
 
   const question = sessionQuizzes[currentQuestionIdx];
 
-  const transmutationTransition = {
-    type: "spring",
-    stiffness: 300,
-    damping: 25,
-    mass: 0.8
-  };
-
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
       <main className="flex-1 flex flex-col items-center justify-center p-6 pt-24 space-y-6">
@@ -384,29 +378,64 @@ export default function HomePage() {
                 )}
 
                 <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[3rem] overflow-hidden relative">
-                  <CardContent className="p-8 sm:p-12 space-y-12">
-                    <div className="relative min-h-[140px] flex items-center justify-center overflow-hidden rounded-[2rem]">
-                      <p className="text-xl sm:text-2xl font-black leading-tight tracking-tight text-center px-4">
-                        {question?.question}
-                      </p>
+                  <AnimatePresence mode="wait">
+                    {showPointsPreview ? (
+                      <motion.div
+                        key="points-preview"
+                        initial={{ opacity: 0, scale: 0.95, filter: "blur(20px)" }}
+                        animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                        exit={{ opacity: 0, scale: 1.05, filter: "blur(20px)" }}
+                        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                        onClick={() => setShowPointsPreview(false)}
+                        className="p-12 sm:p-20 text-center flex flex-col items-center justify-center space-y-10 cursor-pointer h-full min-h-[500px]"
+                      >
+                        <div className="relative">
+                          <motion.div 
+                            animate={{ scale: [1, 1.4, 1], opacity: [0.2, 0.5, 0.2] }}
+                            transition={{ duration: 3, repeat: Infinity }}
+                            className="absolute inset-0 bg-primary/20 rounded-full blur-3xl"
+                          />
+                          <div className="relative h-32 w-32 bg-background rounded-[3rem] flex items-center justify-center border border-primary/10 shadow-2xl">
+                            <Zap className="h-14 w-14 text-primary fill-current" />
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          <p className="text-[10px] font-black uppercase tracking-[0.6em] opacity-30">Valeur de l'Éveil</p>
+                          <div className="flex items-baseline justify-center gap-2">
+                            <span className="text-7xl font-black tabular-nums tracking-tighter">+{question?.points || 100}</span>
+                            <span className="text-sm font-black uppercase tracking-widest opacity-20">PTS</span>
+                          </div>
+                        </div>
+                        <p className="text-[9px] font-black uppercase tracking-[0.3em] opacity-40 animate-pulse">
+                          Cliquez pour masquer
+                        </p>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="quiz-content"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0, transition: { duration: 0.4 } }}
+                      >
+                        <CardContent className="p-8 sm:p-12 space-y-12">
+                          <div className="relative min-h-[140px] flex items-center justify-center overflow-hidden rounded-[2rem]">
+                            <p className="text-xl sm:text-2xl font-black leading-tight tracking-tight text-center px-4">
+                              {question?.question}
+                            </p>
 
-                      <AnimatePresence initial={false}>
-                        {!quizStarted && (
-                          <>
-                            <SpoilerOverlay key="question-mask" />
-                            <motion.div 
-                              initial={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
-                              animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                              exit={{ opacity: 0, scale: 1.15, filter: "blur(20px)" }}
-                              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-                              className="absolute inset-0 z-20 flex items-center justify-center"
-                            >
-                              <div className="text-center">
-                                <AnimatePresence initial={false}>
-                                  {!showPointsPreview ? (
+                            <AnimatePresence>
+                              {!quizStarted && (
+                                <>
+                                  <SpoilerOverlay key="question-mask" />
+                                  <motion.div 
+                                    initial={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
+                                    animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                                    exit={{ opacity: 0, scale: 1.15, filter: "blur(20px)" }}
+                                    transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+                                    className="absolute inset-0 z-20 flex items-center justify-center"
+                                  >
                                     <motion.button
-                                      key="reveal-button"
-                                      layoutId="reveal-element"
+                                      layoutId="reveal-button"
                                       onContextMenu={(e) => {
                                         e.preventDefault();
                                         setShowPointsPreview(true);
@@ -417,10 +446,6 @@ export default function HomePage() {
                                       onClick={handleStartChallenge}
                                       disabled={updating}
                                       className="h-16 px-12 rounded-2xl font-black text-[10px] uppercase tracking-[0.4em] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-500 active:scale-95 group relative overflow-hidden"
-                                      initial={{ opacity: 0, scale: 0.8 }}
-                                      animate={{ opacity: 1, scale: 1 }}
-                                      exit={{ opacity: 0, scale: 0.8 }}
-                                      transition={transmutationTransition}
                                     >
                                       {updating ? (
                                         <Loader2 className="h-5 w-5 animate-spin" />
@@ -428,104 +453,81 @@ export default function HomePage() {
                                         "Dévoiler l'Inconnu"
                                       )}
                                     </motion.button>
-                                  ) : (
-                                    <motion.div
-                                      key="points-preview"
-                                      layoutId="reveal-element"
-                                      onContextMenu={(e) => {
-                                        e.preventDefault();
-                                        setShowPointsPreview(false);
-                                      }}
-                                      onPointerDown={handleLongPressStart}
-                                      onPointerUp={handleLongPressEnd}
-                                      onPointerLeave={handleLongPressEnd}
-                                      className="bg-primary text-primary-foreground h-16 px-12 rounded-2xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] flex items-center justify-center gap-3 cursor-default border border-white/10 overflow-hidden"
-                                      initial={{ opacity: 0, scale: 0.8 }}
-                                      animate={{ opacity: 1, scale: 1 }}
-                                      exit={{ opacity: 0, scale: 0.8 }}
-                                      transition={transmutationTransition}
-                                    >
-                                      <Zap className="h-5 w-5 text-yellow-400 fill-current" />
-                                      <div className="flex items-baseline gap-1">
-                                        <p className="text-2xl font-black tabular-nums tracking-tighter">+{question?.points || 100}</p>
-                                        <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-40">PTS</p>
-                                      </div>
-                                    </motion.div>
+                                  </motion.div>
+                                </>
+                              )}
+                            </AnimatePresence>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                            {question?.options.map((option: string, idx: number) => {
+                              const isCorrect = idx === question.correctIndex;
+                              const isSelected = idx === selectedOption;
+                              
+                              return (
+                                <motion.button
+                                  key={idx}
+                                  whileHover={(!isAnswered && quizStarted) ? { scale: 1.02, backgroundColor: "hsl(var(--primary) / 0.05)" } : {}}
+                                  whileTap={(!isAnswered && quizStarted) ? { scale: 0.98 } : {}}
+                                  onClick={() => handleAnswer(idx)}
+                                  disabled={isAnswered || !quizStarted || updating}
+                                  className={`
+                                    relative w-full p-4 sm:p-6 rounded-2xl text-center font-black transition-all duration-500 flex flex-col items-center justify-center border min-h-[120px] sm:min-h-[140px] overflow-hidden
+                                    ${!isAnswered 
+                                      ? "bg-background/20 border-primary/5" 
+                                      : isCorrect 
+                                        ? "bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-400" 
+                                        : isSelected 
+                                          ? "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400" 
+                                          : "bg-background/10 border-transparent opacity-20 scale-95"}
+                                  `}
+                                >
+                                  <span className="text-lg sm:text-2xl leading-tight relative z-10">{option}</span>
+                                  <div className="absolute top-3 right-3 z-10">
+                                    {isAnswered && isCorrect && <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />}
+                                    {isAnswered && isSelected && !isCorrect && <XCircle className="h-4 w-4 sm:h-5 sm:w-5" />}
+                                  </div>
+                                  
+                                  {isAnswered && isCorrect && (
+                                    <motion.div 
+                                      initial={{ scale: 0, opacity: 0 }}
+                                      animate={{ scale: 1, opacity: 0.1 }}
+                                      className="absolute inset-0 bg-green-500 rounded-full blur-3xl"
+                                    />
                                   )}
-                                </AnimatePresence>
-                              </div>
-                            </motion.div>
-                          </>
-                        )}
-                      </AnimatePresence>
-                    </div>
+                                </motion.button>
+                              );
+                            })}
+                          </div>
 
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                      {question?.options.map((option: string, idx: number) => {
-                        const isCorrect = idx === question.correctIndex;
-                        const isSelected = idx === selectedOption;
-                        
-                        return (
-                          <motion.button
-                            key={idx}
-                            whileHover={(!isAnswered && quizStarted) ? { scale: 1.02, backgroundColor: "hsl(var(--primary) / 0.05)" } : {}}
-                            whileTap={(!isAnswered && quizStarted) ? { scale: 0.98 } : {}}
-                            onClick={() => handleAnswer(idx)}
-                            disabled={isAnswered || !quizStarted || updating}
-                            className={`
-                              relative w-full p-4 sm:p-6 rounded-2xl text-center font-black transition-all duration-500 flex flex-col items-center justify-center border min-h-[120px] sm:min-h-[140px] overflow-hidden
-                              ${!isAnswered 
-                                ? "bg-background/20 border-primary/5" 
-                                : isCorrect 
-                                  ? "bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-400" 
-                                  : isSelected 
-                                    ? "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400" 
-                                    : "bg-background/10 border-transparent opacity-20 scale-95"}
-                            `}
-                          >
-                            <span className="text-lg sm:text-2xl leading-tight relative z-10">{option}</span>
-                            <div className="absolute top-3 right-3 z-10">
-                              {isAnswered && isCorrect && <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />}
-                              {isAnswered && isSelected && !isCorrect && <XCircle className="h-4 w-4 sm:h-5 sm:w-5" />}
-                            </div>
-                            
-                            {isAnswered && isCorrect && (
-                              <motion.div 
-                                initial={{ scale: 0, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 0.1 }}
-                                className="absolute inset-0 bg-green-500 rounded-full blur-3xl"
-                              />
+                          <AnimatePresence>
+                            {(isAnswered || (timeLeft === 0 && quizStarted)) && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="pt-4"
+                              >
+                                <Button 
+                                  onClick={nextQuestion} 
+                                  disabled={updating}
+                                  className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-[0.4em] gap-3 shadow-2xl shadow-primary/20 bg-primary text-primary-foreground hover:scale-[1.02] transition-transform active:scale-95"
+                                >
+                                  {updating ? (
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                  ) : (
+                                    <>
+                                      {currentQuestionIdx === sessionQuizzes.length - 1 ? "Finaliser l'Éveil" : "Défi Suivant"}
+                                      <ArrowRight className="h-5 w-5" />
+                                    </>
+                                  )}
+                                </Button>
+                              </motion.div>
                             )}
-                          </motion.button>
-                        );
-                      })}
-                    </div>
-
-                    <AnimatePresence>
-                      {(isAnswered || (timeLeft === 0 && quizStarted)) && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="pt-4"
-                        >
-                          <Button 
-                            onClick={nextQuestion} 
-                            disabled={updating}
-                            className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-[0.4em] gap-3 shadow-2xl shadow-primary/20 bg-primary text-primary-foreground hover:scale-[1.02] transition-transform active:scale-95"
-                          >
-                            {updating ? (
-                              <Loader2 className="h-5 w-5 animate-spin" />
-                            ) : (
-                              <>
-                                {currentQuestionIdx === sessionQuizzes.length - 1 ? "Finaliser l'Éveil" : "Défi Suivant"}
-                                <ArrowRight className="h-5 w-5" />
-                              </>
-                            )}
-                          </Button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </CardContent>
+                          </AnimatePresence>
+                        </CardContent>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </Card>
               </motion.div>
             ) : (
