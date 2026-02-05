@@ -26,17 +26,25 @@ export function useMemoFirebase<T extends { isEqual: (other: T) => boolean } | n
   deps: any[]
 ): T {
   const value = useMemo(factory, deps);
-  const ref = useRef<T>(value);
+  const ref = useRef<T>(undefined);
 
-  if (value && ref.current) {
-    if (!value.isEqual(ref.current)) {
-      ref.current = value;
+  const areEqual = (a: any, b: any): boolean => {
+    if (a === b) return true;
+    if (a && b && typeof a.isEqual === 'function') {
+      try {
+        return a.isEqual(b);
+      } catch (e) {
+        return false;
+      }
     }
-  } else {
+    return false;
+  };
+
+  if (ref.current === undefined || !areEqual(value, ref.current)) {
     ref.current = value;
   }
 
-  return ref.current;
+  return ref.current as T;
 }
 
 export { FirebaseProvider, useFirebaseApp, useFirestore, useAuth } from './provider';
