@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser, useFirestore, useCollection } from "@/firebase";
 import { 
@@ -18,12 +18,16 @@ import Image from "next/image";
 
 /**
  * @fileOverview Un composant global qui écoute les transferts entrants et affiche une animation "ultra stylée".
+ * La carte disparaît automatiquement après un délai défini.
  */
 
 export function IncomingTransferOverlay() {
   const { user } = useUser();
   const db = useFirestore();
   const [activeTransfer, setActiveTransfer] = useState<any>(null);
+  
+  // Référence pour éviter d'afficher plusieurs fois le même transfert si Firestore est lent à synchroniser
+  const shownIds = useRef<Set<string>>(new Set());
 
   const transfersQuery = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -39,23 +43,33 @@ export function IncomingTransferOverlay() {
   const { data: transfers } = useCollection(transfersQuery);
 
   useEffect(() => {
-    if (transfers && transfers.length > 0 && !activeTransfer) {
+    if (transfers && transfers.length > 0) {
       const transfer = transfers[0];
-      setActiveTransfer(transfer);
       
-      // Jouer un son de notification
-      const audio = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_f80e052d2e.mp3");
-      audio.play().catch(() => {});
+      // On ne déclenche l'animation que si on n'affiche rien actuellement
+      // et que cet ID n'a pas déjà été traité dans cette session
+      if (!activeTransfer && !shownIds.current.has(transfer.id)) {
+        setActiveTransfer(transfer);
+        shownIds.current.add(transfer.id);
+        
+        // Jouer un son de notification éthéré
+        const audio = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_f80e052d2e.mp3");
+        audio.play().catch(() => {});
 
-      // Marquer comme lu après un délai pour l'animation
-      const timer = setTimeout(async () => {
-        if (db) {
-          await updateDoc(doc(db, "transfers", transfer.id), { read: true });
+        // Marquer comme lu après un délai pour l'animation
+        const timer = setTimeout(() => {
+          if (db) {
+            // Mise à jour asynchrone sans bloquer le retrait de l'UI
+            updateDoc(doc(db, "transfers", transfer.id), { 
+              read: true,
+              updatedAt: new Date().toISOString()
+            });
+          }
           setActiveTransfer(null);
-        }
-      }, 6000);
+        }, 5000); // Disparition après 5 secondes
 
-      return () => clearTimeout(timer);
+        return () => clearTimeout(timer);
+      }
     }
   }, [transfers, activeTransfer, db]);
 
@@ -73,7 +87,13 @@ export function IncomingTransferOverlay() {
           <motion.div
             initial={{ scale: 0.8, y: 100, opacity: 0, filter: "blur(20px)" }}
             animate={{ scale: 1, y: 0, opacity: 1, filter: "blur(0px)" }}
-            exit={{ scale: 1.2, opacity: 0, filter: "blur(40px)" }}
+            exit={{ 
+              scale: 1.1, 
+              opacity: 0, 
+              y: -50,
+              filter: "blur(40px)",
+              transition: { duration: 0.8, ease: "easeIn" }
+            }}
             transition={{ type: "spring", stiffness: 200, damping: 20 }}
             className="relative w-full max-w-sm bg-card/60 backdrop-blur-3xl border border-primary/10 rounded-[3.5rem] p-10 shadow-[0_40px_100px_rgba(0,0,0,0.3)] pointer-events-auto overflow-hidden"
           >
