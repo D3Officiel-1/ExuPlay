@@ -4,7 +4,19 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser, useFirestore, useDoc } from "@/firebase";
-import { doc, getDoc, updateDoc, increment, serverTimestamp, query, collection, where, limit, getDocs } from "firebase/firestore";
+import { 
+  doc, 
+  getDoc, 
+  updateDoc, 
+  increment, 
+  serverTimestamp, 
+  query, 
+  collection, 
+  where, 
+  limit, 
+  getDocs,
+  addDoc
+} from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -198,21 +210,7 @@ export default function TransfertPage() {
   const onScanSuccess = async (decodedText: string) => {
     await stopScanner();
     
-    const playErrorSound = () => {
-      const errorAudio = new Audio("https://cdn.pixabay.com/download/audio/2021/08/04/audio_39b5f497b1.mp3");
-      errorAudio.play().catch(() => {});
-      if (navigator.vibrate) navigator.vibrate([50, 50, 50, 50, 50, 50, 200]);
-    };
-
-    const playSuccessSound = () => {
-      const successAudio = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_f80e052d2e.mp3");
-      successAudio.play().catch(() => {});
-      if (navigator.vibrate) navigator.vibrate([100, 30, 100, 30, 200]);
-    };
-
-    // Auto-échec si c'est son propre code
     if (decodedText === user?.uid) {
-      playErrorSound();
       setErrorMessage("C'est votre propre Sceau");
       setValidationStatus('error');
       setTimeout(() => {
@@ -230,7 +228,6 @@ export default function TransfertPage() {
       const recipientSnap = await getDoc(recipientRef);
       
       if (recipientSnap.exists()) {
-        playSuccessSound();
         const data = recipientSnap.data();
         setRecipient({ id: decodedText, ...data });
         setValidationStatus('success');
@@ -238,7 +235,6 @@ export default function TransfertPage() {
           setValidationStatus('idle');
         }, 2500);
       } else {
-        playErrorSound();
         setErrorMessage("Esprit non identifié");
         setValidationStatus('error');
         setTimeout(() => {
@@ -248,7 +244,6 @@ export default function TransfertPage() {
         }, 2500);
       }
     } catch (error) {
-      playErrorSound();
       setErrorMessage("Dissonance réseau");
       setValidationStatus('error');
       setTimeout(() => {
@@ -274,32 +269,30 @@ export default function TransfertPage() {
     const receiverRef = doc(db, "users", recipient.id);
 
     try {
+      // 1. Déduction expéditeur
       await updateDoc(senderRef, {
         totalPoints: increment(-transferAmount),
         updatedAt: serverTimestamp()
       });
 
-      const receiverUpdatePayload: any = {
+      // 2. Ajout destinataire
+      await updateDoc(receiverRef, {
         totalPoints: increment(transferAmount),
         updatedAt: serverTimestamp()
-      };
+      });
 
-      const newRecipientPoints = (recipient.totalPoints || 0) + transferAmount;
-      if (recipient.referredBy && !recipient.referralRewardClaimed && newRecipientPoints >= 100) {
-        const referrersQuery = query(collection(db, "users"), where("referralCode", "==", recipient.referredBy), limit(1));
-        const referrerSnap = await getDocs(referrersQuery);
-        if (!referrerSnap.empty) {
-          await updateDoc(referrerSnap.docs[0].ref, {
-            totalPoints: increment(100),
-            updatedAt: serverTimestamp()
-          });
-          receiverUpdatePayload.referralRewardClaimed = true;
-        }
-      }
-
-      await updateDoc(receiverRef, receiverUpdatePayload);
+      // 3. Enregistrement du transfert pour déclencher l'animation du bénéficiaire
+      await addDoc(collection(db, "transfers"), {
+        fromId: user.uid,
+        fromName: profile?.username || "Anonyme",
+        fromPhoto: profile?.profileImage || "",
+        toId: recipient.id,
+        amount: transferAmount,
+        timestamp: new Date().toISOString(),
+        read: false
+      });
       
-      // Envoi de la notification Push robuste
+      // 4. Notification Push robuste
       if (recipient.fcmToken) {
         sendPushNotification({
           token: recipient.fcmToken,
@@ -396,15 +389,6 @@ export default function TransfertPage() {
                           <Sparkles className="h-12 w-12 text-primary opacity-20" />
                         </motion.div>
                       )}
-                      
-                      {validationStatus === 'success' && (
-                        <motion.div 
-                          initial={{ height: 0 }}
-                          animate={{ height: "100%" }}
-                          transition={{ duration: 1.5, ease: "easeInOut", delay: 0.5 }}
-                          className="absolute inset-x-0 bottom-0 bg-primary/5 pointer-events-none"
-                        />
-                      )}
                     </motion.div>
 
                     <motion.div
@@ -434,46 +418,7 @@ export default function TransfertPage() {
                         <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Analyse de l'Éther...</p>
                       )}
                     </motion.div>
-
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-                      {[...Array(3)].map((_, i) => (
-                        <motion.div
-                          key={i}
-                          initial={{ scale: 0.8, opacity: 0 }}
-                          animate={{ scale: 1.5 + i * 0.2, opacity: 0 }}
-                          transition={{ 
-                            duration: 1.5, 
-                            repeat: Infinity, 
-                            delay: i * 0.4,
-                            ease: "easeOut" 
-                          }}
-                          className={`absolute inset-0 h-40 w-40 border rounded-full ${
-                            validationStatus === 'error' ? 'border-red-500/20' : 'border-primary/20'
-                          }`}
-                          style={{ left: -80, top: -80 }}
-                        />
-                      ))}
-                    </div>
                   </div>
-
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: "200px" }}
-                    transition={{ duration: 2, ease: "linear" }}
-                    className="absolute bottom-20 h-0.5 bg-primary/10 rounded-full overflow-hidden"
-                  >
-                    <motion.div 
-                      animate={{ 
-                        x: ["-100%", "100%"],
-                        backgroundColor: validationStatus === 'error' ? '#ef4444' : '#000000'
-                      }}
-                      transition={{ 
-                        x: { duration: 1.5, repeat: Infinity, ease: "linear" },
-                        backgroundColor: { duration: 0.3 }
-                      }}
-                      className="h-full w-20 bg-primary"
-                    />
-                  </motion.div>
                 </motion.div>
               ) : !recipient && !isSuccess ? (
                 <motion.div
@@ -517,14 +462,6 @@ export default function TransfertPage() {
                                 </span>
                               </motion.div>
                             </div>
-                          </div>
-                          
-                          <div className="space-y-2 text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              <Sparkles className="h-4 w-4 text-primary" />
-                              <p className="text-xl font-black tracking-tight">Sceau d'Éveil</p>
-                            </div>
-                            <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Scannez pour résonner</p>
                           </div>
                         </CardContent>
                       </Card>

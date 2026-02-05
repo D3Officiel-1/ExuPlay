@@ -40,7 +40,11 @@
         "profileImage": { "type": "string", "description": "Image de profil en format Base64" },
         "theme": { "type": "string", "description": "Préférence de thème de l'utilisateur", "enum": ["light", "dark", "system"] },
         "createdAt": { "type": "string", "format": "date-time" },
-        "role": { "type": "string", "description": "Rôle de l'utilisateur", "default": "user" }
+        "role": { "type": "string", "description": "Rôle de l'utilisateur", "default": "user" },
+        "fcmToken": { "type": "string", "description": "Token pour notifications push" },
+        "cameraAuthorized": { "type": "boolean" },
+        "notificationsEnabled": { "type": "boolean" },
+        "locationAuthorized": { "type": "boolean" }
       },
       "required": ["username", "phoneNumber", "acceptedTerms", "gender", "referralCode", "role"]
     },
@@ -67,6 +71,21 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["question", "options", "correctIndex", "points"]
+    },
+    "Transfer": {
+      "title": "Transfer",
+      "description": "Enregistrement d'un transfert de points entre esprits",
+      "type": "object",
+      "properties": {
+        "fromId": { "type": "string" },
+        "fromName": { "type": "string" },
+        "fromPhoto": { "type": "string" },
+        "toId": { "type": "string" },
+        "amount": { "type": "integer" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "read": { "type": "boolean", "default": false }
+      },
+      "required": ["fromId", "fromName", "toId", "amount", "timestamp"]
     }
   },
   "auth": {
@@ -88,6 +107,10 @@
     "/quizzes/{quizId}": {
       "schema": "Quiz",
       "description": "Collection des questions de quiz"
+    },
+    "/transfers/{transferId}": {
+      "schema": "Transfer",
+      "description": "Flux des transferts de lumière"
     }
   }
 }

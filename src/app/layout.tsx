@@ -10,6 +10,7 @@ import { WifiOff, ShieldAlert, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { InstallPwa } from "@/components/InstallPwa";
 import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
+import { IncomingTransferOverlay } from "@/components/IncomingTransferOverlay";
 import { doc, getDoc } from "firebase/firestore";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/Logo";
@@ -234,6 +235,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
         ) : null}
       </AnimatePresence>
       <ThemeSync />
+      <IncomingTransferOverlay />
       {children}
     </>
   );
