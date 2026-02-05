@@ -440,8 +440,7 @@ export default function HomePage() {
                                       onPointerDown={handleLongPressStart}
                                       onPointerUp={handleLongPressEnd}
                                       onPointerLeave={handleLongPressEnd}
-                                      // Clic normal désactivé sur la carte des points pour forcer le retour au bouton "Dévoiler"
-                                      className="bg-primary text-primary-foreground p-6 rounded-[2rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] flex flex-col items-center justify-center gap-3 cursor-default border border-white/10 min-w-[200px]"
+                                      className="bg-primary text-primary-foreground h-16 px-12 rounded-2xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] flex items-center justify-center gap-3 cursor-default border border-white/10"
                                     >
                                       <motion.div
                                         animate={{ 
@@ -450,11 +449,11 @@ export default function HomePage() {
                                         }}
                                         transition={{ duration: 2, repeat: Infinity }}
                                       >
-                                        <Zap className="h-6 w-6 text-yellow-400 fill-current" />
+                                        <Zap className="h-5 w-5 text-yellow-400 fill-current" />
                                       </motion.div>
-                                      <div className="space-y-0.5">
-                                        <p className="text-3xl font-black tabular-nums tracking-tighter">+{question?.points || 100} PTS</p>
-                                        <p className="text-[8px] font-black uppercase tracking-[0.3em] opacity-40">Récompense éveil</p>
+                                      <div className="flex items-baseline gap-1">
+                                        <p className="text-2xl font-black tabular-nums tracking-tighter">+{question?.points || 100}</p>
+                                        <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-40">PTS</p>
                                       </div>
                                     </motion.div>
                                   )}
@@ -489,7 +488,7 @@ export default function HomePage() {
                                     : "bg-background/10 border-transparent opacity-20 scale-95"}
                             `}
                           >
-                            <span className="text-sm sm:text-lg leading-tight relative z-10">{option}</span>
+                            <span className="text-sm sm:text-xl leading-tight relative z-10">{option}</span>
                             <div className="absolute top-3 right-3 z-10">
                               {isAnswered && isCorrect && <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />}
                               {isAnswered && isSelected && !isCorrect && <XCircle className="h-4 w-4 sm:h-5 sm:w-5" />}
