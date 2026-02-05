@@ -71,7 +71,10 @@ import {
   Circle,
   X,
   Save,
-  Wand2
+  Wand2,
+  Calendar,
+  Smartphone,
+  Shield
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -90,6 +93,8 @@ import {
   Area
 } from 'recharts';
 import { AnimatePresence, motion } from "framer-motion";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 export default function AdminPage() {
   const { user, isLoading: authLoading } = useUser();
@@ -110,6 +115,8 @@ export default function AdminPage() {
   const [selectedQuizForView, setSelectedQuizForView] = useState<any | null>(null);
   const [isEditingQuiz, setIsEditingQuiz] = useState(false);
   const [editedQuiz, setEditedQuiz] = useState<any>(null);
+
+  const [selectedUserForView, setSelectedUserForView] = useState<any | null>(null);
   
   const [maintenanceMessageInput, setMaintenanceMessageInput] = useState("");
   const [isSavingMessage, setIsSavingMessage] = useState(false);
@@ -301,7 +308,6 @@ export default function AdminPage() {
     }
   };
 
-  // --- Fonctions d'édition ---
   const handleSelectQuiz = (q: any) => {
     haptic.light();
     setSelectedQuizForView(q);
@@ -366,6 +372,11 @@ export default function AdminPage() {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleSelectUser = (u: any) => {
+    haptic.light();
+    setSelectedUserForView(u);
   };
 
   if (authLoading || profileLoading || profile?.role !== 'admin') {
@@ -617,7 +628,11 @@ export default function AdminPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredUsers.map((u) => (
-                    <TableRow key={u.id} className="border-primary/5 hover:bg-primary/5 transition-colors cursor-pointer">
+                    <TableRow 
+                      key={u.id} 
+                      onClick={() => handleSelectUser(u)}
+                      className="border-primary/5 hover:bg-primary/5 transition-colors cursor-pointer"
+                    >
                       <TableCell className="py-4 px-6">
                         <div className="flex flex-col">
                           <span className="font-black text-sm">@{u.username}</span>
@@ -821,6 +836,99 @@ export default function AdminPage() {
                 </Button>
               </>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialogue de consultation de l'esprit (Utilisateur) */}
+      <Dialog open={!!selectedUserForView} onOpenChange={(open) => !open && setSelectedUserForView(null)}>
+        <DialogContent className="sm:max-w-[500px] bg-card/95 backdrop-blur-2xl rounded-[2.5rem] p-8 max-h-[90vh] overflow-y-auto border-none">
+          <DialogHeader>
+            <div className="space-y-1">
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Fiche d'Essence</p>
+              <DialogTitle className="text-2xl font-black tracking-tight">Détails de l'Esprit</DialogTitle>
+            </div>
+          </DialogHeader>
+
+          {selectedUserForView && (
+            <div className="space-y-8 py-6">
+              <div className="flex flex-col items-center gap-4">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-primary/10 blur-3xl rounded-full scale-150" />
+                  <div className="relative h-24 w-24 bg-card rounded-[2rem] flex items-center justify-center border border-primary/10 shadow-2xl overflow-hidden">
+                    {selectedUserForView.profileImage ? (
+                      <img src={selectedUserForView.profileImage} alt="" className="object-cover w-full h-full" />
+                    ) : (
+                      <User className="h-10 w-10 text-primary opacity-20" />
+                    )}
+                  </div>
+                </div>
+                <div className="text-center">
+                  <h3 className="text-xl font-black">@{selectedUserForView.username}</h3>
+                  <div className="flex items-center justify-center gap-2 mt-1">
+                    <Shield className="h-3 w-3 opacity-40" />
+                    <span className="text-[10px] font-black uppercase tracking-widest opacity-40">
+                      Rôle: {selectedUserForView.role === 'admin' ? "Maître" : "Adepte"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-5 bg-primary/5 rounded-[2rem] border border-primary/5 space-y-1">
+                  <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Lumière Totale</p>
+                  <p className="text-xl font-black">{selectedUserForView.totalPoints?.toLocaleString()} <span className="text-[10px] opacity-30">PTS</span></p>
+                </div>
+                <div className="p-5 bg-primary/5 rounded-[2rem] border border-primary/5 space-y-1">
+                  <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Parrainage</p>
+                  <p className="text-xl font-black tracking-tighter">{selectedUserForView.referralCode || "---"}</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-2">
+                  <div className="flex items-center gap-2 opacity-40">
+                    <Smartphone className="h-3 w-3" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Liaison Wave</span>
+                  </div>
+                  <span className="text-xs font-bold">{selectedUserForView.phoneNumber || "Non lié"}</span>
+                </div>
+                <div className="flex items-center justify-between px-2">
+                  <div className="flex items-center gap-2 opacity-40">
+                    <Calendar className="h-3 w-3" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Éveil Initial</span>
+                  </div>
+                  <span className="text-xs font-bold">
+                    {selectedUserForView.createdAt ? format(selectedUserForView.createdAt.toDate(), "dd MMMM yyyy", { locale: fr }) : "---"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between px-2">
+                  <div className="flex items-center gap-2 opacity-40">
+                    <CheckCircle2 className="h-3 w-3" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Sceau Biométrique</span>
+                  </div>
+                  <span className={`text-[10px] font-black uppercase ${selectedUserForView.biometricEnabled ? 'text-green-500' : 'text-red-500 opacity-40'}`}>
+                    {selectedUserForView.biometricEnabled ? 'Actif' : 'Révoqué'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-6 bg-primary/5 rounded-[2rem] border border-primary/5">
+                <p className="text-[10px] leading-relaxed font-medium opacity-40 text-center italic">
+                  "Chaque esprit est une étincelle unique dans le flux de l'Oracle."
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setSelectedUserForView(null)}
+              className="w-full h-14 rounded-2xl font-black text-xs uppercase tracking-widest"
+            >
+              Fermer la fiche
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
