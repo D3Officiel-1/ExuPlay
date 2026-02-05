@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -50,10 +49,8 @@ export default function SplashPage() {
           }
 
           const userData = userDoc.data();
-          const isFullyAuthorized = 
-            userData?.cameraAuthorized === true && 
-            userData?.notificationsEnabled === true && 
-            userData?.locationAuthorized === true;
+          // Désormais, seule la caméra est requise pour l'accès complet
+          const isFullyAuthorized = userData?.cameraAuthorized === true;
 
           const nextPath = isFullyAuthorized ? "/home" : "/autoriser";
           router.push(nextPath);
