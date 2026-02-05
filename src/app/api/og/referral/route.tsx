@@ -10,7 +10,6 @@ export async function GET(req: NextRequest) {
 
     const username = searchParams.get('u') || 'Esprit Éveillé';
     const code = searchParams.get('c') || '------';
-    const image = searchParams.get('img');
 
     return new ImageResponse(
       (
@@ -76,30 +75,10 @@ export async function GET(req: NextRequest) {
               </svg>
             </div>
 
-            {/* Profile Section */}
+            {/* Profile Section - Image supprimée pour une esthétique épurée */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '30px' }}>
-              <div
-                style={{
-                  width: '120px',
-                  height: '120px',
-                  borderRadius: '40px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  overflow: 'hidden',
-                  border: '2px solid rgba(255, 255, 255, 0.2)',
-                  marginBottom: '20px',
-                }}
-              >
-                {image ? (
-                  <img src={image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ fontSize: '40px' }}>👤</div>
-                )}
-              </div>
               <div style={{ fontSize: '48px', fontWeight: '900', letterSpacing: '-0.05em' }}>@{username}</div>
-              <div style={{ fontSize: '14px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.4em', opacity: 0.4, marginTop: '8px' }}>
+              <div style={{ fontSize: '14px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.4em', opacity: 0.4, marginTop: '12px' }}>
                 MAÎTRE DE L'ÉVEIL
               </div>
             </div>

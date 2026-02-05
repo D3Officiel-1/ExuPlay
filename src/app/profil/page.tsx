@@ -46,7 +46,7 @@ import { FullscreenImageOverlay } from "@/components/FullscreenImageOverlay";
 import { haptic } from "@/lib/haptics";
 
 export default function ProfilPage() {
-  const { user } = user();
+  const { user } = useUser();
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
@@ -125,7 +125,8 @@ export default function ProfilPage() {
     if (profile?.referralCode) {
       haptic.medium();
       const baseUrl = window.location.origin;
-      const magicLink = `${baseUrl}/login?ref=${profile.referralCode}&u=${encodeURIComponent(profile.username || 'Esprit')}${profile.profileImage ? `&img=${encodeURIComponent(profile.profileImage)}` : ''}`;
+      // Image supprimée du lien pour une pureté technique
+      const magicLink = `${baseUrl}/login?ref=${profile.referralCode}&u=${encodeURIComponent(profile.username || 'Esprit')}`;
       
       if (typeof navigator !== 'undefined' && navigator.share) {
         try {
@@ -148,7 +149,7 @@ export default function ProfilPage() {
         await navigator.clipboard.writeText(magicLink);
         toast({
           title: "Lien magique copié",
-          description: "Le lien inclut désormais votre signature visuelle."
+          description: "Le lien de parrainage est prêt."
         });
       } catch (err) {
         toast({ variant: "destructive", title: "Erreur", description: "Impossible de copier le lien." });

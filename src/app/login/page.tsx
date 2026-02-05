@@ -12,10 +12,10 @@ export async function generateMetadata({
   const params = await searchParams;
   const ref = params.ref as string;
   const username = params.u as string;
-  const image = params.img as string;
 
   if (ref) {
-    const ogImageUrl = `/api/og/referral?u=${encodeURIComponent(username || 'Esprit')}&c=${ref}${image ? `&img=${encodeURIComponent(image)}` : ''}`;
+    // Image supprimée de l'URL pour une pureté technique
+    const ogImageUrl = `/api/og/referral?u=${encodeURIComponent(username || 'Esprit')}&c=${ref}`;
     
     return {
       title: `Rejoins l'Éveil d'Exu Play`,
