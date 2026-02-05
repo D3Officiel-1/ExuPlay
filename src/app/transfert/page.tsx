@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -42,6 +43,7 @@ import { Html5Qrcode } from "html5-qrcode";
 import { useTheme } from "next-themes";
 import { sendPushNotification } from "@/app/actions/notifications";
 import Image from "next/image";
+import { haptic } from "@/lib/haptics";
 
 export default function TransfertPage() {
   const { user } = useUser();
@@ -62,7 +64,6 @@ export default function TransfertPage() {
   const [hasTorch, setHasTorch] = useState(false);
   const [isTorchOn, setIsTorchOn] = useState(false);
 
-  // État pour l'animation de transformation du Sceau
   const [activeIncomingTransfer, setActiveIncomingTransfer] = useState<any>(null);
   const lastPointsRef = useRef<number | null>(null);
 
@@ -73,12 +74,10 @@ export default function TransfertPage() {
 
   const { data: profile, loading } = useDoc(userDocRef);
 
-  // Effet pour détecter l'augmentation de points et déclencher l'animation
   useEffect(() => {
     if (!profile || !db || !user?.uid) return;
 
     if (lastPointsRef.current !== null && profile.totalPoints > lastPointsRef.current) {
-      // Les points ont augmenté ! Cherchons le transfert correspondant.
       const checkIncomingTransfer = async () => {
         try {
           const q = query(
@@ -90,17 +89,15 @@ export default function TransfertPage() {
           );
           const snap = await getDocs(q);
           if (!snap.empty) {
+            haptic.impact();
             const transfer = { id: snap.docs[0].id, ...snap.docs[0].data() };
             setActiveIncomingTransfer(transfer);
             
-            // Jouer un son éthéré
             const audio = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_f80e052d2e.mp3");
             audio.play().catch(() => {});
 
-            // Retour au QR Code après 6 secondes
             setTimeout(async () => {
               setActiveIncomingTransfer(null);
-              // Marquer comme lu
               await updateDoc(doc(db, "transfers", transfer.id), { read: true });
             }, 6000);
           }
@@ -128,24 +125,11 @@ export default function TransfertPage() {
         height: 280,
         type: "svg" as const,
         data: user.uid,
-        dotsOptions: { 
-          color: dotColor, 
-          type: "dots" as const 
-        },
+        dotsOptions: { color: dotColor, type: "dots" as const },
         backgroundOptions: { color: "transparent" },
-        cornersSquareOptions: { 
-          color: dotColor, 
-          type: "extra-rounded" as const 
-        },
-        cornersDotOptions: { 
-          color: dotColor, 
-          type: "dot" as const 
-        },
-        qrOptions: { 
-          typeNumber: 0, 
-          mode: "Byte" as const, 
-          errorCorrectionLevel: "H" as const 
-        },
+        cornersSquareOptions: { color: dotColor, type: "extra-rounded" as const },
+        cornersDotOptions: { color: dotColor, type: "dot" as const },
+        qrOptions: { typeNumber: 0, mode: "Byte" as const, errorCorrectionLevel: "H" as const },
       };
 
       qrRef.current.innerHTML = "";
@@ -167,10 +151,7 @@ export default function TransfertPage() {
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
       try {
         if (isTorchOn) {
-          await html5QrCodeRef.current.applyVideoConstraints({
-            // @ts-ignore
-            advanced: [{ torch: false }]
-          });
+          await html5QrCodeRef.current.applyVideoConstraints({ advanced: [{ torch: false }] } as any);
           setIsTorchOn(false);
         }
         await html5QrCodeRef.current.stop();
@@ -208,8 +189,7 @@ export default function TransfertPage() {
               setHasCameraPermission(true);
               try {
                 const capabilities = scanner.getRunningTrackCapabilities();
-                // @ts-ignore
-                if (capabilities.torch) {
+                if ((capabilities as any).torch) {
                   setHasTorch(true);
                 }
               } catch (e) {
@@ -239,13 +219,10 @@ export default function TransfertPage() {
 
   const toggleTorch = async () => {
     if (!html5QrCodeRef.current || !html5QrCodeRef.current.isScanning) return;
-    
+    haptic.light();
     try {
       const newState = !isTorchOn;
-      await html5QrCodeRef.current.applyVideoConstraints({
-        // @ts-ignore
-        advanced: [{ torch: newState }]
-      });
+      await html5QrCodeRef.current.applyVideoConstraints({ advanced: [{ torch: newState }] } as any);
       setIsTorchOn(newState);
     } catch (err) {
       console.error("Erreur Torch:", err);
@@ -254,8 +231,10 @@ export default function TransfertPage() {
 
   const onScanSuccess = async (decodedText: string) => {
     await stopScanner();
+    haptic.medium();
     
     if (decodedText === user?.uid) {
+      haptic.error();
       setErrorMessage("C'est votre propre Sceau");
       setValidationStatus('error');
       setTimeout(() => {
@@ -273,6 +252,7 @@ export default function TransfertPage() {
       const recipientSnap = await getDoc(recipientRef);
       
       if (recipientSnap.exists()) {
+        haptic.success();
         const data = recipientSnap.data();
         setRecipient({ id: decodedText, ...data });
         setValidationStatus('success');
@@ -280,6 +260,7 @@ export default function TransfertPage() {
           setValidationStatus('idle');
         }, 2500);
       } else {
+        haptic.error();
         setErrorMessage("Esprit non identifié");
         setValidationStatus('error');
         setTimeout(() => {
@@ -305,28 +286,27 @@ export default function TransfertPage() {
     const transferAmount = parseInt(amount);
     if (!transferAmount || transferAmount <= 0 || !user?.uid || !recipient?.id) return;
     if ((profile?.totalPoints || 0) < transferAmount) {
+      haptic.error();
       toast({ variant: "destructive", title: "Lumière insuffisante" });
       return;
     }
 
     setIsProcessing(true);
+    haptic.medium();
     const senderRef = doc(db, "users", user.uid);
     const receiverRef = doc(db, "users", recipient.id);
 
     try {
-      // 1. Déduction expéditeur
       await updateDoc(senderRef, {
         totalPoints: increment(-transferAmount),
         updatedAt: serverTimestamp()
       });
 
-      // 2. Ajout destinataire
       await updateDoc(receiverRef, {
         totalPoints: increment(transferAmount),
         updatedAt: serverTimestamp()
       });
 
-      // 3. Enregistrement du transfert pour déclencher l'animation du bénéficiaire
       await addDoc(collection(db, "transfers"), {
         fromId: user.uid,
         fromName: profile?.username || "Anonyme",
@@ -337,7 +317,6 @@ export default function TransfertPage() {
         read: false
       });
       
-      // 4. Notification Push robuste
       if (recipient.fcmToken) {
         sendPushNotification({
           token: recipient.fcmToken,
@@ -346,9 +325,11 @@ export default function TransfertPage() {
         });
       }
 
+      haptic.success();
       setIsSuccess(true);
     } catch (error) {
       console.error(error);
+      haptic.error();
       toast({ variant: "destructive", title: "Erreur de transfert" });
     } finally {
       setIsProcessing(false);
@@ -366,7 +347,7 @@ export default function TransfertPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col overflow-hidden">
       <main className="flex-1 max-w-lg mx-auto w-full relative h-full">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
+        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); haptic.light(); }} className="w-full h-full flex flex-col">
           <div className="fixed top-6 left-0 right-0 z-[100] px-6 max-w-lg mx-auto">
             <TabsList className="w-full bg-card/20 backdrop-blur-3xl border border-primary/10 p-1 h-14 rounded-2xl grid grid-cols-2 shadow-2xl">
               <TabsTrigger value="qr" className="rounded-xl font-black text-xs uppercase tracking-widest gap-2">
@@ -677,7 +658,7 @@ export default function TransfertPage() {
                         {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
                         {isProcessing ? "Transmission..." : "Confirmer le Transfert"}
                       </Button>
-                      <Button variant="ghost" onClick={() => { setRecipient(null); setAmount(""); setActiveTab("qr"); }} className="w-full h-12 text-[10px] font-black uppercase tracking-widest opacity-40">
+                      <Button variant="ghost" onClick={() => { haptic.light(); setRecipient(null); setAmount(""); setActiveTab("qr"); }} className="w-full h-12 text-[10px] font-black uppercase tracking-widest opacity-40">
                         Annuler
                       </Button>
                     </CardFooter>
@@ -707,7 +688,7 @@ export default function TransfertPage() {
                     <p className="text-4xl font-black tabular-nums">{amount} <span className="text-xs opacity-20">PTS</span></p>
                   </div>
 
-                  <Button variant="outline" onClick={() => router.push("/profil")} className="h-14 px-8 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2">
+                  <Button variant="outline" onClick={() => { haptic.medium(); router.push("/profil"); }} className="h-14 px-8 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2">
                     Retour au Profil
                     <ArrowRight className="h-4 w-4" />
                   </Button>
@@ -726,13 +707,8 @@ export default function TransfertPage() {
           top: 0 !important;
           left: 0 !important;
         }
-        #reader { 
-          border: none !important; 
-          background: black !important; 
-        }
-        #reader__scan_region {
-          display: none !important;
-        }
+        #reader { border: none !important; background: black !important; }
+        #reader__scan_region { display: none !important; }
       `}</style>
     </div>
   );

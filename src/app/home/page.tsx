@@ -21,8 +21,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { BottomNav } from "@/components/BottomNav";
 import { Header } from "@/components/Header";
-import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, Brain, Timer } from "lucide-react";
+import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, Brain, Timer, Zap, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { haptic } from "@/lib/haptics";
 
 /**
  * @fileOverview Un masque de question ultra-stylisé avec des animations complexes pour la mise à jour majeure.
@@ -41,58 +42,63 @@ export function SpoilerOverlay() {
       }}
       className="absolute inset-0 z-10 overflow-hidden rounded-[2rem] pointer-events-none"
     >
-      {/* Verre dépoli de base avec angles arrondis */}
       <div className="absolute inset-0 bg-card/90 backdrop-blur-[45px] z-0 rounded-[2rem]" />
-      
-      {/* Voile flouté supplémentaire derrière le masque */}
       <div className="absolute inset-0 bg-background/30 backdrop-blur-xl -z-10 rounded-[2rem]" />
-      
-      {/* Texture de bruit numérique animée - Très douce */}
       <motion.div
-        animate={{
-          opacity: [0.03, 0.06, 0.03],
-        }}
-        transition={{
-          duration: 4,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
+        animate={{ opacity: [0.03, 0.06, 0.03] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
         className="absolute inset-0 z-10 opacity-5 pointer-events-none rounded-[2rem]"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
           backgroundSize: "120px 120px",
         }}
       />
-
-      {/* Orbes lumineux éthérés */}
       <motion.div 
-        animate={{ 
-          scale: [1, 1.2, 1],
-          x: [0, 30, 0],
-          y: [0, -20, 0],
-        }}
+        animate={{ scale: [1, 1.2, 1], x: [0, 30, 0], y: [0, -20, 0] }}
         transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
         className="absolute top-[-20%] left-[-10%] w-[80%] h-[80%] bg-primary/5 rounded-full blur-[100px] z-20"
       />
       <motion.div 
-        animate={{ 
-          scale: [1, 1.3, 1],
-          x: [0, -40, 0],
-          y: [0, 30, 0],
-        }}
+        animate={{ scale: [1, 1.3, 1], x: [0, -40, 0], y: [0, 30, 0] }}
         transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 1 }}
         className="absolute bottom-[-20%] right-[-10%] w-[80%] h-[80%] bg-primary/5 rounded-full blur-[100px] z-20"
       />
-
-      {/* Effet de balayage lumineux subtil */}
-      <motion.div 
-        animate={{ 
-          x: ["-150%", "250%"],
-        }}
-        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", repeatDelay: 3 }}
-        className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent skew-x-12 z-30"
-      />
     </motion.div>
+  );
+}
+
+function GlobalActivityTicker() {
+  const db = useFirestore();
+  const transfersQuery = useMemo(() => {
+    if (!db) return null;
+    return query(collection(db, "transfers"), orderBy("timestamp", "desc"), limit(1));
+  }, [db]);
+
+  const { data: recentTransfers } = useCollection(transfersQuery);
+  const transfer = recentTransfers?.[0];
+
+  return (
+    <AnimatePresence mode="wait">
+      {transfer && (
+        <motion.div 
+          key={transfer.id}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 10 }}
+          className="flex items-center gap-2 px-4 py-1.5 bg-primary/5 border border-primary/5 rounded-full backdrop-blur-md"
+        >
+          <div className="flex -space-x-2">
+            <div className="h-4 w-4 rounded-full bg-primary/10 flex items-center justify-center border border-background">
+              <Users className="h-2 w-2 text-primary" />
+            </div>
+          </div>
+          <p className="text-[9px] font-black uppercase tracking-widest opacity-60">
+            <span className="text-primary">@{transfer.fromName}</span> a transmis <span className="text-primary">{transfer.amount} PTS</span>
+          </p>
+          <Zap className="h-2.5 w-2.5 text-primary animate-pulse" />
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -114,7 +120,6 @@ export default function HomePage() {
   const userRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
   const { data: profile } = useDoc(userRef);
 
-  // Récupérer tous les quiz
   const quizzesQuery = useMemo(() => {
     if (!db) return null;
     return query(collection(db, "quizzes"), orderBy("createdAt", "asc"));
@@ -122,7 +127,6 @@ export default function HomePage() {
 
   const { data: allQuizzes, loading: quizzesLoading } = useCollection(quizzesQuery);
 
-  // Récupérer les tentatives pour filtrer
   const attemptsQuery = useMemo(() => {
     if (!db || !user?.uid) return null;
     return collection(db, "users", user.uid, "attempts");
@@ -151,7 +155,7 @@ export default function HomePage() {
         setTimeLeft(prev => prev - 1);
       }, 1000);
     } else if (timeLeft === 0 && !isAnswered && quizStarted) {
-      handleAnswer(-1); // Échec auto sur timeout
+      handleAnswer(-1);
     }
     return () => clearInterval(timer);
   }, [quizStarted, isAnswered, timeLeft]);
@@ -159,6 +163,7 @@ export default function HomePage() {
   const handleStartChallenge = async () => {
     if (!user || !db || sessionQuizzes.length === 0) return;
     
+    haptic.medium();
     const currentQuiz = sessionQuizzes[currentQuestionIdx];
     const attemptRef = doc(db, "users", user.uid, "attempts", currentQuiz.id);
     
@@ -189,6 +194,8 @@ export default function HomePage() {
     const currentQuiz = sessionQuizzes[currentQuestionIdx];
     const isCorrect = index === currentQuiz.correctIndex;
     const pointsEarned = isCorrect ? (currentQuiz.points || 100) : 0;
+
+    if (isCorrect) haptic.success(); else haptic.error();
 
     setSelectedOption(index);
     setIsAnswered(true);
@@ -245,6 +252,7 @@ export default function HomePage() {
   };
 
   const nextQuestion = () => {
+    haptic.light();
     if (sessionQuizzes.length === 0) return;
     if (currentQuestionIdx < sessionQuizzes.length - 1) {
       setCurrentQuestionIdx(prev => prev + 1);
@@ -254,10 +262,12 @@ export default function HomePage() {
       setTimeLeft(15);
     } else {
       setQuizComplete(true);
+      haptic.impact();
     }
   };
 
   const resetSession = () => {
+    haptic.medium();
     setSessionQuizzes([]);
     setQuizComplete(false);
     setCurrentQuestionIdx(0);
@@ -311,7 +321,9 @@ export default function HomePage() {
     <div className="min-h-screen bg-background flex flex-col pb-32">
       <Header />
       
-      <main className="flex-1 flex items-center justify-center p-6 pt-24">
+      <main className="flex-1 flex flex-col items-center justify-center p-6 pt-24 space-y-6">
+        <GlobalActivityTicker />
+
         <div className="w-full max-w-lg">
           <AnimatePresence mode="wait">
             {!quizComplete ? (

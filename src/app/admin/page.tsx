@@ -13,7 +13,8 @@ import {
   addDoc,
   deleteDoc,
   updateDoc,
-  increment
+  increment,
+  limit
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
@@ -62,12 +63,25 @@ import {
   Search,
   Sparkles,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  Zap
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { generateQuiz } from "@/ai/flows/generate-quiz-flow";
+import { haptic } from "@/lib/haptics";
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  AreaChart,
+  Area
+} from 'recharts';
 
 export default function AdminPage() {
   const { user, isLoading: authLoading } = useUser();
@@ -93,7 +107,6 @@ export default function AdminPage() {
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
   const [pointsToSubtract, setPointsToSubtract] = useState<number>(0);
 
-  // Search states
   const [quizSearch, setQuizSearch] = useState("");
   const [userSearch, setUserSearch] = useState("");
 
@@ -120,17 +133,20 @@ export default function AdminPage() {
     return query(collection(db, "quizzes"), orderBy("createdAt", "desc"));
   }, [db]);
 
+  const transfersQuery = useMemo(() => {
+    if (!db) return null;
+    return query(collection(db, "transfers"), orderBy("timestamp", "desc"), limit(20));
+  }, [db]);
+
   const { data: users, loading: usersLoading } = useCollection(usersQuery);
   const { data: quizzes, loading: quizzesLoading } = useCollection(quizzesQuery);
+  const { data: recentTransfers } = useCollection(transfersQuery);
 
-  // Filtering logic
   const filteredQuizzes = useMemo(() => {
     if (!quizzes) return [];
     const q = quizSearch.toLowerCase().trim();
     if (!q) return quizzes;
-    return quizzes.filter(quiz => 
-      quiz.question.toLowerCase().includes(q)
-    );
+    return quizzes.filter(quiz => quiz.question.toLowerCase().includes(q));
   }, [quizzes, quizSearch]);
 
   const filteredUsers = useMemo(() => {
@@ -142,6 +158,16 @@ export default function AdminPage() {
       user.phoneNumber?.toLowerCase().includes(q)
     );
   }, [users, userSearch]);
+
+  const chartData = useMemo(() => {
+    if (!users) return [];
+    const groups: Record<string, number> = {};
+    users.slice(0, 10).reverse().forEach(u => {
+      const date = u.createdAt ? new Date(u.createdAt.toDate()).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : 'N/A';
+      groups[date] = (groups[date] || 0) + 1;
+    });
+    return Object.entries(groups).map(([date, count]) => ({ date, count }));
+  }, [users]);
 
   useEffect(() => {
     if (!authLoading && !profileLoading && profile) {
@@ -158,6 +184,7 @@ export default function AdminPage() {
 
   const handleToggleMaintenance = async (checked: boolean) => {
     if (!appConfigRef) return;
+    haptic.medium();
     setDoc(appConfigRef, {
       maintenanceMode: checked,
       updatedAt: serverTimestamp()
@@ -177,6 +204,7 @@ export default function AdminPage() {
 
   const handleAiGenerate = async () => {
     setIsGenerating(true);
+    haptic.light();
     try {
       const result = await generateQuiz({});
       setNewQuiz({
@@ -185,16 +213,11 @@ export default function AdminPage() {
         correctIndex: result.correctIndex,
         points: result.points
       });
-      toast({
-        title: "Défis généré",
-        description: "L'IA a conçu une nouvelle épreuve philosophique."
-      });
+      haptic.success();
+      toast({ title: "Défis généré", description: "L'IA a conçu une nouvelle épreuve philosophique." });
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Dissonance IA",
-        description: "L'IA n'a pas pu concevoir de défi pour le moment."
-      });
+      haptic.error();
+      toast({ variant: "destructive", title: "Dissonance IA", description: "L'IA n'a pas pu concevoir de défi pour le moment." });
     } finally {
       setIsGenerating(false);
     }
@@ -205,6 +228,7 @@ export default function AdminPage() {
     if (!db || isSubmitting) return;
     
     if (newQuiz.question.trim() === "" || newQuiz.options.some(o => o.trim() === "")) {
+      haptic.error();
       toast({ variant: "destructive", title: "Erreur", description: "Veuillez remplir tous les champs." });
       return;
     }
@@ -215,12 +239,8 @@ export default function AdminPage() {
         ...newQuiz,
         createdAt: serverTimestamp()
       });
-      setNewQuiz({
-        question: "",
-        options: ["", "", "", ""],
-        correctIndex: 0,
-        points: 100
-      });
+      haptic.success();
+      setNewQuiz({ question: "", options: ["", "", "", ""], correctIndex: 0, points: 100 });
       setIsAddDialogOpen(false);
       toast({ title: "Défi ajouté", description: "La question a été publiée." });
     } catch (error) {
@@ -228,122 +248,6 @@ export default function AdminPage() {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleUpdateQuiz = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!db || !selectedQuiz || isSubmitting) return;
-
-    setIsSubmitting(true);
-    const quizRef = doc(db, "quizzes", selectedQuiz.id);
-    
-    updateDoc(quizRef, {
-      question: selectedQuiz.question,
-      options: selectedQuiz.options,
-      correctIndex: selectedQuiz.correctIndex,
-      points: selectedQuiz.points,
-      updatedAt: serverTimestamp()
-    }).then(() => {
-      toast({ title: "Défi mis à jour" });
-      setIsViewDialogOpen(false);
-      setIsEditMode(false);
-    }).catch((error) => {
-      const permissionError = new FirestorePermissionError({
-        path: quizRef.path,
-        operation: 'update',
-        requestResourceData: selectedQuiz,
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
-    }).finally(() => {
-      setIsSubmitting(false);
-    });
-  };
-
-  const handleDeleteQuiz = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!db) return;
-    try {
-      await deleteDoc(doc(db, "quizzes", id));
-      toast({ title: "Défi supprimé" });
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const handleSubtractPoints = async () => {
-    if (!db || !selectedAdminUser || pointsToSubtract <= 0 || isSubmitting) return;
-
-    if (pointsToSubtract > (selectedAdminUser.totalPoints || 0)) {
-      toast({ 
-        variant: "destructive",
-        title: "Retrait impossible", 
-        description: `Vous ne pouvez pas retirer plus de points que l'utilisateur n'en possède (${selectedAdminUser.totalPoints} PTS).`
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-    const userRef = doc(db, "users", selectedAdminUser.id);
-    
-    updateDoc(userRef, {
-      totalPoints: increment(-pointsToSubtract),
-      updatedAt: serverTimestamp()
-    }).then(() => {
-      toast({ 
-        title: "Points retirés", 
-        description: `${pointsToSubtract} points ont été déduits de @${selectedAdminUser.username}.`
-      });
-      setPointsToSubtract(0);
-      setIsUserDialogOpen(false);
-    }).catch((error) => {
-      const permissionError = new FirestorePermissionError({
-        path: userRef.path,
-        operation: 'update',
-        requestResourceData: { totalPoints: increment(-pointsToSubtract) },
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
-    }).finally(() => {
-      setIsSubmitting(false);
-    });
-  };
-
-  const handleUpdateRole = async (newRole: string) => {
-    if (!db || !selectedAdminUser || isSubmitting) return;
-
-    setIsSubmitting(true);
-    const userRef = doc(db, "users", selectedAdminUser.id);
-    
-    updateDoc(userRef, {
-      role: newRole,
-      updatedAt: serverTimestamp()
-    }).then(() => {
-      toast({ 
-        title: "Rôle mis à jour", 
-        description: `@${selectedAdminUser.username} est désormais ${newRole === 'admin' ? 'un Maître' : 'un Joueur'}.`
-      });
-      setSelectedAdminUser({...selectedAdminUser, role: newRole});
-    }).catch((error) => {
-      const permissionError = new FirestorePermissionError({
-        path: userRef.path,
-        operation: 'update',
-        requestResourceData: { role: newRole },
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
-    }).finally(() => {
-      setIsSubmitting(false);
-    });
-  };
-
-  const openQuizDetails = (quiz: any) => {
-    setSelectedQuiz({...quiz});
-    setIsEditMode(false);
-    setIsViewDialogOpen(true);
-  };
-
-  const openUserDetails = (userData: any) => {
-    setSelectedAdminUser(userData);
-    setPointsToSubtract(0);
-    setIsUserDialogOpen(true);
   };
 
   if (authLoading || profileLoading || profile?.role !== 'admin') {
@@ -360,13 +264,8 @@ export default function AdminPage() {
       
       <main className="flex-1 p-4 pt-20 space-y-6 md:space-y-8 max-w-4xl mx-auto w-full">
         <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => router.push("/profil")}
-            className="rounded-full h-10 w-10 md:h-12 md:w-12 hover:bg-primary/5"
-          >
-            <ChevronLeft className="h-6 w-6 md:h-6 md:w-6" />
+          <Button variant="ghost" size="icon" onClick={() => router.push("/profil")} className="rounded-full h-10 w-10 md:h-12 md:w-12">
+            <ChevronLeft className="h-6 w-6" />
           </Button>
           <div className="space-y-0">
             <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Console</p>
@@ -376,47 +275,60 @@ export default function AdminPage() {
 
         <Tabs defaultValue="stats" className="space-y-6 md:space-y-8">
           <TabsList className="bg-card/40 backdrop-blur-3xl border border-primary/5 p-1 h-12 md:h-14 rounded-2xl grid grid-cols-4">
-            <TabsTrigger value="stats" className="rounded-xl font-black text-xs uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">
-              <BarChart3 className="h-4 w-4 md:h-5 md:w-5 mr-2" />
-              Stats
+            <TabsTrigger value="stats" className="rounded-xl font-black text-xs uppercase tracking-wider">
+              <BarChart3 className="h-4 w-4 mr-2" /> Stats
             </TabsTrigger>
-            <TabsTrigger value="quizzes" className="rounded-xl font-black text-xs uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">
-              <Plus className="h-4 w-4 md:h-5 md:w-5 mr-2" />
-              Défis
+            <TabsTrigger value="quizzes" className="rounded-xl font-black text-xs uppercase tracking-wider">
+              <Plus className="h-4 w-4 mr-2" /> Défis
             </TabsTrigger>
-            <TabsTrigger value="system" className="rounded-xl font-black text-xs uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">
-              <Settings2 className="h-4 w-4 md:h-5 md:w-5 mr-2" />
-              Système
+            <TabsTrigger value="system" className="rounded-xl font-black text-xs uppercase tracking-wider">
+              <Settings2 className="h-4 w-4 mr-2" /> Système
             </TabsTrigger>
-            <TabsTrigger value="users" className="rounded-xl font-black text-xs uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">
-              <Users className="h-4 w-4 md:h-5 md:w-5 mr-2" />
-              Esprits
+            <TabsTrigger value="users" className="rounded-xl font-black text-xs uppercase tracking-wider">
+              <Users className="h-4 w-4 mr-2" /> Esprits
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="stats" className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-              <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-lg rounded-[2rem]">
+              <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2rem]">
                 <CardHeader className="p-6 pb-2">
-                  <CardTitle className="text-[10px] font-black uppercase tracking-widest opacity-40">Joueurs</CardTitle>
+                  <CardTitle className="text-[10px] font-black uppercase tracking-widest opacity-40">Flux des Esprits</CardTitle>
                 </CardHeader>
-                <CardContent className="p-6 pt-0">
-                  <div className="flex items-end gap-2">
-                    <p className="text-4xl md:text-5xl font-black">{users?.length || 0}</p>
-                    <p className="text-[10px] font-bold opacity-30 mb-1.5 uppercase tracking-tighter">Actifs</p>
-                  </div>
+                <CardContent className="p-6 h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData}>
+                      <defs>
+                        <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="date" hide />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '1rem', border: '1px solid hsl(var(--primary)/0.1)' }}
+                        itemStyle={{ color: 'hsl(var(--primary))', fontWeight: 'bold' }}
+                      />
+                      <Area type="monotone" dataKey="count" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorCount)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
 
-              <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-lg rounded-[2rem]">
+              <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2rem]">
                 <CardHeader className="p-6 pb-2">
-                  <CardTitle className="text-[10px] font-black uppercase tracking-widest opacity-40">Défis</CardTitle>
+                  <CardTitle className="text-[10px] font-black uppercase tracking-widest opacity-40">Échanges Récents</CardTitle>
                 </CardHeader>
-                <CardContent className="p-6 pt-0">
-                  <div className="flex items-end gap-2">
-                    <p className="text-4xl md:text-5xl font-black">{quizzes?.length || 0}</p>
-                    <p className="text-[10px] font-bold opacity-30 mb-1.5 uppercase tracking-tighter">En Ligne</p>
-                  </div>
+                <CardContent className="p-6 pt-0 space-y-3 overflow-y-auto max-h-[180px]">
+                  {recentTransfers?.map(t => (
+                    <div key={t.id} className="flex items-center justify-between p-2 bg-background/40 rounded-xl border border-primary/5">
+                      <div className="flex items-center gap-2">
+                        <Zap className="h-3 w-3 text-primary opacity-40" />
+                        <span className="text-[10px] font-bold truncate max-w-[80px]">@{t.fromName}</span>
+                      </div>
+                      <span className="text-[10px] font-black">+{t.amount} PTS</span>
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
             </div>
@@ -426,437 +338,127 @@ export default function AdminPage() {
             <div className="flex flex-col gap-4 px-1">
               <div className="flex justify-between items-center">
                 <h3 className="text-xs font-black uppercase tracking-widest opacity-40">Base de Données</h3>
-                
                 <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button className="h-10 md:h-12 px-4 md:px-6 rounded-2xl font-black text-xs uppercase tracking-widest gap-2 md:gap-3 shadow-lg shadow-primary/10">
-                      <Plus className="h-4 w-4 md:h-5 md:w-5" />
-                      Nouveau défi
+                    <Button onClick={() => haptic.light()} className="h-10 px-4 rounded-2xl font-black text-xs uppercase tracking-widest gap-2">
+                      <Plus className="h-4 w-4" /> Nouveau défi
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[600px] bg-card/95 backdrop-blur-2xl border-primary/5 rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-10 max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="sm:max-w-[600px] bg-card/95 backdrop-blur-2xl rounded-[2.5rem] p-8 max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <div className="flex justify-between items-start">
                         <div className="space-y-1">
-                          <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight">Nouveau Défi</DialogTitle>
+                          <DialogTitle className="text-2xl font-black tracking-tight">Nouveau Défi</DialogTitle>
                           <p className="text-sm font-medium opacity-60">Créez ou générez une nouvelle épreuve.</p>
                         </div>
-                        <Button 
-                          type="button"
-                          variant="secondary"
-                          onClick={handleAiGenerate}
-                          disabled={isGenerating}
-                          className="h-10 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest gap-2 bg-primary/5 border border-primary/10"
-                        >
+                        <Button type="button" variant="secondary" onClick={handleAiGenerate} disabled={isGenerating} className="h-10 px-4 rounded-xl font-black text-[10px] uppercase gap-2 bg-primary/5">
                           {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3 text-primary" />}
                           Générer avec l'IA
                         </Button>
                       </div>
                     </DialogHeader>
-                    
-                    <form onSubmit={handleAddQuiz} className="space-y-6 pt-6 md:pt-8">
+                    <form onSubmit={handleAddQuiz} className="space-y-6 pt-6">
                       <div className="space-y-2">
                         <Label className="text-xs font-black uppercase tracking-widest opacity-40">La Question</Label>
-                        <Input 
-                          placeholder="Ex: Quelle est l'essence du désir ?" 
-                          className="h-12 md:h-14 text-sm md:text-lg font-bold rounded-2xl" 
-                          value={newQuiz.question} 
-                          onChange={e => setNewQuiz({...newQuiz, question: e.target.value})}
-                        />
+                        <Input placeholder="Ex: Quelle est l'essence du désir ?" className="h-12 rounded-2xl" value={newQuiz.question} onChange={e => setNewQuiz({...newQuiz, question: e.target.value})} />
                       </div>
-
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {newQuiz.options.map((opt, idx) => (
                           <div key={idx} className="space-y-2">
                             <div className="flex justify-between items-center">
                               <Label className="text-xs font-black uppercase tracking-widest opacity-40">Option {idx + 1}</Label>
-                              <div className="flex items-center gap-2">
-                                <span className="text-[9px] font-black uppercase opacity-20">Correct</span>
-                                <input 
-                                  type="radio" 
-                                  name="correct" 
-                                  className="accent-primary h-5 w-5 cursor-pointer"
-                                  checked={newQuiz.correctIndex === idx} 
-                                  onChange={() => setNewQuiz({...newQuiz, correctIndex: idx})}
-                                />
-                              </div>
+                              <input type="radio" name="correct" checked={newQuiz.correctIndex === idx} onChange={() => { haptic.light(); setNewQuiz({...newQuiz, correctIndex: idx}); }} />
                             </div>
-                            <Input 
-                              placeholder={`Réponse ${idx + 1}`} 
-                              className="h-12 text-sm font-medium rounded-xl" 
-                              value={opt} 
-                              onChange={e => {
-                                const newOpts = [...newQuiz.options];
-                                newOpts[idx] = e.target.value;
-                                setNewQuiz({...newQuiz, options: newOpts});
-                              }}
-                            />
+                            <Input placeholder={`Réponse ${idx + 1}`} className="h-12 rounded-xl" value={opt} onChange={e => {
+                              const newOpts = [...newQuiz.options];
+                              newOpts[idx] = e.target.value;
+                              setNewQuiz({...newQuiz, options: newOpts});
+                            }} />
                           </div>
                         ))}
                       </div>
-
-                      <div className="flex items-center gap-4">
-                        <div className="flex-1 space-y-2">
-                          <Label className="text-xs font-black uppercase tracking-widest opacity-40">Récompense (PTS)</Label>
-                          <Input 
-                            type="number" 
-                            className="h-12 text-sm rounded-xl" 
-                            value={newQuiz.points} 
-                            onChange={e => setNewQuiz({...newQuiz, points: parseInt(e.target.value) || 0})}
-                          />
-                        </div>
-                      </div>
-
-                      <DialogFooter className="pt-6 md:pt-8">
-                        <Button type="submit" disabled={isSubmitting || isGenerating} className="w-full h-14 md:h-16 rounded-2xl md:rounded-3xl font-black text-sm uppercase tracking-widest shadow-xl shadow-primary/10">
-                          {isSubmitting ? <Loader2 className="h-5 w-5 md:h-6 md:w-6 animate-spin" /> : "Publier le défi"}
+                      <DialogFooter className="pt-6">
+                        <Button type="submit" disabled={isSubmitting || isGenerating} className="w-full h-14 rounded-2xl font-black text-sm uppercase shadow-xl">
+                          {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Publier le défi"}
                         </Button>
                       </DialogFooter>
                     </form>
                   </DialogContent>
                 </Dialog>
               </div>
-
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-40" />
-                <Input 
-                  placeholder="Rechercher une question..." 
-                  className="pl-12 h-12 bg-card/20 border-none rounded-2xl"
-                  value={quizSearch}
-                  onChange={(e) => setQuizSearch(e.target.value)}
-                />
+                <Input placeholder="Rechercher une question..." className="pl-12 h-12 bg-card/20 border-none rounded-2xl" value={quizSearch} onChange={(e) => setQuizSearch(e.target.value)} />
               </div>
             </div>
-
             <div className="space-y-4">
-              {quizzesLoading ? (
-                <div className="flex justify-center p-16"><Loader2 className="h-8 w-8 md:h-10 md:w-10 animate-spin opacity-20" /></div>
-              ) : (
+              {quizzesLoading ? <div className="flex justify-center p-16"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div> : (
                 <div className="grid gap-4">
                   {filteredQuizzes.map(q => (
-                    <Card 
-                      key={q.id} 
-                      onClick={() => openQuizDetails(q)}
-                      className="border-none bg-card/20 backdrop-blur-3xl rounded-2xl md:rounded-3xl overflow-hidden group hover:bg-card/40 transition-all cursor-pointer"
-                    >
-                      <CardContent className="p-4 md:p-6 flex items-center justify-between gap-4 md:gap-6">
+                    <Card key={q.id} className="border-none bg-card/20 backdrop-blur-3xl rounded-2xl group hover:bg-card/40 transition-all cursor-pointer">
+                      <CardContent className="p-4 flex items-center justify-between gap-4">
                         <div className="space-y-1 flex-1 overflow-hidden">
-                          <p className="text-sm md:text-base font-black leading-tight truncate">{q.question}</p>
-                          <p className="text-[10px] md:text-xs font-bold opacity-30 uppercase tracking-widest">{q.points} PTS • {q.options.length} OPTIONS</p>
+                          <p className="text-sm font-black truncate">{q.question}</p>
+                          <p className="text-[10px] font-bold opacity-30 uppercase">{q.points} PTS • {q.options.length} OPTIONS</p>
                         </div>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={(e) => handleDeleteQuiz(q.id, e)}
-                            className="h-10 w-10 md:h-12 md:w-12 text-destructive hover:bg-destructive/10 rounded-xl md:rounded-2xl shrink-0"
-                          >
-                            <Trash2 className="h-5 w-5 md:h-6 md:w-6" />
-                          </Button>
-                        </div>
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); haptic.medium(); deleteDoc(doc(db, "quizzes", q.id)); }} className="h-10 w-10 text-destructive rounded-xl"><Trash2 className="h-5 w-5" /></Button>
                       </CardContent>
                     </Card>
                   ))}
-                  {filteredQuizzes.length === 0 && (
-                    <div className="text-center py-20 opacity-20">
-                      <Brain className="h-12 w-12 md:h-16 md:w-16 mx-auto mb-4" />
-                      <p className="text-sm font-black uppercase tracking-widest">Aucun défi correspondant</p>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
           </TabsContent>
 
           <TabsContent value="system" className="space-y-6">
-            <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-lg rounded-[2rem] overflow-hidden">
+            <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2rem]">
               <CardHeader className="p-8 pb-4">
-                <CardTitle className="text-xl md:text-2xl font-black">Sécurité Globale</CardTitle>
+                <CardTitle className="text-xl font-black">Sécurité Globale</CardTitle>
                 <CardDescription className="text-sm">Gérez l'accès des esprits au système.</CardDescription>
               </CardHeader>
               <CardContent className="p-8 pt-0">
                 <div className="flex items-center justify-between p-6 bg-background/50 rounded-3xl border border-primary/5">
                   <div className="space-y-1">
-                    <p className="font-black text-sm md:text-base uppercase tracking-widest">Mode Maintenance</p>
+                    <p className="font-black text-sm uppercase tracking-widest">Mode Maintenance</p>
                     <p className="text-xs opacity-40 font-medium italic">"Éveil en pause..."</p>
                   </div>
-                  <Switch 
-                    checked={appStatus?.maintenanceMode || false} 
-                    onCheckedChange={handleToggleMaintenance}
-                    className="data-[state=checked]:bg-red-500 scale-110 md:scale-125 transition-transform"
-                  />
+                  <Switch checked={appStatus?.maintenanceMode || false} onCheckedChange={handleToggleMaintenance} className="scale-110 md:scale-125" />
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="users" className="space-y-6">
-            <div className="px-1 mb-4">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-40" />
-                <Input 
-                  placeholder="Rechercher un esprit (nom ou numéro)..." 
-                  className="pl-12 h-12 bg-card/20 border-none rounded-2xl"
-                  value={userSearch}
-                  onChange={(e) => setUserSearch(e.target.value)}
-                />
-              </div>
+            <div className="px-1 mb-4 relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-40" />
+              <Input placeholder="Rechercher un esprit (nom ou numéro)..." className="pl-12 h-12 bg-card/20 border-none rounded-2xl" value={userSearch} onChange={(e) => setUserSearch(e.target.value)} />
             </div>
-
-            <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-lg rounded-[2rem] overflow-hidden">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent border-primary/5">
-                      <TableHead className="font-black text-xs uppercase tracking-widest opacity-40 h-14 px-6">Esprit</TableHead>
-                      <TableHead className="font-black text-xs uppercase tracking-widest opacity-40 h-14 px-6 text-right">Lumière</TableHead>
+            <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2rem] overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-primary/5">
+                    <TableHead className="font-black text-xs uppercase px-6">Esprit</TableHead>
+                    <TableHead className="font-black text-xs uppercase px-6 text-right">Lumière</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.map((u) => (
+                    <TableRow key={u.id} className="border-primary/5 hover:bg-primary/5 transition-colors cursor-pointer" onClick={() => { haptic.light(); setSelectedAdminUser(u); setIsUserDialogOpen(true); }}>
+                      <TableCell className="py-4 px-6">
+                        <div className="flex flex-col">
+                          <span className="font-black text-sm">@{u.username}</span>
+                          <span className="text-[10px] opacity-30">{u.phoneNumber}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-4 px-6 text-right font-black text-sm">{u.totalPoints?.toLocaleString() || 0} PTS</TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredUsers.map((u) => (
-                      <TableRow 
-                        key={u.id} 
-                        className="border-primary/5 hover:bg-primary/5 transition-colors cursor-pointer"
-                        onClick={() => openUserDetails(u)}
-                      >
-                        <TableCell className="py-4 px-6">
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-2">
-                              <span className="font-black text-sm md:text-base tracking-tight">@{u.username}</span>
-                              {u.role === 'admin' && <span className="bg-primary/10 text-primary text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter flex items-center gap-1"><ShieldCheck className="h-2 w-2" /> Maître</span>}
-                            </div>
-                            <span className="text-[10px] opacity-30 uppercase tracking-widest">
-                              {u.phoneNumber}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-4 px-6 text-right font-black text-sm md:text-base tabular-nums">
-                          {u.totalPoints?.toLocaleString() || 0} <span className="text-[10px] opacity-20">PTS</span>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {filteredUsers.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={2} className="text-center py-10 opacity-20 font-black uppercase tracking-widest">
-                          Aucun esprit trouvé
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                  ))}
+                </TableBody>
+              </Table>
             </Card>
           </TabsContent>
         </Tabs>
       </main>
-
-      {/* Dialogue de Visualisation / Modification de Quiz */}
-      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] bg-card/95 backdrop-blur-2xl border-primary/5 rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-10 max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight">
-              {isEditMode ? "Modifier le Défi" : "Détails du Défi"}
-            </DialogTitle>
-          </DialogHeader>
-          
-          {selectedQuiz && (
-            <form onSubmit={handleUpdateQuiz} className="space-y-6 pt-6 md:pt-8">
-              <div className="space-y-2">
-                <Label className="text-xs font-black uppercase tracking-widest opacity-40">La Question</Label>
-                {isEditMode ? (
-                  <Input 
-                    placeholder="Ex: Quelle est l'essence du désir ?" 
-                    className="h-12 md:h-14 text-sm md:text-lg font-bold rounded-2xl" 
-                    value={selectedQuiz.question} 
-                    onChange={e => setSelectedQuiz({...selectedQuiz, question: e.target.value})}
-                  />
-                ) : (
-                  <p className="text-sm md:text-lg font-bold p-4 bg-primary/5 rounded-xl">{selectedQuiz.question}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {selectedQuiz.options.map((opt: string, idx: number) => (
-                  <div key={idx} className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <Label className="text-xs font-black uppercase tracking-widest opacity-40">Option {idx + 1}</Label>
-                      {isEditMode && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] font-black uppercase opacity-20">Correct</span>
-                          <input 
-                            type="radio" 
-                            name="edit-correct" 
-                            className="accent-primary h-5 w-5 cursor-pointer"
-                            checked={selectedQuiz.correctIndex === idx} 
-                            onChange={() => setSelectedQuiz({...selectedQuiz, correctIndex: idx})}
-                          />
-                        </div>
-                      )}
-                    </div>
-                    {isEditMode ? (
-                      <Input 
-                        placeholder={`Réponse ${idx + 1}`} 
-                        className="h-12 text-sm font-medium rounded-xl" 
-                        value={opt} 
-                        onChange={e => {
-                          const newOpts = [...selectedQuiz.options];
-                          newOpts[idx] = e.target.value;
-                          setSelectedQuiz({...selectedQuiz, options: newOpts});
-                        }}
-                      />
-                    ) : (
-                      <div className={`p-3 rounded-xl text-sm font-medium border ${selectedQuiz.correctIndex === idx ? 'bg-green-500/10 border-green-500/50 text-green-600' : 'bg-primary/5 border-transparent opacity-60'}`}>
-                        {opt}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="flex-1 space-y-2">
-                  <Label className="text-xs font-black uppercase tracking-widest opacity-40">Récompense (PTS)</Label>
-                  {isEditMode ? (
-                    <Input 
-                      type="number" 
-                      className="h-12 text-sm rounded-xl" 
-                      value={selectedQuiz.points} 
-                      onChange={e => setSelectedQuiz({...selectedQuiz, points: parseInt(e.target.value) || 0})}
-                    />
-                  ) : (
-                    <p className="text-sm md:text-lg font-black">{selectedQuiz.points} PTS</p>
-                  )}
-                </div>
-              </div>
-
-              <DialogFooter className="pt-6 md:pt-8 gap-3">
-                {isEditMode ? (
-                  <>
-                    <Button 
-                      type="button" 
-                      variant="ghost"
-                      onClick={() => setIsEditMode(false)}
-                      className="flex-1 h-14 md:h-16 rounded-2xl md:rounded-3xl font-black text-sm uppercase tracking-widest"
-                    >
-                      Annuler
-                    </Button>
-                    <Button 
-                      type="submit" 
-                      disabled={isSubmitting} 
-                      className="flex-1 h-14 md:h-16 rounded-2xl md:rounded-3xl font-black text-sm uppercase tracking-widest"
-                    >
-                      {isSubmitting ? <Loader2 className="h-5 w-5 md:h-6 md:w-6 animate-spin" /> : "Enregistrer"}
-                    </Button>
-                  </>
-                ) : (
-                  <Button 
-                    type="button" 
-                    onClick={() => setIsEditMode(true)}
-                    className="w-full h-14 md:h-16 rounded-2xl md:rounded-3xl font-black text-sm uppercase tracking-widest gap-2"
-                  >
-                    <Edit3 className="h-5 w-5" />
-                    Modifier ce défi
-                  </Button>
-                )}
-              </DialogFooter>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialogue de Détails de l'Utilisateur */}
-      <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] bg-card/95 backdrop-blur-2xl border-primary/5 rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-10 max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight flex items-center gap-3">
-              <User className="h-8 w-8" />
-              Fiche de l'Esprit
-            </DialogTitle>
-          </DialogHeader>
-
-          {selectedAdminUser && (
-            <div className="space-y-6 md:space-y-8 pt-6 md:pt-8">
-              <div className="flex flex-col items-center gap-4 p-6 bg-primary/5 rounded-[2rem] border border-primary/10">
-                <div className="text-center">
-                  <p className="text-2xl md:text-4xl font-black tracking-tight">@{selectedAdminUser.username}</p>
-                  <p className="text-sm font-bold opacity-40 uppercase tracking-widest">{selectedAdminUser.phoneNumber}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs font-black uppercase tracking-[0.2em] opacity-30 mb-1">Lumière Totale</p>
-                  <p className="text-3xl md:text-5xl font-black tabular-nums">{selectedAdminUser.totalPoints?.toLocaleString() || 0} <span className="text-sm md:text-xl opacity-20">PTS</span></p>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase tracking-widest opacity-40">Rôle de l'Esprit</Label>
-                  <div className="flex gap-2">
-                    <Select 
-                      value={selectedAdminUser.role} 
-                      onValueChange={(value) => handleUpdateRole(value)}
-                      disabled={isSubmitting}
-                    >
-                      <SelectTrigger className="h-14 rounded-2xl font-bold bg-background/50 flex-1">
-                        <SelectValue placeholder="Sélectionner un rôle" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-2xl border-primary/5">
-                        <SelectItem value="user" className="font-bold">Joueur (Standard)</SelectItem>
-                        <SelectItem value="admin" className="font-bold">Maître (Admin)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <Label className="text-xs font-black uppercase tracking-widest opacity-40">Retrait de Lumière (Pénalité)</Label>
-                    <span className="text-[10px] font-black uppercase opacity-20">Seuil: {selectedAdminUser.totalPoints || 0} PTS</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Input 
-                        type="number"
-                        placeholder="Points..."
-                        className={`h-14 text-lg font-bold rounded-2xl bg-background/50 w-full ${pointsToSubtract > (selectedAdminUser.totalPoints || 0) ? 'border-red-500 ring-red-500' : ''}`}
-                        value={pointsToSubtract || ""}
-                        max={selectedAdminUser.totalPoints || 0}
-                        onChange={(e) => setPointsToSubtract(Math.abs(parseInt(e.target.value) || 0))}
-                      />
-                      {pointsToSubtract > (selectedAdminUser.totalPoints || 0) && (
-                        <div className="absolute -bottom-5 left-2 flex items-center gap-1 text-red-500">
-                          <AlertTriangle className="h-3 w-3" />
-                          <span className="text-[9px] font-black uppercase">Dépasse le solde</span>
-                        </div>
-                      )}
-                    </div>
-                    <Button 
-                      onClick={handleSubtractPoints}
-                      disabled={isSubmitting || pointsToSubtract <= 0 || pointsToSubtract > (selectedAdminUser.totalPoints || 0)}
-                      className="h-14 px-4 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2 bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/10"
-                    >
-                      {isSubmitting ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <>
-                          <MinusCircle className="h-4 w-4" />
-                          Retirer
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-background/50 rounded-2xl border border-primary/5 text-center">
-                  <p className="text-[10px] font-black uppercase tracking-widest opacity-30 mb-1">Genre</p>
-                  <p className="text-sm md:text-base font-bold capitalize">{selectedAdminUser.gender}</p>
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       <BottomNav />
     </div>
