@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser, useFirestore, useDoc } from "@/firebase";
 import { doc } from "firebase/firestore";
@@ -11,8 +11,8 @@ import { ShieldCheck, Loader2, Fingerprint } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 /**
- * @fileOverview Un écran de verrouillage biométrique global qui intercepte l'accès si activé.
- * Déclenche automatiquement l'authentification au montage.
+ * @fileOverview Un écran de verrouillage biométrique global ultra-réactif.
+ * Se déclenche au montage et à chaque fois que l'app revient au premier plan.
  */
 
 export function BiometricLock() {
@@ -26,20 +26,8 @@ export function BiometricLock() {
   const userRef = user?.uid ? doc(db, "users", user.uid) : null;
   const { data: profile, loading: profileLoading } = useDoc(userRef);
 
-  // Déterminer l'état de verrouillage
-  useEffect(() => {
-    if (!authLoading && !profileLoading && profile?.biometricEnabled && profile?.passkeyId) {
-      const isSessionAuthenticated = sessionStorage.getItem(`auth_${user?.uid}`);
-      if (!isSessionAuthenticated) {
-        setLocked(true);
-      }
-    } else if (!authLoading && !profileLoading) {
-      setLocked(false);
-    }
-  }, [authLoading, profileLoading, profile, user?.uid]);
-
-  // Authentification
-  const handleUnlock = async () => {
+  // Fonction d'authentification mémoïsée
+  const handleUnlock = useCallback(async () => {
     if (!profile?.passkeyId || authenticating) return;
     
     setAuthenticating(true);
@@ -52,7 +40,6 @@ export function BiometricLock() {
       }
     } catch (error: any) {
       console.error("Auth error:", error);
-      // On ne montre pas d'erreur si c'est juste une annulation de l'utilisateur lors de l'auto-prompt
       if (error.name !== 'NotAllowedError' && error.name !== 'AbortError') {
         toast({ 
           variant: "destructive", 
@@ -63,15 +50,47 @@ export function BiometricLock() {
     } finally {
       setAuthenticating(false);
     }
-  };
+  }, [profile?.passkeyId, authenticating, user?.uid, toast]);
 
-  // Déclenchement automatique au montage dès que possible
+  // 1. Déclenchement au montage ou changement de profil
   useEffect(() => {
-    if (locked && profile?.passkeyId && !hasAttemptedAutoAuth.current && !authenticating) {
-      hasAttemptedAutoAuth.current = true;
-      handleUnlock();
+    if (!authLoading && !profileLoading && profile?.biometricEnabled && profile?.passkeyId) {
+      const isSessionAuthenticated = sessionStorage.getItem(`auth_${user?.uid}`);
+      if (!isSessionAuthenticated) {
+        setLocked(true);
+      }
+    } else if (!authLoading && !profileLoading) {
+      setLocked(false);
     }
-  }, [locked, profile?.passkeyId]);
+  }, [authLoading, profileLoading, profile, user?.uid]);
+
+  // 2. Déclenchement automatique au verrouillage
+  useEffect(() => {
+    if (locked && profile?.passkeyId && !authenticating) {
+      // Un petit délai pour s'assurer que l'UI est prête après le splash
+      const timer = setTimeout(() => {
+        handleUnlock();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [locked, profile?.passkeyId, handleUnlock]);
+
+  // 3. Gestion du retour en arrière-plan (Visibility API)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // L'app revient au premier plan
+        if (profile?.biometricEnabled && profile?.passkeyId) {
+          // On force le re-verrouillage pour plus de sécurité
+          sessionStorage.removeItem(`auth_${user?.uid}`);
+          setLocked(true);
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [profile?.biometricEnabled, profile?.passkeyId, user?.uid]);
 
   if (!locked) return null;
 
