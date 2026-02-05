@@ -38,15 +38,6 @@ export function SpoilerOverlay() {
     >
       <div className="absolute inset-0 bg-card/90 backdrop-blur-[45px] z-0 rounded-[2rem]" />
       <div className="absolute inset-0 bg-background/30 backdrop-blur-xl -z-10 rounded-[2rem]" />
-      <motion.div
-        animate={{ opacity: [0.03, 0.06, 0.03] }}
-        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute inset-0 z-10 opacity-5 pointer-events-none rounded-[2rem]"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-          backgroundSize: "120px 120px",
-        }}
-      />
       <motion.div 
         animate={{ scale: [1, 1.2, 1], x: [0, 30, 0], y: [0, -20, 0] }}
         transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}

@@ -110,17 +110,6 @@ export function BiometricLock() {
           }}
           className="fixed inset-0 z-[2000] bg-background flex flex-col items-center justify-center p-8 text-center overflow-hidden"
         >
-          {/* Texture de bruit numérique animée */}
-          <motion.div
-            animate={{ opacity: [0.02, 0.05, 0.02] }}
-            transition={{ duration: 4, repeat: Infinity }}
-            className="absolute inset-0 z-0 pointer-events-none"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-              backgroundSize: "150px 150px",
-            }}
-          />
-
           {/* Arrière-plan éthéré */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-20">
             <motion.div 
@@ -145,7 +134,7 @@ export function BiometricLock() {
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="space-y-12 max-w-sm z-10"
+            className="space-y-12 max-sm z-10"
           >
             <motion.div 
               animate={isUnlocked ? { y: -20, opacity: 0, scale: 0.9, filter: "blur(10px)" } : {}}

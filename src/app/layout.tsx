@@ -167,16 +167,6 @@ function OfflineOverlay() {
       exit={{ opacity: 0, filter: "blur(20px)" }}
       className="fixed inset-0 z-[1100] bg-background flex flex-col items-center justify-center p-8 text-center"
     >
-      <motion.div
-        animate={{ opacity: [0.03, 0.06, 0.03] }}
-        transition={{ duration: 4, repeat: Infinity }}
-        className="absolute inset-0 z-0 opacity-10 pointer-events-none"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-          backgroundSize: "150px 150px",
-        }}
-      />
-
       <div className="absolute inset-0 pointer-events-none opacity-30 overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-destructive/10 blur-[120px]" />
       </div>
@@ -384,13 +374,6 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="antialiased font-sans overflow-x-hidden">
-        {/* Texture de bruit numérique globale */}
-        <div className="fixed inset-0 pointer-events-none z-[9999] opacity-[0.03] dark:opacity-[0.05]" 
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-            backgroundSize: "120px 120px",
-          }}
-        />
         <FirebaseClientProvider>
           <ThemeProvider
             attribute="class"
