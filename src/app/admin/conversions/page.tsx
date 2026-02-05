@@ -11,7 +11,6 @@ import {
   orderBy,
   updateDoc,
   increment,
-  deleteDoc
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -31,8 +30,17 @@ import {
   Zap,
   Smartphone,
   Check,
-  X
+  X,
+  Calendar,
+  Info,
+  ArrowRight
 } from "lucide-react";
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { haptic } from "@/lib/haptics";
@@ -49,6 +57,7 @@ export default function ConversionsAdminPage() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [selectedExchange, setSelectedExchange] = useState<any | null>(null);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -82,7 +91,8 @@ export default function ConversionsAdminPage() {
     );
   }, [exchanges, search]);
 
-  const handleUpdateStatus = (id: string, newStatus: 'completed' | 'rejected') => {
+  const handleUpdateStatus = (e: React.MouseEvent, id: string, newStatus: 'completed' | 'rejected') => {
+    e.stopPropagation(); // Éviter d'ouvrir le dialogue lors du clic sur les boutons
     if (!db) return;
     setProcessingId(id);
     haptic.medium();
@@ -97,7 +107,6 @@ export default function ConversionsAdminPage() {
     const userRef = doc(db, "users", exchange.userId);
 
     if (newStatus === 'completed') {
-      // Pour une validation, on marque simplement comme traité (les points ont été pris au début)
       updateDoc(exchangeRef, {
         status: 'completed',
         processedAt: serverTimestamp()
@@ -105,6 +114,7 @@ export default function ConversionsAdminPage() {
       .then(() => {
         haptic.success();
         toast({ title: "Demande validée", description: "La transaction est terminée." });
+        if (selectedExchange?.id === id) setSelectedExchange(null);
       })
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
@@ -116,8 +126,6 @@ export default function ConversionsAdminPage() {
       })
       .finally(() => setProcessingId(null));
     } else {
-      // Pour un refus, on rend les points et on marque comme rejeté
-      // On ne supprime plus le doc immédiatement pour permettre l'affichage de l'overlay chez l'utilisateur
       updateDoc(userRef, {
         totalPoints: increment(exchange.points || 0),
         updatedAt: serverTimestamp()
@@ -130,6 +138,7 @@ export default function ConversionsAdminPage() {
         .then(() => {
           haptic.success();
           toast({ title: "Demande rejetée", description: "Les points ont été rendus à l'utilisateur." });
+          if (selectedExchange?.id === id) setSelectedExchange(null);
         })
         .catch(async (error) => {
           const permissionError = new FirestorePermissionError({
@@ -150,6 +159,11 @@ export default function ConversionsAdminPage() {
       })
       .finally(() => setProcessingId(null));
     }
+  };
+
+  const handleRowClick = (exchange: any) => {
+    haptic.light();
+    setSelectedExchange(exchange);
   };
 
   if (authLoading || profileLoading || profile?.role !== 'admin') {
@@ -193,12 +207,12 @@ export default function ConversionsAdminPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-primary/5">
-                  <TableHead className="font-black text-xs uppercase px-8 py-4">Esprit & Contact</TableHead>
-                  <TableHead className="font-black text-xs uppercase px-8 py-4">Lumière</TableHead>
-                  <TableHead className="font-black text-xs uppercase px-8 py-4">Montant Net</TableHead>
-                  <TableHead className="font-black text-xs uppercase px-8 py-4">Date</TableHead>
-                  <TableHead className="font-black text-xs uppercase px-8 py-4">Statut</TableHead>
-                  <TableHead className="font-black text-xs uppercase px-8 py-4 text-right">Actions</TableHead>
+                  <TableHead className="font-black text-xs uppercase px-6 md:px-8 py-4">Esprit & Contact</TableHead>
+                  <TableHead className="hidden sm:table-cell font-black text-xs uppercase px-8 py-4">Lumière</TableHead>
+                  <TableHead className="font-black text-xs uppercase px-6 md:px-8 py-4">Montant Net</TableHead>
+                  <TableHead className="hidden sm:table-cell font-black text-xs uppercase px-8 py-4">Date</TableHead>
+                  <TableHead className="hidden sm:table-cell font-black text-xs uppercase px-8 py-4">Statut</TableHead>
+                  <TableHead className="font-black text-xs uppercase px-6 md:px-8 py-4 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -216,8 +230,12 @@ export default function ConversionsAdminPage() {
                   </TableRow>
                 ) : (
                   filteredExchanges.map((ex) => (
-                    <TableRow key={ex.id} className="border-primary/5 hover:bg-primary/5 transition-colors">
-                      <TableCell className="px-8 py-6">
+                    <TableRow 
+                      key={ex.id} 
+                      onClick={() => handleRowClick(ex)}
+                      className="border-primary/5 hover:bg-primary/5 transition-colors cursor-pointer"
+                    >
+                      <TableCell className="px-6 md:px-8 py-6">
                         <div className="flex flex-col gap-1">
                           <span className="font-black text-sm">@{ex.username}</span>
                           <span className="text-[10px] font-bold opacity-40 flex items-center gap-1">
@@ -226,24 +244,24 @@ export default function ConversionsAdminPage() {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="px-8 py-6 font-black text-sm">
+                      <TableCell className="hidden sm:table-cell px-8 py-6 font-black text-sm">
                         <div className="flex items-center gap-1.5">
                           <Zap className="h-3 w-3 text-primary opacity-40" />
                           {ex.points?.toLocaleString()} PTS
                         </div>
                       </TableCell>
-                      <TableCell className="px-8 py-6">
+                      <TableCell className="px-6 md:px-8 py-6">
                         <span className="font-black text-primary text-base">
                           {ex.amount?.toLocaleString()} <span className="text-[10px] opacity-40">FCFA</span>
                         </span>
                       </TableCell>
-                      <TableCell className="px-8 py-6">
+                      <TableCell className="hidden sm:table-cell px-8 py-6">
                         <div className="flex flex-col text-[10px] font-bold opacity-40">
                           <span>{ex.requestedAt && typeof ex.requestedAt.toDate === 'function' ? format(ex.requestedAt.toDate(), "dd MMM yyyy", { locale: fr }) : "---"}</span>
                           <span>{ex.requestedAt && typeof ex.requestedAt.toDate === 'function' ? format(ex.requestedAt.toDate(), "HH:mm") : ""}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="px-8 py-6">
+                      <TableCell className="hidden sm:table-cell px-8 py-6">
                         {ex.status === 'pending' && (
                           <Badge variant="secondary" className="bg-orange-500/10 text-orange-600 border-none font-black text-[9px] uppercase tracking-widest px-3 py-1">
                             En attente
@@ -260,13 +278,13 @@ export default function ConversionsAdminPage() {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="px-8 py-6 text-right">
+                      <TableCell className="px-6 md:px-8 py-6 text-right">
                         {ex.status === 'pending' && (
                           <div className="flex justify-end gap-2">
                             <Button 
                               size="icon" 
                               variant="ghost" 
-                              onClick={() => handleUpdateStatus(ex.id, 'rejected')}
+                              onClick={(e) => handleUpdateStatus(e, ex.id, 'rejected')}
                               disabled={processingId === ex.id}
                               className="h-10 w-10 rounded-xl text-destructive hover:bg-destructive/10"
                             >
@@ -274,7 +292,7 @@ export default function ConversionsAdminPage() {
                             </Button>
                             <Button 
                               size="icon" 
-                              onClick={() => handleUpdateStatus(ex.id, 'completed')}
+                              onClick={(e) => handleUpdateStatus(e, ex.id, 'completed')}
                               disabled={processingId === ex.id}
                               className="h-10 w-10 rounded-xl"
                             >
@@ -284,7 +302,7 @@ export default function ConversionsAdminPage() {
                         )}
                         {ex.status !== 'pending' && (
                           <div className="text-[10px] font-black opacity-20 uppercase tracking-widest">
-                            Traité le {ex.processedAt && typeof ex.processedAt.toDate === 'function' ? format(ex.processedAt.toDate(), "dd/MM") : "---"}
+                            {ex.status === 'completed' ? 'Traité' : 'Refusé'}
                           </div>
                         )}
                       </TableCell>
@@ -296,6 +314,101 @@ export default function ConversionsAdminPage() {
           </div>
         </Card>
       </main>
+
+      <Dialog open={!!selectedExchange} onOpenChange={(open) => !open && setSelectedExchange(null)}>
+        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-3xl border-white/5 rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
+          <div className="p-8 space-y-8">
+            <DialogHeader>
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Fiche de Transaction</p>
+                <DialogTitle className="text-2xl font-black tracking-tight">Détails de la Conversion</DialogTitle>
+              </div>
+            </DialogHeader>
+
+            {selectedExchange && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-4 p-6 bg-primary/5 rounded-[2rem] border border-primary/5">
+                  <div className="h-12 w-12 bg-background rounded-2xl flex items-center justify-center border border-primary/5 shadow-sm">
+                    <Zap className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Esprit Sollicitant</p>
+                    <p className="font-black text-lg truncate">@{selectedExchange.username}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-5 bg-background/40 rounded-3xl border border-primary/5 space-y-1">
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Lumière brute</p>
+                    <p className="font-black text-base">{selectedExchange.points?.toLocaleString()} <span className="text-[10px] opacity-30">PTS</span></p>
+                  </div>
+                  <div className="p-5 bg-background/40 rounded-3xl border border-primary/5 space-y-1">
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Montant Net</p>
+                    <p className="font-black text-base text-primary">{selectedExchange.amount?.toLocaleString()} <span className="text-[10px] opacity-30">FCFA</span></p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between px-2">
+                    <div className="flex items-center gap-2 opacity-40">
+                      <Smartphone className="h-3 w-3" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Liaison Wave</span>
+                    </div>
+                    <span className="text-xs font-bold">{selectedExchange.phoneNumber}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-2">
+                    <div className="flex items-center gap-2 opacity-40">
+                      <Calendar className="h-3 w-3" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Date de Requête</span>
+                    </div>
+                    <span className="text-xs font-bold">
+                      {selectedExchange.requestedAt && typeof selectedExchange.requestedAt.toDate === 'function' 
+                        ? format(selectedExchange.requestedAt.toDate(), "dd/MM/yyyy HH:mm") 
+                        : "---"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between px-2">
+                    <div className="flex items-center gap-2 opacity-40">
+                      <Info className="h-3 w-3" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">État Actuel</span>
+                    </div>
+                    {selectedExchange.status === 'pending' && <span className="text-[10px] font-black uppercase text-orange-500">En Attente</span>}
+                    {selectedExchange.status === 'completed' && <span className="text-[10px] font-black uppercase text-green-500">Traité le {selectedExchange.processedAt && typeof selectedExchange.processedAt.toDate === 'function' ? format(selectedExchange.processedAt.toDate(), "dd/MM") : ""}</span>}
+                    {selectedExchange.status === 'rejected' && <span className="text-[10px] font-black uppercase text-red-500">Rejeté le {selectedExchange.processedAt && typeof selectedExchange.processedAt.toDate === 'function' ? format(selectedExchange.processedAt.toDate(), "dd/MM") : ""}</span>}
+                  </div>
+                </div>
+
+                {selectedExchange.status === 'pending' && (
+                  <div className="flex gap-3 pt-4">
+                    <Button 
+                      variant="outline"
+                      onClick={(e) => handleUpdateStatus(e, selectedExchange.id, 'rejected')}
+                      disabled={processingId === selectedExchange.id}
+                      className="flex-1 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest text-destructive hover:bg-destructive/5 border-destructive/10"
+                    >
+                      Refuser
+                    </Button>
+                    <Button 
+                      onClick={(e) => handleUpdateStatus(e, selectedExchange.id, 'completed')}
+                      disabled={processingId === selectedExchange.id}
+                      className="flex-2 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2 shadow-xl shadow-primary/20"
+                    >
+                      {processingId === selectedExchange.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                      Valider Retrait
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="p-6 bg-primary/5 rounded-[2rem] border border-primary/5">
+              <p className="text-[10px] leading-relaxed font-medium opacity-40 text-center italic">
+                "Chaque flux validé matérialise la Lumière en prospérité terrestre."
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
