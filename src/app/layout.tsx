@@ -1,4 +1,3 @@
-
 "use client";
 
 import "./globals.css";
@@ -195,7 +194,6 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     window.addEventListener('offline', handleOffline);
     setIsOffline(!navigator.onLine);
 
-    // On déclenche la détection PWA après une petite tempo et si l'utilisateur est connecté sur une page interne
     if (user && !["/", "/login", "/offline", "/autoriser"].includes(pathname)) {
       const timer = setTimeout(() => {
         setShowPwaPrompt(true);
@@ -269,6 +267,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Exu Play" />
         <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+        <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="antialiased font-sans">
         <FirebaseClientProvider>
