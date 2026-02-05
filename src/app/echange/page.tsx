@@ -16,8 +16,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Smartphone,
-  Clock,
-  Calendar,
   Percent,
   Lock,
   Fingerprint
@@ -37,20 +35,6 @@ export default function EchangePage() {
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [isWindowOpen, setIsWindowOpen] = useState(false);
-
-  // Check if current time is Friday between 18h and 20h
-  useEffect(() => {
-    const checkWindow = () => {
-      const now = new Date();
-      const day = now.getDay(); // 5 = Friday
-      const hours = now.getHours();
-      setIsWindowOpen(day === 5 && hours >= 18 && hours < 20);
-    };
-    checkWindow();
-    const interval = setInterval(checkWindow, 60000);
-    return () => clearInterval(interval);
-  }, []);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -96,16 +80,6 @@ export default function EchangePage() {
         variant: "destructive",
         title: "Lumière insuffisante",
         description: `Vous devez accumuler au moins ${minPoints} points pour initier un échange.`
-      });
-      return;
-    }
-
-    if (!isWindowOpen) {
-      haptic.error();
-      toast({
-        variant: "destructive",
-        title: "Fenêtre fermée",
-        description: "Les échanges ne sont autorisés que le vendredi de 18h à 20h."
       });
       return;
     }
@@ -265,23 +239,11 @@ export default function EchangePage() {
                     {points < minPoints && (
                       <div className="flex gap-3 p-4 bg-orange-500/5 rounded-2xl border border-orange-500/10 items-start">
                         <AlertCircle className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
-                        <p className="text-[10px] leading-relaxed font-bold text-orange-600/80 uppercase">
+                        <p className="text-[10px] font-bold text-orange-600/80 uppercase">
                           Seuil minimum de {minPoints} points requis.
                         </p>
                       </div>
                     )}
-
-                    <div className={`flex gap-3 p-4 rounded-2xl border items-start ${isWindowOpen ? 'bg-green-500/5 border-green-500/10' : 'bg-red-500/5 border-red-500/10'}`}>
-                      {isWindowOpen ? <Clock className="h-4 w-4 text-green-500 shrink-0 mt-0.5" /> : <Calendar className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />}
-                      <div className="space-y-1">
-                        <p className={`text-[10px] leading-relaxed font-black uppercase ${isWindowOpen ? 'text-green-600' : 'text-red-600'}`}>
-                          Fenêtre de transfert : Vendredi 18h - 20h
-                        </p>
-                        {!isWindowOpen && (
-                          <p className="text-[9px] font-bold opacity-60 uppercase">Actuellement fermé</p>
-                        )}
-                      </div>
-                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -289,7 +251,7 @@ export default function EchangePage() {
               <CardFooter className="px-8 pb-10">
                 <Button 
                   onClick={handleExchange}
-                  disabled={isProcessing || points < minPoints || !isWindowOpen || !isExchangeGloballyEnabled}
+                  disabled={isProcessing || points < minPoints || !isExchangeGloballyEnabled}
                   className="w-full h-16 rounded-2xl font-black text-sm uppercase tracking-widest gap-3 shadow-xl shadow-primary/20"
                 >
                   {isProcessing ? (
