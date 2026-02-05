@@ -475,7 +475,7 @@ export default function HomePage() {
                             onClick={() => handleAnswer(idx)}
                             disabled={isAnswered || !quizStarted || updating}
                             className={`
-                              relative w-full p-4 sm:p-6 rounded-2xl text-left font-black transition-all duration-500 flex items-center justify-between border min-h-[80px] sm:min-h-[90px] overflow-hidden
+                              relative w-full p-4 sm:p-6 rounded-2xl text-center font-black transition-all duration-500 flex flex-col items-center justify-center border min-h-[100px] sm:min-h-[120px] overflow-hidden
                               ${!isAnswered 
                                 ? "bg-background/20 border-primary/5" 
                                 : isCorrect 
@@ -485,8 +485,8 @@ export default function HomePage() {
                                     : "bg-background/10 border-transparent opacity-20 scale-95"}
                             `}
                           >
-                            <span className="text-[10px] sm:text-sm leading-tight relative z-10">{option}</span>
-                            <div className="shrink-0 ml-1 sm:ml-3 relative z-10">
+                            <span className="text-sm sm:text-lg leading-tight relative z-10">{option}</span>
+                            <div className="absolute top-3 right-3 z-10">
                               {isAnswered && isCorrect && <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />}
                               {isAnswered && isSelected && !isCorrect && <XCircle className="h-4 w-4 sm:h-5 sm:w-5" />}
                             </div>
