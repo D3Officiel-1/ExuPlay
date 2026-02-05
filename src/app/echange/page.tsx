@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -17,7 +16,8 @@ import {
   AlertCircle,
   Smartphone,
   Clock,
-  Calendar
+  Calendar,
+  Percent
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -58,7 +58,13 @@ export default function EchangePage() {
 
   const points = profile?.totalPoints || 0;
   const conversionRate = 1; // 1 point = 1 FCFA
-  const moneyValue = points * conversionRate;
+  const grossMoneyValue = points * conversionRate;
+  
+  // Calcul des frais de 1%
+  const feeRate = 0.01;
+  const exchangeFees = Math.ceil(grossMoneyValue * feeRate);
+  const netMoneyValue = Math.max(0, grossMoneyValue - exchangeFees);
+  
   const minPoints = 1000;
 
   const handleExchange = async () => {
@@ -156,10 +162,22 @@ export default function EchangePage() {
               </CardHeader>
               
               <CardContent className="px-8 pb-10 space-y-6">
-                <div className="flex items-center justify-center gap-4 py-4 border-y border-primary/5">
-                  <div className="text-center">
-                    <p className="text-[10px] font-black uppercase opacity-30 mb-1">Valeur estimée (1:1)</p>
-                    <p className="text-2xl font-black">{moneyValue.toLocaleString()} <span className="text-sm opacity-40">FCFA</span></p>
+                <div className="space-y-3 py-4 border-y border-primary/5">
+                  <div className="flex justify-between items-center px-2">
+                    <p className="text-[10px] font-black uppercase opacity-30">Valeur brute</p>
+                    <p className="text-sm font-bold">{grossMoneyValue.toLocaleString()} FCFA</p>
+                  </div>
+                  <div className="flex justify-between items-center px-2 text-destructive">
+                    <p className="text-[10px] font-black uppercase opacity-60 flex items-center gap-1.5">
+                      <Percent className="h-2.5 w-2.5" />
+                      Frais de traitement (1%)
+                    </p>
+                    <p className="text-sm font-black">-{exchangeFees.toLocaleString()} FCFA</p>
+                  </div>
+                  <div className="h-px bg-primary/5 w-full my-1" />
+                  <div className="flex justify-between items-center px-2">
+                    <p className="text-[10px] font-black uppercase tracking-wider">Montant Harmonisé</p>
+                    <p className="text-2xl font-black text-primary">{netMoneyValue.toLocaleString()} <span className="text-xs opacity-40">FCFA</span></p>
                   </div>
                 </div>
 
@@ -219,7 +237,7 @@ export default function EchangePage() {
             </Card>
 
             <p className="text-[10px] text-center font-bold opacity-20 uppercase tracking-[0.2em] px-10 leading-relaxed">
-              Les échanges sont traités sous 24h. Le taux est fixe à 1 point pour 1 FCFA.
+              Les échanges sont traités sous 24h. Le taux est fixe à 1 point pour 1 FCFA (hors frais de service).
             </p>
           </motion.div>
         ) : (
@@ -238,7 +256,7 @@ export default function EchangePage() {
             <div className="space-y-2">
               <h2 className="text-3xl font-black tracking-tight">Demande Envoyée</h2>
               <p className="text-sm font-medium opacity-40 px-6">
-                Votre lumière a été convertie. Le transfert vers votre compte Wave est en cours d'harmonisation.
+                Votre lumière a été convertie. Le transfert de {netMoneyValue.toLocaleString()} FCFA vers votre compte Wave est en cours d'harmonisation.
               </p>
             </div>
 
