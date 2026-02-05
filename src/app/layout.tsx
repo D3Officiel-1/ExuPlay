@@ -41,7 +41,7 @@ function ThemeSync() {
   return null;
 }
 
-function MaintenanceOverlay() {
+function MaintenanceOverlay({ message }: { message?: string }) {
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -75,7 +75,7 @@ function MaintenanceOverlay() {
           <div className="space-y-2">
             <h2 className="text-3xl font-black tracking-tight uppercase">Éveil en Pause</h2>
             <p className="text-sm font-medium opacity-40 leading-relaxed px-4">
-              Nous harmonisons l'éther numérique pour une expérience encore plus profonde. Revenez bientôt.
+              {message || "Nous harmonisons l'éther numérique pour une expérience encore plus profonde. Revenez bientôt."}
             </p>
           </div>
         </div>
@@ -222,10 +222,6 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
 
   const isProtectedPath = !["/", "/login", "/offline", "/autoriser"].includes(pathname);
   
-  // Logic for persistent Navigation UI
-  const showNav = user && !["/", "/login", "/autoriser", "/offline", "/transfert"].includes(pathname);
-  const showBottomNav = user && !["/", "/login", "/autoriser", "/offline", "/transfert", "/echange"].includes(pathname);
-
   if (isAuthLoading && isProtectedPath) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -234,13 +230,16 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     );
   }
 
+  const showNav = user && !["/", "/login", "/autoriser", "/offline", "/transfert"].includes(pathname);
+  const showBottomNav = user && !["/", "/login", "/autoriser", "/offline", "/transfert", "/echange"].includes(pathname);
+
   return (
     <>
       <AnimatePresence mode="wait">
         {showOffline ? (
           <OfflineOverlay key="offline" />
         ) : showMaintenance ? (
-          <MaintenanceOverlay key="maintenance" />
+          <MaintenanceOverlay key="maintenance" message={appStatus?.maintenanceMessage} />
         ) : canShowPwa ? (
           <InstallPwa key="pwa-prompt" />
         ) : null}

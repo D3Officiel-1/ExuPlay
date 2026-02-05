@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Select,
   SelectContent,
@@ -62,7 +63,8 @@ import {
   Sparkles,
   ShieldCheck,
   AlertTriangle,
-  Zap
+  Zap,
+  MessageSquareText
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -97,13 +99,8 @@ export default function AdminPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   
-  const [selectedQuiz, setSelectedQuiz] = useState<any>(null);
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-
-  const [selectedAdminUser, setSelectedAdminUser] = useState<any>(null);
-  const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
-  const [pointsToSubtract, setPointsToSubtract] = useState<number>(0);
+  const [maintenanceMessageInput, setMaintenanceMessageInput] = useState("");
+  const [isSavingMessage, setIsSavingMessage] = useState(false);
 
   const [quizSearch, setQuizSearch] = useState("");
   const [userSearch, setUserSearch] = useState("");
@@ -139,6 +136,12 @@ export default function AdminPage() {
   const { data: users, loading: usersLoading } = useCollection(usersQuery);
   const { data: quizzes, loading: quizzesLoading } = useCollection(quizzesQuery);
   const { data: recentTransfers } = useCollection(transfersQuery);
+
+  useEffect(() => {
+    if (appStatus?.maintenanceMessage !== undefined) {
+      setMaintenanceMessageInput(appStatus.maintenanceMessage);
+    }
+  }, [appStatus?.maintenanceMessage]);
 
   const filteredQuizzes = useMemo(() => {
     if (!quizzes) return [];
@@ -198,6 +201,24 @@ export default function AdminPage() {
       title: checked ? "Maintenance activée" : "Maintenance désactivée",
       description: checked ? "L'application est en mode privé." : "L'application est accessible à tous."
     });
+  };
+
+  const handleUpdateMaintenanceMessage = async () => {
+    if (!appConfigRef) return;
+    setIsSavingMessage(true);
+    haptic.light();
+    try {
+      await updateDoc(appConfigRef, {
+        maintenanceMessage: maintenanceMessageInput,
+        updatedAt: serverTimestamp()
+      });
+      haptic.success();
+      toast({ title: "Message mis à jour", description: "Le nouveau message est visible par les esprits." });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Erreur", description: "Impossible de mettre à jour le message." });
+    } finally {
+      setIsSavingMessage(false);
+    }
   };
 
   const handleAiGenerate = async () => {
@@ -412,13 +433,34 @@ export default function AdminPage() {
                 <CardTitle className="text-xl font-black">Sécurité Globale</CardTitle>
                 <CardDescription className="text-sm">Gérez l'accès des esprits au système.</CardDescription>
               </CardHeader>
-              <CardContent className="p-8 pt-0">
+              <CardContent className="p-8 pt-0 space-y-8">
                 <div className="flex items-center justify-between p-6 bg-background/50 rounded-3xl border border-primary/5">
                   <div className="space-y-1">
                     <p className="font-black text-sm uppercase tracking-widest">Mode Maintenance</p>
                     <p className="text-xs opacity-40 font-medium italic">"Éveil en pause..."</p>
                   </div>
                   <Switch checked={appStatus?.maintenanceMode || false} onCheckedChange={handleToggleMaintenance} className="scale-110 md:scale-125" />
+                </div>
+
+                <div className="space-y-4 p-6 bg-background/50 rounded-3xl border border-primary/5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MessageSquareText className="h-4 w-4 opacity-40" />
+                    <p className="font-black text-sm uppercase tracking-widest">Message de Maintenance</p>
+                  </div>
+                  <Textarea 
+                    placeholder="Entrez le message à afficher aux esprits..." 
+                    className="min-h-[120px] rounded-2xl bg-background/50 border-primary/10"
+                    value={maintenanceMessageInput}
+                    onChange={(e) => setMaintenanceMessageInput(e.target.value)}
+                  />
+                  <Button 
+                    onClick={handleUpdateMaintenanceMessage} 
+                    disabled={isSavingMessage}
+                    className="w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest gap-2"
+                  >
+                    {isSavingMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                    Mettre à jour le message
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -439,7 +481,7 @@ export default function AdminPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredUsers.map((u) => (
-                    <TableRow key={u.id} className="border-primary/5 hover:bg-primary/5 transition-colors cursor-pointer" onClick={() => { haptic.light(); setSelectedAdminUser(u); setIsUserDialogOpen(true); }}>
+                    <TableRow key={u.id} className="border-primary/5 hover:bg-primary/5 transition-colors cursor-pointer">
                       <TableCell className="py-4 px-6">
                         <div className="flex flex-col">
                           <span className="font-black text-sm">@{u.username}</span>
