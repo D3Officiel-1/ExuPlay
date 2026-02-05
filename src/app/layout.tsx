@@ -1,3 +1,4 @@
+
 "use client";
 
 import "./globals.css";
@@ -12,6 +13,7 @@ import { InstallPwa } from "@/components/InstallPwa";
 import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
 import { BiometricLock } from "@/components/BiometricLock";
 import { SuccessfulExchangeOverlay } from "@/components/SuccessfulExchangeOverlay";
+import { DuelInvitationListener } from "@/components/DuelInvitationListener";
 import { doc, getDoc, collection, query, orderBy, limit, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/Logo";
@@ -45,7 +47,6 @@ function ThemeSync() {
 
 /**
  * @fileOverview Oracle Autonome. 
- * Surveille le flux des quiz et déclenche une génération IA si le dernier défi date de plus de 30 minutes.
  */
 function AutoQuizGenerator() {
   const { user } = useUser();
@@ -86,7 +87,6 @@ function AutoQuizGenerator() {
               createdAt: serverTimestamp(),
               generatedAuto: true
             });
-            console.log("[Oracle] Nouveau défi auto-généré pour l'éveil.");
           }
         }
       } catch (error) {
@@ -128,33 +128,14 @@ function MaintenanceOverlay({ message }: { message?: string }) {
         <div className="space-y-6">
           <div className="mx-auto w-24 h-24 bg-primary/5 rounded-[2.5rem] flex items-center justify-center border border-primary/10 shadow-2xl relative">
             <ShieldAlert className="h-10 w-10 text-primary" />
-            <motion.div 
-              animate={{ opacity: [0, 1, 0], scale: [1, 1.2, 1] }}
-              transition={{ duration: 3, repeat: Infinity }}
-              className="absolute inset-0 bg-primary/10 rounded-[2.5rem] blur-xl"
-            />
           </div>
           
           <div className="space-y-2">
             <h2 className="text-3xl font-black tracking-tight uppercase">Éveil en Pause</h2>
             <p className="text-sm font-medium opacity-40 leading-relaxed px-4">
-              {message || "Nous harmonisons l'éther numérique pour une expérience encore plus profonde. Revenez bientôt."}
+              {message || "Nous harmonisons l'éther numérique. Revenez bientôt."}
             </p>
           </div>
-        </div>
-
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex gap-1">
-            {[0, 1, 2].map((i) => (
-              <motion.div
-                key={i}
-                animate={{ opacity: [0.2, 1, 0.2] }}
-                transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.2 }}
-                className="h-1 w-1 bg-primary rounded-full"
-              />
-            ))}
-          </div>
-          <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-20">Mode Maintenance Actif</p>
         </div>
       </motion.div>
     </motion.div>
@@ -169,43 +150,20 @@ function OfflineOverlay() {
       exit={{ opacity: 0, filter: "blur(20px)" }}
       className="fixed inset-0 z-[1100] bg-background flex flex-col items-center justify-center p-8 text-center"
     >
-      <div className="absolute inset-0 pointer-events-none opacity-30 overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-destructive/10 blur-[120px]" />
-      </div>
-
-      <motion.div 
-        initial={{ y: 30, opacity: 0, scale: 0.9, filter: "blur(10px)" }}
-        animate={{ y: 0, opacity: 1, scale: 1, filter: "blur(0px)" }}
-        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        className="space-y-12 max-w-sm z-10"
-      >
-        <div className="flex justify-center">
-          <Logo className="scale-110" />
-        </div>
-        
+      <div className="space-y-12 max-w-sm z-10">
+        <div className="flex justify-center"><Logo className="scale-110" /></div>
         <div className="space-y-8">
           <div className="relative mx-auto w-24 h-24">
-            <motion.div 
-              animate={{ 
-                scale: [1, 1.4, 1],
-                opacity: [0.1, 0.3, 0.1]
-              }}
-              transition={{ duration: 4, repeat: Infinity }}
-              className="absolute inset-0 bg-destructive/20 rounded-[2.5rem] blur-2xl"
-            />
             <div className="relative h-full w-full bg-card/40 backdrop-blur-2xl border border-destructive/10 rounded-[2.5rem] flex items-center justify-center shadow-2xl">
               <WifiOff className="h-10 w-10 text-destructive" />
             </div>
           </div>
-          
           <div className="space-y-2">
             <h2 className="text-3xl font-black tracking-tight uppercase text-destructive italic">Signal Perdu</h2>
-            <p className="text-sm font-medium opacity-40 leading-relaxed px-4">
-              L'éther est silencieux. Votre esprit est temporairement déconnecté du flux universel.
-            </p>
+            <p className="text-sm font-medium opacity-40 px-4">L'éther est silencieux. Votre esprit est déconnecté.</p>
           </div>
         </div>
-      </motion.div>
+      </div>
     </motion.div>
   );
 }
@@ -218,26 +176,16 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const appConfigRef = useMemo(() => {
-    if (!db) return null;
-    return doc(db, "appConfig", "status");
-  }, [db]);
-
-  const userDocRef = useMemo(() => {
-    if (!db || !user?.uid) return null;
-    return doc(db, "users", user.uid);
-  }, [db, user?.uid]);
+  const appConfigRef = useMemo(() => db ? doc(db, "appConfig", "status") : null, [db]);
+  const userDocRef = useMemo(() => (db && user?.uid) ? doc(db, "users", user.uid) : null, [db, user?.uid]);
 
   const { data: profile } = useDoc(userDocRef);
   const { data: appStatus } = useDoc(appConfigRef);
 
   useEffect(() => {
     if (isAuthLoading) return;
-
     const publicPaths = ["/", "/login", "/offline", "/autoriser"];
-    const isPublicPath = publicPaths.includes(pathname);
-
-    if (!user && !isPublicPath) {
+    if (!user && !publicPaths.includes(pathname)) {
       router.push("/login");
     } else if (user && pathname === "/login") {
       router.push("/home");
@@ -250,145 +198,56 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     setIsOffline(!navigator.onLine);
-
-    if (user && !["/", "/login", "/offline", "/autoriser"].includes(pathname)) {
-      const timer = setTimeout(() => {
-        setShowPwaPrompt(true);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [user, pathname]);
+  }, []);
 
   const isMaintenanceActive = appStatus?.maintenanceMode === true;
   const isStandardUser = profile?.role === 'user';
   const showMaintenance = isMaintenanceActive && isStandardUser;
   
-  const canShowPwa = showPwaPrompt && !["/", "/login", "/offline", "/autoriser"].includes(pathname);
+  const showOffline = isOffline && !["/", "/login", "/autoriser", "/offline"].includes(pathname);
 
-  const isOfflineAllowedPath = ["/", "/login", "/autoriser", "/offline"].includes(pathname);
-  const showOffline = isOffline && !isOfflineAllowedPath;
-
-  const isProtectedPath = !["/", "/login", "/offline", "/autoriser"].includes(pathname);
-  
-  if (isAuthLoading && isProtectedPath) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin opacity-20" />
-      </div>
-    );
+  if (isAuthLoading && !["/", "/login", "/offline", "/autoriser"].includes(pathname)) {
+    return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div>;
   }
 
-  const showNav = user && !["/", "/login", "/autoriser", "/offline", "/transfert"].includes(pathname);
-  const showBottomNav = user && !["/", "/login", "/autoriser", "/offline", "/transfert", "/echange"].includes(pathname);
+  const showNav = user && !["/", "/login", "/autoriser", "/offline", "/transfert", "/duels"].some(p => pathname.startsWith(p));
+  const showBottomNav = user && !["/", "/login", "/autoriser", "/offline", "/transfert", "/echange", "/duels"].some(p => pathname.startsWith(p));
 
   return (
     <>
       <AnimatePresence mode="wait">
-        {showOffline ? (
-          <OfflineOverlay key="offline" />
-        ) : showMaintenance ? (
-          <MaintenanceOverlay key="maintenance" message={appStatus?.maintenanceMessage} />
-        ) : canShowPwa ? (
-          <InstallPwa key="pwa-prompt" />
-        ) : null}
+        {showOffline ? <OfflineOverlay key="offline" /> : showMaintenance ? <MaintenanceOverlay key="maintenance" message={appStatus?.maintenanceMessage} /> : null}
       </AnimatePresence>
       <ThemeSync />
       <BiometricLock />
       <SuccessfulExchangeOverlay />
+      <DuelInvitationListener />
       <AutoQuizGenerator />
-      
       {showNav && <Header />}
-      
-      <PageTransition>
-        {children}
-      </PageTransition>
-
+      <PageTransition>{children}</PageTransition>
       {showBottomNav && <BottomNav />}
     </>
   );
 }
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').then(
-          (reg) => console.log('SW registered:', reg.scope),
-          (err) => console.log('SW registration failed:', err)
-        );
-      });
-    }
-
-    // Protection globale contre le menu contextuel (système)
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-    };
-    
-    // Protection contre le zoom par pincement (Multi-touch)
-    const handleTouchStart = (e: TouchEvent) => {
-      if (e.touches.length > 1) {
-        e.preventDefault();
-      }
-    };
-
-    // Protection contre le zoom via la molette (Ctrl + Wheel)
-    const handleWheel = (e: WheelEvent) => {
-      if (e.ctrlKey) {
-        e.preventDefault();
-      }
-    };
-
-    // Interdire totalement la sélection de texte au niveau système
-    const handleSelectStart = (e: Event) => {
-      e.preventDefault();
-    };
-
-    window.addEventListener('contextmenu', handleContextMenu);
-    window.addEventListener('touchstart', handleTouchStart, { passive: false });
-    window.addEventListener('wheel', handleWheel, { passive: false });
-    window.addEventListener('selectstart', handleSelectStart);
-    
-    return () => {
-      window.removeEventListener('contextmenu', handleContextMenu);
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('wheel', handleWheel);
-      window.removeEventListener('selectstart', handleSelectStart);
-    };
-  }, []);
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Exu Play" />
-        <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-        <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="antialiased font-sans overflow-x-hidden">
         <FirebaseClientProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             <ToastProvider>
               <FirebaseErrorListener />
-              <SecurityWrapper>
-                {children}
-              </SecurityWrapper>
+              <SecurityWrapper>{children}</SecurityWrapper>
               <Toaster />
             </ToastProvider>
           </ThemeProvider>
