@@ -66,7 +66,9 @@ import {
   Zap,
   MessageSquareText,
   DollarSign,
-  ArrowUpRight
+  ArrowUpRight,
+  CheckCircle2,
+  Circle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -100,6 +102,7 @@ export default function AdminPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedQuizForView, setSelectedQuizForView] = useState<any | null>(null);
   
   const [maintenanceMessageInput, setMaintenanceMessageInput] = useState("");
   const [isSavingMessage, setIsSavingMessage] = useState(false);
@@ -444,13 +447,24 @@ export default function AdminPage() {
               {quizzesLoading ? <div className="flex justify-center p-16"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div> : (
                 <div className="grid gap-4">
                   {filteredQuizzes.map(q => (
-                    <Card key={q.id} className="border-none bg-card/20 backdrop-blur-3xl rounded-2xl group hover:bg-card/40 transition-all cursor-pointer">
+                    <Card 
+                      key={q.id} 
+                      onClick={() => { haptic.light(); setSelectedQuizForView(q); }}
+                      className="border-none bg-card/20 backdrop-blur-3xl rounded-2xl group hover:bg-card/40 transition-all cursor-pointer"
+                    >
                       <CardContent className="p-4 flex items-center justify-between gap-4">
                         <div className="space-y-1 flex-1 overflow-hidden">
                           <p className="text-sm font-black line-clamp-2">{q.question}</p>
                           <p className="text-[10px] font-bold opacity-30 uppercase">{q.points} PTS • {q.options.length} OPTIONS</p>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); haptic.medium(); deleteDoc(doc(db, "quizzes", q.id)); }} className="h-10 w-10 text-destructive rounded-xl"><Trash2 className="h-5 w-5" /></Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={(e) => { e.stopPropagation(); haptic.medium(); deleteDoc(doc(db, "quizzes", q.id)); }} 
+                          className="h-10 w-10 text-destructive rounded-xl"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </Button>
                       </CardContent>
                     </Card>
                   ))}
@@ -545,6 +559,84 @@ export default function AdminPage() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Dialogue de consultation du défi */}
+      <Dialog open={!!selectedQuizForView} onOpenChange={(open) => !open && setSelectedQuizForView(null)}>
+        <DialogContent className="sm:max-w-[600px] bg-card/95 backdrop-blur-2xl rounded-[2.5rem] p-8 max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="space-y-1">
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Fiche d'Épreuve</p>
+              <DialogTitle className="text-2xl font-black tracking-tight">Détails du Défi</DialogTitle>
+            </div>
+          </DialogHeader>
+
+          {selectedQuizForView && (
+            <div className="space-y-8 py-6">
+              <div className="p-6 bg-primary/5 rounded-[2rem] border border-primary/5">
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3">La Question</p>
+                <p className="text-xl font-black leading-tight tracking-tight">{selectedQuizForView.question}</p>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-40 px-2">Options de Résonance</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {selectedQuizForView.options.map((opt: string, idx: number) => {
+                    const isCorrect = idx === selectedQuizForView.correctIndex;
+                    return (
+                      <div 
+                        key={idx} 
+                        className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
+                          isCorrect 
+                            ? "bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400" 
+                            : "bg-background/40 border-primary/5 opacity-60"
+                        }`}
+                      >
+                        {isCorrect ? <CheckCircle2 className="h-5 w-5 shrink-0" /> : <Circle className="h-5 w-5 shrink-0 opacity-20" />}
+                        <span className="font-bold text-sm leading-tight">{opt}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-6 bg-background rounded-[2rem] border border-primary/5 shadow-inner">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
+                    <Zap className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Récompense</p>
+                    <p className="text-lg font-black">{selectedQuizForView.points} PTS <span className="text-[10px] opacity-30 tracking-normal">de Lumière</span></p>
+                  </div>
+                </div>
+                
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => {
+                    haptic.medium();
+                    deleteDoc(doc(db, "quizzes", selectedQuizForView.id));
+                    setSelectedQuizForView(null);
+                    toast({ title: "Défi supprimé", description: "L'épreuve a été retirée de la base." });
+                  }}
+                  className="h-12 w-12 rounded-2xl text-destructive hover:bg-destructive/5"
+                >
+                  <Trash2 className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="pt-4">
+            <Button 
+              onClick={() => setSelectedQuizForView(null)}
+              className="w-full h-14 rounded-2xl font-black text-sm uppercase tracking-widest"
+            >
+              Fermer la Fiche
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
