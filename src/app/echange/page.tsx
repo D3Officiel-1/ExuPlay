@@ -4,7 +4,7 @@
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
-import { doc, serverTimestamp, collection, addDoc, query, where, orderBy, deleteDoc } from "firebase/firestore";
+import { doc, serverTimestamp, collection, addDoc, query, where, orderBy, deleteDoc, updateDoc, increment } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -137,47 +137,86 @@ export default function EchangePage() {
         requestedAt: serverTimestamp()
       };
 
-      addDoc(collection(db, "exchanges"), exchangeData)
-        .then(() => {
-          setIsSuccess(true);
-          haptic.success();
-          toast({
-            title: "Demande envoyée",
-            description: "Votre demande est en cours d'harmonisation."
+      // 1. Déduire les points immédiatement (Séquestre)
+      updateDoc(userDocRef, {
+        totalPoints: increment(-points),
+        updatedAt: serverTimestamp()
+      }).then(() => {
+        // 2. Créer la demande d'échange
+        addDoc(collection(db, "exchanges"), exchangeData)
+          .then(() => {
+            setIsSuccess(true);
+            haptic.success();
+            toast({
+              title: "Demande envoyée",
+              description: "Votre lumière a été mise en séquestre pour conversion."
+            });
+          })
+          .catch(async (error) => {
+            // En cas d'échec de la création de la demande, on rend les points
+            updateDoc(userDocRef, {
+              totalPoints: increment(points)
+            });
+            const permissionError = new FirestorePermissionError({
+              path: 'exchanges',
+              operation: 'create',
+              requestResourceData: exchangeData,
+            } satisfies SecurityRuleContext);
+            errorEmitter.emit('permission-error', permissionError);
+          })
+          .finally(() => {
+            setIsProcessing(false);
           });
-        })
-        .catch(async (error) => {
-          const permissionError = new FirestorePermissionError({
-            path: 'exchanges',
-            operation: 'create',
-            requestResourceData: exchangeData,
-          } satisfies SecurityRuleContext);
-          errorEmitter.emit('permission-error', permissionError);
-        })
-        .finally(() => {
-          setIsProcessing(false);
-        });
+      }).catch(async (error) => {
+        setIsProcessing(false);
+        const permissionError = new FirestorePermissionError({
+          path: userDocRef.path,
+          operation: 'update',
+          requestResourceData: { totalPoints: `decrement ${points}` },
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+      });
     }
   };
 
   const handleCancelExchange = (id: string) => {
-    if (!db) return;
+    if (!db || !user?.uid) return;
+    
+    const exchange = pendingExchanges?.find(e => e.id === id);
+    if (!exchange) return;
+
     haptic.medium();
-    deleteDoc(doc(db, "exchanges", id))
-      .then(() => {
-        haptic.success();
-        toast({
-          title: "Demande annulée",
-          description: "La conversion a été révoquée."
+    const userRef = doc(db, "users", user.uid);
+
+    // 1. Restituer les points
+    updateDoc(userRef, {
+      totalPoints: increment(exchange.points || 0),
+      updatedAt: serverTimestamp()
+    }).then(() => {
+      // 2. Supprimer le document
+      deleteDoc(doc(db, "exchanges", id))
+        .then(() => {
+          haptic.success();
+          toast({
+            title: "Demande annulée",
+            description: "Votre lumière vous a été restituée."
+          });
+        })
+        .catch((error) => {
+          const permissionError = new FirestorePermissionError({
+            path: `exchanges/${id}`,
+            operation: 'delete',
+          } satisfies SecurityRuleContext);
+          errorEmitter.emit('permission-error', permissionError);
         });
-      })
-      .catch((error) => {
-        const permissionError = new FirestorePermissionError({
-          path: `exchanges/${id}`,
-          operation: 'delete',
-        } satisfies SecurityRuleContext);
-        errorEmitter.emit('permission-error', permissionError);
-      });
+    }).catch(async (error) => {
+      const permissionError = new FirestorePermissionError({
+        path: userRef.path,
+        operation: 'update',
+        requestResourceData: { totalPoints: `increment ${exchange.points}` },
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    });
   };
 
   if (profileLoading || configLoading) {
@@ -327,7 +366,7 @@ export default function EchangePage() {
             </Card>
 
             <p className="text-[10px] text-center font-bold opacity-20 uppercase tracking-[0.2em] px-10 leading-relaxed">
-              Les échanges sont traités sous 24h. Votre Lumière restera visible jusqu'à la validation finale du Maître.
+              Les échanges sont traités sous 24h. Votre Lumière est prélevée dès la demande et restituée si celle-ci est annulée.
             </p>
           </motion.div>
         ) : (
@@ -346,7 +385,7 @@ export default function EchangePage() {
             <div className="space-y-2">
               <h2 className="text-3xl font-black tracking-tight">Demande Envoyée</h2>
               <p className="text-sm font-medium opacity-40 px-6">
-                Votre lumière a été soumise pour conversion. Le transfert de {netMoneyValue.toLocaleString()} FCFA sera effectif après validation.
+                Votre lumière a été mise en séquestre. Le transfert de {netMoneyValue.toLocaleString()} FCFA sera effectif après validation.
               </p>
             </div>
 
@@ -433,7 +472,7 @@ export default function EchangePage() {
 
               <div className="mt-8 p-6 bg-primary/5 rounded-[2.5rem] border border-primary/5">
                 <p className="text-[10px] leading-relaxed font-medium opacity-40 text-center italic">
-                  "Une demande annulée libère immédiatement votre Lumière pour d'autres usages."
+                  "Une demande annulée libère immédiatement votre Lumière mise en séquestre."
                 </p>
               </div>
             </motion.div>

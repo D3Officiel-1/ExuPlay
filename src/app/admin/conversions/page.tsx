@@ -10,7 +10,8 @@ import {
   query,
   orderBy,
   updateDoc,
-  increment
+  increment,
+  deleteDoc
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -95,45 +96,55 @@ export default function ConversionsAdminPage() {
     const exchangeRef = doc(db, "exchanges", id);
     const userRef = doc(db, "users", exchange.userId);
 
-    // 1. Mise à jour du statut de l'échange
-    updateDoc(exchangeRef, {
-      status: newStatus,
-      processedAt: serverTimestamp()
-    })
-    .then(() => {
-      // 2. Si validé, on déduit les points du profil utilisateur
-      if (newStatus === 'completed' && exchange.userId && exchange.points) {
-        updateDoc(userRef, {
-          totalPoints: increment(-exchange.points),
-          updatedAt: serverTimestamp()
-        }).catch(async (error) => {
-          const permissionError = new FirestorePermissionError({
-            path: userRef.path,
-            operation: 'update',
-            requestResourceData: { totalPoints: `decrement ${exchange.points}` },
-          } satisfies SecurityRuleContext);
-          errorEmitter.emit('permission-error', permissionError);
-        });
-      }
-
-      haptic.success();
-      toast({
-        title: newStatus === 'completed' ? "Demande validée" : "Demande rejetée",
-        description: `La transaction a été marquée comme ${newStatus === 'completed' ? 'traitée' : 'annulée'}.`
-      });
-    })
-    .catch(async (error) => {
-      const permissionError = new FirestorePermissionError({
-        path: exchangeRef.path,
-        operation: 'update',
-        requestResourceData: { status: newStatus },
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
-      toast({ variant: "destructive", title: "Erreur", description: "Impossible de mettre à jour le statut." });
-    })
-    .finally(() => {
-      setProcessingId(null);
-    });
+    if (newStatus === 'completed') {
+      // Pour une validation, on marque simplement comme traité (les points ont été pris au début)
+      updateDoc(exchangeRef, {
+        status: 'completed',
+        processedAt: serverTimestamp()
+      })
+      .then(() => {
+        haptic.success();
+        toast({ title: "Demande validée", description: "La transaction est terminée." });
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: exchangeRef.path,
+          operation: 'update',
+          requestResourceData: { status: 'completed' },
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+      })
+      .finally(() => setProcessingId(null));
+    } else {
+      // Pour un refus, on rend les points et on supprime le document
+      updateDoc(userRef, {
+        totalPoints: increment(exchange.points || 0),
+        updatedAt: serverTimestamp()
+      })
+      .then(() => {
+        deleteDoc(exchangeRef)
+          .then(() => {
+            haptic.success();
+            toast({ title: "Demande rejetée", description: "Les points ont été rendus à l'utilisateur." });
+          })
+          .catch(async (error) => {
+            const permissionError = new FirestorePermissionError({
+              path: exchangeRef.path,
+              operation: 'delete',
+            } satisfies SecurityRuleContext);
+            errorEmitter.emit('permission-error', permissionError);
+          });
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: userRef.path,
+          operation: 'update',
+          requestResourceData: { totalPoints: `increment ${exchange.points}` },
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+      })
+      .finally(() => setProcessingId(null));
+    }
   };
 
   if (authLoading || profileLoading || profile?.role !== 'admin') {
