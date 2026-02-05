@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/Logo";
-import { Camera, ChevronRight, Loader2 } from "lucide-react";
+import { Camera, ChevronRight, Loader2, Fingerprint, Sparkles, ShieldCheck } from "lucide-react";
 import { useUser, useFirestore } from "@/firebase";
 import { doc, updateDoc, serverTimestamp, getDoc, DocumentData } from "firebase/firestore";
+import { createPasskey } from "@/lib/passkey";
+import { haptic } from "@/lib/haptics";
 
 export default function AutoriserPage() {
   const [step, setStep] = useState<number | null>(null);
@@ -25,7 +27,8 @@ export default function AutoriserPage() {
   const determineNextStep = (data: DocumentData | undefined) => {
     if (!data) return 1;
     if (!data.cameraAuthorized) return 1;
-    return 2; // Étape finale pour redirection
+    if (!data.biometricEnabled) return 2;
+    return 3; // Étape finale pour redirection
   };
 
   useEffect(() => {
@@ -41,7 +44,7 @@ export default function AutoriserPage() {
         const data = userDoc.data();
         const nextStep = determineNextStep(data);
         
-        if (nextStep === 2) {
+        if (nextStep === 3) {
           router.push("/home");
         } else {
           setStep(nextStep);
@@ -65,6 +68,7 @@ export default function AutoriserPage() {
 
   const handleRequestCamera = async () => {
     setLoading(true);
+    haptic.medium();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       streamRef.current = stream;
@@ -77,10 +81,48 @@ export default function AutoriserPage() {
         });
       }
 
-      toast({ title: "Caméra autorisée", description: "Votre perception est désormais claire." });
-      setTimeout(() => router.push("/home"), 1500);
+      haptic.success();
+      toast({ title: "Perception activée", description: "Vos yeux sont désormais ouverts sur l'éveil." });
+      
+      setTimeout(() => {
+        setStep(2);
+        setLoading(false);
+      }, 1500);
     } catch (error) {
+      setLoading(false);
       toast({ variant: 'destructive', title: 'Accès refusé', description: 'Veuillez activer la caméra pour continuer.' });
+    }
+  };
+
+  const handleForgeSceau = async () => {
+    setLoading(true);
+    haptic.medium();
+    try {
+      if (!user) return;
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      const username = userDoc.data()?.username || "Esprit";
+
+      const passkeyId = await createPasskey(username);
+      
+      await updateDoc(doc(db, "users", user.uid), {
+        biometricEnabled: true,
+        passkeyId: passkeyId,
+        updatedAt: serverTimestamp()
+      });
+
+      haptic.success();
+      toast({ title: "Sceau forgé", description: "Votre essence est désormais protégée." });
+      
+      setTimeout(() => router.push("/home"), 1500);
+    } catch (error: any) {
+      console.error(error);
+      if (error.name !== 'AbortError') {
+        toast({ 
+          variant: "destructive", 
+          title: "Forge échouée", 
+          description: "Impossible de créer votre Sceau. Vérifiez vos paramètres système." 
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -111,38 +153,88 @@ export default function AutoriserPage() {
           <Logo className="scale-75" />
         </div>
 
-        <div className="mb-12 flex justify-center">
-          <motion.div 
-            animate={{ width: 40, backgroundColor: "hsl(var(--primary))" }}
-            className="h-1.5 rounded-full" 
-          />
+        <div className="mb-12 flex justify-center gap-2">
+          {[1, 2].map((s) => (
+            <motion.div 
+              key={s}
+              animate={{ 
+                width: step === s ? 40 : 8, 
+                backgroundColor: step >= s ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.1)" 
+              }}
+              className="h-1.5 rounded-full transition-all duration-500" 
+            />
+          ))}
         </div>
 
         <AnimatePresence mode="wait">
-          <motion.div key={step} variants={stepVariants} initial="enter" animate="center" exit="exit">
-            <Card className="border-none shadow-2xl bg-card/40 backdrop-blur-3xl overflow-hidden rounded-[2.5rem]">
-              <CardHeader className="text-center pt-12 space-y-4">
-                <div className="mx-auto w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-2">
-                  <Camera className="h-10 w-10 text-primary" />
-                </div>
-                <div className="space-y-2">
-                  <CardTitle className="text-3xl font-black tracking-tight">Perception</CardTitle>
-                  <CardDescription className="text-base font-medium opacity-60">L'accès à la caméra est requis pour l'immersion.</CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent className="px-8 pb-4">
-                <div className="relative w-full aspect-video rounded-3xl overflow-hidden bg-black/40 border border-white/5 shadow-inner">
-                  <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-                </div>
-              </CardContent>
-              <CardFooter className="pb-12 px-8">
-                <Button onClick={handleRequestCamera} disabled={loading} className="w-full h-16 rounded-2xl font-black text-lg">
-                  {loading ? <Loader2 className="animate-spin" /> : "Ouvrir les yeux"}
-                  <ChevronRight className="ml-2 h-5 w-5" />
-                </Button>
-              </CardFooter>
-            </Card>
-          </motion.div>
+          {step === 1 && (
+            <motion.div key="step-camera" variants={stepVariants} initial="enter" animate="center" exit="exit">
+              <Card className="border-none shadow-2xl bg-card/40 backdrop-blur-3xl overflow-hidden rounded-[2.5rem]">
+                <CardHeader className="text-center pt-12 space-y-4">
+                  <div className="mx-auto w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-2">
+                    <Camera className="h-10 w-10 text-primary" />
+                  </div>
+                  <div className="space-y-2">
+                    <CardTitle className="text-3xl font-black tracking-tight">Perception</CardTitle>
+                    <CardDescription className="text-base font-medium opacity-60">L'accès à la caméra est requis pour l'immersion.</CardDescription>
+                  </div>
+                </CardHeader>
+                <CardContent className="px-8 pb-4">
+                  <div className="relative w-full aspect-video rounded-3xl overflow-hidden bg-black/40 border border-white/5 shadow-inner">
+                    <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                  </div>
+                </CardContent>
+                <CardFooter className="pb-12 px-8">
+                  <Button onClick={handleRequestCamera} disabled={loading} className="w-full h-16 rounded-2xl font-black text-lg">
+                    {loading ? <Loader2 className="animate-spin" /> : "Ouvrir les yeux"}
+                    <ChevronRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </CardFooter>
+              </Card>
+            </motion.div>
+          )}
+
+          {step === 2 && (
+            <motion.div key="step-biometry" variants={stepVariants} initial="enter" animate="center" exit="exit">
+              <Card className="border-none shadow-2xl bg-card/40 backdrop-blur-3xl overflow-hidden rounded-[2.5rem]">
+                <CardHeader className="text-center pt-12 space-y-4">
+                  <div className="mx-auto w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-2 relative">
+                    <Fingerprint className="h-10 w-10 text-primary" />
+                    <motion.div 
+                      animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="absolute -top-1 -right-1"
+                    >
+                      <Sparkles className="h-5 w-5 text-primary" />
+                    </motion.div>
+                  </div>
+                  <div className="space-y-2">
+                    <CardTitle className="text-3xl font-black tracking-tight">Forge du Sceau</CardTitle>
+                    <CardDescription className="text-base font-medium opacity-60">Sécurisez votre essence avec votre empreinte ou votre visage.</CardDescription>
+                  </div>
+                </CardHeader>
+                <CardContent className="px-10 pb-8 text-center">
+                  <div className="p-6 bg-primary/5 rounded-[2rem] border border-primary/5">
+                    <p className="text-xs leading-relaxed font-medium opacity-60 italic">
+                      "Le Sceau protège vos points de Lumière et garantit l'intégrité de vos futures conversions."
+                    </p>
+                  </div>
+                </CardContent>
+                <CardFooter className="pb-12 px-8 flex flex-col gap-4">
+                  <Button onClick={handleForgeSceau} disabled={loading} className="w-full h-16 rounded-2xl font-black text-lg gap-3">
+                    {loading ? <Loader2 className="animate-spin" /> : <ShieldCheck className="h-6 w-6" />}
+                    {loading ? "Forging..." : "Forger mon Sceau"}
+                  </Button>
+                  <button 
+                    onClick={() => router.push("/home")}
+                    className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30 hover:opacity-100 transition-opacity"
+                  >
+                    Plus tard
+                  </button>
+                </CardFooter>
+              </Card>
+            </motion.div>
+          )}
         </AnimatePresence>
       </motion.div>
     </div>
