@@ -159,7 +159,7 @@ export default function HomePage() {
   }, [quizStarted, isAnswered, timeLeft]);
 
   const handleStartChallenge = async () => {
-    if (!user || !db || sessionQuizzes.length === 0) return;
+    if (!user || !db || sessionQuizzes.length === 0 || updating) return;
     
     haptic.medium();
     const currentQuiz = sessionQuizzes[currentQuestionIdx];
@@ -191,7 +191,7 @@ export default function HomePage() {
     if (updating || quizStarted) return;
     longPressTimer.current = setTimeout(() => {
       haptic.light();
-      setShowPointsPreview(true);
+      setShowPointsPreview(prev => !prev);
     }, 600);
   };
 
@@ -433,10 +433,15 @@ export default function HomePage() {
                                     <motion.div
                                       key="points-preview"
                                       layoutId="reveal-element"
-                                      onClick={() => {
+                                      onContextMenu={(e) => {
+                                        e.preventDefault();
                                         haptic.light();
                                         setShowPointsPreview(false);
                                       }}
+                                      onPointerDown={handleLongPressStart}
+                                      onPointerUp={handleLongPressEnd}
+                                      onPointerLeave={handleLongPressEnd}
+                                      onClick={handleStartChallenge}
                                       className="bg-primary text-primary-foreground p-6 rounded-[2rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] flex flex-col items-center justify-center gap-3 cursor-pointer border border-white/10 min-w-[200px]"
                                     >
                                       <motion.div
