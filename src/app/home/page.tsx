@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -147,6 +146,7 @@ export default function HomePage() {
   const [hiddenIndices, setHiddenIndices] = useState<number[]>([]);
   const [isProtected, setIsProtected] = useState(false);
   const [isMultiplied, setIsMultiplied] = useState(false);
+  const [showPenaltyAnim, setShowPenaltyAnim] = useState(false);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   
   const { user } = useUser();
@@ -277,6 +277,7 @@ export default function HomePage() {
       setTimeLeft(15);
       setIsProtected(false);
       setIsMultiplied(false);
+      setShowPenaltyAnim(false);
     } catch (error) {
       console.error("Erreur lors du démarrage du défi:", error);
     } finally {
@@ -396,8 +397,9 @@ export default function HomePage() {
         title: "Temps Épuisé",
         description: "Votre esprit a hésité. -10 PTS de Lumière.",
       });
-    } else if (!isCorrect && !isTimeout && profile && (profile.totalPoints || 0) > 5 && !isProtected) {
-      penalty = -5;
+    } else if (!isCorrect && !isTimeout && !isProtected) {
+      penalty = -2;
+      setShowPenaltyAnim(true);
     }
 
     if (isCorrect) haptic.success(); 
@@ -414,7 +416,6 @@ export default function HomePage() {
     const userDocRef = doc(db, "users", user.uid);
     const quizDocRef = doc(db, "quizzes", currentQuiz.id);
 
-    // 1. Mise à jour de la tentative (Transparent & Prioritaire pour l'UI)
     setUpdating(true);
     const attemptData = {
       isPlayed: true,
@@ -425,50 +426,20 @@ export default function HomePage() {
       updatedAt: serverTimestamp()
     };
 
-    updateDoc(attemptRef, attemptData)
-      .catch(async () => {
-        const permissionError = new FirestorePermissionError({
-          path: attemptRef.path,
-          operation: 'update',
-          requestResourceData: attemptData,
-        } satisfies SecurityRuleContext);
-        errorEmitter.emit('permission-error', permissionError);
-      })
-      .finally(() => {
-        setUpdating(false);
-      });
+    updateDoc(attemptRef, attemptData).finally(() => setUpdating(false));
 
-    // 2. Oracle de l'Éphémère (Arrière-plan total et transparent)
     getDoc(quizDocRef).then(snap => {
       if (snap.exists()) {
         const data = snap.data();
         const newPlayedCount = (data.playedCount || 0) + 1;
-        
         if (newPlayedCount >= 3) {
-          deleteDoc(quizDocRef).catch(async () => {
-            const permissionError = new FirestorePermissionError({
-              path: quizDocRef.path,
-              operation: 'delete',
-            } satisfies SecurityRuleContext);
-            errorEmitter.emit('permission-error', permissionError);
-          });
+          deleteDoc(quizDocRef);
         } else {
-          updateDoc(quizDocRef, { 
-            playedCount: newPlayedCount,
-            updatedAt: serverTimestamp() 
-          }).catch(async () => {
-            const permissionError = new FirestorePermissionError({
-              path: quizDocRef.path,
-              operation: 'update',
-              requestResourceData: { playedCount: newPlayedCount },
-            } satisfies SecurityRuleContext);
-            errorEmitter.emit('permission-error', permissionError);
-          });
+          updateDoc(quizDocRef, { playedCount: newPlayedCount, updatedAt: serverTimestamp() });
         }
       }
     });
 
-    // 3. Gestion des Points et de la Progression (Transparent)
     const totalChange = pointsEarned + penalty;
     if (totalChange !== 0) {
       const updatePayload: any = {
@@ -480,17 +451,10 @@ export default function HomePage() {
       if (pointsEarned > 0 && profile && profile.referredBy && !profile.referralRewardClaimed) {
         const newTotalPossible = (profile.totalPoints || 0) + pointsEarned;
         if (newTotalPossible >= 100) {
-          const referrersQuery = query(
-            collection(db, "users"), 
-            where("referralCode", "==", profile.referredBy), 
-            limit(1)
-          );
+          const referrersQuery = query(collection(db, "users"), where("referralCode", "==", profile.referredBy), limit(1));
           getDocs(referrersQuery).then(referrerSnap => {
             if (!referrerSnap.empty) {
-              updateDoc(referrerSnap.docs[0].ref, {
-                totalPoints: increment(100),
-                updatedAt: serverTimestamp()
-              });
+              updateDoc(referrerSnap.docs[0].ref, { totalPoints: increment(100), updatedAt: serverTimestamp() });
               updatePayload.referralRewardClaimed = true;
               updateDoc(userDocRef, updatePayload);
             } else {
@@ -505,17 +469,7 @@ export default function HomePage() {
       }
 
       if (pointsEarned > 0 && appStatusRef) {
-        updateDoc(appStatusRef, {
-          communityGoalPoints: increment(pointsEarned),
-          updatedAt: serverTimestamp()
-        }).catch(async () => {
-          const permissionError = new FirestorePermissionError({
-            path: appStatusRef.path,
-            operation: 'update',
-            requestResourceData: { communityGoalPoints: `increment ${pointsEarned}` },
-          } satisfies SecurityRuleContext);
-          errorEmitter.emit('permission-error', permissionError);
-        });
+        updateDoc(appStatusRef, { communityGoalPoints: increment(pointsEarned), updatedAt: serverTimestamp() });
       }
     }
   };
@@ -533,6 +487,7 @@ export default function HomePage() {
       setTimeLeft(15);
       setIsProtected(false);
       setIsMultiplied(false);
+      setShowPenaltyAnim(false);
     } else {
       setQuizComplete(true);
       haptic.impact();
@@ -553,6 +508,7 @@ export default function HomePage() {
     setTimeLeft(15);
     setIsProtected(false);
     setIsMultiplied(false);
+    setShowPenaltyAnim(false);
   };
 
   if (quizzesLoading || attemptsLoading || (allQuizzes && userAttempts !== null && sessionQuizzes.length === 0 && allQuizzes.length > 0)) {
@@ -578,13 +534,7 @@ export default function HomePage() {
             <h2 className="text-3xl font-black uppercase tracking-tight italic">Cycle Épuisé</h2>
             <p className="text-sm font-medium opacity-40 leading-relaxed">Vous avez triomphé de tous les défis. Revenez plus tard pour de nouvelles épreuves.</p>
           </div>
-          <Button 
-            variant="ghost" 
-            onClick={() => router.push("/profil")}
-            className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 hover:opacity-100 transition-opacity"
-          >
-            Consulter mon Sceau
-          </Button>
+          <Button variant="ghost" onClick={() => router.push("/profil")} className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 hover:opacity-100 transition-opacity">Consulter mon Sceau</Button>
         </main>
       </div>
     );
@@ -593,23 +543,11 @@ export default function HomePage() {
   const question = sessionQuizzes[currentQuestionIdx];
 
   return (
-    <div className={cn(
-      "min-h-screen bg-background flex flex-col pb-32 transition-colors duration-1000",
-      isRoyalActive && "bg-yellow-500/[0.02]"
-    )}>
+    <div className={cn("min-h-screen bg-background flex flex-col pb-32 transition-colors duration-1000", isRoyalActive && "bg-yellow-500/[0.02]")}>
       <AnimatePresence>
         {isRoyalActive && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 pointer-events-none overflow-hidden z-0"
-          >
-            <motion.div 
-              animate={{ scale: [1, 1.2, 1], x: [0, 50, 0], y: [0, -30, 0] }}
-              transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute top-[-10%] left-[-10%] w-[80%] h-[80%] rounded-full bg-yellow-500/[0.03] blur-[120px]" 
-            />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+            <motion.div animate={{ scale: [1, 1.2, 1], x: [0, 50, 0], y: [0, -30, 0] }} transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[-10%] left-[-10%] w-[80%] h-[80%] rounded-full bg-yellow-500/[0.03] blur-[120px]" />
           </motion.div>
         )}
       </AnimatePresence>
@@ -618,31 +556,23 @@ export default function HomePage() {
         <GlobalActivityTicker />
         <CommunityGoalProgress appStatus={appStatus} />
 
-        <div className="w-full max-w-lg">
+        <div className="w-full max-w-lg relative">
+          <AnimatePresence>
+            {showPenaltyAnim && (
+              <motion.div initial={{ opacity: 0, y: 0, scale: 0.5 }} animate={{ opacity: 1, y: -100, scale: 1.5 }} exit={{ opacity: 0 }} className="absolute inset-0 flex items-center justify-center z-[100] pointer-events-none">
+                <span className="text-4xl font-black text-red-500 italic drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]">-2 PTS</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <AnimatePresence mode="wait">
             {!quizComplete ? (
-              <motion.div
-                key={question?.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                className="space-y-8"
-              >
+              <motion.div key={question?.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }} className="space-y-8">
                 {quizStarted && !isAnswered && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col items-center gap-4"
-                  >
-                    <div className={cn(
-                      "flex items-center gap-3 px-6 py-3 backdrop-blur-3xl rounded-2xl border shadow-xl transition-colors",
-                      isRoyalActive ? "bg-yellow-500/10 border-yellow-500/30" : "bg-card/40 border-primary/10"
-                    )}>
+                  <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-4">
+                    <div className={cn("flex items-center gap-3 px-6 py-3 backdrop-blur-3xl rounded-2xl border shadow-xl transition-colors", isRoyalActive ? "bg-yellow-500/10 border-yellow-500/30" : "bg-card/40 border-primary/10")}>
                       <Timer className={cn("h-5 w-5", timeLeft <= 5 ? 'text-red-500 animate-pulse' : isRoyalActive ? 'text-yellow-600' : 'text-primary/60')} />
-                      <span className={cn("text-lg font-black tabular-nums tracking-widest", timeLeft <= 5 ? 'text-red-500' : isRoyalActive ? 'text-yellow-700' : 'opacity-60')}>
-                        {timeLeft}s
-                      </span>
+                      <span className={cn("text-lg font-black tabular-nums tracking-widest", timeLeft <= 5 ? 'text-red-500' : isRoyalActive ? 'text-yellow-700' : 'opacity-60')}>{timeLeft}s</span>
                     </div>
                     <div className="flex gap-2">
                       {isProtected && <ShieldCheck className="h-4 w-4 text-green-500 animate-pulse" />}
@@ -651,29 +581,14 @@ export default function HomePage() {
                   </motion.div>
                 )}
 
-                <Card className={cn(
-                  "border-none backdrop-blur-3xl shadow-2xl rounded-[3rem] overflow-hidden relative transition-all duration-700",
-                  isRoyalActive ? "bg-yellow-500/[0.03] ring-2 ring-yellow-500/20 shadow-yellow-500/10" : "bg-card/40"
-                )}>
+                <Card className={cn("border-none backdrop-blur-3xl shadow-2xl rounded-[3rem] overflow-hidden relative transition-all duration-700", isRoyalActive ? "bg-yellow-500/[0.03] ring-2 ring-yellow-500/20 shadow-yellow-500/10" : "bg-card/40")}>
                   <AnimatePresence mode="wait">
                     {showPointsPreview ? (
-                      <motion.div
-                        key="points-preview"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 1.05 }}
-                        onClick={() => setShowPointsPreview(false)}
-                        className={cn(
-                          "p-12 sm:p-20 text-center flex flex-col items-center justify-center space-y-10 cursor-pointer h-full min-h-[500px]",
-                          isRoyalActive ? "bg-yellow-500/5" : "bg-primary/5"
-                        )}
-                      >
+                      <motion.div key="points-preview" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.05 }} onClick={() => setShowPointsPreview(false)} className={cn("p-12 sm:p-20 text-center flex flex-col items-center justify-center space-y-10 cursor-pointer h-full min-h-[500px]", isRoyalActive ? "bg-yellow-500/5" : "bg-primary/5")}>
                         <div className="space-y-4">
                           <p className="text-[10px] font-black uppercase tracking-[0.6em] opacity-30">Valeur de l'Éveil</p>
                           <div className="flex items-baseline justify-center gap-2">
-                            <span className={cn("text-7xl font-black tabular-nums tracking-tighter", isRoyalActive && "text-yellow-600")}>
-                              {isRoyalActive ? 100 : (question?.points || 10)}
-                            </span>
+                            <span className={cn("text-7xl font-black tabular-nums tracking-tighter", isRoyalActive && "text-yellow-600")}>{isRoyalActive ? 100 : (question?.points || 10)}</span>
                             <span className="text-sm font-black uppercase tracking-widest opacity-20">PTS</span>
                           </div>
                         </div>
@@ -684,19 +599,11 @@ export default function HomePage() {
                           <div className="relative min-h-[140px] flex items-center justify-center overflow-hidden rounded-[2rem]">
                             <AnimatePresence>
                               {quizStarted ? (
-                                <motion.p 
-                                  initial={{ opacity: 0, filter: "blur(8px)" }}
-                                  animate={{ opacity: 1, filter: "blur(0px)" }}
-                                  className="text-xl sm:text-2xl font-black leading-tight tracking-tight text-center px-4"
-                                >
-                                  {question?.question}
-                                </motion.p>
+                                <motion.p initial={{ opacity: 0, filter: "blur(8px)" }} animate={{ opacity: 1, filter: "blur(0px)" }} className="text-xl sm:text-2xl font-black leading-tight tracking-tight text-center px-4">{question?.question}</motion.p>
                               ) : (
                                 <motion.div key="mask" exit={{ opacity: 0 }} className="absolute inset-0 z-20 flex items-center justify-center">
                                   <SpoilerOverlay />
-                                  <Button onClick={handleStartChallenge} disabled={updating} className="h-16 px-12 rounded-2xl font-black text-[10px] uppercase tracking-[0.4em] z-30 shadow-2xl transition-all">
-                                    {updating ? <Loader2 className="h-5 w-5 animate-spin" /> : "Dévoiler l'Inconnu"}
-                                  </Button>
+                                  <Button onClick={handleStartChallenge} disabled={updating} className="h-16 px-12 rounded-2xl font-black text-[10px] uppercase tracking-[0.4em] z-30 shadow-2xl transition-all">{updating ? <Loader2 className="h-5 w-5 animate-spin" /> : "Dévoiler l'Inconnu"}</Button>
                                 </motion.div>
                               )}
                             </AnimatePresence>
@@ -708,18 +615,12 @@ export default function HomePage() {
                               const isSelected = idx === selectedOption;
                               const isHidden = hiddenIndices.includes(idx);
                               return (
-                                <motion.button
-                                  key={idx}
-                                  animate={{ opacity: isHidden ? 0 : 1, scale: isHidden ? 0.8 : 1 }}
-                                  onClick={() => handleAnswer(idx)}
-                                  disabled={isAnswered || !quizStarted || updating || isHidden}
-                                  className={cn(
-                                    "relative w-full p-4 sm:p-6 rounded-2xl text-center font-black transition-all duration-500 flex flex-col items-center justify-center border min-h-[120px]",
-                                    !isAnswered ? "bg-background/20 border-primary/5" : isCorrect ? "bg-green-500/10 border-green-500/30 text-green-600" : isSelected ? "bg-red-500/10 border-red-500/30 text-red-600" : "opacity-20 scale-95"
-                                  )}
-                                >
+                                <motion.button key={idx} animate={{ opacity: isHidden ? 0 : 1, scale: isHidden ? 0.8 : 1 }} onClick={() => handleAnswer(idx)} disabled={isAnswered || !quizStarted || updating || isHidden} className={cn("relative w-full p-4 sm:p-6 rounded-2xl text-center font-black transition-all duration-500 flex flex-col items-center justify-center border min-h-[120px]", !isAnswered ? "bg-background/20 border-primary/5" : isCorrect ? "bg-green-500/10 border-green-500/30 text-green-600" : isSelected ? "bg-red-500/10 border-red-500/30 text-red-600" : "opacity-20 scale-95")}>
                                   <span className="text-lg leading-tight relative z-10">{option}</span>
                                   <div className="absolute top-3 right-3">{isAnswered && isCorrect && <CheckCircle2 className="h-4 w-4" />}{isAnswered && isSelected && !isCorrect && <XCircle className="h-4 w-4" />}</div>
+                                  {isAnswered && isSelected && !isCorrect && !isProtected && (
+                                    <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 2, opacity: 0 }} transition={{ duration: 0.8 }} className="absolute inset-0 bg-red-500 rounded-2xl pointer-events-none" />
+                                  )}
                                 </motion.button>
                               );
                             })}
@@ -773,9 +674,7 @@ export default function HomePage() {
                   <h2 className="text-5xl font-black tracking-tighter italic">+{score} PTS</h2>
                   <p className="text-muted-foreground font-medium">Votre esprit a rayonné avec intensité.</p>
                 </div>
-                <Button onClick={resetSession} className="w-full h-20 rounded-3xl font-black text-sm uppercase gap-4 shadow-2xl">
-                  <Sparkles className="h-6 w-6" /> Nouveau Cycle
-                </Button>
+                <Button onClick={resetSession} className="w-full h-20 rounded-3xl font-black text-sm uppercase gap-4 shadow-2xl"><Sparkles className="h-6 w-6" /> Nouveau Cycle</Button>
               </motion.div>
             )}
           </AnimatePresence>

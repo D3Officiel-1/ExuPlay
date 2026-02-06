@@ -43,7 +43,6 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
-import { useTheme } from "next-themes";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
@@ -64,7 +63,6 @@ export default function TransfertPage() {
   const [mode, setMode] = useState<'transfer' | 'duel'>('transfer');
   const [isAnonymous, setIsAnonymous] = useState(false);
   
-  // QR Code Logic State
   const [cachedQr, setCachedQr] = useState<string | null>(null);
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
 
@@ -83,7 +81,6 @@ export default function TransfertPage() {
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
-  // Logic: Load or Generate QR Code
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -104,24 +101,11 @@ export default function TransfertPage() {
             type: 'canvas',
             data: user.uid,
             margin: 20,
-            dotsOptions: {
-              color: "#000000",
-              type: "rounded"
-            },
-            backgroundOptions: {
-              color: "#ffffff",
-            },
-            cornersSquareOptions: {
-              type: "extra-rounded",
-              color: "#000000"
-            },
-            cornersDotOptions: {
-              type: "dot",
-              color: "#000000"
-            },
-            qrOptions: {
-              errorCorrectionLevel: 'H'
-            }
+            dotsOptions: { color: "#000000", type: "rounded" },
+            backgroundOptions: { color: "#ffffff" },
+            cornersSquareOptions: { type: "extra-rounded", color: "#000000" },
+            cornersDotOptions: { type: "dot", color: "#000000" },
+            qrOptions: { errorCorrectionLevel: 'H' }
           });
 
           const blob = await qrCode.getRawData('png');
@@ -151,46 +135,52 @@ export default function TransfertPage() {
         await html5QrCodeRef.current.stop();
         html5QrCodeRef.current = null;
       } catch (err) {
-        console.error("Stop scanner error:", err);
+        console.warn("Stop scanner error:", err);
       }
     }
   };
 
   useEffect(() => {
     let isMounted = true;
-    let scannerTimeout: NodeJS.Timeout;
 
-    if (activeTab === "scan" && !recipient && !isSuccess && validationStatus === 'idle') {
-      const startScanner = async () => {
-        scannerTimeout = setTimeout(async () => {
-          const container = document.getElementById("reader");
-          if (!container) return;
+    const initScanner = async () => {
+      if (activeTab === "scan" && !recipient && !isSuccess && validationStatus === 'idle') {
+        // Attente courte pour s'assurer que le DOM est prêt après le changement d'onglet
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const container = document.getElementById("reader");
+        if (!container || !isMounted) return;
+
+        try {
+          await stopScanner();
+          const scanner = new Html5Qrcode("reader");
+          html5QrCodeRef.current = scanner;
+
+          await scanner.start(
+            { facingMode: "environment" },
+            { fps: 20, qrbox: { width: 250, height: 250 } },
+            (text) => onScanSuccess(text),
+            () => {}
+          );
           
-          try {
-            await stopScanner();
-            const scanner = new Html5Qrcode("reader");
-            html5QrCodeRef.current = scanner;
-
-            await scanner.start(
-              { facingMode: "environment" },
-              { fps: 20 },
-              onScanSuccess,
-              onScanFailure
-            );
-            
-            if (isMounted) setHasCameraPermission(true);
-          } catch (error: any) {
-            if (isMounted && (error?.name === "NotAllowedError" || error?.name === "PermissionDeniedError")) {
-              setHasCameraPermission(false);
-            }
+          if (isMounted) setHasCameraPermission(true);
+        } catch (error: any) {
+          console.error("Scanner Error:", error);
+          if (isMounted && (error?.name === "NotAllowedError" || error?.name === "PermissionDeniedError")) {
+            setHasCameraPermission(false);
           }
-        }, 300);
-      };
-      startScanner();
-    } else {
+        }
+      } else {
+        await stopScanner();
+      }
+    };
+
+    initScanner();
+
+    return () => {
+      isMounted = false;
       stopScanner();
-    }
-    return () => { isMounted = false; clearTimeout(scannerTimeout); stopScanner(); };
+    };
   }, [activeTab, recipient, isSuccess, validationStatus]);
 
   const onScanSuccess = async (decodedText: string) => {
@@ -228,8 +218,6 @@ export default function TransfertPage() {
       setTimeout(() => { setValidationStatus('idle'); setActiveTab("scan"); }, 2500);
     }
   };
-
-  const onScanFailure = () => {};
 
   const handlePickRandomRecipient = async () => {
     setIsProcessing(true);
@@ -363,72 +351,47 @@ export default function TransfertPage() {
                     </div>
 
                     <div className="relative group">
-                      <motion.div 
-                        animate={{ scale: [1, 1.05, 1], rotate: [0, 1, -1, 0] }}
-                        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-                        className="absolute inset-[-20px] bg-primary/5 rounded-full blur-3xl pointer-events-none" 
-                      />
-                      
+                      <motion.div animate={{ scale: [1, 1.05, 1], rotate: [0, 1, -1, 0] }} transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }} className="absolute inset-[-20px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
                       <div className="relative aspect-square bg-white rounded-[3.5rem] p-10 shadow-2xl border-4 border-primary/5 flex items-center justify-center overflow-hidden">
                         {cachedQr ? (
-                          <motion.img 
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            src={cachedQr} 
-                            alt="Mon Sceau" 
-                            className="w-full h-full object-contain"
-                          />
+                          <motion.img initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} src={cachedQr} alt="Mon Sceau" className="w-full h-full object-contain" />
                         ) : (
                           <div className="flex flex-col items-center gap-4 opacity-20">
                             <Loader2 className="h-12 w-12 animate-spin" />
                             <p className="text-[10px] font-black uppercase tracking-widest">Matérialisation...</p>
                           </div>
                         )}
-                        
                         <div className="absolute inset-0 border-[12px] border-white rounded-[3.5rem] pointer-events-none" />
                       </div>
                     </div>
 
                     <div className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/5">
-                      <p className="text-[10px] leading-relaxed font-medium opacity-40 italic">
-                        "Présentez ce Sceau à un autre esprit pour qu'il puisse puiser dans votre lumière ou vous défier dans l'arène."
-                      </p>
+                      <p className="text-[10px] leading-relaxed font-medium opacity-40 italic">"Présentez ce Sceau à un autre esprit pour qu'il puisse puiser dans votre lumière ou vous défier dans l'arène."</p>
                     </div>
 
-                    <Button 
-                      variant="ghost" 
-                      onClick={() => router.push("/profil")}
-                      className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 hover:opacity-100 transition-opacity"
-                    >
-                      Retour au Sanctuaire
-                    </Button>
+                    <Button variant="ghost" onClick={() => router.push("/profil")} className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 hover:opacity-100 transition-opacity">Retour au Sanctuaire</Button>
                   </div>
                 </motion.div>
               ) : !recipient && !isSuccess ? (
                 <motion.div key="selection" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
-                  <TabsContent value="scan" className="mt-0 h-full outline-none relative">
-                    <div id="reader" className="absolute inset-0 w-full h-full bg-black" />
+                  <TabsContent value="scan" className="mt-0 h-full outline-none relative flex flex-col">
+                    <div id="reader" className="flex-1 w-full bg-black relative">
+                      {!hasCameraPermission && hasCameraPermission !== null && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-background/90 z-50 text-center">
+                          <ShieldAlert className="h-12 w-12 text-destructive mb-4" />
+                          <h2 className="text-xl font-black">Permission Requise</h2>
+                          <p className="text-xs opacity-40 mt-2">Activez la caméra pour scanner les Sceaux.</p>
+                          <Button variant="outline" onClick={() => window.location.reload()} className="mt-6 rounded-xl font-black text-[10px] uppercase">Réessayer</Button>
+                        </div>
+                      )}
+                    </div>
                     
                     <div className="absolute bottom-10 left-0 right-0 z-[50] px-10 flex flex-col items-center gap-4">
-                      <Button 
-                        onClick={handlePickRandomRecipient}
-                        disabled={isProcessing}
-                        className="w-full h-16 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.3em] gap-3 bg-white/10 backdrop-blur-md text-white border border-white/20 hover:bg-white/20"
-                      >
-                        {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                        Répandre l'Éveil
+                      <Button onClick={handlePickRandomRecipient} disabled={isProcessing} className="w-full h-16 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.3em] gap-3 bg-white/10 backdrop-blur-md text-white border border-white/20 hover:bg-white/20">
+                        {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Répandre l'Éveil
                       </Button>
-                      
-                      <Button 
-                        variant="ghost" 
-                        onClick={() => router.push("/profil")} 
-                        className="text-[10px] font-black uppercase opacity-60 text-white hover:bg-white/5"
-                      >
-                        <X className="h-4 w-4 mr-2" /> Annuler
-                      </Button>
+                      <Button variant="ghost" onClick={() => router.push("/profil")} className="text-[10px] font-black uppercase opacity-60 text-white hover:bg-white/5"><X className="h-4 w-4 mr-2" /> Annuler</Button>
                     </div>
-
-                    {hasCameraPermission === false && <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-background/90 z-50 text-center"><ShieldAlert className="h-12 w-12 text-destructive mb-4" /><h2 className="text-xl font-black">Permission Requise</h2><Button variant="outline" onClick={() => window.location.reload()} className="mt-4 rounded-xl">Réessayer</Button></div>}
                   </TabsContent>
                 </motion.div>
               ) : recipient && !isSuccess ? (
@@ -449,7 +412,6 @@ export default function TransfertPage() {
                         <Label className="text-[10px] font-black uppercase opacity-40 ml-2">{mode === 'duel' ? "Mise du duel" : "Montant du transfert"}</Label>
                         <Input type="number" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-16 text-3xl font-black text-center rounded-2xl bg-primary/5 border-none" autoFocus />
                       </div>
-                      
                       {mode === 'transfer' && (
                         <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/5">
                           <div className="flex items-center gap-3">
@@ -462,18 +424,9 @@ export default function TransfertPage() {
                           <Switch checked={isAnonymous} onCheckedChange={setIsAnonymous} />
                         </div>
                       )}
-
                       <div className="flex justify-between items-center px-2">
-                        <div className="space-y-1">
-                          {transferAmount > 0 && mode === 'transfer' && (
-                            <p className="text-[10px] font-bold uppercase opacity-40">
-                              Total : {totalCost} PTS
-                            </p>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[9px] font-black uppercase tracking-widest opacity-20">Limite : {DAILY_LIMIT} PTS</p>
-                        </div>
+                        <div className="space-y-1">{transferAmount > 0 && mode === 'transfer' && (<p className="text-[10px] font-bold uppercase opacity-40">Total : {totalCost} PTS</p>)}</div>
+                        <div className="text-right"><p className="text-[9px] font-black uppercase tracking-widest opacity-20">Limite : {DAILY_LIMIT} PTS</p></div>
                       </div>
                     </CardContent>
                     <CardFooter className="px-8 pb-10 flex flex-col gap-3">
@@ -496,7 +449,7 @@ export default function TransfertPage() {
           </div>
         </Tabs>
       </main>
-      <style jsx global>{` #reader video { object-fit: cover !important; width: 100vw !important; height: 100vh !important; position: fixed !important; top: 0 !important; left: 0 !important; } #reader { border: none !important; background: black !important; } #reader__scan_region { display: none !important; } `}</style>
+      <style jsx global>{` #reader video { object-fit: cover !important; width: 100vw !important; height: 100vh !important; position: fixed !important; top: 0 !important; left: 0 !important; z-index: 1; } #reader { border: none !important; background: black !important; } #reader__scan_region { display: none !important; } #reader__dashboard { display: none !important; } `}</style>
     </div>
   );
 }
