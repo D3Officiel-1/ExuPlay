@@ -14,7 +14,11 @@ import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 
 const BET_AMOUNTS = [50, 100, 200];
-const DIRECTIONS = ["Gauche", "Centre", "Droite"] as const;
+const DIRECTIONS = [
+  "En haut à gauche", "En haut", "En haut à droite",
+  "À gauche", "À droite",
+  "En bas à gauche", "En bas", "En bas à droite"
+] as const;
 
 type Direction = typeof DIRECTIONS[number];
 
@@ -103,9 +107,18 @@ export default function PenaltiesPage() {
   const ballVariants = {
     idle: { y: 0, x: 0, scale: 1, filter: "blur(0px)", rotate: 0 },
     shooting: (direction: Direction) => {
-      const xMap = { "Gauche": -120, "Centre": 0, "Droite": 120 };
+      const xMap: Record<Direction, number> = { 
+        "En haut à gauche": -120, "En haut": 0, "En haut à droite": 120,
+        "À gauche": -120, "À droite": 120,
+        "En bas à gauche": -120, "En bas": 0, "En bas à droite": 120
+      };
+      const yMap: Record<Direction, number> = {
+        "En haut à gauche": -380, "En haut": -380, "En haut à droite": -380,
+        "À gauche": -320, "À droite": -320,
+        "En bas à gauche": -260, "En bas": -260, "En bas à droite": -260
+      };
       return {
-        y: -320,
+        y: yMap[direction],
         x: xMap[direction],
         scale: 0.3,
         rotate: 720,
@@ -120,12 +133,25 @@ export default function PenaltiesPage() {
     idle: { x: 0, y: 0, rotate: 0, scale: 1 },
     dive: (direction: Direction | null) => {
       if (!direction) return {};
-      const xMap = { "Gauche": -80, "Centre": 0, "Droite": 80 };
-      const rotateMap = { "Gauche": -45, "Centre": 0, "Droite": 45 };
+      const xMap: Record<Direction, number> = {
+        "En haut à gauche": -80, "En haut": 0, "En haut à droite": 80,
+        "À gauche": -80, "À droite": 80,
+        "En bas à gauche": -80, "En bas": 0, "En bas à droite": 80
+      };
+      const yMap: Record<Direction, number> = {
+        "En haut à gauche": -40, "En haut": -40, "En haut à droite": -40,
+        "À gauche": 15, "À droite": 15,
+        "En bas à gauche": 40, "En bas": 40, "En bas à droite": 40
+      };
+      const rotateMap: Record<Direction, number> = {
+        "En haut à gauche": -45, "En haut": 0, "En haut à droite": 45,
+        "À gauche": -45, "À droite": 45,
+        "En bas à gauche": -45, "En bas": 0, "En bas à droite": 45
+      };
       return {
         x: xMap[direction],
+        y: yMap[direction],
         rotate: rotateMap[direction],
-        y: direction === "Centre" ? -10 : 15,
         transition: { duration: 0.4, type: "spring", stiffness: 100 }
       };
     }
@@ -181,19 +207,23 @@ export default function PenaltiesPage() {
 
                 <div className="space-y-4">
                   <p className="text-[10px] font-black uppercase tracking-widest text-center opacity-30">Ciblez l'angle mort</p>
-                  <div className="grid grid-cols-3 gap-3">
-                    {DIRECTIONS.map((dir) => (
-                      <Button
-                        key={dir}
-                        onClick={() => handleShoot(dir)}
-                        disabled={loading}
-                        variant="outline"
-                        className="h-24 rounded-2xl flex flex-col gap-2 font-black text-[10px] uppercase border-primary/10 hover:bg-primary/5 transition-all active:scale-95"
-                      >
-                        <Target className="h-6 w-6 opacity-40" />
-                        {dir}
-                      </Button>
-                    ))}
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    {/* Row 1 */}
+                    <DirectionButton dir="En haut à gauche" loading={loading} onClick={handleShoot} />
+                    <DirectionButton dir="En haut" loading={loading} onClick={handleShoot} />
+                    <DirectionButton dir="En haut à droite" loading={loading} onClick={handleShoot} />
+                    
+                    {/* Row 2 */}
+                    <DirectionButton dir="À gauche" loading={loading} onClick={handleShoot} />
+                    <div className="flex items-center justify-center opacity-10">
+                      <Target className="h-6 w-6" />
+                    </div>
+                    <DirectionButton dir="À droite" loading={loading} onClick={handleShoot} />
+                    
+                    {/* Row 3 */}
+                    <DirectionButton dir="En bas à gauche" loading={loading} onClick={handleShoot} />
+                    <DirectionButton dir="En bas" loading={loading} onClick={handleShoot} />
+                    <DirectionButton dir="En bas à droite" loading={loading} onClick={handleShoot} />
                   </div>
                 </div>
               </Card>
@@ -300,5 +330,22 @@ export default function PenaltiesPage() {
         </AnimatePresence>
       </main>
     </div>
+  );
+}
+
+function DirectionButton({ dir, loading, onClick }: { dir: Direction, loading: boolean, onClick: (dir: Direction) => void }) {
+  // Simplification du texte pour les boutons du bas/haut
+  const label = dir.replace('En haut à ', 'HG ').replace('En haut ', 'H ').replace('En bas à ', 'BG ').replace('En bas ', 'B ').replace('À ', '').replace('En haut', 'Haut').replace('En bas', 'Bas');
+  
+  return (
+    <Button
+      onClick={() => onClick(dir)}
+      disabled={loading}
+      variant="outline"
+      className="h-16 sm:h-20 rounded-2xl flex flex-col gap-1 font-black text-[8px] uppercase border-primary/10 hover:bg-primary/5 transition-all active:scale-95 px-1 overflow-hidden"
+    >
+      <Target className="h-4 w-4 opacity-40 shrink-0" />
+      <span className="truncate w-full text-center">{dir}</span>
+    </Button>
   );
 }
