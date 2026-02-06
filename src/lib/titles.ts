@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview Logique des Titres Honorifiques d'Exu Play.
- * Définit la hiérarchie basée sur la lumière accumulée.
+ * @fileOverview Logique des Titres Honorifiques et Thèmes Visuels d'Exu Play.
+ * Définit la hiérarchie basée sur la lumière et les styles visuels des sceaux.
  */
 
 export interface HonorTitle {
@@ -58,6 +59,69 @@ export const TITLES: HonorTitle[] = [
 ];
 
 export function getHonorTitle(points: number = 0): HonorTitle {
-  // On parcourt à l'envers pour trouver le palier le plus haut atteint
   return [...TITLES].reverse().find(t => points >= t.minPoints) || TITLES[0];
+}
+
+export interface VisualTheme {
+  id: string;
+  name: string;
+  color: string;
+  borderColor: string;
+  auraClass: string;
+}
+
+export const THEMES: Record<string, VisualTheme> = {
+  "default": {
+    id: "default",
+    name: "Neutre",
+    color: "text-primary",
+    borderColor: "border-primary/20",
+    auraClass: "bg-primary/5 blur-xl"
+  },
+  "theme_amethyst": {
+    id: "theme_amethyst",
+    name: "Améthyste",
+    color: "text-purple-500",
+    borderColor: "border-purple-500/40",
+    auraClass: "bg-purple-500/10 blur-2xl shadow-[0_0_20px_rgba(168,85,247,0.2)]"
+  },
+  "theme_emerald": {
+    id: "theme_emerald",
+    name: "Émeraude",
+    color: "text-emerald-500",
+    borderColor: "border-emerald-500/40",
+    auraClass: "bg-emerald-500/10 blur-2xl shadow-[0_0_20px_rgba(16,185,129,0.2)]"
+  },
+  "theme_ruby": {
+    id: "theme_ruby",
+    name: "Rubis",
+    color: "text-red-500",
+    borderColor: "border-red-500/40",
+    auraClass: "bg-red-500/10 blur-2xl shadow-[0_0_20px_rgba(239,68,68,0.2)]"
+  },
+  "theme_sapphire": {
+    id: "theme_sapphire",
+    name: "Saphir",
+    color: "text-blue-500",
+    borderColor: "border-blue-500/40",
+    auraClass: "bg-blue-500/10 blur-2xl shadow-[0_0_20px_rgba(59,130,246,0.2)]"
+  },
+  "theme_obsidian": {
+    id: "theme_obsidian",
+    name: "Obsidienne",
+    color: "text-gray-900 dark:text-gray-100",
+    borderColor: "border-gray-900/60 dark:border-gray-100/60",
+    auraClass: "bg-gray-900/20 dark:bg-gray-100/20 blur-2xl"
+  },
+  "theme_gold": {
+    id: "theme_gold",
+    name: "Or Pur",
+    color: "text-yellow-600",
+    borderColor: "border-yellow-600/60",
+    auraClass: "bg-yellow-600/20 blur-3xl animate-pulse shadow-[0_0_30px_rgba(202,138,4,0.3)]"
+  }
+};
+
+export function getVisualTheme(themeId?: string): VisualTheme {
+  return THEMES[themeId || "default"] || THEMES["default"];
 }

@@ -20,7 +20,12 @@ import {
   History,
   Clock,
   ShieldCheck,
-  Star
+  Star,
+  Gem,
+  Flame,
+  Droplets,
+  Moon,
+  Sun
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { haptic } from "@/lib/haptics";
@@ -77,7 +82,7 @@ const STORE_ITEMS = [
     name: "Sceau d'Améthyste",
     description: "Une aura pourpre mystique pour votre profil.",
     price: 1000,
-    icon: Palette,
+    icon: Gem,
     color: "text-purple-500",
     bg: "bg-purple-500/10",
     action: "theme"
@@ -87,10 +92,54 @@ const STORE_ITEMS = [
     type: "theme",
     name: "Sceau d'Émeraude",
     description: "La résonance de la nature éternelle.",
-    price: 2500,
-    icon: Palette,
+    price: 1000,
+    icon: Shield,
     color: "text-emerald-500",
     bg: "bg-emerald-500/10",
+    action: "theme"
+  },
+  {
+    id: "theme_ruby",
+    type: "theme",
+    name: "Sceau de Rubis",
+    description: "L'éclat de la force et de la volonté ardente.",
+    price: 1500,
+    icon: Flame,
+    color: "text-red-500",
+    bg: "bg-red-500/10",
+    action: "theme"
+  },
+  {
+    id: "theme_sapphire",
+    type: "theme",
+    name: "Sceau de Saphir",
+    description: "La sérénité d'un esprit calme et limpide.",
+    price: 1500,
+    icon: Droplets,
+    color: "text-blue-500",
+    bg: "bg-blue-500/10",
+    action: "theme"
+  },
+  {
+    id: "theme_obsidian",
+    type: "theme",
+    name: "Sceau d'Obsidienne",
+    description: "La maîtrise absolue de l'ombre et du vide.",
+    price: 3000,
+    icon: Moon,
+    color: "text-gray-900 dark:text-gray-100",
+    bg: "bg-gray-900/10 dark:bg-gray-100/10",
+    action: "theme"
+  },
+  {
+    id: "theme_gold",
+    type: "theme",
+    name: "Sceau d'Or Pur",
+    description: "La distinction suprême des Maîtres de l'Éveil.",
+    price: 5000,
+    icon: Sun,
+    color: "text-yellow-600",
+    bg: "bg-yellow-600/10",
     action: "theme"
   }
 ];
@@ -121,7 +170,8 @@ export default function EchoppePage() {
       return;
     }
 
-    if (item.type === 'theme' && profile.ownedThemes?.includes(item.id)) {
+    const isOwned = item.type === 'theme' && profile.ownedThemes?.includes(item.id);
+    if (isOwned) {
       toast({ title: "Déjà possédé", description: "Ce sceau fait déjà partie de votre essence." });
       return;
     }
@@ -225,8 +275,8 @@ export default function EchoppePage() {
                 const isOwned = profile?.ownedThemes?.includes(item.id);
                 return (
                   <Card key={item.id} className={cn(
-                    "border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2rem] overflow-hidden",
-                    isOwned && "opacity-60"
+                    "border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2rem] overflow-hidden transition-all duration-500",
+                    isOwned && "opacity-60 border border-primary/10"
                   )}>
                     <CardContent className="p-6 flex items-center gap-5">
                       <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center shrink-0", item.bg)}>
@@ -239,11 +289,14 @@ export default function EchoppePage() {
                       <Button 
                         onClick={() => handlePurchase(item)}
                         disabled={buyingId === item.id || isOwned}
-                        variant={isOwned ? "ghost" : "default"}
+                        variant={isOwned ? "outline" : "default"}
                         className="rounded-xl h-12 px-4 font-black text-xs gap-2"
                       >
                         {isOwned ? (
-                          <Check className="h-4 w-4" />
+                          <div className="flex items-center gap-1.5">
+                            <Check className="h-4 w-4" />
+                            <span>Acquis</span>
+                          </div>
                         ) : (
                           <>
                             {buyingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : item.price}

@@ -5,21 +5,30 @@ import { motion } from "framer-motion";
 import { User as UserIcon, ShieldCheck } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { getHonorTitle } from "@/lib/titles";
+import { getHonorTitle, getVisualTheme } from "@/lib/titles";
 
 interface ProfileAvatarProps {
   imageUrl?: string | null;
   points?: number;
+  activeTheme?: string;
   isTrusted?: boolean;
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
 }
 
 /**
- * @fileOverview Composant Avatar avec bordure honorifique dynamique et Sceau de Confiance.
+ * @fileOverview Composant Avatar avec aura thématique et Sceau de Confiance.
  */
-export function ProfileAvatar({ imageUrl, points = 0, isTrusted = false, size = "md", className }: ProfileAvatarProps) {
+export function ProfileAvatar({ 
+  imageUrl, 
+  points = 0, 
+  activeTheme = "default",
+  isTrusted = false, 
+  size = "md", 
+  className 
+}: ProfileAvatarProps) {
   const title = getHonorTitle(points);
+  const visualTheme = getVisualTheme(activeTheme);
   
   const sizeClasses = {
     sm: "h-10 w-10 rounded-xl",
@@ -44,17 +53,21 @@ export function ProfileAvatar({ imageUrl, points = 0, isTrusted = false, size = 
 
   return (
     <div className={cn("relative inline-block", className)}>
-      {/* Aura de prestige */}
-      <div className={cn(
-        "absolute inset-[-15%] rounded-full transition-all duration-1000",
-        title.auraClass
-      )} />
+      {/* Aura de prestige liée au thème visuel */}
+      <motion.div 
+        animate={activeTheme === 'theme_gold' ? { scale: [1, 1.1, 1], opacity: [0.5, 0.8, 0.5] } : {}}
+        transition={{ duration: 3, repeat: Infinity }}
+        className={cn(
+          "absolute inset-[-15%] rounded-full transition-all duration-1000 z-0",
+          visualTheme.auraClass
+        )} 
+      />
       
-      {/* Bordure de rang */}
+      {/* Bordure de rang liée au thème visuel */}
       <div className={cn(
-        "relative overflow-hidden flex items-center justify-center border-2 transition-colors duration-500 bg-card shadow-xl",
+        "relative overflow-hidden flex items-center justify-center border-2 transition-all duration-500 bg-card shadow-xl z-10",
         sizeClasses[size],
-        title.borderColor
+        visualTheme.borderColor
       )}>
         {imageUrl ? (
           <Image 
@@ -67,12 +80,12 @@ export function ProfileAvatar({ imageUrl, points = 0, isTrusted = false, size = 
           <UserIcon className={cn("text-primary opacity-20", iconSizes[size])} />
         )}
 
-        {/* Effet de brillance pour l'Oracle */}
-        {title.name === "Oracle" && (
+        {/* Effet de brillance pour les sceaux rares */}
+        {(activeTheme === 'theme_gold' || activeTheme === 'theme_obsidian') && (
           <motion.div 
             animate={{ x: ["-100%", "200%"] }}
             transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-500/10 to-transparent skew-x-12 pointer-events-none"
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 pointer-events-none"
           />
         )}
       </div>

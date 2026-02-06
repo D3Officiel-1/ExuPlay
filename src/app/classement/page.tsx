@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo } from "react";
@@ -73,7 +74,7 @@ export default function ClassementPage() {
                 className="flex flex-col items-center gap-3"
               >
                 <div className="relative">
-                  <ProfileAvatar imageUrl={podium[1].profileImage} points={podium[1].totalPoints} size="md" />
+                  <ProfileAvatar imageUrl={podium[1].profileImage} points={podium[1].totalPoints} activeTheme={podium[1].activeTheme} size="md" />
                   <div className="absolute -top-3 -right-2 bg-gray-400 text-white h-6 w-6 rounded-full flex items-center justify-center border-2 border-background shadow-lg">
                     <span className="text-[10px] font-black">2</span>
                   </div>
@@ -94,12 +95,7 @@ export default function ClassementPage() {
                 className="flex flex-col items-center gap-4 -mt-8"
               >
                 <div className="relative">
-                  <motion.div 
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                    className="absolute inset-[-12px] border-2 border-dashed border-yellow-500/20 rounded-full"
-                  />
-                  <ProfileAvatar imageUrl={podium[0].profileImage} points={podium[0].totalPoints} size="lg" className="z-10" />
+                  <ProfileAvatar imageUrl={podium[0].profileImage} points={podium[0].totalPoints} activeTheme={podium[0].activeTheme} size="lg" className="z-10" />
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-yellow-500 text-black h-8 w-8 rounded-full flex items-center justify-center border-4 border-background shadow-xl z-20">
                     <Trophy className="h-4 w-4" />
                   </div>
@@ -123,7 +119,7 @@ export default function ClassementPage() {
                 className="flex flex-col items-center gap-3"
               >
                 <div className="relative">
-                  <ProfileAvatar imageUrl={podium[2].profileImage} points={podium[2].totalPoints} size="md" />
+                  <ProfileAvatar imageUrl={podium[2].profileImage} points={podium[2].totalPoints} activeTheme={podium[2].activeTheme} size="md" />
                   <div className="absolute -top-3 -left-2 bg-orange-400 text-white h-6 w-6 rounded-full flex items-center justify-center border-2 border-background shadow-lg">
                     <span className="text-[10px] font-black">3</span>
                   </div>
@@ -159,7 +155,7 @@ export default function ClassementPage() {
                       <span className={cn("text-xs font-black opacity-30", isMe && "opacity-60")}>#{rank}</span>
                     </div>
 
-                    <ProfileAvatar imageUrl={u.profileImage} points={u.totalPoints} size="sm" className="shrink-0" />
+                    <ProfileAvatar imageUrl={u.profileImage} points={u.totalPoints} activeTheme={u.activeTheme} size="sm" className="shrink-0" />
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
