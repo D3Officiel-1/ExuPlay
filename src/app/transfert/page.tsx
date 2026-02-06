@@ -25,7 +25,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { 
-  QrCode, 
   Loader2, 
   CheckCircle2, 
   Scan,
@@ -54,7 +53,7 @@ export default function TransfertPage() {
   const { toast } = useToast();
   const { resolvedTheme } = useTheme();
 
-  const [activeTab, setActiveTab] = useState("qr");
+  const [activeTab, setActiveTab] = useState("scan");
   const [recipient, setRecipient] = useState<any>(null);
   const [validationStatus, setValidationStatus] = useState<'idle' | 'validating' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState("");
@@ -81,65 +80,7 @@ export default function TransfertPage() {
 
   const DAILY_LIMIT = profile?.trustBadge ? 2500 : 500;
 
-  const qrRef = useRef<HTMLDivElement>(null);
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
-
-  const generateQRCode = async () => {
-    if (!qrRef.current || !user?.uid) return;
-    
-    try {
-      const QRCodeStylingLib = await import("qr-code-styling");
-      const QRCodeStyling = QRCodeStylingLib.default;
-      
-      // On s'assure que le conteneur est vide avant de générer
-      if (qrRef.current) {
-        qrRef.current.innerHTML = "";
-      }
-      
-      const options = {
-        width: 280,
-        height: 280,
-        type: "svg" as const,
-        data: user.uid,
-        dotsOptions: { 
-          color: "#000000", 
-          type: "dots" as const 
-        },
-        backgroundOptions: { 
-          color: "#FFFFFF" 
-        },
-        cornersSquareOptions: { 
-          color: "#000000", 
-          type: "extra-rounded" as const 
-        },
-        cornersDotOptions: { 
-          color: "#000000", 
-          type: "dot" as const 
-        },
-        qrOptions: { 
-          typeNumber: 0, 
-          mode: "Byte" as const, 
-          errorCorrectionLevel: "H" as const 
-        },
-      };
-
-      const qrCode = new QRCodeStyling(options);
-      qrCode.append(qrRef.current);
-    } catch (error) {
-      console.error("Erreur de l'Oracle QR:", error);
-    }
-  };
-
-  useEffect(() => {
-    // Petit délai pour s'assurer que le ref est bien monté dans le DOM après le switch d'onglet
-    let timer: NodeJS.Timeout;
-    if (activeTab === "qr" && !recipient && !isSuccess && validationStatus === 'idle') {
-      timer = setTimeout(() => {
-        generateQRCode();
-      }, 200);
-    }
-    return () => clearTimeout(timer);
-  }, [activeTab, user?.uid, recipient, isSuccess, validationStatus]);
 
   const stopScanner = async () => {
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
@@ -338,12 +279,9 @@ export default function TransfertPage() {
       <main className="flex-1 max-w-lg mx-auto w-full relative h-full">
         <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); haptic.light(); }} className="w-full h-full flex flex-col">
           <div className="fixed top-6 left-0 right-0 z-[100] px-6 max-w-lg mx-auto">
-            <TabsList className="w-full bg-card/20 backdrop-blur-3xl border border-primary/10 p-1 h-14 rounded-2xl grid grid-cols-2 shadow-2xl">
-              <TabsTrigger value="qr" className="rounded-xl font-black text-xs uppercase tracking-widest gap-2">
-                <QrCode className="h-4 w-4" /> Mon Sceau
-              </TabsTrigger>
+            <TabsList className="w-full bg-card/20 backdrop-blur-3xl border border-primary/10 p-1 h-14 rounded-2xl grid grid-cols-1 shadow-2xl">
               <TabsTrigger value="scan" className="rounded-xl font-black text-xs uppercase tracking-widest gap-2">
-                <Scan className="h-4 w-4" /> Scanner
+                <Scan className="h-4 w-4" /> Scanner un Sceau
               </TabsTrigger>
             </TabsList>
           </div>
@@ -363,43 +301,28 @@ export default function TransfertPage() {
                 </motion.div>
               ) : !recipient && !isSuccess ? (
                 <motion.div key="selection" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
-                  <TabsContent value="qr" className="mt-0 h-full flex flex-col items-center justify-start pt-28 px-6 space-y-8 outline-none">
-                    <div className="relative group flex justify-center w-full max-w-[340px]">
-                      <motion.div animate={{ scale: [1, 1.05, 1], opacity: [0.05, 0.1, 0.05] }} transition={{ duration: 4, repeat: Infinity }} className="absolute inset-0 blur-[60px] rounded-full bg-primary" />
-                      <Card className="border-none bg-card/60 backdrop-blur-3xl shadow-2xl rounded-[3.5rem] overflow-hidden relative w-full">
-                        <CardContent className="p-8 flex flex-col items-center gap-6">
-                          {/* Le fond du QR code est forcé en blanc pour garantir le contraste de scan */}
-                          <div 
-                            className="w-full aspect-square rounded-[3rem] flex items-center justify-center p-4 shadow-2xl bg-white min-h-[200px]" 
-                            ref={qrRef} 
-                          />
-                        </CardContent>
-                      </Card>
-                    </div>
+                  <TabsContent value="scan" className="mt-0 h-full outline-none relative">
+                    <div id="reader" className="absolute inset-0 w-full h-full bg-black" />
                     
-                    <div className="flex flex-col items-center gap-4 w-full px-4">
+                    <div className="absolute bottom-10 left-0 right-0 z-[50] px-10 flex flex-col items-center gap-4">
                       <Button 
                         onClick={handlePickRandomRecipient}
                         disabled={isProcessing}
-                        className="w-full h-16 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.3em] gap-3 bg-primary/5 text-primary border border-primary/10 hover:bg-primary/10"
+                        className="w-full h-16 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.3em] gap-3 bg-white/10 backdrop-blur-md text-white border border-white/20 hover:bg-white/20"
                       >
                         {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                         Répandre l'Éveil
                       </Button>
                       
-                      <div className="flex flex-col items-center gap-2">
-                        {profile?.trustBadge && (
-                          <div className="flex items-center gap-2 px-4 py-2 bg-primary/5 border border-primary/10 rounded-full shadow-inner">
-                            <ShieldCheck className="h-3 w-3 text-primary" />
-                            <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Flux Étendu : {DAILY_LIMIT} PTS</span>
-                          </div>
-                        )}
-                        <Button variant="ghost" onClick={() => router.push("/profil")} className="text-[10px] font-black uppercase opacity-40"><X className="h-4 w-4 mr-2" /> Fermer</Button>
-                      </div>
+                      <Button 
+                        variant="ghost" 
+                        onClick={() => router.push("/profil")} 
+                        className="text-[10px] font-black uppercase opacity-60 text-white hover:bg-white/5"
+                      >
+                        <X className="h-4 w-4 mr-2" /> Annuler
+                      </Button>
                     </div>
-                  </TabsContent>
-                  <TabsContent value="scan" className="mt-0 h-full outline-none">
-                    <div id="reader" className="absolute inset-0 w-full h-full bg-black" />
+
                     {hasCameraPermission === false && <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-background/90 z-50 text-center"><ShieldAlert className="h-12 w-12 text-destructive mb-4" /><h2 className="text-xl font-black">Permission Requise</h2><Button variant="outline" onClick={() => window.location.reload()} className="mt-4 rounded-xl">Réessayer</Button></div>}
                   </TabsContent>
                 </motion.div>
@@ -453,7 +376,7 @@ export default function TransfertPage() {
                         {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : mode === 'duel' ? <Swords className="h-5 w-5" /> : <ArrowRight className="h-5 w-5" />}
                         {mode === 'duel' ? "Lancer le Duel" : "Confirmer le Transfert"}
                       </Button>
-                      <Button variant="ghost" onClick={() => { setRecipient(null); setActiveTab("qr"); }} className="w-full h-12 text-[10px] font-black uppercase opacity-40">Annuler</Button>
+                      <Button variant="ghost" onClick={() => { setRecipient(null); setActiveTab("scan"); }} className="w-full h-12 text-[10px] font-black uppercase opacity-40">Annuler</Button>
                     </CardFooter>
                   </Card>
                 </motion.div>
