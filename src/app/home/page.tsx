@@ -99,49 +99,49 @@ function CommunityGoalProgress({ appStatus }: { appStatus: any }) {
 
   return (
     <Card className={cn(
-      "border-none backdrop-blur-3xl rounded-[2rem] overflow-hidden transition-all duration-700 w-full max-w-lg mb-6",
-      isRoyalActive ? "bg-yellow-500/10 border border-yellow-500/20 shadow-[0_0_40px_-10px_rgba(234,179,8,0.3)] ring-1 ring-yellow-500/20" : "bg-card/40"
+      "border-none backdrop-blur-3xl rounded-[1.5rem] overflow-hidden transition-all duration-700 w-full max-w-lg mb-6",
+      isRoyalActive ? "bg-yellow-500/10 border border-yellow-500/20 shadow-[0_0_30px_-15px_rgba(234,179,8,0.3)]" : "bg-card/40"
     )}>
-      <CardContent className="p-6 space-y-4">
+      <CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={cn(
-              "h-10 w-10 rounded-xl flex items-center justify-center transition-colors",
+              "h-8 w-8 rounded-xl flex items-center justify-center transition-colors",
               isRoyalActive ? "bg-yellow-500 text-black shadow-lg" : "bg-primary/5 text-primary"
             )}>
-              {isRoyalActive ? <Crown className="h-5 w-5" /> : <Users className="h-5 w-5" />}
+              {isRoyalActive ? <Crown className="h-4 w-4" /> : <Users className="h-4 w-4" />}
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Objectif Communautaire</p>
-              <h3 className="text-sm font-black uppercase tracking-tight">
+              <p className="text-[8px] font-black uppercase tracking-widest opacity-40">Objectif Communautaire</p>
+              <h3 className="text-xs font-black uppercase tracking-tight">
                 {isRoyalActive ? "Éveil Royal Actif !" : "Résonance de la Semaine"}
               </h3>
             </div>
           </div>
           <div className="text-right">
-            <p className={cn("text-xs font-black", isRoyalActive && "text-yellow-600")}>
+            <p className={cn("text-[10px] font-black tabular-nums", isRoyalActive && "text-yellow-600")}>
               {current.toLocaleString()} / {target.toLocaleString()}
             </p>
-            <p className="text-[8px] font-bold opacity-30 uppercase">PTS de Lumière</p>
+            <p className="text-[7px] font-bold opacity-30 uppercase">Lumière</p>
           </div>
         </div>
 
-        <div className="space-y-2">
-          <div className="h-2 bg-primary/5 rounded-full overflow-hidden border border-primary/5">
+        <div className="space-y-1.5">
+          <div className="h-1 bg-primary/5 rounded-full overflow-hidden">
             <motion.div 
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 1.5, ease: "easeOut" }}
               className={cn(
                 "h-full transition-colors duration-500",
-                isRoyalActive ? "bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.5)]" : "bg-primary"
+                isRoyalActive ? "bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.5)]" : "bg-primary"
               )}
             />
           </div>
-          <p className="text-[9px] font-medium opacity-40 italic text-center">
+          <p className="text-[8px] font-bold opacity-30 uppercase text-center tracking-tighter">
             {isRoyalActive 
-              ? "Le Sanctuaire rayonne d'une intensité royale." 
-              : `Encore ${Math.max(0, target - current).toLocaleString()} points pour débloquer l'Éveil Royal.`}
+              ? "Le Sanctuaire rayonne d'intensité." 
+              : `Encore ${Math.max(0, target - current).toLocaleString()} points requis.`}
           </p>
         </div>
       </CardContent>
@@ -346,7 +346,6 @@ export default function HomePage() {
         description: "Votre esprit a hésité. -10 PTS de Lumière.",
       });
     } else if (!isCorrect && !isTimeout && profile && (profile.totalPoints || 0) > 5 && !isProtected) {
-      // Optionnelle: petite pénalité en cas d'erreur
       penalty = -5;
     }
 
