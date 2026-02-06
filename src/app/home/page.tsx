@@ -27,6 +27,8 @@ import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export function SpoilerOverlay() {
   return (
@@ -170,28 +172,29 @@ export default function HomePage() {
 
   const { data: userAttempts, loading: attemptsLoading } = useCollection(attemptsQuery);
 
-  // LOGIQUE DE DISCIPLINE : Punition si l'app est fermée/réduite pendant le quiz
   useEffect(() => {
-    const handleVisibilityChange = async () => {
+    const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden' && quizStarted && !isAnswered && user?.uid && profile?.totalPoints) {
-        // Punition sévère : Perte de 50% des points
         const penalty = Math.floor(profile.totalPoints / 2);
         
         if (penalty > 0) {
           const userDocRef = doc(db, "users", user.uid);
           
-          // Mise à jour silencieuse car l'utilisateur est en train de quitter
           updateDoc(userDocRef, {
             totalPoints: increment(-penalty),
             updatedAt: serverTimestamp()
+          }).catch(async () => {
+            const permissionError = new FirestorePermissionError({
+              path: userDocRef.path,
+              operation: 'update',
+              requestResourceData: { totalPoints: `decrement ${penalty}` },
+            } satisfies SecurityRuleContext);
+            errorEmitter.emit('permission-error', permissionError);
           });
 
-          // On stoppe le quiz pour éviter les glitchs au retour
           setIsAnswered(true);
           setQuizStarted(false);
           haptic.error();
-          
-          console.warn(`[Oracle] Esprit dissipé. Pénalité de ${penalty} PTS appliquée.`);
         }
       }
     };
@@ -229,7 +232,6 @@ export default function HomePage() {
   const royalChallengeUntil = appStatus?.royalChallengeActiveUntil?.toDate?.() || null;
   const isRoyalActive = royalChallengeUntil && royalChallengeUntil > new Date();
 
-  // Logique d'activation automatique de la Résonance Royale
   useEffect(() => {
     if (!appStatus || !appStatusRef || isRoyalActive) return;
 
@@ -238,7 +240,6 @@ export default function HomePage() {
 
     if (currentPoints >= targetPoints) {
       haptic.success();
-      // On active le défi royal pour 10 minutes (600 secondes)
       const activationEnd = new Date();
       activationEnd.setMinutes(activationEnd.getMinutes() + 10);
 
@@ -295,54 +296,72 @@ export default function HomePage() {
     
     setHiddenIndices(toHide);
     
-    try {
-      await updateDoc(userRef!, {
-        hintCount: increment(-1),
-        updatedAt: serverTimestamp()
-      });
-      toast({ title: "Perception activée", description: "L'illusion se dissipe..." });
-    } catch (e) {
-      console.error(e);
-    }
+    updateDoc(userRef!, {
+      hintCount: increment(-1),
+      updatedAt: serverTimestamp()
+    }).catch(async () => {
+      const permissionError = new FirestorePermissionError({
+        path: userRef!.path,
+        operation: 'update',
+        requestResourceData: { hintCount: 'decrement' },
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    });
+    toast({ title: "Perception activée", description: "L'illusion se dissipe..." });
   };
 
   const handleAddTime = async () => {
     if (!user || !db || !profile?.timeBoostCount || isAnswered || !quizStarted) return;
     haptic.impact();
     setTimeLeft(prev => prev + 15);
-    try {
-      await updateDoc(userRef!, {
-        timeBoostCount: increment(-1),
-        updatedAt: serverTimestamp()
-      });
-      toast({ title: "Temps Suspendu", description: "15 secondes ont été ajoutées." });
-    } catch (e) {}
+    updateDoc(userRef!, {
+      timeBoostCount: increment(-1),
+      updatedAt: serverTimestamp()
+    }).catch(async () => {
+      const permissionError = new FirestorePermissionError({
+        path: userRef!.path,
+        operation: 'update',
+        requestResourceData: { timeBoostCount: 'decrement' },
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    });
+    toast({ title: "Temps Suspendu", description: "15 secondes ont été ajoutées." });
   };
 
   const handleUseShield = async () => {
     if (!user || !db || !profile?.shieldCount || isAnswered || !quizStarted || isProtected) return;
     haptic.impact();
     setIsProtected(true);
-    try {
-      await updateDoc(userRef!, {
-        shieldCount: increment(-1),
-        updatedAt: serverTimestamp()
-      });
-      toast({ title: "Sceau de Protection", description: "L'échec n'aura aucune conséquence." });
-    } catch (e) {}
+    updateDoc(userRef!, {
+      shieldCount: increment(-1),
+      updatedAt: serverTimestamp()
+    }).catch(async () => {
+      const permissionError = new FirestorePermissionError({
+        path: userRef!.path,
+        operation: 'update',
+        requestResourceData: { shieldCount: 'decrement' },
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    });
+    toast({ title: "Sceau de Protection", description: "L'échec n'aura aucune conséquence." });
   };
 
   const handleUseMultiplier = async () => {
     if (!user || !db || !profile?.multiplierCount || isAnswered || !quizStarted || isMultiplied) return;
     haptic.impact();
     setIsMultiplied(true);
-    try {
-      await updateDoc(userRef!, {
-        multiplierCount: increment(-1),
-        updatedAt: serverTimestamp()
-      });
-      toast({ title: "Prisme de Lumière", description: "Lumière multipliée pour ce défi." });
-    } catch (e) {}
+    updateDoc(userRef!, {
+      multiplierCount: increment(-1),
+      updatedAt: serverTimestamp()
+    }).catch(async () => {
+      const permissionError = new FirestorePermissionError({
+        path: userRef!.path,
+        operation: 'update',
+        requestResourceData: { multiplierCount: 'decrement' },
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    });
+    toast({ title: "Prisme de Lumière", description: "Lumière multipliée pour ce défi." });
   };
 
   const handleLongPressStart = () => {
@@ -359,7 +378,7 @@ export default function HomePage() {
     }
   };
 
-  const handleAnswer = async (index: number) => {
+  const handleAnswer = (index: number) => {
     if (!quizStarted || isAnswered || sessionQuizzes.length === 0 || !user || !db) return;
     
     const currentQuiz = sessionQuizzes[currentQuestionIdx];
@@ -395,78 +414,109 @@ export default function HomePage() {
     const userDocRef = doc(db, "users", user.uid);
     const quizDocRef = doc(db, "quizzes", currentQuiz.id);
 
+    // 1. Mise à jour de la tentative (Transparent & Prioritaire pour l'UI)
     setUpdating(true);
-    try {
-      // 1. Mise à jour de la tentative
-      await updateDoc(attemptRef, {
-        isPlayed: true,
-        status: 'completed',
-        score: pointsEarned,
-        userAnswerIndex: index,
-        isTimeout: isTimeout,
-        updatedAt: serverTimestamp()
+    const attemptData = {
+      isPlayed: true,
+      status: 'completed',
+      score: pointsEarned,
+      userAnswerIndex: index,
+      isTimeout: isTimeout,
+      updatedAt: serverTimestamp()
+    };
+
+    updateDoc(attemptRef, attemptData)
+      .catch(async () => {
+        const permissionError = new FirestorePermissionError({
+          path: attemptRef.path,
+          operation: 'update',
+          requestResourceData: attemptData,
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+      })
+      .finally(() => {
+        setUpdating(false);
       });
 
-      // 2. Gestion de l'usure du quiz (Oracle de l'Éphémère)
-      // On vérifie le nombre de résolutions globales
-      const quizSnap = await getDoc(quizDocRef);
-      if (quizSnap.exists()) {
-        const data = quizSnap.data();
+    // 2. Oracle de l'Éphémère (Arrière-plan total et transparent)
+    getDoc(quizDocRef).then(snap => {
+      if (snap.exists()) {
+        const data = snap.data();
         const newPlayedCount = (data.playedCount || 0) + 1;
         
         if (newPlayedCount >= 3) {
-          // Dissolution du savoir s'il a été trop partagé
-          await deleteDoc(quizDocRef);
+          deleteDoc(quizDocRef).catch(async () => {
+            const permissionError = new FirestorePermissionError({
+              path: quizDocRef.path,
+              operation: 'delete',
+            } satisfies SecurityRuleContext);
+            errorEmitter.emit('permission-error', permissionError);
+          });
         } else {
-          // Sinon on marque le passage
-          await updateDoc(quizDocRef, { 
+          updateDoc(quizDocRef, { 
             playedCount: newPlayedCount,
             updatedAt: serverTimestamp() 
+          }).catch(async () => {
+            const permissionError = new FirestorePermissionError({
+              path: quizDocRef.path,
+              operation: 'update',
+              requestResourceData: { playedCount: newPlayedCount },
+            } satisfies SecurityRuleContext);
+            errorEmitter.emit('permission-error', permissionError);
           });
         }
       }
+    });
 
-      const totalChange = pointsEarned + penalty;
-      
-      if (totalChange !== 0) {
-        const updatePayload: any = {
-          totalPoints: increment(totalChange),
-          lastQuizAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        };
+    // 3. Gestion des Points et de la Progression (Transparent)
+    const totalChange = pointsEarned + penalty;
+    if (totalChange !== 0) {
+      const updatePayload: any = {
+        totalPoints: increment(totalChange),
+        lastQuizAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
 
-        if (pointsEarned > 0 && profile && profile.referredBy && !profile.referralRewardClaimed) {
-          const newTotal = (profile.totalPoints || 0) + pointsEarned;
-          if (newTotal >= 100) {
-            const referrersQuery = query(
-              collection(db, "users"), 
-              where("referralCode", "==", profile.referredBy), 
-              limit(1)
-            );
-            const referrerSnap = await getDocs(referrersQuery);
+      if (pointsEarned > 0 && profile && profile.referredBy && !profile.referralRewardClaimed) {
+        const newTotalPossible = (profile.totalPoints || 0) + pointsEarned;
+        if (newTotalPossible >= 100) {
+          const referrersQuery = query(
+            collection(db, "users"), 
+            where("referralCode", "==", profile.referredBy), 
+            limit(1)
+          );
+          getDocs(referrersQuery).then(referrerSnap => {
             if (!referrerSnap.empty) {
-              await updateDoc(referrerSnap.docs[0].ref, {
+              updateDoc(referrerSnap.docs[0].ref, {
                 totalPoints: increment(100),
                 updatedAt: serverTimestamp()
               });
               updatePayload.referralRewardClaimed = true;
+              updateDoc(userDocRef, updatePayload);
+            } else {
+              updateDoc(userDocRef, updatePayload);
             }
-          }
+          });
+        } else {
+          updateDoc(userDocRef, updatePayload);
         }
-        await updateDoc(userDocRef, updatePayload);
-
-        if (pointsEarned > 0 && appStatusRef) {
-          const commUpdate: any = {
-            communityGoalPoints: increment(pointsEarned),
-            updatedAt: serverTimestamp()
-          };
-          await updateDoc(appStatusRef, commUpdate);
-        }
+      } else {
+        updateDoc(userDocRef, updatePayload);
       }
-    } catch (error) {
-      console.error("Erreur lors de la finalisation de la réponse:", error);
-    } finally {
-      setUpdating(false);
+
+      if (pointsEarned > 0 && appStatusRef) {
+        updateDoc(appStatusRef, {
+          communityGoalPoints: increment(pointsEarned),
+          updatedAt: serverTimestamp()
+        }).catch(async () => {
+          const permissionError = new FirestorePermissionError({
+            path: appStatusRef.path,
+            operation: 'update',
+            requestResourceData: { communityGoalPoints: `increment ${pointsEarned}` },
+          } satisfies SecurityRuleContext);
+          errorEmitter.emit('permission-error', permissionError);
+        });
+      }
     }
   };
 
