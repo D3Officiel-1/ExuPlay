@@ -38,7 +38,8 @@ import {
   AlertCircle,
   Swords,
   ShieldCheck,
-  Ghost
+  Ghost,
+  QrCode
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
@@ -51,8 +52,7 @@ export default function TransfertPage() {
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
-  const { resolvedTheme } = useTheme();
-
+  
   const [activeTab, setActiveTab] = useState("scan");
   const [recipient, setRecipient] = useState<any>(null);
   const [validationStatus, setValidationStatus] = useState<'idle' | 'validating' | 'success' | 'error'>('idle');
@@ -64,8 +64,9 @@ export default function TransfertPage() {
   const [mode, setMode] = useState<'transfer' | 'duel'>('transfer');
   const [isAnonymous, setIsAnonymous] = useState(false);
   
-  const [hasTorch, setHasTorch] = useState(false);
-  const [isTorchOn, setIsTorchOn] = useState(false);
+  // QR Code Logic State
+  const [cachedQr, setCachedQr] = useState<string | null>(null);
+  const [isGeneratingQr, setIsGeneratingQr] = useState(false);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -82,16 +83,73 @@ export default function TransfertPage() {
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
+  // Logic: Load or Generate QR Code
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const loadQr = async () => {
+      const stored = localStorage.getItem(`exu_seal_${user.uid}`);
+      if (stored) {
+        setCachedQr(stored);
+        return;
+      }
+
+      if (activeTab === "generate" && !isGeneratingQr) {
+        setIsGeneratingQr(true);
+        try {
+          const QRCodeStyling = (await import('qr-code-styling')).default;
+          const qrCode = new QRCodeStyling({
+            width: 600,
+            height: 600,
+            type: 'canvas',
+            data: user.uid,
+            margin: 20,
+            dotsOptions: {
+              color: "#000000",
+              type: "rounded"
+            },
+            backgroundOptions: {
+              color: "#ffffff",
+            },
+            cornersSquareOptions: {
+              type: "extra-rounded",
+              color: "#000000"
+            },
+            cornersDotOptions: {
+              type: "dot",
+              color: "#000000"
+            },
+            qrOptions: {
+              errorCorrectionLevel: 'H'
+            }
+          });
+
+          const blob = await qrCode.getRawData('png');
+          if (blob) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const base64 = reader.result as string;
+              localStorage.setItem(`exu_seal_${user.uid}`, base64);
+              setCachedQr(base64);
+              setIsGeneratingQr(false);
+            };
+            reader.readAsDataURL(blob);
+          }
+        } catch (e) {
+          console.error("QR Generation Failed", e);
+          setIsGeneratingQr(false);
+        }
+      }
+    };
+
+    loadQr();
+  }, [user?.uid, activeTab, isGeneratingQr]);
+
   const stopScanner = async () => {
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
       try {
-        if (isTorchOn) {
-          await html5QrCodeRef.current.applyVideoConstraints({ advanced: [{ torch: false }] } as any);
-          setIsTorchOn(false);
-        }
         await html5QrCodeRef.current.stop();
         html5QrCodeRef.current = null;
-        setHasTorch(false);
       } catch (err) {
         console.error("Stop scanner error:", err);
       }
@@ -120,13 +178,7 @@ export default function TransfertPage() {
               onScanFailure
             );
             
-            if (isMounted) {
-              setHasCameraPermission(true);
-              try {
-                const capabilities = scanner.getRunningTrackCapabilities();
-                if ((capabilities as any).torch) setHasTorch(true);
-              } catch (e) {}
-            }
+            if (isMounted) setHasCameraPermission(true);
           } catch (error: any) {
             if (isMounted && (error?.name === "NotAllowedError" || error?.name === "PermissionDeniedError")) {
               setHasCameraPermission(false);
@@ -279,9 +331,12 @@ export default function TransfertPage() {
       <main className="flex-1 max-w-lg mx-auto w-full relative h-full">
         <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); haptic.light(); }} className="w-full h-full flex flex-col">
           <div className="fixed top-6 left-0 right-0 z-[100] px-6 max-w-lg mx-auto">
-            <TabsList className="w-full bg-card/20 backdrop-blur-3xl border border-primary/10 p-1 h-14 rounded-2xl grid grid-cols-1 shadow-2xl">
-              <TabsTrigger value="scan" className="rounded-xl font-black text-xs uppercase tracking-widest gap-2">
-                <Scan className="h-4 w-4" /> Scanner un Sceau
+            <TabsList className="w-full bg-card/20 backdrop-blur-3xl border border-primary/10 p-1 h-14 rounded-2xl grid grid-cols-2 shadow-2xl">
+              <TabsTrigger value="scan" className="rounded-xl font-black text-[10px] uppercase tracking-widest gap-2">
+                <Scan className="h-4 w-4" /> Scanner
+              </TabsTrigger>
+              <TabsTrigger value="generate" className="rounded-xl font-black text-[10px] uppercase tracking-widest gap-2">
+                <QrCode className="h-4 w-4" /> Mon Sceau
               </TabsTrigger>
             </TabsList>
           </div>
@@ -297,6 +352,56 @@ export default function TransfertPage() {
                     <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }} className="mt-8 text-center px-6">
                       {validationStatus === 'error' ? <><h2 className="text-2xl font-black text-red-500">Dissonance</h2><p className="text-[10px] opacity-40 mt-2">{errorMessage}</p></> : <><h2 className="text-2xl font-black">@{recipient?.username}</h2><p className="text-[10px] opacity-40">Résonance Établie</p></>}
                     </motion.div>
+                  </div>
+                </motion.div>
+              ) : activeTab === "generate" ? (
+                <motion.div key="generate" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="min-h-screen flex flex-col items-center justify-center px-8">
+                  <div className="space-y-10 w-full max-w-sm text-center">
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Oracle du Sceau</p>
+                      <h2 className="text-3xl font-black tracking-tighter italic">Votre Identité Sacrée</h2>
+                    </div>
+
+                    <div className="relative group">
+                      <motion.div 
+                        animate={{ scale: [1, 1.05, 1], rotate: [0, 1, -1, 0] }}
+                        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+                        className="absolute inset-[-20px] bg-primary/5 rounded-full blur-3xl pointer-events-none" 
+                      />
+                      
+                      <div className="relative aspect-square bg-white rounded-[3.5rem] p-10 shadow-2xl border-4 border-primary/5 flex items-center justify-center overflow-hidden">
+                        {cachedQr ? (
+                          <motion.img 
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            src={cachedQr} 
+                            alt="Mon Sceau" 
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center gap-4 opacity-20">
+                            <Loader2 className="h-12 w-12 animate-spin" />
+                            <p className="text-[10px] font-black uppercase tracking-widest">Matérialisation...</p>
+                          </div>
+                        )}
+                        
+                        <div className="absolute inset-0 border-[12px] border-white rounded-[3.5rem] pointer-events-none" />
+                      </div>
+                    </div>
+
+                    <div className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/5">
+                      <p className="text-[10px] leading-relaxed font-medium opacity-40 italic">
+                        "Présentez ce Sceau à un autre esprit pour qu'il puisse puiser dans votre lumière ou vous défier dans l'arène."
+                      </p>
+                    </div>
+
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => router.push("/profil")}
+                      className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 hover:opacity-100 transition-opacity"
+                    >
+                      Retour au Sanctuaire
+                    </Button>
                   </div>
                 </motion.div>
               ) : !recipient && !isSuccess ? (
