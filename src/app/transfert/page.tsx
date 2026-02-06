@@ -49,7 +49,8 @@ import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
 export default function TransfertPage() {
-  const { user } = useUser();
+  const { user } = user;
+  const { user: firebaseUser } = useUser();
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
@@ -68,14 +69,14 @@ export default function TransfertPage() {
   const [cachedQr, setCachedQr] = useState<string | null>(null);
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
 
-  // Nouvel état pour le FAB et la torche
+  // État pour le FAB et la lampe de poche
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [isTorchOn, setIsTorchOn] = useState(false);
 
   const userDocRef = useMemo(() => {
-    if (!db || !user?.uid) return null;
-    return doc(db, "users", user.uid);
-  }, [db, user?.uid]);
+    if (!db || !firebaseUser?.uid) return null;
+    return doc(db, "users", firebaseUser.uid);
+  }, [db, firebaseUser?.uid]);
 
   const { data: profile, loading } = useDoc(userDocRef);
 
@@ -87,11 +88,12 @@ export default function TransfertPage() {
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
+  // Génération du QR Code
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!firebaseUser?.uid) return;
 
     const loadQr = async () => {
-      const stored = localStorage.getItem(`exu_seal_${user.uid}`);
+      const stored = localStorage.getItem(`exu_seal_${firebaseUser.uid}`);
       if (stored) {
         setCachedQr(stored);
         return;
@@ -105,7 +107,7 @@ export default function TransfertPage() {
             width: 600,
             height: 600,
             type: 'canvas',
-            data: user.uid,
+            data: firebaseUser.uid,
             margin: 20,
             dotsOptions: { color: "#000000", type: "rounded" },
             backgroundOptions: { color: "#ffffff" },
@@ -119,7 +121,7 @@ export default function TransfertPage() {
             const reader = new FileReader();
             reader.onloadend = () => {
               const base64 = reader.result as string;
-              localStorage.setItem(`exu_seal_${user.uid}`, base64);
+              localStorage.setItem(`exu_seal_${firebaseUser.uid}`, base64);
               setCachedQr(base64);
               setIsGeneratingQr(false);
             };
@@ -133,11 +135,18 @@ export default function TransfertPage() {
     };
 
     loadQr();
-  }, [user?.uid, activeTab, isGeneratingQr]);
+  }, [firebaseUser?.uid, activeTab, isGeneratingQr]);
 
   const stopScanner = async () => {
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
       try {
+        // Éteindre la lampe avant de stopper si elle est allumée
+        if (isTorchOn) {
+          try {
+            // @ts-ignore
+            await html5QrCodeRef.current.applyVideoConstraints({ advanced: [{ torch: false }] });
+          } catch (e) {}
+        }
         await html5QrCodeRef.current.stop();
         html5QrCodeRef.current = null;
         setIsTorchOn(false);
@@ -177,6 +186,7 @@ export default function TransfertPage() {
             { 
               fps: 30, 
               qrbox: (viewfinderWidth, viewfinderHeight) => {
+                // Zone de détection globale (viseur invisible)
                 return { width: viewfinderWidth, height: viewfinderHeight };
               },
               aspectRatio: screenRatio,
@@ -215,7 +225,7 @@ export default function TransfertPage() {
     await stopScanner();
     haptic.medium();
     
-    if (decodedText === user?.uid) {
+    if (decodedText === firebaseUser?.uid) {
       haptic.error();
       setErrorMessage("C'est votre propre Sceau");
       setValidationStatus('error');
@@ -256,6 +266,30 @@ export default function TransfertPage() {
     }
   };
 
+  const toggleTorch = async () => {
+    if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+      try {
+        const state = !isTorchOn;
+        // La méthode applyVideoConstraints permet de contrôler le matériel directement
+        // @ts-ignore
+        await html5QrCodeRef.current.applyVideoConstraints({
+          advanced: [{ torch: state }]
+        });
+        setIsTorchOn(state);
+        haptic.light();
+      } catch (err) {
+        console.warn("Torch logic failed:", err);
+        toast({ 
+          variant: "destructive",
+          title: "Lumière Indisponible", 
+          description: "Votre appareil ou navigateur ne permet pas le contrôle du flash." 
+        });
+      }
+    } else {
+      toast({ title: "Scanner inactif", description: "La caméra doit être active pour utiliser la lumière." });
+    }
+  };
+
   const handlePickRandomRecipient = async () => {
     setIsProcessing(true);
     haptic.medium();
@@ -263,7 +297,7 @@ export default function TransfertPage() {
     try {
       const q = query(collection(db, "users"), orderBy("totalPoints", "asc"), limit(15));
       const snap = await getDocs(q);
-      const others = snap.docs.filter(d => d.id !== user?.uid);
+      const others = snap.docs.filter(d => d.id !== firebaseUser?.uid);
       
       if (others.length > 0) {
         const candidates = others.slice(0, 10);
@@ -282,25 +316,8 @@ export default function TransfertPage() {
     }
   };
 
-  const toggleTorch = async () => {
-    if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
-      try {
-        const state = !isTorchOn;
-        // @ts-ignore
-        await html5QrCodeRef.current.applyVideoConstraints({
-          advanced: [{ torch: state }]
-        });
-        setIsTorchOn(state);
-        haptic.light();
-      } catch (err) {
-        console.warn("Torch not supported on this device/browser");
-        toast({ title: "Lumière indisponible", description: "Votre appareil ne supporte pas le flash via le navigateur." });
-      }
-    }
-  };
-
   const handleAction = async () => {
-    if (!transferAmount || transferAmount <= 0 || !user?.uid || !recipient?.id) return;
+    if (!transferAmount || transferAmount <= 0 || !firebaseUser?.uid || !recipient?.id) return;
     
     if (transferAmount > DAILY_LIMIT) {
       haptic.error();
@@ -322,14 +339,14 @@ export default function TransfertPage() {
     haptic.medium();
 
     try {
-      const senderRef = doc(db, "users", user.uid);
+      const senderRef = doc(db, "users", firebaseUser.uid);
       
       if (mode === 'transfer') {
         const receiverRef = doc(db, "users", recipient.id);
         await updateDoc(senderRef, { totalPoints: increment(-totalCost), updatedAt: serverTimestamp() });
         await updateDoc(receiverRef, { totalPoints: increment(transferAmount), updatedAt: serverTimestamp() });
         await addDoc(collection(db, "transfers"), {
-          fromId: isAnonymous ? "anonymous" : user.uid,
+          fromId: isAnonymous ? "anonymous" : firebaseUser.uid,
           fromName: isAnonymous ? "Un Esprit Inconnu" : (profile?.username || "Anonyme"),
           fromPhoto: isAnonymous ? "" : (profile?.profileImage || ""),
           toId: recipient.id,
@@ -344,7 +361,7 @@ export default function TransfertPage() {
         await updateDoc(senderRef, { totalPoints: increment(-transferAmount), updatedAt: serverTimestamp() });
         
         await addDoc(collection(db, "duels"), {
-          challengerId: user.uid,
+          challengerId: firebaseUser.uid,
           challengerName: profile?.username || "Anonyme",
           challengerPhoto: profile?.profileImage || "",
           opponentId: recipient.id,
