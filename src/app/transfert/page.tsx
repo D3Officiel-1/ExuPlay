@@ -163,14 +163,15 @@ export default function TransfertPage() {
           const scanner = new Html5Qrcode("reader");
           html5QrCodeRef.current = scanner;
 
-          const qrboxSize = Math.min(window.innerWidth * 0.7, 280);
+          // Viseur optimisé pour le plein écran
+          const qrboxSize = Math.min(window.innerWidth * 0.75, 300);
 
           await scanner.start(
             { facingMode: "environment" },
             { 
               fps: 30, 
               qrbox: { width: qrboxSize, height: qrboxSize },
-              aspectRatio: 1.0,
+              aspectRatio: window.innerWidth / window.innerHeight,
               experimentalFeatures: {
                 useBarCodeDetectorIfSupported: true
               }
@@ -345,6 +346,7 @@ export default function TransfertPage() {
     <div className="min-h-screen bg-background flex flex-col overflow-hidden">
       <main className={cn("flex-1 mx-auto w-full relative h-full", activeTab !== 'scan' && "max-w-lg")}>
         <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); haptic.light(); }} className="w-full h-full flex flex-col">
+          {/* Header flottant */}
           <div className="fixed top-6 left-0 right-0 z-[100] px-6 max-w-lg mx-auto">
             <TabsList className="w-full bg-card/20 backdrop-blur-3xl border border-primary/10 p-1 h-14 rounded-2xl grid grid-cols-2 shadow-2xl">
               <TabsTrigger value="scan" className="rounded-xl font-black text-[10px] uppercase tracking-widest gap-2">
@@ -401,8 +403,9 @@ export default function TransfertPage() {
                 </motion.div>
               ) : !recipient && !isSuccess ? (
                 <motion.div key="selection" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 w-full h-full">
-                  <TabsContent value="scan" className="mt-0 h-full w-full outline-none relative flex flex-col border-none p-0">
-                    <div id="reader" className="w-full h-full bg-black relative overflow-hidden" />
+                  <TabsContent value="scan" className="mt-0 h-full w-full outline-none fixed inset-0 flex flex-col border-none p-0 z-0">
+                    {/* Le lecteur QR prend tout l'écran */}
+                    <div id="reader" className="fixed inset-0 w-full h-full bg-black z-0" />
                     
                     {!hasCameraPermission && hasCameraPermission !== null && (
                       <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-background/90 z-50 text-center">
@@ -413,6 +416,7 @@ export default function TransfertPage() {
                       </div>
                     )}
                     
+                    {/* Contrôles flottants bas de page */}
                     <div className="absolute bottom-10 left-0 right-0 z-[50] px-10 flex flex-col items-center gap-4 max-w-lg mx-auto">
                       <Button onClick={handlePickRandomRecipient} disabled={isProcessing} className="w-full h-16 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.3em] gap-3 bg-white/10 backdrop-blur-md text-white border border-white/20 hover:bg-white/20">
                         {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Répandre l'Éveil
@@ -480,17 +484,21 @@ export default function TransfertPage() {
         #reader { 
           border: none !important; 
           background: black !important; 
-          height: 100% !important;
-          width: 100% !important;
+          height: 100vh !important;
+          width: 100vw !important;
           margin: 0 !important;
           padding: 0 !important;
           display: block !important;
+          position: fixed !important;
+          inset: 0 !important;
+          box-shadow: none !important;
         } 
         #reader video { 
           object-fit: cover !important; 
           width: 100% !important; 
           height: 100% !important;
           display: block !important;
+          border-radius: 0 !important;
         } 
         #reader__scan_region { 
           width: 100% !important;
@@ -510,6 +518,11 @@ export default function TransfertPage() {
         } 
         div[id^="reader__"] {
           border: none !important;
+          box-shadow: none !important;
+        }
+        /* Masquer les bordures internes de la lib */
+        #reader__scan_region img {
+          display: none !important;
         }
       `}</style>
     </div>
