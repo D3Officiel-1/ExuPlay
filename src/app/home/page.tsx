@@ -99,50 +99,29 @@ function CommunityGoalProgress({ appStatus }: { appStatus: any }) {
 
   return (
     <Card className={cn(
-      "border-none backdrop-blur-3xl rounded-[1.5rem] overflow-hidden transition-all duration-700 w-full max-w-lg mb-6",
-      isRoyalActive ? "bg-yellow-500/10 border border-yellow-500/20 shadow-[0_0_30px_-15px_rgba(234,179,8,0.3)]" : "bg-card/40"
+      "border-none bg-card/20 backdrop-blur-3xl rounded-full overflow-hidden w-full max-w-lg mb-10 transition-all duration-700",
+      isRoyalActive && "ring-1 ring-yellow-500/30 shadow-[0_0_20px_rgba(234,179,8,0.1)]"
     )}>
-      <CardContent className="p-2.5 px-4 space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className={cn(
-              "h-6 w-6 rounded-lg flex items-center justify-center transition-colors",
-              isRoyalActive ? "bg-yellow-500 text-black shadow-lg" : "bg-primary/5 text-primary"
-            )}>
-              {isRoyalActive ? <Crown className="h-3 w-3" /> : <Users className="h-3 w-3" />}
-            </div>
-            <div>
-              <p className="text-[7px] font-black uppercase tracking-widest opacity-40">Objectif Communautaire</p>
-              <h3 className="text-[10px] font-black uppercase tracking-tight">
-                {isRoyalActive ? "Éveil Royal Actif !" : "Résonance Hebdomadaire"}
-              </h3>
-            </div>
-          </div>
-          <div className="text-right">
-            <p className={cn("text-[9px] font-black tabular-nums", isRoyalActive && "text-yellow-600")}>
-              {current.toLocaleString()} / {target.toLocaleString()}
-            </p>
-          </div>
+      <CardContent className="p-3 px-6 space-y-2">
+        <div className="h-1 bg-primary/5 rounded-full overflow-hidden">
+          <motion.div 
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 1.5, ease: "easeOut" }}
+            className={cn(
+              "h-full transition-colors duration-500",
+              isRoyalActive ? "bg-yellow-500" : "bg-primary"
+            )}
+          />
         </div>
-
-        <div className="space-y-1">
-          <div className="h-1 bg-primary/5 rounded-full overflow-hidden">
-            <motion.div 
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 1.5, ease: "easeOut" }}
-              className={cn(
-                "h-full transition-colors duration-500",
-                isRoyalActive ? "bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.5)]" : "bg-primary"
-              )}
-            />
-          </div>
-          <p className="text-[7px] font-bold opacity-30 uppercase text-center tracking-tighter">
-            {isRoyalActive 
-              ? "Le Sanctuaire rayonne d'intensité." 
-              : `Encore ${Math.max(0, target - current).toLocaleString()} points requis.`}
-          </p>
-        </div>
+        <p className={cn(
+          "text-[8px] font-black uppercase tracking-[0.4em] text-center",
+          isRoyalActive ? "text-yellow-600" : "opacity-20"
+        )}>
+          {isRoyalActive 
+            ? "Éveil Royal Actif" 
+            : `Encore ${Math.max(0, target - current).toLocaleString()} points requis`}
+        </p>
       </CardContent>
     </Card>
   );
