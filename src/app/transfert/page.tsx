@@ -89,7 +89,7 @@ export default function TransfertPage() {
     
     try {
       const QRCodeStyling = (await import("qr-code-styling")).default;
-      const dotColor = resolvedTheme === 'dark' ? '#000000' : '#FFFFFF';
+      const dotColor = resolvedTheme === 'dark' ? '#FFFFFF' : '#000000';
       
       const options = {
         width: 280,
@@ -215,21 +215,15 @@ export default function TransfertPage() {
 
   const onScanFailure = () => {};
 
-  /**
-   * @fileOverview Logique de Redistribution de l'Équilibre.
-   * Recherche les esprits les plus "pauvres" en points pour encourager leur éveil.
-   */
   const handlePickRandomRecipient = async () => {
     setIsProcessing(true);
     haptic.medium();
     try {
-      // LOGIQUE : On cible les 10 utilisateurs ayant le moins de points (les Adeptes)
       const q = query(collection(db, "users"), orderBy("totalPoints", "asc"), limit(15));
       const snap = await getDocs(q);
       const others = snap.docs.filter(d => d.id !== user?.uid);
       
       if (others.length > 0) {
-        // On pioche au hasard parmi les 10 premiers (les plus faibles)
         const candidates = others.slice(0, 10);
         const randomDoc = candidates[Math.floor(Math.random() * candidates.length)];
         haptic.success();
@@ -269,8 +263,9 @@ export default function TransfertPage() {
     haptic.medium();
 
     try {
+      const senderRef = doc(db, "users", user.uid);
+      
       if (mode === 'transfer') {
-        const senderRef = doc(db, "users", user.uid);
         const receiverRef = doc(db, "users", recipient.id);
         await updateDoc(senderRef, { totalPoints: increment(-totalCost), updatedAt: serverTimestamp() });
         await updateDoc(receiverRef, { totalPoints: increment(transferAmount), updatedAt: serverTimestamp() });
@@ -287,6 +282,9 @@ export default function TransfertPage() {
         haptic.success();
         setIsSuccess(true);
       } else {
+        // Mode Duel : Déduction immédiate de la mise (Séquestre)
+        await updateDoc(senderRef, { totalPoints: increment(-transferAmount), updatedAt: serverTimestamp() });
+        
         await addDoc(collection(db, "duels"), {
           challengerId: user.uid,
           challengerName: profile?.username || "Anonyme",
@@ -298,13 +296,14 @@ export default function TransfertPage() {
           status: 'pending',
           createdAt: serverTimestamp()
         });
+        
         haptic.success();
-        toast({ title: "Défi Lancé !", description: "Attendez que votre adversaire accepte le duel." });
+        toast({ title: "Défi Lancé !", description: "Mise prélevée. Attendez que votre adversaire accepte." });
         router.push("/home");
       }
     } catch (error) {
       haptic.error();
-      toast({ variant: "destructive", title: "Erreur" });
+      toast({ variant: "destructive", title: "Erreur lors de la transmission" });
     } finally {
       setIsProcessing(false);
     }
