@@ -177,6 +177,7 @@ export default function TransfertPage() {
           const scanner = new Html5Qrcode("reader");
           html5QrCodeRef.current = scanner;
 
+          // Calibration dynamique pour éviter le zoom excessif
           const screenRatio = window.innerWidth / window.innerHeight;
 
           await scanner.start(
@@ -184,12 +185,16 @@ export default function TransfertPage() {
             { 
               fps: 30, 
               qrbox: (viewfinderWidth, viewfinderHeight) => {
+                // On utilise toute la zone pour la détection
                 return { width: viewfinderWidth, height: viewfinderHeight };
               },
               aspectRatio: screenRatio,
               videoConstraints: {
                 aspectRatio: screenRatio,
-                facingMode: "environment"
+                facingMode: "environment",
+                // On demande une résolution optimale pour le plein écran
+                width: { min: 640, ideal: 1280, max: 1920 },
+                height: { min: 480, ideal: 720, max: 1080 }
               }
             },
             (text) => {
