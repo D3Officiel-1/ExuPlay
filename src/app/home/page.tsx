@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser, useFirestore, useCollection, useDoc } from "@/firebase";
 import { 
@@ -12,32 +12,22 @@ import {
   serverTimestamp, 
   query, 
   orderBy, 
-  where, 
-  limit, 
-  getDocs,
-  getDoc,
-  deleteDoc
+  limit
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, Brain, Timer, Zap, Users, Star, Eye, Crown, Clock, ShieldCheck } from "lucide-react";
+import { Trophy, ArrowRight, Loader2, Timer, Zap, Users, Star, Eye, Clock, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export function SpoilerOverlay() {
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ 
-        opacity: 0,
-        transition: { duration: 0.3 } 
-      }}
+      exit={{ opacity: 0, transition: { duration: 0.3 } }}
       className="absolute inset-0 z-10 overflow-hidden rounded-[2rem] pointer-events-none"
     >
       <div className="absolute inset-0 bg-card/95 backdrop-blur-[45px] z-0 rounded-[2rem]" />
@@ -45,11 +35,6 @@ export function SpoilerOverlay() {
         animate={{ scale: [1, 1.2, 1], x: [0, 30, 0], y: [0, -20, 0] }}
         transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
         className="absolute top-[-20%] left-[-10%] w-[80%] h-[80%] bg-primary/5 rounded-full blur-[100px] z-20"
-      />
-      <motion.div 
-        animate={{ scale: [1, 1.3, 1], x: [0, -40, 0], y: [0, 30, 0] }}
-        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-        className="absolute bottom-[-20%] right-[-10%] w-[80%] h-[80%] bg-primary/5 rounded-full blur-[100px] z-20"
       />
     </motion.div>
   );
@@ -111,19 +96,11 @@ function CommunityGoalProgress({ appStatus }: { appStatus: any }) {
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 1.5, ease: "easeOut" }}
-            className={cn(
-              "h-full transition-colors duration-500",
-              isRoyalActive ? "bg-yellow-500" : "bg-primary"
-            )}
+            className={cn("h-full transition-colors duration-500", isRoyalActive ? "bg-yellow-500" : "bg-primary")}
           />
         </div>
-        <p className={cn(
-          "text-[8px] font-black uppercase tracking-[0.4em] text-center",
-          isRoyalActive ? "text-yellow-600" : "opacity-20"
-        )}>
-          {isRoyalActive 
-            ? "Éveil Royal Actif" 
-            : `Encore ${Math.max(0, target - current).toLocaleString()} points requis`}
+        <p className={cn("text-[8px] font-black uppercase tracking-[0.4em] text-center", isRoyalActive ? "text-yellow-600" : "opacity-20")}>
+          {isRoyalActive ? "Éveil Royal Actif" : `Encore ${Math.max(0, target - current).toLocaleString()} points requis`}
         </p>
       </CardContent>
     </Card>
@@ -169,16 +146,13 @@ export default function HomePage() {
 
   const { data: userAttempts, loading: attemptsLoading } = useCollection(attemptsQuery);
 
-  // Oracle du Flux Temporel : Désactivation automatique de l'Éveil Royal après expiration
   useEffect(() => {
     if (!appStatus || !db) return;
-    
     const checkExpiry = async () => {
       const until = appStatus.royalChallengeActiveUntil?.toDate?.();
       if (until && until < new Date()) {
         try {
-          const statusRef = doc(db, "appConfig", "status");
-          await updateDoc(statusRef, {
+          await updateDoc(doc(db, "appConfig", "status"), {
             communityGoalPoints: 0,
             royalChallengeActiveUntil: null,
             updatedAt: serverTimestamp()
@@ -186,37 +160,13 @@ export default function HomePage() {
         } catch (e) {}
       }
     };
-
-    const interval = setInterval(checkExpiry, 10000); // Surveillance toutes les 10s
+    const interval = setInterval(checkExpiry, 10000);
     return () => clearInterval(interval);
   }, [appStatus, db]);
 
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden' && quizStarted && !isAnswered && user?.uid && profile?.totalPoints) {
-        const penalty = Math.floor(profile.totalPoints / 2);
-        
-        if (penalty > 0) {
-          const userDocRef = doc(db, "users", user.uid);
-          updateDoc(userDocRef, {
-            totalPoints: increment(-penalty),
-            updatedAt: serverTimestamp()
-          }).catch(() => {});
-          setIsAnswered(true);
-          setQuizStarted(false);
-          haptic.error();
-        }
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [quizStarted, isAnswered, user?.uid, profile?.totalPoints, db]);
-
-  useEffect(() => {
     if (allQuizzes && userAttempts !== null && sessionQuizzes.length === 0) {
-      const playedQuizIds = new Set(
-        (userAttempts as any[]).filter(attempt => attempt.isPlayed === true).map(attempt => attempt.id)
-      );
+      const playedQuizIds = new Set((userAttempts as any[]).filter(a => a.isPlayed === true).map(a => a.id));
       const availableQuizzes = allQuizzes.filter(quiz => !playedQuizIds.has(quiz.id));
       const shuffled = [...availableQuizzes].sort(() => Math.random() - 0.5);
       setSessionQuizzes(shuffled);
@@ -241,59 +191,46 @@ export default function HomePage() {
     haptic.medium();
     const currentQuiz = sessionQuizzes[currentQuestionIdx];
     const attemptRef = doc(db, "users", user.uid, "attempts", currentQuiz.id);
-    
     setUpdating(true);
     try {
-      await setDoc(attemptRef, {
-        attemptedAt: serverTimestamp(),
-        isPlayed: false,
-        status: 'started'
-      }, { merge: true });
+      await setDoc(attemptRef, { attemptedAt: serverTimestamp(), isPlayed: false, status: 'started' }, { merge: true });
       setQuizStarted(true);
       setHiddenIndices([]);
       setTimeLeft(15);
       setIsProtected(false);
       setIsMultiplied(false);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setUpdating(false);
-    }
+    } catch (error) {} finally { setUpdating(false); }
   };
 
   const handleUseHint = async () => {
-    if (!user || !db || !profile?.hintCount || isAnswered || !quizStarted || hiddenIndices.length > 0) return;
+    if (!userRef || !profile?.hintCount || isAnswered || !quizStarted || hiddenIndices.length > 0) return;
     haptic.impact();
     const currentQuiz = sessionQuizzes[currentQuestionIdx];
     const wrongIndices = [0, 1, 2, 3].filter(i => i !== currentQuiz.correctIndex);
     const toHide = [...wrongIndices].sort(() => Math.random() - 0.5).slice(0, 2);
     setHiddenIndices(toHide);
-    updateDoc(userRef!, { hintCount: increment(-1), updatedAt: serverTimestamp() });
-    toast({ title: "Perception activée", description: "L'illusion se dissipe..." });
+    updateDoc(userRef, { hintCount: increment(-1), updatedAt: serverTimestamp() });
   };
 
   const handleAddTime = async () => {
-    if (!user || !db || !profile?.timeBoostCount || isAnswered || !quizStarted) return;
+    if (!userRef || !profile?.timeBoostCount || isAnswered || !quizStarted) return;
     haptic.impact();
     setTimeLeft(prev => prev + 15);
-    updateDoc(userRef!, { timeBoostCount: increment(-1), updatedAt: serverTimestamp() });
-    toast({ title: "Temps Suspendu", description: "15 secondes ajoutées." });
+    updateDoc(userRef, { timeBoostCount: increment(-1), updatedAt: serverTimestamp() });
   };
 
   const handleUseShield = async () => {
-    if (!user || !db || !profile?.shieldCount || isAnswered || !quizStarted || isProtected) return;
+    if (!userRef || !profile?.shieldCount || isAnswered || !quizStarted || isProtected) return;
     haptic.impact();
     setIsProtected(true);
-    updateDoc(userRef!, { shieldCount: increment(-1), updatedAt: serverTimestamp() });
-    toast({ title: "Sceau de Protection", description: "L'échec n'aura aucune conséquence." });
+    updateDoc(userRef, { shieldCount: increment(-1), updatedAt: serverTimestamp() });
   };
 
   const handleUseMultiplier = async () => {
-    if (!user || !db || !profile?.multiplierCount || isAnswered || !quizStarted || isMultiplied) return;
+    if (!userRef || !profile?.multiplierCount || isAnswered || !quizStarted || isMultiplied) return;
     haptic.impact();
     setIsMultiplied(true);
-    updateDoc(userRef!, { multiplierCount: increment(-1), updatedAt: serverTimestamp() });
-    toast({ title: "Prisme de Lumière", description: "Lumière multipliée." });
+    updateDoc(userRef, { multiplierCount: increment(-1), updatedAt: serverTimestamp() });
   };
 
   const handleAnswer = (index: number) => {
@@ -301,48 +238,27 @@ export default function HomePage() {
     const currentQuiz = sessionQuizzes[currentQuestionIdx];
     const isCorrect = index === currentQuiz.correctIndex;
     const isTimeout = index === -1;
-    
     let pointsEarned = isCorrect ? (isRoyalActive ? 100 : (currentQuiz.points || 10)) : 0;
     if (isCorrect && isMultiplied) pointsEarned *= 2;
-
-    let penalty = 0;
-    if (isTimeout && profile && (profile.totalPoints || 0) > 10 && !isProtected) {
-      penalty = -10;
-      toast({ variant: "destructive", title: "Temps Épuisé", description: "-10 PTS." });
-    }
-
+    let penalty = (isTimeout && profile && (profile.totalPoints || 0) > 10 && !isProtected) ? -10 : 0;
     if (isCorrect) haptic.success(); else haptic.error();
     setSelectedOption(index);
     setIsAnswered(true);
     if (isCorrect) setScore(prev => prev + pointsEarned);
-
     const attemptRef = doc(db, "users", user.uid, "attempts", currentQuiz.id);
     updateDoc(attemptRef, { isPlayed: true, status: 'completed', score: pointsEarned, userAnswerIndex: index, updatedAt: serverTimestamp() });
-
     const totalChange = pointsEarned + penalty;
     if (totalChange !== 0) {
       updateDoc(doc(db, "users", user.uid), { totalPoints: increment(totalChange), lastQuizAt: serverTimestamp(), updatedAt: serverTimestamp() });
-      
       if (pointsEarned > 0 && appStatusRef && appStatus) {
         const currentProgress = (appStatus.communityGoalPoints || 0) + pointsEarned;
         const target = appStatus.communityGoalTarget || 10000;
-        
-        let updateData: any = { 
-          communityGoalPoints: increment(pointsEarned), 
-          updatedAt: serverTimestamp() 
-        };
-
+        let updateData: any = { communityGoalPoints: increment(pointsEarned), updatedAt: serverTimestamp() };
         if (currentProgress >= target && !isRoyalActive) {
-          const expiry = new Date();
-          expiry.setMinutes(expiry.getMinutes() + 10);
+          const expiry = new Date(); expiry.setMinutes(expiry.getMinutes() + 10);
           updateData.royalChallengeActiveUntil = expiry;
-          haptic.impact();
-          toast({ 
-            title: "Éveil Royal Activé !", 
-            description: "Le flux a atteint son paroxysme. +100 PTS par défi pendant 10 minutes !" 
-          });
+          toast({ title: "Éveil Royal Activé !", description: "+100 PTS par défi pendant 10 minutes !" });
         }
-        
         updateDoc(appStatusRef, updateData);
       }
     }
@@ -351,26 +267,14 @@ export default function HomePage() {
   const nextQuestion = () => {
     haptic.light();
     if (currentQuestionIdx < sessionQuizzes.length - 1) {
-      setCurrentQuestionIdx(prev => prev + 1);
-      setSelectedOption(null);
-      setIsAnswered(false);
-      setQuizStarted(false);
-      setHiddenIndices([]);
-      setTimeLeft(15);
-      setIsProtected(false);
-      setIsMultiplied(false);
-    } else {
-      setQuizComplete(true);
-      haptic.impact();
-    }
+      setCurrentQuestionIdx(prev => prev + 1); setSelectedOption(null); setIsAnswered(false); setQuizStarted(false); setHiddenIndices([]); setTimeLeft(15); setIsProtected(false); setIsMultiplied(false);
+    } else { setQuizComplete(true); haptic.impact(); }
   };
 
-  if (quizzesLoading || attemptsLoading || (allQuizzes && userAttempts !== null && sessionQuizzes.length === 0 && allQuizzes.length > 0)) {
-    return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin opacity-20" /></div>;
-  }
+  if (quizzesLoading || attemptsLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin opacity-20" /></div>;
 
   const question = sessionQuizzes[currentQuestionIdx];
-  const hasTools = profile && (profile.hintCount > 0 || profile.timeBoostCount > 0 || profile.shieldCount > 0 || profile.multiplierCount > 0);
+  const hasInventory = profile && (profile.hintCount > 0 || profile.timeBoostCount > 0 || profile.shieldCount > 0 || profile.multiplierCount > 0);
 
   return (
     <div className={cn("min-h-screen bg-background flex flex-col pb-32 transition-colors duration-1000", isRoyalActive && "bg-yellow-500/[0.02]")}>
@@ -382,7 +286,6 @@ export default function HomePage() {
               initial={{ opacity: 0, y: -20, filter: "blur(10px)" }}
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
               exit={{ opacity: 0, y: -20, filter: "blur(10px)" }}
-              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
               className="w-full flex flex-col items-center space-y-6"
             >
               <GlobalActivityTicker />
@@ -394,7 +297,7 @@ export default function HomePage() {
         <div className="w-full max-w-lg relative">
           <AnimatePresence mode="wait">
             {!quizComplete ? (
-              <motion.div key={question?.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }} className="space-y-8">
+              <motion.div key={question?.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
                 {quizStarted && !isAnswered && (
                   <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-4">
                     <div className={cn("flex items-center gap-3 px-6 py-3 backdrop-blur-3xl rounded-2xl border shadow-xl", isRoyalActive ? "bg-yellow-500/10 border-yellow-500/30" : "bg-card/40 border-primary/10")}>
@@ -432,7 +335,7 @@ export default function HomePage() {
                       })}
                     </div>
 
-                    {quizStarted && !isAnswered && hasTools && (
+                    {quizStarted && !isAnswered && hasInventory && (
                       <div className="flex justify-center gap-2 pt-4">
                         {profile?.hintCount > 0 && (
                           <Button size="icon" variant="ghost" disabled={hiddenIndices.length > 0} onClick={handleUseHint} className="h-12 w-12 rounded-xl bg-primary/5 border border-primary/5 relative">

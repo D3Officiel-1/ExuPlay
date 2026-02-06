@@ -6,13 +6,14 @@ import { FirebaseClientProvider, useUser, useFirestore, useDoc } from "@/firebas
 import { Toaster } from "@/components/ui/toaster";
 import { ToastProvider } from "@/components/ui/toast";
 import { useEffect, useState, useMemo } from "react";
-import { WifiOff, ShieldAlert, Loader2, Zap } from "lucide-react";
+import { WifiOff, ShieldAlert, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
 import { BiometricLock } from "@/components/BiometricLock";
 import { SuccessfulExchangeOverlay } from "@/components/SuccessfulExchangeOverlay";
 import { DuelInvitationListener } from "@/components/DuelInvitationListener";
 import { IncomingTransferOverlay } from "@/components/IncomingTransferOverlay";
+import { RewardQuickView } from "@/components/RewardQuickView";
 import { doc, getDoc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/Logo";
@@ -43,10 +44,6 @@ function ThemeSync() {
   return null;
 }
 
-/**
- * @fileOverview Pulsar de Flux Universel.
- * Remplace l'IA pour faire progresser l'objectif communautaire par la simple présence des esprits.
- */
 function CommunityFluxPulsar() {
   const { user } = useUser();
   const db = useFirestore();
@@ -54,7 +51,6 @@ function CommunityFluxPulsar() {
   useEffect(() => {
     if (!user || !db) return;
 
-    // Logique : La simple présence d'un esprit alimente le flux communautaire (1 PT toutes les 2 min)
     const pulseFlux = async () => {
       try {
         const appStatusRef = doc(db, "appConfig", "status");
@@ -62,12 +58,10 @@ function CommunityFluxPulsar() {
           communityGoalPoints: increment(1),
           updatedAt: serverTimestamp()
         });
-      } catch (error) {
-        // Erreur silencieuse pour ne pas perturber l'expérience
-      }
+      } catch (error) {}
     };
 
-    const interval = setInterval(pulseFlux, 120000); // 2 minutes
+    const interval = setInterval(pulseFlux, 120000);
     return () => clearInterval(interval);
   }, [user, db]);
 
@@ -151,17 +145,6 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const { data: profile } = useDoc(userDocRef);
   const { data: appStatus } = useDoc(appConfigRef);
 
-  // Verrouillage de l'Oracle : Désactivation du menu contextuel (clic droit / appui long)
-  useEffect(() => {
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-    };
-    document.addEventListener('contextmenu', handleContextMenu);
-    return () => {
-      document.removeEventListener('contextmenu', handleContextMenu);
-    };
-  }, []);
-
   useEffect(() => {
     if (isAuthLoading) return;
     const publicPaths = ["/", "/login", "/offline", "/autoriser"];
@@ -211,6 +194,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
       <IncomingTransferOverlay />
       <DuelInvitationListener />
       <CommunityFluxPulsar />
+      <RewardQuickView />
       {showNav && <Header />}
       <PageTransition>{children}</PageTransition>
       {showBottomNav && <BottomNav />}
