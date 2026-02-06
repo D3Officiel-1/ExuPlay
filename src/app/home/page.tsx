@@ -102,31 +102,30 @@ function CommunityGoalProgress({ appStatus }: { appStatus: any }) {
       "border-none backdrop-blur-3xl rounded-[1.5rem] overflow-hidden transition-all duration-700 w-full max-w-lg mb-6",
       isRoyalActive ? "bg-yellow-500/10 border border-yellow-500/20 shadow-[0_0_30px_-15px_rgba(234,179,8,0.3)]" : "bg-card/40"
     )}>
-      <CardContent className="p-4 space-y-3">
+      <CardContent className="p-2.5 px-4 space-y-2">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <div className={cn(
-              "h-8 w-8 rounded-xl flex items-center justify-center transition-colors",
+              "h-6 w-6 rounded-lg flex items-center justify-center transition-colors",
               isRoyalActive ? "bg-yellow-500 text-black shadow-lg" : "bg-primary/5 text-primary"
             )}>
-              {isRoyalActive ? <Crown className="h-4 w-4" /> : <Users className="h-4 w-4" />}
+              {isRoyalActive ? <Crown className="h-3 w-3" /> : <Users className="h-3 w-3" />}
             </div>
             <div>
-              <p className="text-[8px] font-black uppercase tracking-widest opacity-40">Objectif Communautaire</p>
-              <h3 className="text-xs font-black uppercase tracking-tight">
-                {isRoyalActive ? "Éveil Royal Actif !" : "Résonance de la Semaine"}
+              <p className="text-[7px] font-black uppercase tracking-widest opacity-40">Objectif Communautaire</p>
+              <h3 className="text-[10px] font-black uppercase tracking-tight">
+                {isRoyalActive ? "Éveil Royal Actif !" : "Résonance Hebdomadaire"}
               </h3>
             </div>
           </div>
           <div className="text-right">
-            <p className={cn("text-[10px] font-black tabular-nums", isRoyalActive && "text-yellow-600")}>
+            <p className={cn("text-[9px] font-black tabular-nums", isRoyalActive && "text-yellow-600")}>
               {current.toLocaleString()} / {target.toLocaleString()}
             </p>
-            <p className="text-[7px] font-bold opacity-30 uppercase">Lumière</p>
           </div>
         </div>
 
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           <div className="h-1 bg-primary/5 rounded-full overflow-hidden">
             <motion.div 
               initial={{ width: 0 }}
@@ -138,7 +137,7 @@ function CommunityGoalProgress({ appStatus }: { appStatus: any }) {
               )}
             />
           </div>
-          <p className="text-[8px] font-bold opacity-30 uppercase text-center tracking-tighter">
+          <p className="text-[7px] font-bold opacity-30 uppercase text-center tracking-tighter">
             {isRoyalActive 
               ? "Le Sanctuaire rayonne d'intensité." 
               : `Encore ${Math.max(0, target - current).toLocaleString()} points requis.`}
@@ -218,6 +217,28 @@ export default function HomePage() {
 
   const royalChallengeUntil = appStatus?.royalChallengeActiveUntil?.toDate?.() || null;
   const isRoyalActive = royalChallengeUntil && royalChallengeUntil > new Date();
+
+  // Logique d'activation automatique de la Résonance Royale
+  useEffect(() => {
+    if (!appStatus || !appStatusRef || isRoyalActive) return;
+
+    const currentPoints = appStatus.communityGoalPoints || 0;
+    const targetPoints = appStatus.communityGoalTarget || 10000;
+
+    if (currentPoints >= targetPoints) {
+      haptic.success();
+      // On active le défi royal pour 1 heure (3600 secondes)
+      const activationEnd = new Date();
+      activationEnd.setHours(activationEnd.getHours() + 1);
+
+      updateDoc(appStatusRef, {
+        royalChallengeActiveUntil: activationEnd,
+        updatedAt: serverTimestamp()
+      }).catch(err => {
+        console.warn("L'Oracle n'a pas pu déclencher l'activation globale:", err);
+      });
+    }
+  }, [appStatus, appStatusRef, isRoyalActive]);
 
   const handleStartChallenge = async () => {
     if (!user || !db || sessionQuizzes.length === 0 || updating) return;
