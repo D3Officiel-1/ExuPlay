@@ -1,4 +1,3 @@
-
 "use client";
 
 import "./globals.css";
@@ -151,6 +150,17 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
 
   const { data: profile } = useDoc(userDocRef);
   const { data: appStatus } = useDoc(appConfigRef);
+
+  // Verrouillage de l'Oracle : Désactivation du menu contextuel (clic droit / appui long)
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+    document.addEventListener('contextmenu', handleContextMenu);
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, []);
 
   useEffect(() => {
     if (isAuthLoading) return;
