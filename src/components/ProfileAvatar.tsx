@@ -1,7 +1,7 @@
 
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { User as UserIcon, ShieldCheck } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -27,7 +27,6 @@ export function ProfileAvatar({
   size = "md", 
   className 
 }: ProfileAvatarProps) {
-  const title = getHonorTitle(points);
   const visualTheme = getVisualTheme(activeTheme);
   
   const sizeClasses = {
@@ -53,19 +52,22 @@ export function ProfileAvatar({
 
   return (
     <div className={cn("relative inline-block", className)}>
-      {/* Aura de prestige liée au thème visuel */}
-      <motion.div 
-        animate={activeTheme === 'theme_gold' ? { scale: [1, 1.1, 1], opacity: [0.5, 0.8, 0.5] } : {}}
-        transition={{ duration: 3, repeat: Infinity }}
-        className={cn(
-          "absolute inset-[-15%] rounded-full transition-all duration-1000 z-0",
-          visualTheme.auraClass
-        )} 
-      />
+      <AnimatePresence mode="wait">
+        <motion.div 
+          key={activeTheme}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 1.1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className={cn(
+            "absolute inset-[-20%] rounded-full z-0 pointer-events-none",
+            visualTheme.auraClass
+          )} 
+        />
+      </AnimatePresence>
       
-      {/* Bordure de rang liée au thème visuel */}
       <div className={cn(
-        "relative overflow-hidden flex items-center justify-center border-2 transition-all duration-500 bg-card shadow-xl z-10",
+        "relative overflow-hidden flex items-center justify-center border-2 transition-all duration-700 bg-card shadow-2xl z-10",
         sizeClasses[size],
         visualTheme.borderColor
       )}>
@@ -80,17 +82,15 @@ export function ProfileAvatar({
           <UserIcon className={cn("text-primary opacity-20", iconSizes[size])} />
         )}
 
-        {/* Effet de brillance pour les sceaux rares */}
         {(activeTheme === 'theme_gold' || activeTheme === 'theme_obsidian') && (
           <motion.div 
             animate={{ x: ["-100%", "200%"] }}
             transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 pointer-events-none"
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12 pointer-events-none"
           />
         )}
       </div>
 
-      {/* Badge Sceau de Confiance */}
       {isTrusted && (
         <motion.div 
           initial={{ scale: 0, rotate: -45 }}
@@ -104,7 +104,7 @@ export function ProfileAvatar({
           <motion.div 
             animate={{ opacity: [0, 1, 0] }}
             transition={{ duration: 2, repeat: Infinity }}
-            className="absolute inset-0 bg-white/20 rounded-full blur-[2px]"
+            className="absolute inset-0 bg-white/30 rounded-full blur-[3px]"
           />
         </motion.div>
       )}

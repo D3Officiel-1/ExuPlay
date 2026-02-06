@@ -76,49 +76,49 @@ export const THEMES: Record<string, VisualTheme> = {
     name: "Neutre",
     color: "text-primary",
     borderColor: "border-primary/20",
-    auraClass: "bg-primary/5 blur-xl"
+    auraClass: "bg-primary/10 blur-xl"
   },
   "theme_amethyst": {
     id: "theme_amethyst",
     name: "Améthyste",
     color: "text-purple-500",
-    borderColor: "border-purple-500/40",
-    auraClass: "bg-purple-500/10 blur-2xl shadow-[0_0_20px_rgba(168,85,247,0.2)]"
+    borderColor: "border-purple-500/50",
+    auraClass: "bg-purple-500/20 blur-2xl shadow-[0_0_30px_rgba(168,85,247,0.3)]"
   },
   "theme_emerald": {
     id: "theme_emerald",
     name: "Émeraude",
     color: "text-emerald-500",
-    borderColor: "border-emerald-500/40",
-    auraClass: "bg-emerald-500/10 blur-2xl shadow-[0_0_20px_rgba(16,185,129,0.2)]"
+    borderColor: "border-emerald-500/50",
+    auraClass: "bg-emerald-500/20 blur-2xl shadow-[0_0_30px_rgba(16,185,129,0.3)]"
   },
   "theme_ruby": {
     id: "theme_ruby",
     name: "Rubis",
     color: "text-red-500",
-    borderColor: "border-red-500/40",
-    auraClass: "bg-red-500/10 blur-2xl shadow-[0_0_20px_rgba(239,68,68,0.2)]"
+    borderColor: "border-red-500/50",
+    auraClass: "bg-red-500/20 blur-2xl shadow-[0_0_30px_rgba(239,68,68,0.3)]"
   },
   "theme_sapphire": {
     id: "theme_sapphire",
     name: "Saphir",
     color: "text-blue-500",
-    borderColor: "border-blue-500/40",
-    auraClass: "bg-blue-500/10 blur-2xl shadow-[0_0_20px_rgba(59,130,246,0.2)]"
+    borderColor: "border-blue-500/50",
+    auraClass: "bg-blue-500/20 blur-2xl shadow-[0_0_30px_rgba(59,130,246,0.3)]"
   },
   "theme_obsidian": {
     id: "theme_obsidian",
     name: "Obsidienne",
     color: "text-gray-900 dark:text-gray-100",
-    borderColor: "border-gray-900/60 dark:border-gray-100/60",
-    auraClass: "bg-gray-900/20 dark:bg-gray-100/20 blur-2xl"
+    borderColor: "border-white/20 dark:border-white/40",
+    auraClass: "bg-gray-900/40 dark:bg-gray-100/10 blur-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)]"
   },
   "theme_gold": {
     id: "theme_gold",
     name: "Or Pur",
     color: "text-yellow-600",
-    borderColor: "border-yellow-600/60",
-    auraClass: "bg-yellow-600/20 blur-3xl animate-pulse shadow-[0_0_30px_rgba(202,138,4,0.3)]"
+    borderColor: "border-yellow-500/70",
+    auraClass: "bg-yellow-500/30 blur-3xl animate-pulse shadow-[0_0_50px_rgba(234,179,8,0.4)]"
   }
 };
 
