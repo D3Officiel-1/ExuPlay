@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
@@ -269,7 +268,6 @@ export default function ProfilPage() {
           </div>
         </motion.div>
 
-        {/* Sélecteur d'Aura Magnifié */}
         {ownedThemes.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="space-y-5">
             <div className="flex items-center gap-3 px-4">
@@ -288,7 +286,6 @@ export default function ProfilPage() {
                   )}
                 >
                   <Sparkles className="h-6 w-6" />
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-primary rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
                 </button>
 
                 {ownedThemes.map((themeId: string) => {
@@ -306,22 +303,7 @@ export default function ProfilPage() {
                         isActive && "bg-primary/5 shadow-2xl scale-110 mx-1"
                       )}
                     >
-                      <div className={cn(
-                        "absolute inset-0 opacity-40 group-hover:opacity-60 transition-opacity",
-                        theme.auraClass.replace('blur-3xl', 'blur-md').replace('blur-2xl', 'blur-sm')
-                      )} />
-                      
-                      <div className={cn(
-                        "h-4 w-4 rounded-full relative z-10 transition-transform group-hover:scale-125",
-                        theme.color.replace('text-', 'bg-')
-                      )} />
-                      
-                      {isActive && (
-                        <motion.div 
-                          layoutId="active-theme-dot"
-                          className="absolute bottom-1.5 h-1 w-1 rounded-full bg-current"
-                        />
-                      )}
+                      <div className={cn("h-4 w-4 rounded-full relative z-10", theme.color.replace('text-', 'bg-'))} />
                     </button>
                   );
                 })}
@@ -346,7 +328,6 @@ export default function ProfilPage() {
                   onClick={() => { haptic.medium(); router.push("/transfert"); }} 
                   className="h-20 rounded-[2.2rem] font-black text-[10px] uppercase tracking-[0.3em] gap-3 shadow-2xl shadow-primary/10 group overflow-hidden relative"
                 >
-                  <motion.div animate={{ x: ["-100%", "200%"] }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12" />
                   <QrCode className="h-5 w-5 relative z-10 group-hover:scale-110 transition-transform" />
                   <span className="relative z-10">Transférer</span>
                 </Button>
