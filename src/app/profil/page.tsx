@@ -277,7 +277,7 @@ export default function ProfilPage() {
               <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Sélecteur d'Aura</h2>
             </div>
             <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] overflow-hidden">
-              <CardContent className="p-6 flex gap-4 overflow-x-auto no-scrollbar items-center">
+              <CardContent className="p-6 flex gap-4 overflow-x-auto no-scrollbar items-center justify-center">
                 <button 
                   onClick={() => handleApplyTheme("default")}
                   className={cn(
@@ -306,7 +306,6 @@ export default function ProfilPage() {
                         isActive && "bg-primary/5 shadow-2xl scale-110 mx-1"
                       )}
                     >
-                      {/* Aperçu de l'aura miniature */}
                       <div className={cn(
                         "absolute inset-0 opacity-40 group-hover:opacity-60 transition-opacity",
                         theme.auraClass.replace('blur-3xl', 'blur-md').replace('blur-2xl', 'blur-sm')
