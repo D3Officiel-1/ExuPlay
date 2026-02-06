@@ -7,7 +7,7 @@ import { doc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, Zap, Loader2, Trophy, Target, Sparkles, User } from "lucide-react";
+import { ChevronLeft, Zap, Loader2, Trophy, Target, Sparkles, User, Crosshair } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -103,7 +103,6 @@ export default function PenaltiesPage() {
     setIsScored(null);
   };
 
-  // Variantes d'animation pour le ballon
   const ballVariants = {
     idle: { y: 0, x: 0, scale: 1, filter: "blur(0px)", rotate: 0 },
     shooting: (direction: Direction) => {
@@ -128,7 +127,6 @@ export default function PenaltiesPage() {
     }
   };
 
-  // Variantes d'animation pour le gardien
   const keeperVariants = {
     idle: { x: 0, y: 0, rotate: 0, scale: 1 },
     dive: (direction: Direction | null) => {
@@ -154,6 +152,19 @@ export default function PenaltiesPage() {
         rotate: rotateMap[direction],
         transition: { duration: 0.4, type: "spring", stiffness: 100 }
       };
+    }
+  };
+
+  const getPositionStyles = (dir: Direction) => {
+    switch (dir) {
+      case "En haut à gauche": return "top-[5%] left-[5%]";
+      case "En haut": return "top-[5%] left-[50%] -translate-x-1/2";
+      case "En haut à droite": return "top-[5%] right-[5%]";
+      case "À gauche": return "top-[50%] left-[5%] -translate-y-1/2";
+      case "À droite": return "top-[50%] right-[5%] -translate-y-1/2";
+      case "En bas à gauche": return "bottom-[5%] left-[5%]";
+      case "En bas": return "bottom-[5%] left-[50%] -translate-x-1/2";
+      case "En bas à droite": return "bottom-[5%] right-[5%]";
     }
   };
 
@@ -205,25 +216,47 @@ export default function PenaltiesPage() {
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-center opacity-30">Ciblez l'angle mort</p>
-                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                    {/* Row 1 */}
-                    <DirectionButton dir="En haut à gauche" loading={loading} onClick={handleShoot} />
-                    <DirectionButton dir="En haut" loading={loading} onClick={handleShoot} />
-                    <DirectionButton dir="En haut à droite" loading={loading} onClick={handleShoot} />
-                    
-                    {/* Row 2 */}
-                    <DirectionButton dir="À gauche" loading={loading} onClick={handleShoot} />
-                    <div className="flex items-center justify-center opacity-10">
-                      <Target className="h-6 w-6" />
+                <div className="space-y-6">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-center opacity-30">Visez un point de résonance</p>
+                  
+                  {/* INTERACTIVE CAGE SELECTOR */}
+                  <div className="relative w-full aspect-[16/9] bg-primary/5 rounded-[2rem] border-4 border-primary/10 overflow-hidden group">
+                    {/* Goal posts visuals */}
+                    <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(hsl(var(--primary)) 1px, transparent 1px)', backgroundSize: '12px 12px' }} />
+                    <div className="absolute inset-x-4 top-0 h-4 bg-primary/10 rounded-b-xl" />
+                    <div className="absolute left-0 inset-y-4 w-4 bg-primary/10 rounded-r-xl" />
+                    <div className="absolute right-0 inset-y-4 w-4 bg-primary/10 rounded-l-xl" />
+
+                    {/* Target Nodes */}
+                    {DIRECTIONS.map((dir) => (
+                      <motion.button
+                        key={dir}
+                        whileHover={{ scale: 1.2 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => handleShoot(dir)}
+                        disabled={loading}
+                        className={cn(
+                          "absolute z-10 h-10 w-10 sm:h-12 sm:w-12 rounded-full flex items-center justify-center transition-all",
+                          "bg-background/40 backdrop-blur-xl border-2 border-primary/20 hover:border-primary hover:bg-primary/10",
+                          "shadow-[0_0_20px_rgba(0,0,0,0.1)]",
+                          getPositionStyles(dir)
+                        )}
+                      >
+                        <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                        <motion.div 
+                          initial={{ opacity: 0 }}
+                          whileHover={{ opacity: 1 }}
+                          className="absolute -top-8 bg-card px-2 py-1 rounded text-[8px] font-black uppercase whitespace-nowrap border border-primary/10 pointer-events-none"
+                        >
+                          {dir}
+                        </motion.div>
+                      </motion.button>
+                    ))}
+
+                    {/* Central Keeper Shadow */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-5 pointer-events-none">
+                      <User className="h-20 w-20" />
                     </div>
-                    <DirectionButton dir="À droite" loading={loading} onClick={handleShoot} />
-                    
-                    {/* Row 3 */}
-                    <DirectionButton dir="En bas à gauche" loading={loading} onClick={handleShoot} />
-                    <DirectionButton dir="En bas" loading={loading} onClick={handleShoot} />
-                    <DirectionButton dir="En bas à droite" loading={loading} onClick={handleShoot} />
                   </div>
                 </div>
               </Card>
@@ -231,7 +264,7 @@ export default function PenaltiesPage() {
               <div className="p-6 bg-primary/5 rounded-[2rem] border border-primary/5 flex items-center gap-4">
                 <Sparkles className="h-5 w-5 text-primary opacity-40" />
                 <p className="text-[10px] leading-relaxed font-medium opacity-40 italic">
-                  "Un tir précis double votre essence. Une erreur, et la Lumière retourne au vide."
+                  "Chaque point lumineux est une faille dans la garde de l'Oracle. Choisissez avec sagesse."
                 </p>
               </div>
             </motion.div>
@@ -245,18 +278,14 @@ export default function PenaltiesPage() {
               {/* STADE 3D PERSPECTIVE */}
               <div className="relative w-full aspect-[4/5] rounded-[3rem] bg-gradient-to-b from-green-900/20 to-background border border-primary/10 shadow-2xl overflow-hidden perspective-[1000px]">
                 
-                {/* Lignes de terrain */}
                 <div className="absolute top-[20%] left-0 right-0 h-px bg-white/10" />
                 <div className="absolute bottom-[10%] left-[10%] right-[10%] h-[2px] bg-white/5 rounded-full" />
                 
-                {/* Goal Post */}
                 <div className="absolute top-[15%] left-1/2 -translate-x-1/2 w-64 h-32 border-4 border-white/20 rounded-t-lg border-b-0">
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.05),transparent)]" />
-                  {/* Net pattern */}
                   <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '10px 10px' }} />
                 </div>
 
-                {/* Gardien (Oracle de l'Arrêt) */}
                 <motion.div
                   custom={keeperChoice}
                   variants={keeperVariants}
@@ -271,10 +300,8 @@ export default function PenaltiesPage() {
                   </div>
                 </motion.div>
 
-                {/* Point de Penalty */}
                 <div className="absolute bottom-[20%] left-1/2 -translate-x-1/2 w-4 h-4 bg-white/20 rounded-full blur-[2px]" />
 
-                {/* Le Ballon (Artefact de Cuir) */}
                 <motion.div
                   custom={playerChoice}
                   variants={ballVariants}
@@ -283,7 +310,6 @@ export default function PenaltiesPage() {
                 >
                   <div className="relative group">
                     <div className="text-5xl drop-shadow-2xl filter brightness-110">⚽</div>
-                    {/* Ombre portée */}
                     <motion.div 
                       animate={gameState !== 'idle' ? { opacity: 0, scale: 0 } : { opacity: 0.3 }}
                       className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-2 bg-black rounded-full blur-sm" 
@@ -291,7 +317,6 @@ export default function PenaltiesPage() {
                   </div>
                 </motion.div>
 
-                {/* Result Message Overlay */}
                 <AnimatePresence>
                   {gameState === 'result' && (
                     <motion.div
@@ -330,22 +355,5 @@ export default function PenaltiesPage() {
         </AnimatePresence>
       </main>
     </div>
-  );
-}
-
-function DirectionButton({ dir, loading, onClick }: { dir: Direction, loading: boolean, onClick: (dir: Direction) => void }) {
-  // Simplification du texte pour les boutons du bas/haut
-  const label = dir.replace('En haut à ', 'HG ').replace('En haut ', 'H ').replace('En bas à ', 'BG ').replace('En bas ', 'B ').replace('À ', '').replace('En haut', 'Haut').replace('En bas', 'Bas');
-  
-  return (
-    <Button
-      onClick={() => onClick(dir)}
-      disabled={loading}
-      variant="outline"
-      className="h-16 sm:h-20 rounded-2xl flex flex-col gap-1 font-black text-[8px] uppercase border-primary/10 hover:bg-primary/5 transition-all active:scale-95 px-1 overflow-hidden"
-    >
-      <Target className="h-4 w-4 opacity-40 shrink-0" />
-      <span className="truncate w-full text-center">{dir}</span>
-    </Button>
   );
 }
