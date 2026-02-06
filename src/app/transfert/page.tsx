@@ -163,15 +163,19 @@ export default function TransfertPage() {
           const scanner = new Html5Qrcode("reader");
           html5QrCodeRef.current = scanner;
 
-          // Viseur optimisé pour le plein écran
-          const qrboxSize = Math.min(window.innerWidth * 0.75, 300);
+          // Viseur invisible mais global : on prend toute la taille possible
+          const fullWidth = window.innerWidth;
+          const fullHeight = window.innerHeight;
 
           await scanner.start(
             { facingMode: "environment" },
             { 
               fps: 30, 
-              qrbox: { width: qrboxSize, height: qrboxSize },
-              aspectRatio: window.innerWidth / window.innerHeight,
+              qrbox: (viewfinderWidth, viewfinderHeight) => {
+                // On utilise toute la zone pour le scan
+                return { width: viewfinderWidth, height: viewfinderHeight };
+              },
+              aspectRatio: fullWidth / fullHeight,
               experimentalFeatures: {
                 useBarCodeDetectorIfSupported: true
               }
@@ -511,6 +515,17 @@ export default function TransfertPage() {
           border-radius: 0px !important;
           object-fit: cover !important;
         }
+        /* Suppression totale du viseur visuel (bordures, ombres, coins) */
+        #reader__scan_region div[style*="border"] {
+          border: none !important;
+          display: none !important;
+        }
+        /* Masquer les bordures internes injectées par html5-qrcode */
+        #reader__scan_region > div > div {
+          border: none !important;
+          box-shadow: none !important;
+          background: transparent !important;
+        }
         #reader__dashboard, 
         #reader__status_span, 
         #reader__header_message { 
@@ -520,8 +535,13 @@ export default function TransfertPage() {
           border: none !important;
           box-shadow: none !important;
         }
-        /* Masquer les bordures internes de la lib */
-        #reader__scan_region img {
+        /* Masquer les bordures de détection si elles apparaissent */
+        .html5-qrcode-element {
+          border: none !important;
+        }
+        /* Masquer les images/canvases de surimpression */
+        #reader__scan_region img,
+        #reader__scan_region canvas {
           display: none !important;
         }
       `}</style>
