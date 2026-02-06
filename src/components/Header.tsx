@@ -4,17 +4,14 @@ import { useMemo } from "react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
-import { Trophy, User as UserIcon, X, Bell, AlertTriangle } from "lucide-react";
+import { Trophy, X, Bell, AlertTriangle, Shield } from "lucide-react";
 import { useUser, useFirestore, useDoc } from "@/firebase";
 import { doc } from "firebase/firestore";
-import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { getHonorTitle } from "@/lib/titles";
 
-/**
- * @fileOverview En-tête cinématique du Sanctuaire.
- * Fusionne intelligemment le branding, les points de l'esprit et le système de notifications.
- */
 export function Header() {
   const { user } = useUser();
   const db = useFirestore();
@@ -30,6 +27,7 @@ export function Header() {
 
   const { data: profile } = useDoc(userDocRef);
   const totalPoints = profile?.totalPoints || 0;
+  const currentTitle = useMemo(() => getHonorTitle(totalPoints), [totalPoints]);
 
   const isProfilePage = pathname === "/profil";
   
@@ -42,8 +40,6 @@ export function Header() {
   const profileOpacity = useTransform(scrollY, [60, 100], [0, 1]);
   const profileY = useTransform(scrollY, [60, 100], [20, 0]);
   const profileScale = useTransform(scrollY, [60, 100], [0.8, 1]);
-
-  const currentImage = profile?.profileImage;
 
   return (
     <motion.header 
@@ -160,14 +156,16 @@ export function Header() {
                   className="absolute inset-0 flex items-center justify-center pointer-events-none"
                 >
                   <div className="flex items-center gap-3 bg-card/60 backdrop-blur-3xl px-5 py-2 rounded-2xl border border-primary/5 shadow-2xl pointer-events-auto">
-                    <div className="relative h-8 w-8 rounded-full overflow-hidden border border-primary/10 bg-primary/5">
-                      {currentImage ? (
-                        <Image src={currentImage} alt="Profile" fill className="object-cover" />
-                      ) : (
-                        <UserIcon className="h-4 w-4 text-primary m-auto absolute inset-0" />
-                      )}
+                    <ProfileAvatar imageUrl={profile?.profileImage} points={totalPoints} size="sm" />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-black tracking-tight">@{profile?.username || "Esprit"}</span>
+                      <div className="flex items-center gap-1">
+                        <Shield className={cn("h-2 w-2", currentTitle.color)} />
+                        <span className={cn("text-[7px] font-black uppercase tracking-[0.2em] opacity-60", currentTitle.color)}>
+                          {currentTitle.name}
+                        </span>
+                      </div>
                     </div>
-                    <span className="text-sm font-black tracking-tight">@{profile?.username || "Esprit"}</span>
                   </div>
                 </motion.div>
               )}

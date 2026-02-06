@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
@@ -20,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { 
-  User as UserIcon, 
   Phone, 
   Gift, 
   Copy, 
@@ -37,8 +35,8 @@ import {
   Users,
   QrCode,
   Zap,
-  Activity,
-  History
+  History,
+  Shield
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
@@ -46,6 +44,8 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { haptic } from "@/lib/haptics";
 import { ProfilePhotoDialog } from "@/components/ProfilePhotoDialog";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { getHonorTitle } from "@/lib/titles";
 
 export default function ProfilPage() {
   const { user } = useUser();
@@ -79,7 +79,6 @@ export default function ProfilPage() {
 
   const { data: profile, loading } = useDoc(userDocRef);
 
-  // Écouter les activités récentes (transferts)
   const recentActivitiesQuery = useMemo(() => {
     if (!db || !user?.uid) return null;
     return query(
@@ -91,6 +90,8 @@ export default function ProfilPage() {
   }, [db, user?.uid]);
 
   const { data: recentActivities } = useCollection(recentActivitiesQuery);
+
+  const currentTitle = useMemo(() => getHonorTitle(profile?.totalPoints || 0), [profile?.totalPoints]);
 
   useEffect(() => {
     const savedImage = localStorage.getItem("exu_profile_image");
@@ -316,7 +317,6 @@ export default function ProfilPage() {
           className="text-center space-y-4"
         >
           <div className="relative inline-block">
-            <div className="absolute inset-0 bg-primary/10 blur-3xl rounded-full scale-150" />
             <button 
               onClick={handleImageClick}
               onContextMenu={(e) => {
@@ -327,15 +327,15 @@ export default function ProfilPage() {
               onPointerDown={handleLongPressStart}
               onPointerUp={handleLongPressEnd}
               onPointerLeave={handleLongPressEnd}
-              className="relative h-28 w-28 bg-card rounded-[2.5rem] flex items-center justify-center border border-primary/10 shadow-2xl mx-auto overflow-hidden group transition-transform active:scale-95"
+              className="group active:scale-95 transition-transform"
             >
-              {currentImage ? (
-                <Image src={currentImage} alt="Profil" fill className="object-cover transition-opacity group-hover:opacity-60" />
-              ) : (
-                <UserIcon className="h-12 w-12 text-primary transition-opacity group-hover:opacity-40" />
-              )}
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
-                <Camera className="h-6 w-6 text-white" />
+              <ProfileAvatar 
+                imageUrl={currentImage} 
+                points={profile?.totalPoints || 0} 
+                size="xl" 
+              />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                <Camera className="h-6 w-6 text-white drop-shadow-lg" />
               </div>
             </button>
             <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
@@ -389,8 +389,22 @@ export default function ProfilPage() {
                 </motion.div>
               )}
             </AnimatePresence>
+            
             {!isEditingName && (
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Membre de l'Éveil</p>
+              <motion.div 
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={cn(
+                  "px-4 py-1.5 rounded-full flex items-center gap-2 border-2 transition-all duration-500",
+                  currentTitle.bgClass,
+                  currentTitle.borderColor
+                )}
+              >
+                <Shield className={cn("h-3 w-3", currentTitle.color)} />
+                <span className={cn("text-[10px] font-black uppercase tracking-[0.3em]", currentTitle.color)}>
+                  {currentTitle.name}
+                </span>
+              </motion.div>
             )}
           </div>
         </motion.div>
@@ -419,7 +433,6 @@ export default function ProfilPage() {
                 <ArrowRightLeft className="h-4 w-4 opacity-40 ml-auto" />
               </Button>
 
-              {/* Flux Récent Section */}
               {recentActivities && recentActivities.length > 0 && (
                 <div className="pt-4 border-t border-primary/5 space-y-4">
                   <div className="flex items-center justify-between px-1">

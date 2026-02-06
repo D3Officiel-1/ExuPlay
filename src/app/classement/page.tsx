@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo } from "react";
@@ -6,13 +5,10 @@ import { motion } from "framer-motion";
 import { useFirestore, useCollection, useUser } from "@/firebase";
 import { collection, query, orderBy, limit } from "firebase/firestore";
 import { Card, CardContent } from "@/components/ui/card";
-import { Trophy, Medal, Star, User as UserIcon, Loader2, Zap, Sparkles } from "lucide-react";
-import Image from "next/image";
+import { Trophy, Loader2, Zap, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-/**
- * @fileOverview Le Hall des Sages. Un classement dynamique avec un podium cinématique.
- */
+import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { getHonorTitle } from "@/lib/titles";
 
 export default function ClassementPage() {
   const db = useFirestore();
@@ -77,9 +73,7 @@ export default function ClassementPage() {
                 className="flex flex-col items-center gap-3"
               >
                 <div className="relative">
-                  <div className="h-16 w-16 rounded-2xl overflow-hidden border-2 border-gray-400/30 bg-card shadow-xl">
-                    {podium[1].profileImage ? <Image src={podium[1].profileImage} alt="" fill className="object-cover" /> : <UserIcon className="h-6 w-6 m-auto absolute inset-0 opacity-20" />}
-                  </div>
+                  <ProfileAvatar imageUrl={podium[1].profileImage} points={podium[1].totalPoints} size="md" />
                   <div className="absolute -top-3 -right-2 bg-gray-400 text-white h-6 w-6 rounded-full flex items-center justify-center border-2 border-background shadow-lg">
                     <span className="text-[10px] font-black">2</span>
                   </div>
@@ -105,9 +99,7 @@ export default function ClassementPage() {
                     transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
                     className="absolute inset-[-12px] border-2 border-dashed border-yellow-500/20 rounded-full"
                   />
-                  <div className="h-24 w-24 rounded-[2rem] overflow-hidden border-4 border-yellow-500 bg-card shadow-[0_20px_50px_rgba(234,179,8,0.3)] relative z-10">
-                    {podium[0].profileImage ? <Image src={podium[0].profileImage} alt="" fill className="object-cover" /> : <UserIcon className="h-10 w-10 m-auto absolute inset-0 opacity-20" />}
-                  </div>
+                  <ProfileAvatar imageUrl={podium[0].profileImage} points={podium[0].totalPoints} size="lg" className="z-10" />
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-yellow-500 text-black h-8 w-8 rounded-full flex items-center justify-center border-4 border-background shadow-xl z-20">
                     <Trophy className="h-4 w-4" />
                   </div>
@@ -131,9 +123,7 @@ export default function ClassementPage() {
                 className="flex flex-col items-center gap-3"
               >
                 <div className="relative">
-                  <div className="h-16 w-16 rounded-2xl overflow-hidden border-2 border-orange-400/30 bg-card shadow-xl">
-                    {podium[2].profileImage ? <Image src={podium[2].profileImage} alt="" fill className="object-cover" /> : <UserIcon className="h-6 w-6 m-auto absolute inset-0 opacity-20" />}
-                  </div>
+                  <ProfileAvatar imageUrl={podium[2].profileImage} points={podium[2].totalPoints} size="md" />
                   <div className="absolute -top-3 -left-2 bg-orange-400 text-white h-6 w-6 rounded-full flex items-center justify-center border-2 border-background shadow-lg">
                     <span className="text-[10px] font-black">3</span>
                   </div>
@@ -156,6 +146,7 @@ export default function ClassementPage() {
           {rest.map((u, idx) => {
             const isMe = u.id === user?.uid;
             const rank = idx + 4;
+            const title = getHonorTitle(u.totalPoints || 0);
 
             return (
               <motion.div key={u.id} variants={itemVariants}>
@@ -168,18 +159,18 @@ export default function ClassementPage() {
                       <span className={cn("text-xs font-black opacity-30", isMe && "opacity-60")}>#{rank}</span>
                     </div>
 
-                    <div className="relative h-12 w-12 rounded-2xl overflow-hidden bg-background/10 border border-white/5 shrink-0">
-                      {u.profileImage ? (
-                        <Image src={u.profileImage} alt={u.username} fill className="object-cover" />
-                      ) : (
-                        <UserIcon className={cn("h-6 w-6 m-auto absolute inset-0 opacity-20", isMe && "opacity-60")} />
-                      )}
-                    </div>
+                    <ProfileAvatar imageUrl={u.profileImage} points={u.totalPoints} size="sm" className="shrink-0" />
 
                     <div className="flex-1 min-w-0">
-                      <p className="font-black text-sm truncate uppercase tracking-tight">
-                        @{u.username} {isMe && <span className="ml-1 text-[8px] opacity-60">(MOI)</span>}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-black text-sm truncate uppercase tracking-tight">
+                          @{u.username}
+                        </p>
+                        <Shield className={cn("h-2.5 w-2.5", isMe ? "text-primary-foreground/60" : title.color)} />
+                        <span className={cn("text-[7px] font-black uppercase tracking-widest", isMe ? "text-primary-foreground/40" : "opacity-30")}>
+                          {title.name}
+                        </span>
+                      </div>
                       <div className="flex items-center gap-1.5">
                         <Zap className={cn("h-3 w-3 text-primary", isMe ? "text-primary-foreground" : "opacity-40")} />
                         <p className={cn("text-[10px] font-bold uppercase tracking-widest opacity-40", isMe && "opacity-80")}>

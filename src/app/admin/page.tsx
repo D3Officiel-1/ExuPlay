@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -24,13 +23,6 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { 
   Table, 
   TableBody, 
@@ -58,11 +50,9 @@ import {
   Brain,
   Edit3,
   User,
-  MinusCircle,
   Search,
   Sparkles,
   ShieldCheck,
-  AlertTriangle,
   Zap,
   MessageSquareText,
   DollarSign,
@@ -82,19 +72,18 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 import { generateQuiz } from "@/ai/flows/generate-quiz-flow";
 import { haptic } from "@/lib/haptics";
 import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
   AreaChart,
-  Area
+  Area,
+  XAxis
 } from 'recharts';
 import { AnimatePresence, motion } from "framer-motion";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { getHonorTitle } from "@/lib/titles";
+import { cn } from "@/lib/utils";
 
 export default function AdminPage() {
   const { user, isLoading: authLoading } = useUser();
@@ -627,21 +616,30 @@ export default function AdminPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUsers.map((u) => (
-                    <TableRow 
-                      key={u.id} 
-                      onClick={() => handleSelectUser(u)}
-                      className="border-primary/5 hover:bg-primary/5 transition-colors cursor-pointer"
-                    >
-                      <TableCell className="py-4 px-6">
-                        <div className="flex flex-col">
-                          <span className="font-black text-sm">@{u.username}</span>
-                          <span className="text-[10px] opacity-30">{u.phoneNumber}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-4 px-6 text-right font-black text-sm">{u.totalPoints?.toLocaleString() || 0} PTS</TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredUsers.map((u) => {
+                    const title = getHonorTitle(u.totalPoints || 0);
+                    return (
+                      <TableRow 
+                        key={u.id} 
+                        onClick={() => handleSelectUser(u)}
+                        className="border-primary/5 hover:bg-primary/5 transition-colors cursor-pointer"
+                      >
+                        <TableCell className="py-4 px-6">
+                          <div className="flex items-center gap-3">
+                            <ProfileAvatar imageUrl={u.profileImage} points={u.totalPoints} size="sm" />
+                            <div className="flex flex-col">
+                              <span className="font-black text-sm">@{u.username}</span>
+                              <div className="flex items-center gap-1 opacity-40">
+                                <Shield className={cn("h-2.5 w-2.5", title.color)} />
+                                <span className={cn("text-[8px] font-black uppercase tracking-widest", title.color)}>{title.name}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-4 px-6 text-right font-black text-sm">{u.totalPoints?.toLocaleString() || 0} PTS</TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </Card>
@@ -853,16 +851,11 @@ export default function AdminPage() {
           {selectedUserForView && (
             <div className="space-y-8 py-6">
               <div className="flex flex-col items-center gap-4">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-primary/10 blur-3xl rounded-full scale-150" />
-                  <div className="relative h-24 w-24 bg-card rounded-[2rem] flex items-center justify-center border border-primary/10 shadow-2xl overflow-hidden">
-                    {selectedUserForView.profileImage ? (
-                      <img src={selectedUserForView.profileImage} alt="" className="object-cover w-full h-full" />
-                    ) : (
-                      <User className="h-10 w-10 text-primary opacity-20" />
-                    )}
-                  </div>
-                </div>
+                <ProfileAvatar 
+                  imageUrl={selectedUserForView.profileImage} 
+                  points={selectedUserForView.totalPoints || 0} 
+                  size="xl" 
+                />
                 <div className="text-center">
                   <h3 className="text-xl font-black">@{selectedUserForView.username}</h3>
                   <div className="flex items-center justify-center gap-2 mt-1">
@@ -871,6 +864,12 @@ export default function AdminPage() {
                       Rôle: {selectedUserForView.role === 'admin' ? "Maître" : "Adepte"}
                     </span>
                   </div>
+                  <p className={cn(
+                    "text-[9px] font-black uppercase tracking-[0.3em] mt-2",
+                    getHonorTitle(selectedUserForView.totalPoints || 0).color
+                  )}>
+                    Rang: {getHonorTitle(selectedUserForView.totalPoints || 0).name}
+                  </p>
                 </div>
               </div>
 
