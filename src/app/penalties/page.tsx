@@ -125,7 +125,7 @@ export default function PenaltiesPage() {
       return {
         x: xMap[direction],
         rotate: rotateMap[direction],
-        y: direction === "Centre" ? -20 : 20,
+        y: direction === "Centre" ? -10 : 15,
         transition: { duration: 0.4, type: "spring", stiffness: 100 }
       };
     }
@@ -231,7 +231,7 @@ export default function PenaltiesPage() {
                   custom={keeperChoice}
                   variants={keeperVariants}
                   animate={gameState === 'result' ? "dive" : "idle"}
-                  className="absolute top-[25%] left-1/2 -translate-x-1/2 z-20"
+                  className="absolute top-[21%] left-1/2 -translate-x-1/2 z-20"
                 >
                   <div className={cn(
                     "h-16 w-16 bg-card rounded-2xl flex items-center justify-center border-2 shadow-xl transition-colors",
