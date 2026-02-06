@@ -55,8 +55,9 @@ export default function EchangePage() {
   const waveIcon = placeholderImages.placeholderImages.find(img => img.id === "wave-icon")?.imageUrl;
 
   const points = profile?.totalPoints || 0;
-  const conversionRate = 1; // 1 point = 1 FCFA
-  const grossMoneyValue = points * conversionRate;
+  // Nouveau taux : 2 points = 1 FCFA (conversionRate = 0.5)
+  const conversionRate = 0.5; 
+  const grossMoneyValue = Math.floor(points * conversionRate);
   
   const feeRate = 0.01;
   const exchangeFees = Math.ceil(grossMoneyValue * feeRate);
@@ -223,6 +224,7 @@ export default function EchangePage() {
                   <span className="text-5xl font-black tracking-tighter">{points.toLocaleString()}</span>
                   <span className="text-xs font-bold opacity-30 ml-2">PTS</span>
                 </div>
+                <p className="text-[9px] font-black uppercase tracking-widest opacity-20 mt-2">Taux : 2 PTS = 1 FCFA</p>
               </CardHeader>
               
               <CardContent className="px-8 pb-10 space-y-6">
