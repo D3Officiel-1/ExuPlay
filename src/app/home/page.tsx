@@ -539,6 +539,7 @@ export default function HomePage() {
   }
 
   const question = sessionQuizzes[currentQuestionIdx];
+  const hasAnyTools = profile && (profile.hintCount > 0 || profile.timeBoostCount > 0 || profile.shieldCount > 0 || profile.multiplierCount > 0);
 
   return (
     <div className={cn("min-h-screen bg-background flex flex-col pb-32 transition-colors duration-1000", isRoyalActive && "bg-yellow-500/[0.02]")}>
@@ -670,24 +671,32 @@ export default function HomePage() {
                           </div>
 
                           <AnimatePresence>
-                            {quizStarted && !isAnswered && (
+                            {quizStarted && !isAnswered && hasAnyTools && (
                               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-center gap-2 pt-4">
-                                <Button size="icon" variant="ghost" disabled={!profile?.hintCount || hiddenIndices.length > 0} onClick={handleUseHint} className="h-12 w-12 rounded-xl bg-primary/5 border border-primary/5">
-                                  <Eye className={cn("h-5 w-5", profile?.hintCount ? "text-blue-500" : "opacity-20")} />
-                                  {profile?.hintCount > 0 && <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[8px] font-black px-1.5 rounded-full">{profile.hintCount}</span>}
-                                </Button>
-                                <Button size="icon" variant="ghost" disabled={!profile?.timeBoostCount} onClick={handleAddTime} className="h-12 w-12 rounded-xl bg-primary/5 border border-primary/5">
-                                  <Clock className={cn("h-5 w-5", profile?.timeBoostCount ? "text-orange-500" : "opacity-20")} />
-                                  {profile?.timeBoostCount > 0 && <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[8px] font-black px-1.5 rounded-full">{profile.timeBoostCount}</span>}
-                                </Button>
-                                <Button size="icon" variant="ghost" disabled={!profile?.shieldCount || isProtected} onClick={handleUseShield} className="h-12 w-12 rounded-xl bg-primary/5 border border-primary/5">
-                                  <ShieldCheck className={cn("h-5 w-5", profile?.shieldCount && !isProtected ? "text-green-500" : "opacity-20")} />
-                                  {profile?.shieldCount > 0 && <span className="absolute -top-1 -right-1 bg-green-500 text-white text-[8px] font-black px-1.5 rounded-full">{profile.shieldCount}</span>}
-                                </Button>
-                                <Button size="icon" variant="ghost" disabled={!profile?.multiplierCount || isMultiplied} onClick={handleUseMultiplier} className="h-12 w-12 rounded-xl bg-primary/5 border border-primary/5">
-                                  <Star className={cn("h-5 w-5", profile?.multiplierCount && !isMultiplied ? "text-yellow-500" : "opacity-20")} />
-                                  {profile?.multiplierCount > 0 && <span className="absolute -top-1 -right-1 bg-yellow-500 text-white text-[8px] font-black px-1.5 rounded-full">{profile.multiplierCount}</span>}
-                                </Button>
+                                {profile?.hintCount > 0 && (
+                                  <Button size="icon" variant="ghost" disabled={hiddenIndices.length > 0} onClick={handleUseHint} className="h-12 w-12 rounded-xl bg-primary/5 border border-primary/5 relative">
+                                    <Eye className="h-5 w-5 text-blue-500" />
+                                    <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[8px] font-black px-1.5 rounded-full">{profile.hintCount}</span>
+                                  </Button>
+                                )}
+                                {profile?.timeBoostCount > 0 && (
+                                  <Button size="icon" variant="ghost" onClick={handleAddTime} className="h-12 w-12 rounded-xl bg-primary/5 border border-primary/5 relative">
+                                    <Clock className="h-5 w-5 text-orange-500" />
+                                    <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[8px] font-black px-1.5 rounded-full">{profile.timeBoostCount}</span>
+                                  </Button>
+                                )}
+                                {profile?.shieldCount > 0 && (
+                                  <Button size="icon" variant="ghost" disabled={isProtected} onClick={handleUseShield} className="h-12 w-12 rounded-xl bg-primary/5 border border-primary/5 relative">
+                                    <ShieldCheck className={cn("h-5 w-5", isProtected ? "opacity-20" : "text-green-500")} />
+                                    <span className="absolute -top-1 -right-1 bg-green-500 text-white text-[8px] font-black px-1.5 rounded-full">{profile.shieldCount}</span>
+                                  </Button>
+                                )}
+                                {profile?.multiplierCount > 0 && (
+                                  <Button size="icon" variant="ghost" disabled={isMultiplied} onClick={handleUseMultiplier} className="h-12 w-12 rounded-xl bg-primary/5 border border-primary/5 relative">
+                                    <Star className={cn("h-5 w-5", isMultiplied ? "opacity-20" : "text-yellow-500")} />
+                                    <span className="absolute -top-1 -right-1 bg-yellow-500 text-white text-[8px] font-black px-1.5 rounded-full">{profile.multiplierCount}</span>
+                                  </Button>
+                                )}
                               </motion.div>
                             )}
 
