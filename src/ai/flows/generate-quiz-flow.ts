@@ -44,8 +44,19 @@ const prompt = ai.definePrompt({
   8. Ton froid, direct et chirurgical.`,
 });
 
-export async function generateQuiz(input: GenerateQuizInput): Promise<GenerateQuizOutput> {
-  const {output} = await prompt(input);
-  if (!output) throw new Error('Échec de la génération du défi');
-  return output;
+export async function generateQuiz(input: GenerateQuizInput): Promise<GenerateQuizOutput | null> {
+  try {
+    const {output} = await prompt(input);
+    if (!output) return null;
+    return output;
+  } catch (error: any) {
+    // Capture des erreurs de quota sans faire planter le thread serveur
+    const isQuotaError = error.message?.includes('429') || error.message?.includes('quota');
+    if (isQuotaError) {
+      console.warn("[Oracle] Le flux de pensée est saturé (Quota API atteint).");
+    } else {
+      console.error("[Oracle] Dissonance lors de la génération:", error);
+    }
+    return null;
+  }
 }

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -264,18 +263,37 @@ export default function AdminPage() {
     }
   };
 
-  const handleAiGenerate = async () => {
+  const handleAiGenerate = async (isForEdit: boolean = false) => {
     setIsGenerating(true);
     haptic.light();
     try {
       const result = await generateQuiz({});
-      setNewQuiz({
-        question: result.question,
-        options: result.options,
-        correctIndex: result.correctIndex,
-        points: result.points
-      });
-      haptic.success();
+      if (result) {
+        if (isForEdit) {
+          setEditedQuiz({
+            ...editedQuiz,
+            question: result.question,
+            options: result.options,
+            correctIndex: result.correctIndex,
+            points: result.points
+          });
+        } else {
+          setNewQuiz({
+            question: result.question,
+            options: result.options,
+            correctIndex: result.correctIndex,
+            points: result.points
+          });
+        }
+        haptic.success();
+      } else {
+        haptic.error();
+        toast({
+          variant: "destructive",
+          title: "Silence de l'Oracle",
+          description: "Le flux de pensée est temporairement saturé. Réessayez dans quelques instants."
+        });
+      }
     } catch (error) {
       haptic.error();
     } finally {
@@ -458,7 +476,7 @@ export default function AdminPage() {
                           <DialogTitle className="text-2xl font-black tracking-tight">Nouveau Défi</DialogTitle>
                           <p className="text-sm font-medium opacity-60">Créez une nouvelle épreuve.</p>
                         </div>
-                        <Button type="button" variant="secondary" onClick={handleAiGenerate} disabled={isGenerating} className="h-10 px-4 rounded-xl font-black text-[10px] uppercase gap-2 bg-primary/5">
+                        <Button type="button" variant="secondary" onClick={() => handleAiGenerate(false)} disabled={isGenerating} className="h-10 px-4 rounded-xl font-black text-[10px] uppercase gap-2 bg-primary/5">
                           {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3 text-primary" />}
                           IA
                         </Button>
@@ -673,6 +691,18 @@ export default function AdminPage() {
                   {isEditingQuiz ? "Harmonisation" : "Détails du Défi"}
                 </DialogTitle>
               </div>
+              {isEditingQuiz && (
+                <Button 
+                  type="button" 
+                  variant="secondary" 
+                  onClick={() => handleAiGenerate(true)} 
+                  disabled={isGenerating} 
+                  className="h-10 px-4 rounded-xl font-black text-[10px] uppercase gap-2 bg-primary/5 shrink-0"
+                >
+                  {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3 text-primary" />}
+                  Inspiration IA
+                </Button>
+              )}
             </div>
           </DialogHeader>
 
@@ -812,7 +842,7 @@ export default function AdminPage() {
                 </Button>
                 <Button 
                   onClick={handleSaveEdit}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isGenerating}
                   className="flex-[2] h-14 rounded-2xl font-black text-xs uppercase tracking-widest gap-2 shadow-xl shadow-primary/20"
                 >
                   {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
