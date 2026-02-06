@@ -297,7 +297,15 @@ export default function HomePage() {
               exit={{ opacity: 0, y: -20, filter: "blur(10px)" }}
               className="w-full flex flex-col items-center space-y-6"
             >
-              <GlobalActivityTicker />
+              <div className="flex items-center gap-4">
+                <GlobalActivityTicker />
+                <Button 
+                  onClick={() => { haptic.medium(); router.push("/penalties"); }}
+                  className="h-10 w-10 rounded-full bg-primary/5 hover:bg-primary/10 border border-primary/5 text-lg p-0 flex items-center justify-center shadow-lg"
+                >
+                  ⚽
+                </Button>
+              </div>
               <CommunityGoalProgress appStatus={appStatus} />
             </motion.div>
           )}
