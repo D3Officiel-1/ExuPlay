@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -206,9 +205,9 @@ export default function HomePage() {
 
     if (currentPoints >= targetPoints) {
       haptic.success();
-      // On active le défi royal pour 1 heure (3600 secondes)
+      // On active le défi royal pour 10 minutes (600 secondes)
       const activationEnd = new Date();
-      activationEnd.setHours(activationEnd.getHours() + 1);
+      activationEnd.setMinutes(activationEnd.getMinutes() + 10);
 
       updateDoc(appStatusRef, {
         royalChallengeActiveUntil: activationEnd,
