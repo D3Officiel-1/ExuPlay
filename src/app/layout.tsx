@@ -7,22 +7,20 @@ import { FirebaseClientProvider, useUser, useFirestore, useDoc } from "@/firebas
 import { Toaster } from "@/components/ui/toaster";
 import { ToastProvider } from "@/components/ui/toast";
 import { useEffect, useState, useMemo } from "react";
-import { WifiOff, ShieldAlert, Loader2 } from "lucide-react";
+import { WifiOff, ShieldAlert, Loader2, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { InstallPwa } from "@/components/InstallPwa";
 import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
 import { BiometricLock } from "@/components/BiometricLock";
 import { SuccessfulExchangeOverlay } from "@/components/SuccessfulExchangeOverlay";
 import { DuelInvitationListener } from "@/components/DuelInvitationListener";
 import { IncomingTransferOverlay } from "@/components/IncomingTransferOverlay";
-import { doc, getDoc, collection, query, orderBy, limit, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/Logo";
 import { usePathname, useRouter } from "next/navigation";
 import { PageTransition } from "@/components/PageTransition";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
-import { generateQuiz } from "@/ai/flows/generate-quiz-flow";
 
 function ThemeSync() {
   const { user } = useUser();
@@ -47,60 +45,32 @@ function ThemeSync() {
 }
 
 /**
- * @fileOverview Oracle Autonome. 
+ * @fileOverview Pulsar de Flux Universel.
+ * Remplace l'IA pour faire progresser l'objectif communautaire par la simple présence des esprits.
  */
-function AutoQuizGenerator() {
+function CommunityFluxPulsar() {
   const { user } = useUser();
   const db = useFirestore();
-  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     if (!user || !db) return;
 
-    const checkAndGenerate = async () => {
-      if (isGenerating) return;
-      
+    // Logique : La simple présence d'un esprit alimente le flux communautaire (1 PT toutes les 2 min)
+    const pulseFlux = async () => {
       try {
-        const quizzesRef = collection(db, "quizzes");
-        const q = query(quizzesRef, orderBy("createdAt", "desc"), limit(1));
-        const querySnapshot = await getDocs(q);
-        
-        let shouldGenerate = false;
-        const now = Date.now();
-        const thirtyMinutes = 30 * 60 * 1000;
-
-        if (querySnapshot.empty) {
-          shouldGenerate = true;
-        } else {
-          const lastQuiz = querySnapshot.docs[0].data();
-          const lastCreatedAt = lastQuiz.createdAt?.toMillis() || 0;
-          if (now - lastCreatedAt > thirtyMinutes) {
-            shouldGenerate = true;
-          }
-        }
-
-        if (shouldGenerate) {
-          setIsGenerating(true);
-          const result = await generateQuiz({});
-          if (result) {
-            await addDoc(collection(db, "quizzes"), {
-              ...result,
-              createdAt: serverTimestamp(),
-              generatedAuto: true
-            });
-          }
-        }
+        const appStatusRef = doc(db, "appConfig", "status");
+        await updateDoc(appStatusRef, {
+          communityGoalPoints: increment(1),
+          updatedAt: serverTimestamp()
+        });
       } catch (error) {
-        console.error("[Oracle] Dissonance lors de l'auto-génération:", error);
-      } finally {
-        setIsGenerating(false);
+        // Erreur silencieuse pour ne pas perturber l'expérience
       }
     };
 
-    checkAndGenerate();
-    const interval = setInterval(checkAndGenerate, 5 * 60 * 1000);
+    const interval = setInterval(pulseFlux, 120000); // 2 minutes
     return () => clearInterval(interval);
-  }, [user, db, isGenerating]);
+  }, [user, db]);
 
   return null;
 }
@@ -214,7 +184,6 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div>;
   }
 
-  // Correction de la logique d'affichage pour éviter que "/" ne match tout
   const excludedNavPaths = ["/", "/login", "/autoriser", "/offline", "/transfert", "/duels"];
   const excludedBottomNavPaths = ["/", "/login", "/autoriser", "/offline", "/transfert", "/echange", "/duels"];
 
@@ -231,7 +200,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
       <SuccessfulExchangeOverlay />
       <IncomingTransferOverlay />
       <DuelInvitationListener />
-      <AutoQuizGenerator />
+      <CommunityFluxPulsar />
       {showNav && <Header />}
       <PageTransition>{children}</PageTransition>
       {showBottomNav && <BottomNav />}

@@ -286,7 +286,6 @@ export default function HomePage() {
     const isCorrect = index === currentQuiz.correctIndex;
     const isTimeout = index === -1;
     
-    // Royal Challenge Logic: 100 PTS if active, else standard points
     const royalChallengeUntil = appStatus?.royalChallengeActiveUntil?.toDate?.() || null;
     const isRoyalActive = royalChallengeUntil && royalChallengeUntil > new Date();
     
@@ -335,7 +334,6 @@ export default function HomePage() {
           updatedAt: serverTimestamp()
         };
 
-        // Referral logic
         if (pointsEarned > 0 && profile && profile.referredBy && !profile.referralRewardClaimed) {
           const newTotal = (profile.totalPoints || 0) + pointsEarned;
           if (newTotal >= 100) {
@@ -356,7 +354,6 @@ export default function HomePage() {
         }
         await updateDoc(userDocRef, updatePayload);
 
-        // Community Goal update
         if (pointsEarned > 0 && appStatusRef) {
           const newCommunityPoints = (appStatus?.communityGoalPoints || 0) + pointsEarned;
           const target = appStatus?.communityGoalTarget || 10000;
@@ -366,7 +363,6 @@ export default function HomePage() {
             updatedAt: serverTimestamp()
           };
 
-          // Trigger Royal Challenge if threshold reached
           if (newCommunityPoints >= target && !isRoyalActive) {
             const oneHourLater = new Date(Date.now() + 60 * 60 * 1000);
             commUpdate.royalChallengeActiveUntil = oneHourLater;
@@ -379,6 +375,15 @@ export default function HomePage() {
           await updateDoc(appStatusRef, commUpdate);
         }
       }
+      
+      // LOGIQUE : Étincelle de Résonance (20% de chances d'ajouter un bonus au but communautaire)
+      if (isCorrect && Math.random() > 0.8) {
+        await updateDoc(appStatusRef!, {
+          communityGoalPoints: increment(2),
+          updatedAt: serverTimestamp()
+        });
+      }
+
     } catch (error) {
       console.error("Erreur lors de la finalisation de la réponse:", error);
     } finally {
@@ -525,7 +530,7 @@ export default function HomePage() {
                             <span className={cn(
                               "text-7xl font-black tabular-nums tracking-tighter",
                               isRoyalActive && "text-yellow-600"
-                            )}>+{isRoyalActive ? 100 : (question?.points || 10)}</span>
+                            )}>{isRoyalActive ? 100 : (question?.points || 10)}</span>
                             <span className="text-sm font-black uppercase tracking-widest opacity-20">PTS</span>
                           </div>
                           {isRoyalActive && (
@@ -684,7 +689,7 @@ export default function HomePage() {
                   <div className="relative h-40 w-40 bg-card rounded-[3.5rem] flex items-center justify-center border border-primary/10 shadow-[0_32px_128px_-16px_rgba(0,0,0,0.4)]">
                     {score >= 100 ? (
                       <div className="relative">
-                        <Star className="h-20 w-20 text-yellow-500 fill-current" />
+                        < Star className="h-20 w-20 text-yellow-500 fill-current" />
                         <motion.div 
                           animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
                           transition={{ duration: 2, repeat: Infinity }}

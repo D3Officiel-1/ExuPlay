@@ -215,6 +215,37 @@ export default function TransfertPage() {
 
   const onScanFailure = () => {};
 
+  /**
+   * @fileOverview Logique de Redistribution de l'Équilibre.
+   * Recherche les esprits les plus "pauvres" en points pour encourager leur éveil.
+   */
+  const handlePickRandomRecipient = async () => {
+    setIsProcessing(true);
+    haptic.medium();
+    try {
+      // LOGIQUE : On cible les 10 utilisateurs ayant le moins de points (les Adeptes)
+      const q = query(collection(db, "users"), orderBy("totalPoints", "asc"), limit(15));
+      const snap = await getDocs(q);
+      const others = snap.docs.filter(d => d.id !== user?.uid);
+      
+      if (others.length > 0) {
+        // On pioche au hasard parmi les 10 premiers (les plus faibles)
+        const candidates = others.slice(0, 10);
+        const randomDoc = candidates[Math.floor(Math.random() * candidates.length)];
+        haptic.success();
+        setRecipient({ id: randomDoc.id, ...randomDoc.data() });
+        setMode('transfer');
+        setIsAnonymous(true);
+      } else {
+        toast({ title: "Solitude", description: "Aucun autre esprit n'a été trouvé." });
+      }
+    } catch (e) {
+      toast({ variant: "destructive", title: "Dissonance réseau" });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleAction = async () => {
     if (!transferAmount || transferAmount <= 0 || !user?.uid || !recipient?.id) return;
     
@@ -274,29 +305,6 @@ export default function TransfertPage() {
     } catch (error) {
       haptic.error();
       toast({ variant: "destructive", title: "Erreur" });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handlePickRandomRecipient = async () => {
-    setIsProcessing(true);
-    haptic.medium();
-    try {
-      const q = query(collection(db, "users"), limit(50));
-      const snap = await getDocs(q);
-      const others = snap.docs.filter(d => d.id !== user?.uid);
-      if (others.length > 0) {
-        const randomDoc = others[Math.floor(Math.random() * others.length)];
-        haptic.success();
-        setRecipient({ id: randomDoc.id, ...randomDoc.data() });
-        setMode('transfer');
-        setIsAnonymous(true);
-      } else {
-        toast({ title: "Solitude", description: "Aucun autre esprit n'a été trouvé." });
-      }
-    } catch (e) {
-      toast({ variant: "destructive", title: "Dissonance réseau" });
     } finally {
       setIsProcessing(false);
     }
