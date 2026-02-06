@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -46,6 +45,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
 import { useTheme } from "next-themes";
 import { haptic } from "@/lib/haptics";
+import { cn } from "@/lib/utils";
 
 export default function TransfertPage() {
   const { user } = useUser();
