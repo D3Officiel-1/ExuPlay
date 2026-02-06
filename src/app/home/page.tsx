@@ -10,12 +10,12 @@ import {
   updateDoc, 
   setDoc,
   increment, 
-  serverTimestamp,
-  query,
-  orderBy,
-  where,
-  limit,
-  getDocs
+  serverTimestamp, 
+  query, 
+  orderBy, 
+  where, 
+  limit, 
+  getDocs 
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -100,7 +100,7 @@ function CommunityGoalProgress({ appStatus }: { appStatus: any }) {
   return (
     <Card className={cn(
       "border-none backdrop-blur-3xl rounded-[2rem] overflow-hidden transition-all duration-700 w-full max-w-lg mb-6",
-      isRoyalActive ? "bg-yellow-500/10 border border-yellow-500/20 shadow-[0_0_40px_-10px_rgba(234,179,8,0.2)]" : "bg-card/40"
+      isRoyalActive ? "bg-yellow-500/10 border border-yellow-500/20 shadow-[0_0_40px_-10px_rgba(234,179,8,0.3)] ring-1 ring-yellow-500/20" : "bg-card/40"
     )}>
       <CardContent className="p-6 space-y-4">
         <div className="flex items-center justify-between">
@@ -114,12 +114,14 @@ function CommunityGoalProgress({ appStatus }: { appStatus: any }) {
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Objectif Communautaire</p>
               <h3 className="text-sm font-black uppercase tracking-tight">
-                {isRoyalActive ? "Défis Royal Activé !" : "Résonance de la Semaine"}
+                {isRoyalActive ? "Éveil Royal Actif !" : "Résonance de la Semaine"}
               </h3>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-xs font-black">{current.toLocaleString()} / {target.toLocaleString()}</p>
+            <p className={cn("text-xs font-black", isRoyalActive && "text-yellow-600")}>
+              {current.toLocaleString()} / {target.toLocaleString()}
+            </p>
             <p className="text-[8px] font-bold opacity-30 uppercase">PTS de Lumière</p>
           </div>
         </div>
@@ -138,8 +140,8 @@ function CommunityGoalProgress({ appStatus }: { appStatus: any }) {
           </div>
           <p className="text-[9px] font-medium opacity-40 italic text-center">
             {isRoyalActive 
-              ? "L'éveil royal est à son paroxysme. Profitez-en maintenant !" 
-              : `Encore ${Math.max(0, target - current).toLocaleString()} points pour débloquer le Défis Royal.`}
+              ? "Le Sanctuaire rayonne d'une intensité royale." 
+              : `Encore ${Math.max(0, target - current).toLocaleString()} points pour débloquer l'Éveil Royal.`}
           </p>
         </div>
       </CardContent>
@@ -211,6 +213,9 @@ export default function HomePage() {
     }
     return () => clearInterval(timer);
   }, [quizStarted, isAnswered, timeLeft]);
+
+  const royalChallengeUntil = appStatus?.royalChallengeActiveUntil?.toDate?.() || null;
+  const isRoyalActive = royalChallengeUntil && royalChallengeUntil > new Date();
 
   const handleStartChallenge = async () => {
     if (!user || !db || sessionQuizzes.length === 0 || updating) return;
@@ -285,9 +290,6 @@ export default function HomePage() {
     const currentQuiz = sessionQuizzes[currentQuestionIdx];
     const isCorrect = index === currentQuiz.correctIndex;
     const isTimeout = index === -1;
-    
-    const royalChallengeUntil = appStatus?.royalChallengeActiveUntil?.toDate?.() || null;
-    const isRoyalActive = royalChallengeUntil && royalChallengeUntil > new Date();
     
     const pointsEarned = isCorrect ? (isRoyalActive ? 100 : (currentQuiz.points || 10)) : 0;
 
@@ -376,7 +378,6 @@ export default function HomePage() {
         }
       }
       
-      // LOGIQUE : Étincelle de Résonance (20% de chances d'ajouter un bonus au but communautaire)
       if (isCorrect && Math.random() > 0.8) {
         await updateDoc(appStatusRef!, {
           communityGoalPoints: increment(2),
@@ -458,11 +459,36 @@ export default function HomePage() {
   }
 
   const question = sessionQuizzes[currentQuestionIdx];
-  const isRoyalActive = appStatus?.royalChallengeActiveUntil?.toDate?.() > new Date();
 
   return (
-    <div className="min-h-screen bg-background flex flex-col pb-32">
-      <main className="flex-1 flex flex-col items-center justify-center p-6 pt-24 space-y-6">
+    <div className={cn(
+      "min-h-screen bg-background flex flex-col pb-32 transition-colors duration-1000",
+      isRoyalActive && "bg-yellow-500/[0.02]"
+    )}>
+      {/* Background orbs pour le mode royal */}
+      <AnimatePresence>
+        {isRoyalActive && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 pointer-events-none overflow-hidden z-0"
+          >
+            <motion.div 
+              animate={{ scale: [1, 1.2, 1], x: [0, 50, 0], y: [0, -30, 0] }}
+              transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute top-[-10%] left-[-10%] w-[80%] h-[80%] rounded-full bg-yellow-500/[0.03] blur-[120px]" 
+            />
+            <motion.div 
+              animate={{ scale: [1, 1.3, 1], x: [0, -40, 0], y: [0, 20, 0] }}
+              transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+              className="absolute bottom-[-10%] right-[-10%] w-[80%] h-[80%] rounded-full bg-yellow-500/[0.03] blur-[120px]" 
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <main className="flex-1 flex flex-col items-center justify-center p-6 pt-24 space-y-6 z-10">
         <GlobalActivityTicker />
         
         <CommunityGoalProgress appStatus={appStatus} />
@@ -484,9 +510,12 @@ export default function HomePage() {
                     animate={{ opacity: 1, y: 0 }}
                     className="flex flex-col items-center gap-4"
                   >
-                    <div className="flex items-center gap-3 px-6 py-3 bg-card/40 backdrop-blur-3xl rounded-2xl border border-primary/10 shadow-xl">
-                      <Timer className={`h-5 w-5 ${timeLeft <= 5 ? 'text-red-500 animate-pulse' : 'text-primary/60'}`} />
-                      <span className={`text-lg font-black tabular-nums tracking-widest ${timeLeft <= 5 ? 'text-red-500' : 'opacity-60'}`}>
+                    <div className={cn(
+                      "flex items-center gap-3 px-6 py-3 backdrop-blur-3xl rounded-2xl border shadow-xl transition-colors",
+                      isRoyalActive ? "bg-yellow-500/10 border-yellow-500/30" : "bg-card/40 border-primary/10"
+                    )}>
+                      <Timer className={cn("h-5 w-5", timeLeft <= 5 ? 'text-red-500 animate-pulse' : isRoyalActive ? 'text-yellow-600' : 'text-primary/60')} />
+                      <span className={cn("text-lg font-black tabular-nums tracking-widest", timeLeft <= 5 ? 'text-red-500' : isRoyalActive ? 'text-yellow-700' : 'opacity-60')}>
                         {timeLeft}s
                       </span>
                     </div>
@@ -495,15 +524,15 @@ export default function HomePage() {
                         initial={{ width: "100%" }}
                         animate={{ width: `${(timeLeft / 15) * 100}%` }}
                         transition={{ duration: 1, ease: "linear" }}
-                        className={`h-full ${timeLeft <= 5 ? 'bg-red-500' : 'bg-primary'}`}
+                        className={cn("h-full", timeLeft <= 5 ? 'bg-red-500' : isRoyalActive ? 'bg-yellow-500' : 'bg-primary')}
                       />
                     </div>
                   </motion.div>
                 )}
 
                 <Card className={cn(
-                  "border-none backdrop-blur-3xl shadow-2xl rounded-[3rem] overflow-hidden relative",
-                  isRoyalActive ? "bg-yellow-500/5 ring-2 ring-yellow-500/20" : "bg-card/40"
+                  "border-none backdrop-blur-3xl shadow-2xl rounded-[3rem] overflow-hidden relative transition-all duration-700",
+                  isRoyalActive ? "bg-yellow-500/[0.03] ring-2 ring-yellow-500/20 shadow-yellow-500/10" : "bg-card/40"
                 )}>
                   <AnimatePresence mode="wait">
                     {showPointsPreview ? (
@@ -514,7 +543,10 @@ export default function HomePage() {
                         exit={{ opacity: 0, scale: 1.05 }}
                         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                         onClick={() => setShowPointsPreview(false)}
-                        className="p-12 sm:p-20 text-center flex flex-col items-center justify-center space-y-10 cursor-pointer h-full min-h-[500px] bg-primary/5"
+                        className={cn(
+                          "p-12 sm:p-20 text-center flex flex-col items-center justify-center space-y-10 cursor-pointer h-full min-h-[500px]",
+                          isRoyalActive ? "bg-yellow-500/5" : "bg-primary/5"
+                        )}
                       >
                         <div className="relative">
                           <div className={cn(
@@ -534,9 +566,13 @@ export default function HomePage() {
                             <span className="text-sm font-black uppercase tracking-widest opacity-20">PTS</span>
                           </div>
                           {isRoyalActive && (
-                            <div className="bg-yellow-500 text-black px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mx-auto inline-block">
-                              Bonus Royal Activé
-                            </div>
+                            <motion.div 
+                              animate={{ scale: [1, 1.05, 1] }}
+                              transition={{ duration: 2, repeat: Infinity }}
+                              className="bg-yellow-500 text-black px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mx-auto inline-block shadow-lg shadow-yellow-500/20"
+                            >
+                              Éveil Royal Activé
+                            </motion.div>
                           )}
                         </div>
                         <p className="text-[9px] font-black uppercase tracking-[0.3em] opacity-40">
@@ -582,7 +618,12 @@ export default function HomePage() {
                                     onPointerLeave={handleLongPressEnd}
                                     onClick={handleStartChallenge}
                                     disabled={updating}
-                                    className="h-16 px-12 rounded-2xl font-black text-[10px] uppercase tracking-[0.4em] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-500 active:scale-95 group relative overflow-hidden z-30"
+                                    className={cn(
+                                      "h-16 px-12 rounded-2xl font-black text-[10px] uppercase tracking-[0.4em] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] transition-all duration-500 active:scale-95 group relative overflow-hidden z-30",
+                                      isRoyalActive 
+                                        ? "bg-yellow-500 text-black hover:bg-yellow-600 shadow-yellow-500/20" 
+                                        : "bg-background text-foreground hover:bg-primary hover:text-primary-foreground"
+                                    )}
                                   >
                                     {updating ? (
                                       <Loader2 className="h-5 w-5 animate-spin" />
@@ -610,7 +651,7 @@ export default function HomePage() {
                                     scale: isHidden ? 0.8 : 1,
                                     filter: isHidden ? "blur(10px)" : "blur(0px)"
                                   }}
-                                  whileHover={(!isAnswered && quizStarted && !isHidden) ? { scale: 1.02, backgroundColor: "hsl(var(--primary) / 0.05)" } : {}}
+                                  whileHover={(!isAnswered && quizStarted && !isHidden) ? { scale: 1.02, backgroundColor: isRoyalActive ? "rgba(234,179,8,0.05)" : "hsl(var(--primary) / 0.05)" } : {}}
                                   whileTap={(!isAnswered && quizStarted && !isHidden) ? { scale: 0.98 } : {}}
                                   onClick={() => handleAnswer(idx)}
                                   disabled={isAnswered || !quizStarted || updating || isHidden}
@@ -646,9 +687,12 @@ export default function HomePage() {
                                   <Button 
                                     onClick={handleUseHint}
                                     variant="outline"
-                                    className="w-full h-14 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] gap-3 border-primary/10 hover:bg-primary/5"
+                                    className={cn(
+                                      "w-full h-14 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] gap-3 border-primary/10 hover:bg-primary/5",
+                                      isRoyalActive && "border-yellow-500/20 text-yellow-700 hover:bg-yellow-500/5"
+                                    )}
                                   >
-                                    <Eye className="h-4 w-4 text-primary" />
+                                    <Eye className={cn("h-4 w-4", isRoyalActive ? "text-yellow-600" : "text-primary")} />
                                     Utiliser un Indice ({profile.hintCount})
                                   </Button>
                                 )}
@@ -657,7 +701,12 @@ export default function HomePage() {
                                   <Button 
                                     onClick={nextQuestion} 
                                     disabled={updating}
-                                    className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-[0.4em] gap-3 shadow-2xl shadow-primary/20 bg-primary text-primary-foreground hover:scale-[1.02] transition-transform active:scale-95"
+                                    className={cn(
+                                      "w-full h-16 rounded-2xl font-black text-xs uppercase tracking-[0.4em] gap-3 shadow-2xl transition-transform active:scale-95",
+                                      isRoyalActive 
+                                        ? "bg-yellow-500 text-black hover:bg-yellow-600 shadow-yellow-500/20" 
+                                        : "bg-primary text-primary-foreground shadow-primary/20 hover:scale-[1.02]"
+                                    )}
                                   >
                                     {updating ? (
                                       <Loader2 className="h-5 w-5 animate-spin" />
@@ -685,11 +734,17 @@ export default function HomePage() {
                 className="text-center space-y-12"
               >
                 <div className="relative inline-block">
-                  <div className="absolute inset-0 bg-primary/20 blur-[100px] rounded-full scale-150 animate-pulse" />
-                  <div className="relative h-40 w-40 bg-card rounded-[3.5rem] flex items-center justify-center border border-primary/10 shadow-[0_32px_128px_-16px_rgba(0,0,0,0.4)]">
-                    {score >= 100 ? (
+                  <div className={cn(
+                    "absolute inset-0 blur-[100px] rounded-full scale-150 animate-pulse",
+                    isRoyalActive ? "bg-yellow-500/30" : "bg-primary/20"
+                  )} />
+                  <div className={cn(
+                    "relative h-40 w-40 bg-card rounded-[3.5rem] flex items-center justify-center border shadow-[0_32px_128px_-16px_rgba(0,0,0,0.4)]",
+                    isRoyalActive ? "border-yellow-500/20 shadow-yellow-500/10" : "border-primary/10"
+                  )}>
+                    {score >= 100 || isRoyalActive ? (
                       <div className="relative">
-                        < Star className="h-20 w-20 text-yellow-500 fill-current" />
+                        <Star className="h-20 w-20 text-yellow-500 fill-current" />
                         <motion.div 
                           animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
                           transition={{ duration: 2, repeat: Infinity }}
@@ -703,22 +758,35 @@ export default function HomePage() {
                 </div>
 
                 <div className="space-y-4">
-                  <h2 className="text-5xl font-black tracking-tighter italic">
-                    {score >= 100 ? "Oracle Absolu" : "Éclat Final"}
+                  <h2 className={cn(
+                    "text-5xl font-black tracking-tighter italic",
+                    isRoyalActive && "text-yellow-600"
+                  )}>
+                    {score >= 100 ? "Oracle Absolu" : isRoyalActive ? "Rayonnement Royal" : "Éclat Final"}
                   </h2>
                   <p className="text-muted-foreground font-medium text-lg">Votre esprit a rayonné avec une intensité de {score} points.</p>
                 </div>
 
-                <div className="p-12 bg-card/40 backdrop-blur-3xl rounded-[4rem] border border-primary/5 shadow-2xl relative overflow-hidden group">
+                <div className={cn(
+                  "p-12 backdrop-blur-3xl rounded-[4rem] border shadow-2xl relative overflow-hidden group transition-all",
+                  isRoyalActive ? "bg-yellow-500/10 border-yellow-500/20" : "bg-card/40 border-primary/5"
+                )}>
                   <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
                   <p className="text-[10px] font-black uppercase tracking-[0.6em] opacity-30 mb-4">Lumière Accumulée</p>
-                  <p className="text-7xl font-black tabular-nums tracking-tighter">+{score}</p>
+                  <p className={cn("text-7xl font-black tabular-nums tracking-tighter", isRoyalActive && "text-yellow-600")}>
+                    +{score}
+                  </p>
                 </div>
 
                 <Button 
                   onClick={resetSession} 
                   disabled={updating}
-                  className="w-full h-20 rounded-3xl font-black text-sm uppercase tracking-[0.4em] gap-4 shadow-2xl shadow-primary/30"
+                  className={cn(
+                    "w-full h-20 rounded-3xl font-black text-sm uppercase tracking-[0.4em] gap-4 shadow-2xl transition-all",
+                    isRoyalActive 
+                      ? "bg-yellow-500 text-black hover:bg-yellow-600 shadow-yellow-500/30" 
+                      : "bg-primary text-primary-foreground shadow-primary/30"
+                  )}
                 >
                   {updating ? <Loader2 className="animate-spin h-6 w-6" /> : <Sparkles className="h-6 w-6" />}
                   Nouveau Cycle
