@@ -57,13 +57,11 @@ export default function PenaltiesPage() {
     haptic.medium();
 
     try {
-      // Déduction immédiate
       await updateDoc(userDocRef, {
         totalPoints: increment(-selectedBet),
         updatedAt: serverTimestamp()
       });
 
-      // Simulation du temps de vol du ballon
       setTimeout(async () => {
         const keeperDir = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
         const scored = direction !== keeperDir;
@@ -173,12 +171,7 @@ export default function PenaltiesPage() {
     <div className="min-h-screen bg-background flex flex-col pb-32">
       <main className="flex-1 p-6 pt-24 space-y-10 max-w-lg mx-auto w-full">
         <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => router.back()}
-            className="rounded-full h-10 w-10 hover:bg-primary/5"
-          >
+          <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full h-10 w-10 hover:bg-primary/5">
             <ChevronLeft className="h-6 w-6" />
           </Button>
           <div className="space-y-1">
@@ -189,46 +182,25 @@ export default function PenaltiesPage() {
 
         <AnimatePresence mode="wait">
           {gameState === 'idle' ? (
-            <motion.div
-              key="setup"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-10"
-            >
+            <motion.div key="setup" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-10">
               <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] p-8 space-y-8">
                 <div className="text-center space-y-4">
                   <p className="text-[10px] font-black uppercase tracking-widest opacity-30">Mise en Lumière</p>
                   <div className="flex justify-center gap-3">
                     {BET_AMOUNTS.map((amt) => (
-                      <button
-                        key={amt}
-                        onClick={() => { haptic.light(); setSelectedBet(amt); }}
-                        className={cn(
-                          "px-6 py-3 rounded-2xl font-black text-sm transition-all border",
-                          selectedBet === amt 
-                            ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" 
-                            : "bg-primary/5 border-primary/5 opacity-40"
-                        )}
-                      >
-                        {amt}
-                      </button>
+                      <button key={amt} onClick={() => { haptic.light(); setSelectedBet(amt); }} className={cn("px-6 py-3 rounded-2xl font-black text-sm transition-all border", selectedBet === amt ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" : "bg-primary/5 border-primary/5 opacity-40")}>{amt}</button>
                     ))}
                   </div>
                 </div>
 
                 <div className="space-y-6">
                   <p className="text-[10px] font-black uppercase tracking-widest text-center opacity-30">Visez un point de résonance</p>
-                  
-                  {/* INTERACTIVE CAGE SELECTOR */}
                   <div className="relative w-full aspect-[16/9] bg-primary/5 rounded-[2rem] border-4 border-primary/10 overflow-hidden group">
-                    {/* Goal posts visuals */}
                     <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(hsl(var(--primary)) 1px, transparent 1px)', backgroundSize: '12px 12px' }} />
                     <div className="absolute inset-x-4 top-0 h-4 bg-primary/10 rounded-b-xl" />
                     <div className="absolute left-0 inset-y-4 w-4 bg-primary/10 rounded-r-xl" />
                     <div className="absolute right-0 inset-y-4 w-4 bg-primary/10 rounded-l-xl" />
 
-                    {/* Target Nodes */}
                     {DIRECTIONS.map((dir) => (
                       <motion.button
                         key={dir}
@@ -243,13 +215,9 @@ export default function PenaltiesPage() {
                         )}
                       >
                         <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                        <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-opacity bg-card px-2 py-1 rounded text-[8px] font-black uppercase whitespace-nowrap border border-primary/10 pointer-events-none">
-                          {dir}
-                        </div>
                       </motion.button>
                     ))}
 
-                    {/* Central Keeper Shadow */}
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-5 pointer-events-none">
                       <User className="h-20 w-20" />
                     </div>
@@ -259,93 +227,45 @@ export default function PenaltiesPage() {
 
               <div className="p-6 bg-primary/5 rounded-[2rem] border border-primary/5 flex items-center gap-4">
                 <Sparkles className="h-5 w-5 text-primary opacity-40" />
-                <p className="text-[10px] leading-relaxed font-medium opacity-40 italic">
-                  "Chaque point lumineux est une faille dans la garde de l'Oracle. Le centre est le choix des audacieux."
-                </p>
+                <p className="text-[10px] leading-relaxed font-medium opacity-40 italic">"Chaque point lumineux est une faille dans la garde de l'Oracle. Le centre est le choix des audacieux."</p>
               </div>
             </motion.div>
           ) : (
-            <motion.div
-              key="arena"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex-1 flex flex-col items-center justify-center space-y-12"
-            >
-              {/* STADE 3D PERSPECTIVE */}
+            <motion.div key="arena" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 flex flex-col items-center justify-center space-y-12">
               <div className="relative w-full aspect-[4/5] rounded-[3rem] bg-gradient-to-b from-green-900/20 to-background border border-primary/10 shadow-2xl overflow-hidden perspective-[1000px]">
-                
                 <div className="absolute top-[20%] left-0 right-0 h-px bg-white/10" />
                 <div className="absolute bottom-[10%] left-[10%] right-[10%] h-[2px] bg-white/5 rounded-full" />
-                
                 <div className="absolute top-[15%] left-1/2 -translate-x-1/2 w-64 h-32 border-4 border-white/20 rounded-t-lg border-b-0">
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.05),transparent)]" />
                   <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '10px 10px' }} />
                 </div>
 
-                <motion.div
-                  custom={keeperChoice}
-                  variants={keeperVariants}
-                  animate={gameState === 'result' ? "dive" : "idle"}
-                  className="absolute top-[21%] left-1/2 -translate-x-1/2 z-20"
-                >
-                  <div className={cn(
-                    "h-16 w-16 bg-card rounded-2xl flex items-center justify-center border-2 shadow-xl transition-colors",
-                    isScored === false ? "border-red-500 bg-red-500/10" : "border-primary/20"
-                  )}>
+                <motion.div custom={keeperChoice} variants={keeperVariants} animate={gameState === 'result' ? "dive" : "idle"} className="absolute top-[21%] left-1/2 -translate-x-1/2 z-20">
+                  <div className={cn("h-16 w-16 bg-card rounded-2xl flex items-center justify-center border-2 shadow-xl transition-colors", isScored === false ? "border-red-500 bg-red-500/10" : "border-primary/20")}>
                     <User className={cn("h-10 w-10", isScored === false ? "text-red-500" : "opacity-40")} />
                   </div>
                 </motion.div>
 
                 <div className="absolute bottom-[20%] left-1/2 -translate-x-1/2 w-4 h-4 bg-white/20 rounded-full blur-[2px]" />
 
-                <motion.div
-                  custom={playerChoice}
-                  variants={ballVariants}
-                  animate={gameState === 'shooting' || gameState === 'result' ? "shooting" : "idle"}
-                  className="absolute bottom-[20%] left-1/2 -translate-x-1/2 z-30"
-                >
+                <motion.div custom={playerChoice} variants={ballVariants} animate={gameState === 'shooting' || gameState === 'result' ? "shooting" : "idle"} className="absolute bottom-[20%] left-1/2 -translate-x-1/2 z-30">
                   <div className="relative group">
                     <div className="text-5xl drop-shadow-2xl filter brightness-110">⚽</div>
-                    <motion.div 
-                      animate={gameState !== 'idle' ? { opacity: 0, scale: 0 } : { opacity: 0.3 }}
-                      className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-2 bg-black rounded-full blur-sm" 
-                    />
+                    <motion.div animate={gameState !== 'idle' ? { opacity: 0, scale: 0 } : { opacity: 0.3 }} className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-2 bg-black rounded-full blur-sm" />
                   </div>
                 </motion.div>
 
                 <AnimatePresence>
                   {gameState === 'result' && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="absolute inset-0 flex flex-col items-center justify-center z-50 pointer-events-none"
-                    >
-                      <motion.h2 
-                        initial={{ scale: 0.5, rotate: -10 }}
-                        animate={{ scale: 1, rotate: 0 }}
-                        className={cn(
-                          "text-7xl font-black uppercase italic tracking-tighter drop-shadow-2xl",
-                          isScored ? "text-green-500" : "text-destructive"
-                        )}
-                      >
-                        {isScored ? "BUT !" : "ARRÊT !"}
-                      </motion.h2>
-                      <p className="text-xl font-black mt-4 bg-background/80 backdrop-blur-md px-6 py-2 rounded-full border border-primary/10">
-                        {isScored ? `+${selectedBet * 2} PTS` : `-${selectedBet} PTS`}
-                      </p>
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="absolute inset-0 flex flex-col items-center justify-center z-50 pointer-events-none">
+                      <motion.h2 initial={{ scale: 0.5, rotate: -10 }} animate={{ scale: 1, rotate: 0 }} className={cn("text-7xl font-black uppercase italic tracking-tighter drop-shadow-2xl", isScored ? "text-green-500" : "text-destructive")}>{isScored ? "BUT !" : "ARRÊT !"}</motion.h2>
+                      <p className="text-xl font-black mt-4 bg-background/80 backdrop-blur-md px-6 py-2 rounded-full border border-primary/10">{isScored ? `+${selectedBet * 2} PTS` : `-${selectedBet} PTS`}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
 
-              {gameState === 'result' && (
-                <Button 
-                  onClick={resetGame}
-                  className="w-full h-20 rounded-[2.5rem] font-black text-sm uppercase shadow-2xl shadow-primary/20 transition-all active:scale-95"
-                >
-                  Nouvelle Frappe
-                </Button>
-              )}
+              {gameState === 'result' && <Button onClick={resetGame} className="w-full h-20 rounded-[2.5rem] font-black text-sm uppercase shadow-2xl shadow-primary/20 transition-all active:scale-95">Nouvelle Frappe</Button>}
             </motion.div>
           )}
         </AnimatePresence>
