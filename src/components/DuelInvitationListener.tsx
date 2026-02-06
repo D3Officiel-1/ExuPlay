@@ -11,7 +11,8 @@ import {
   serverTimestamp, 
   increment,
   deleteDoc,
-  or
+  or,
+  and
 } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -34,13 +35,16 @@ export function DuelInvitationListener() {
   // On écoute les duels où l'utilisateur est impliqué et qui ne sont pas finis
   const activeDuelsQuery = useMemo(() => {
     if (!db || !user?.uid) return null;
+    // Correction : Utilisation explicite de and() pour combiner or() et where()
     return query(
       collection(db, "duels"),
-      or(
-        where("opponentId", "==", user.uid),
-        where("challengerId", "==", user.uid)
-      ),
-      where("status", "in", ["pending", "accepted", "cancelled"])
+      and(
+        or(
+          where("opponentId", "==", user.uid),
+          where("challengerId", "==", user.uid)
+        ),
+        where("status", "in", ["pending", "accepted", "cancelled"])
+      )
     );
   }, [db, user?.uid]);
 
