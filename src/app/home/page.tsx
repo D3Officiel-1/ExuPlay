@@ -145,7 +145,6 @@ export default function HomePage() {
   const [hiddenIndices, setHiddenIndices] = useState<number[]>([]);
   const [isProtected, setIsProtected] = useState(false);
   const [isMultiplied, setIsMultiplied] = useState(false);
-  const [showPenaltyAnim, setShowPenaltyAnim] = useState(false);
   
   const { user } = useUser();
   const db = useFirestore();
@@ -255,7 +254,6 @@ export default function HomePage() {
       setTimeLeft(15);
       setIsProtected(false);
       setIsMultiplied(false);
-      setShowPenaltyAnim(false);
     } catch (error) {
       console.error(error);
     } finally {
@@ -311,9 +309,6 @@ export default function HomePage() {
     if (isTimeout && profile && (profile.totalPoints || 0) > 10 && !isProtected) {
       penalty = -10;
       toast({ variant: "destructive", title: "Temps Épuisé", description: "-10 PTS." });
-    } else if (!isCorrect && !isTimeout && !isProtected) {
-      penalty = -2;
-      setShowPenaltyAnim(true);
     }
 
     if (isCorrect) haptic.success(); else haptic.error();
@@ -364,7 +359,6 @@ export default function HomePage() {
       setTimeLeft(15);
       setIsProtected(false);
       setIsMultiplied(false);
-      setShowPenaltyAnim(false);
     } else {
       setQuizComplete(true);
       haptic.impact();
@@ -398,19 +392,6 @@ export default function HomePage() {
         </AnimatePresence>
 
         <div className="w-full max-w-lg relative">
-          <AnimatePresence>
-            {showPenaltyAnim && (
-              <motion.div 
-                initial={{ opacity: 0, y: 40, scale: 0.5, filter: "blur(20px)" }} 
-                animate={{ opacity: [0, 1, 1, 0], y: -140, scale: [0.8, 1.4, 1.2, 1.5], filter: ["blur(10px)", "blur(0px)", "blur(0px)", "blur(20px)"] }} 
-                transition={{ duration: 1.2, times: [0, 0.2, 0.8, 1], ease: [0.22, 1, 0.36, 1] }}
-                className="absolute inset-0 flex flex-col items-center justify-center z-[100] pointer-events-none"
-              >
-                <span className="text-6xl font-black text-red-500 italic drop-shadow-[0_0_25px_rgba(239,68,68,0.8)] tracking-tighter">-2 PTS</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           <AnimatePresence mode="wait">
             {!quizComplete ? (
               <motion.div key={question?.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }} className="space-y-8">
