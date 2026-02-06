@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -64,7 +65,9 @@ import {
   Wand2,
   Calendar,
   Smartphone,
-  Shield
+  Shield,
+  Target,
+  RefreshCw
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -95,7 +98,7 @@ export default function AdminPage() {
     question: "",
     options: ["", "", "", ""],
     correctIndex: 0,
-    points: 100
+    points: 10
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -108,7 +111,9 @@ export default function AdminPage() {
   const [selectedUserForView, setSelectedUserForView] = useState<any | null>(null);
   
   const [maintenanceMessageInput, setMaintenanceMessageInput] = useState("");
+  const [communityTargetInput, setCommunityTargetInput] = useState("");
   const [isSavingMessage, setIsSavingMessage] = useState(false);
+  const [isResettingGoal, setIsResettingGoal] = useState(false);
 
   const [quizSearch, setQuizSearch] = useState("");
   const [userSearch, setUserSearch] = useState("");
@@ -149,7 +154,10 @@ export default function AdminPage() {
     if (appStatus?.maintenanceMessage !== undefined) {
       setMaintenanceMessageInput(appStatus.maintenanceMessage);
     }
-  }, [appStatus?.maintenanceMessage]);
+    if (appStatus?.communityGoalTarget !== undefined) {
+      setCommunityTargetInput(appStatus.communityGoalTarget.toString());
+    }
+  }, [appStatus]);
 
   const filteredQuizzes = useMemo(() => {
     if (!quizzes) return [];
@@ -182,14 +190,9 @@ export default function AdminPage() {
     if (!authLoading && !profileLoading && profile) {
       if (profile.role !== 'admin') {
         router.push("/profil");
-        toast({
-          variant: "destructive",
-          title: "Accès refusé",
-          description: "Seuls les administrateurs peuvent accéder à cette console."
-        });
       }
     }
-  }, [profile, profileLoading, authLoading, router, toast]);
+  }, [profile, profileLoading, authLoading, router]);
 
   const handleToggleMaintenance = async (checked: boolean) => {
     if (!appConfigRef) return;
@@ -204,10 +207,6 @@ export default function AdminPage() {
         requestResourceData: { maintenanceMode: checked },
       } satisfies SecurityRuleContext);
       errorEmitter.emit('permission-error', permissionError);
-    });
-    toast({
-      title: checked ? "Maintenance activée" : "Maintenance désactivée",
-      description: checked ? "L'application est en mode privé." : "L'application est accessible à tous."
     });
   };
 
@@ -225,27 +224,43 @@ export default function AdminPage() {
       } satisfies SecurityRuleContext);
       errorEmitter.emit('permission-error', permissionError);
     });
-    toast({
-      title: checked ? "Échanges activés" : "Échanges suspendus",
-      description: checked ? "Les esprits peuvent convertir leur lumière." : "Le système de conversion est verrouillé."
-    });
   };
 
-  const handleUpdateMaintenanceMessage = async () => {
+  const handleUpdateConfig = async () => {
     if (!appConfigRef) return;
     setIsSavingMessage(true);
     haptic.light();
     try {
       await updateDoc(appConfigRef, {
         maintenanceMessage: maintenanceMessageInput,
+        communityGoalTarget: parseInt(communityTargetInput) || 10000,
         updatedAt: serverTimestamp()
       });
       haptic.success();
-      toast({ title: "Message mis à jour", description: "Le nouveau message est visible par les esprits." });
+      toast({ title: "Configuration harmonisée", description: "Les paramètres système ont été mis à jour." });
     } catch (error) {
-      toast({ variant: "destructive", title: "Erreur", description: "Impossible de mettre à jour le message." });
+      toast({ variant: "destructive", title: "Erreur", description: "Échec de la mise à jour." });
     } finally {
       setIsSavingMessage(false);
+    }
+  };
+
+  const handleResetGoal = async () => {
+    if (!appConfigRef) return;
+    setIsResettingGoal(true);
+    haptic.medium();
+    try {
+      await updateDoc(appConfigRef, {
+        communityGoalPoints: 0,
+        royalChallengeActiveUntil: null,
+        updatedAt: serverTimestamp()
+      });
+      haptic.success();
+      toast({ title: "Cycle réinitialisé", description: "La jauge communautaire est revenue à zéro." });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Erreur" });
+    } finally {
+      setIsResettingGoal(false);
     }
   };
 
@@ -261,10 +276,8 @@ export default function AdminPage() {
         points: result.points
       });
       haptic.success();
-      toast({ title: "Défis généré", description: "L'IA a conçu une nouvelle épreuve philosophique." });
     } catch (error) {
       haptic.error();
-      toast({ variant: "destructive", title: "Dissonance IA", description: "L'IA n'a pas pu concevoir de défi pour le moment." });
     } finally {
       setIsGenerating(false);
     }
@@ -276,7 +289,6 @@ export default function AdminPage() {
     
     if (newQuiz.question.trim() === "" || newQuiz.options.some(o => o.trim() === "")) {
       haptic.error();
-      toast({ variant: "destructive", title: "Erreur", description: "Veuillez remplir tous les champs." });
       return;
     }
 
@@ -287,9 +299,8 @@ export default function AdminPage() {
         createdAt: serverTimestamp()
       });
       haptic.success();
-      setNewQuiz({ question: "", options: ["", "", "", ""], correctIndex: 0, points: 100 });
+      setNewQuiz({ question: "", options: ["", "", "", ""], correctIndex: 0, points: 10 });
       setIsAddDialogOpen(false);
-      toast({ title: "Défi ajouté", description: "La question a été publiée." });
     } catch (error) {
       console.error(error);
     } finally {
@@ -309,12 +320,6 @@ export default function AdminPage() {
     setIsEditingQuiz(true);
   };
 
-  const handleCancelEdit = () => {
-    haptic.light();
-    setIsEditingQuiz(false);
-    setEditedQuiz(null);
-  };
-
   const handleSaveEdit = async () => {
     if (!db || !selectedQuizForView?.id || !editedQuiz || isSubmitting) return;
     
@@ -332,34 +337,10 @@ export default function AdminPage() {
       haptic.success();
       setSelectedQuizForView({ ...editedQuiz, id: selectedQuizForView.id });
       setIsEditingQuiz(false);
-      toast({ title: "Mise à jour réussie", description: "Le défi a été harmonisé." });
     } catch (error) {
       console.error(error);
-      toast({ variant: "destructive", title: "Échec", description: "Impossible de sauvegarder les modifications." });
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleAiGenerateForEdit = async () => {
-    setIsGenerating(true);
-    haptic.light();
-    try {
-      const result = await generateQuiz({});
-      setEditedQuiz({
-        ...editedQuiz,
-        question: result.question,
-        options: result.options,
-        correctIndex: result.correctIndex,
-        points: result.points
-      });
-      haptic.success();
-      toast({ title: "Réécriture IA", description: "Le défi a été transfiguré par l'Oracle." });
-    } catch (error) {
-      haptic.error();
-      toast({ variant: "destructive", title: "Dissonance IA", description: "L'IA n'a pas pu s'exprimer." });
-    } finally {
-      setIsGenerating(false);
     }
   };
 
@@ -470,12 +451,12 @@ export default function AdminPage() {
                       <Plus className="h-4 w-4" /> Nouveau défi
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[600px] bg-card/95 backdrop-blur-2xl rounded-[2.5rem] p-8 max-h-[90vh] overflow-y-auto border-none">
+                  <DialogContent className="sm:max-w-[600px] bg-card/95 backdrop-blur-2xl rounded-[2.5rem] p-8 border-none">
                     <DialogHeader>
                       <div className="flex justify-between items-start">
                         <div className="space-y-1">
                           <DialogTitle className="text-2xl font-black tracking-tight">Nouveau Défi</DialogTitle>
-                          <p className="text-sm font-medium opacity-60">Créez ou générez une nouvelle épreuve.</p>
+                          <p className="text-sm font-medium opacity-60">Créez une nouvelle épreuve.</p>
                         </div>
                         <Button type="button" variant="secondary" onClick={handleAiGenerate} disabled={isGenerating} className="h-10 px-4 rounded-xl font-black text-[10px] uppercase gap-2 bg-primary/5">
                           {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3 text-primary" />}
@@ -502,6 +483,10 @@ export default function AdminPage() {
                             }} />
                           </div>
                         ))}
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-black uppercase tracking-widest opacity-40">Points (0-10)</Label>
+                        <Input type="number" min="0" max="10" className="h-12 rounded-xl" value={newQuiz.points} onChange={e => setNewQuiz({...newQuiz, points: parseInt(e.target.value) || 0})} />
                       </div>
                       <DialogFooter className="pt-6">
                         <Button type="submit" disabled={isSubmitting || isGenerating} className="w-full h-14 rounded-2xl font-black text-sm uppercase shadow-xl">
@@ -551,7 +536,7 @@ export default function AdminPage() {
             <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2rem]">
               <CardHeader className="p-8 pb-4">
                 <CardTitle className="text-xl font-black">Sécurité & Flux</CardTitle>
-                <CardDescription className="text-sm">Gérez l'accès et les échanges des esprits.</CardDescription>
+                <CardDescription className="text-sm">Gérez l'accès et les objectifs des esprits.</CardDescription>
               </CardHeader>
               <CardContent className="p-8 pt-0 space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -578,24 +563,52 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="space-y-4 p-6 bg-background/50 rounded-3xl border border-primary/5">
-                  <div className="flex items-center gap-2 mb-2">
-                    <MessageSquareText className="h-4 w-4 opacity-40" />
-                    <p className="font-black text-sm uppercase tracking-widest">Message de Maintenance</p>
+                <div className="space-y-6 p-6 bg-background/50 rounded-3xl border border-primary/5">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <MessageSquareText className="h-4 w-4 opacity-40" />
+                      <p className="font-black text-sm uppercase tracking-widest">Message de Maintenance</p>
+                    </div>
+                    <Textarea 
+                      placeholder="Entrez le message à afficher aux esprits..." 
+                      className="min-h-[80px] rounded-2xl bg-background/50 border-primary/10"
+                      value={maintenanceMessageInput}
+                      onChange={(e) => setMaintenanceMessageInput(e.target.value)}
+                    />
                   </div>
-                  <Textarea 
-                    placeholder="Entrez le message à afficher aux esprits..." 
-                    className="min-h-[120px] rounded-2xl bg-background/50 border-primary/10"
-                    value={maintenanceMessageInput}
-                    onChange={(e) => setMaintenanceMessageInput(e.target.value)}
-                  />
+
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Target className="h-4 w-4 opacity-40" />
+                      <p className="font-black text-sm uppercase tracking-widest">Objectif Communautaire (Cible)</p>
+                    </div>
+                    <div className="flex gap-3">
+                      <Input 
+                        type="number"
+                        placeholder="Ex: 10000" 
+                        className="h-12 rounded-xl bg-background/50 border-primary/10 flex-1 font-bold"
+                        value={communityTargetInput}
+                        onChange={(e) => setCommunityTargetInput(e.target.value)}
+                      />
+                      <Button 
+                        variant="outline"
+                        onClick={handleResetGoal} 
+                        disabled={isResettingGoal}
+                        className="h-12 rounded-xl px-4 gap-2 border-primary/10 font-black text-[10px] uppercase"
+                      >
+                        {isResettingGoal ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                        Reset
+                      </Button>
+                    </div>
+                  </div>
+
                   <Button 
-                    onClick={handleUpdateMaintenanceMessage} 
+                    onClick={handleUpdateConfig} 
                     disabled={isSavingMessage}
-                    className="w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest gap-2"
+                    className="w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest gap-2 shadow-xl shadow-primary/10"
                   >
-                    {isSavingMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                    Mettre à jour le message
+                    {isSavingMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Enregistrer les Paramètres
                   </Button>
                 </div>
               </CardContent>
@@ -605,7 +618,7 @@ export default function AdminPage() {
           <TabsContent value="users" className="space-y-6">
             <div className="px-1 mb-4 relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-40" />
-              <Input placeholder="Rechercher un esprit (nom ou numéro)..." className="pl-12 h-12 bg-card/20 border-none rounded-2xl" value={userSearch} onChange={(e) => setUserSearch(e.target.value)} />
+              <Input placeholder="Rechercher un esprit..." className="pl-12 h-12 bg-card/20 border-none rounded-2xl" value={userSearch} onChange={(e) => setUserSearch(e.target.value)} />
             </div>
             <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2rem] overflow-hidden">
               <Table>
@@ -660,18 +673,6 @@ export default function AdminPage() {
                   {isEditingQuiz ? "Harmonisation" : "Détails du Défi"}
                 </DialogTitle>
               </div>
-              
-              {isEditingQuiz && (
-                <Button 
-                  variant="secondary" 
-                  onClick={handleAiGenerateForEdit} 
-                  disabled={isGenerating} 
-                  className="h-10 px-4 rounded-xl font-black text-[10px] uppercase gap-2 bg-primary/5"
-                >
-                  {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3 text-primary" />}
-                  Inspiration IA
-                </Button>
-              )}
             </div>
           </DialogHeader>
 
@@ -724,9 +725,11 @@ export default function AdminPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Intensité de la Lumière (Points)</Label>
+                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Points (0-10)</Label>
                       <Input 
                         type="number"
+                        min="0"
+                        max="10"
                         className="h-14 rounded-2xl bg-primary/5 border-none font-black text-xl text-center"
                         value={editedQuiz?.points}
                         onChange={e => setEditedQuiz({...editedQuiz, points: parseInt(e.target.value) || 0})}
@@ -785,7 +788,6 @@ export default function AdminPage() {
                           haptic.medium();
                           deleteDoc(doc(db, "quizzes", selectedQuizForView.id));
                           setSelectedQuizForView(null);
-                          toast({ title: "Défi supprimé", description: "L'épreuve a été retirée de la base." });
                         }}
                         className="h-12 w-12 rounded-2xl text-destructive hover:bg-destructive/5"
                       >
@@ -803,10 +805,10 @@ export default function AdminPage() {
               <>
                 <Button 
                   variant="outline" 
-                  onClick={handleCancelEdit}
-                  className="flex-1 h-14 rounded-2xl font-black text-xs uppercase tracking-widest gap-2"
+                  onClick={() => setIsEditingQuiz(false)}
+                  className="flex-1 h-14 rounded-2xl font-black text-xs uppercase tracking-widest"
                 >
-                  <X className="h-4 w-4" /> Annuler
+                  Annuler
                 </Button>
                 <Button 
                   onClick={handleSaveEdit}
@@ -858,12 +860,6 @@ export default function AdminPage() {
                 />
                 <div className="text-center">
                   <h3 className="text-xl font-black">@{selectedUserForView.username}</h3>
-                  <div className="flex items-center justify-center gap-2 mt-1">
-                    <Shield className="h-3 w-3 opacity-40" />
-                    <span className="text-[10px] font-black uppercase tracking-widest opacity-40">
-                      Rôle: {selectedUserForView.role === 'admin' ? "Maître" : "Adepte"}
-                    </span>
-                  </div>
                   <p className={cn(
                     "text-[9px] font-black uppercase tracking-[0.3em] mt-2",
                     getHonorTitle(selectedUserForView.totalPoints || 0).color
@@ -901,21 +897,6 @@ export default function AdminPage() {
                     {selectedUserForView.createdAt ? format(selectedUserForView.createdAt.toDate(), "dd MMMM yyyy", { locale: fr }) : "---"}
                   </span>
                 </div>
-                <div className="flex items-center justify-between px-2">
-                  <div className="flex items-center gap-2 opacity-40">
-                    <CheckCircle2 className="h-3 w-3" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Sceau Biométrique</span>
-                  </div>
-                  <span className={`text-[10px] font-black uppercase ${selectedUserForView.biometricEnabled ? 'text-green-500' : 'text-red-500 opacity-40'}`}>
-                    {selectedUserForView.biometricEnabled ? 'Actif' : 'Révoqué'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-6 bg-primary/5 rounded-[2rem] border border-primary/5">
-                <p className="text-[10px] leading-relaxed font-medium opacity-40 text-center italic">
-                  "Chaque esprit est une étincelle unique dans le flux de l'Oracle."
-                </p>
               </div>
             </div>
           )}

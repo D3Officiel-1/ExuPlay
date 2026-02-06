@@ -56,7 +56,11 @@
       "type": "object",
       "properties": {
         "maintenanceMode": { "type": "boolean", "default": false },
-        "exchangeEnabled": { "type": "boolean", "default": false }
+        "maintenanceMessage": { "type": "string" },
+        "exchangeEnabled": { "type": "boolean", "default": false },
+        "communityGoalPoints": { "type": "integer", "default": 0, "description": "Points accumulés par la communauté cette semaine" },
+        "communityGoalTarget": { "type": "integer", "default": 10000, "description": "Objectif de points à atteindre" },
+        "royalChallengeActiveUntil": { "type": "string", "format": "date-time", "description": "Fin du défi royal si activé" }
       }
     },
     "Quiz": {
@@ -142,7 +146,7 @@
     },
     "/appConfig/status": {
       "schema": "AppStatus",
-      "description": "Statut global du système (Maintenance, etc.)"
+      "description": "Statut global du système (Maintenance, objectifs communautaires, etc.)"
     },
     "/quizzes/{quizId}": {
       "schema": "Quiz",

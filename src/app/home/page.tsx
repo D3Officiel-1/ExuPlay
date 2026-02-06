@@ -19,10 +19,12 @@ import {
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, Brain, Timer, Zap, Users, Star, Eye } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, Brain, Timer, Zap, Users, Star, Eye, Crown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 export function SpoilerOverlay() {
   return (
@@ -85,6 +87,66 @@ function GlobalActivityTicker() {
   );
 }
 
+function CommunityGoalProgress({ appStatus }: { appStatus: any }) {
+  if (!appStatus) return null;
+
+  const current = appStatus.communityGoalPoints || 0;
+  const target = appStatus.communityGoalTarget || 10000;
+  const progress = Math.min((current / target) * 100, 100);
+  
+  const royalChallengeUntil = appStatus.royalChallengeActiveUntil?.toDate?.() || null;
+  const isRoyalActive = royalChallengeUntil && royalChallengeUntil > new Date();
+
+  return (
+    <Card className={cn(
+      "border-none backdrop-blur-3xl rounded-[2rem] overflow-hidden transition-all duration-700 w-full max-w-lg mb-6",
+      isRoyalActive ? "bg-yellow-500/10 border border-yellow-500/20 shadow-[0_0_40px_-10px_rgba(234,179,8,0.2)]" : "bg-card/40"
+    )}>
+      <CardContent className="p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "h-10 w-10 rounded-xl flex items-center justify-center transition-colors",
+              isRoyalActive ? "bg-yellow-500 text-black shadow-lg" : "bg-primary/5 text-primary"
+            )}>
+              {isRoyalActive ? <Crown className="h-5 w-5" /> : <Users className="h-5 w-5" />}
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Objectif Communautaire</p>
+              <h3 className="text-sm font-black uppercase tracking-tight">
+                {isRoyalActive ? "Défis Royal Activé !" : "Résonance de la Semaine"}
+              </h3>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-xs font-black">{current.toLocaleString()} / {target.toLocaleString()}</p>
+            <p className="text-[8px] font-bold opacity-30 uppercase">PTS de Lumière</p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="h-2 bg-primary/5 rounded-full overflow-hidden border border-primary/5">
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 1.5, ease: "easeOut" }}
+              className={cn(
+                "h-full transition-colors duration-500",
+                isRoyalActive ? "bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.5)]" : "bg-primary"
+              )}
+            />
+          </div>
+          <p className="text-[9px] font-medium opacity-40 italic text-center">
+            {isRoyalActive 
+              ? "L'éveil royal est à son paroxysme. Profitez-en maintenant !" 
+              : `Encore ${Math.max(0, target - current).toLocaleString()} points pour débloquer le Défis Royal.`}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function HomePage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -105,7 +167,10 @@ export default function HomePage() {
   const db = useFirestore();
 
   const userRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
+  const appStatusRef = useMemo(() => (db ? doc(db, "appConfig", "status") : null), [db]);
+  
   const { data: profile } = useDoc(userRef);
+  const { data: appStatus } = useDoc(appStatusRef);
 
   const quizzesQuery = useMemo(() => {
     if (!db) return null;
@@ -184,9 +249,7 @@ export default function HomePage() {
     const currentQuiz = sessionQuizzes[currentQuestionIdx];
     const correctIdx = currentQuiz.correctIndex;
     
-    // Trouver toutes les mauvaises réponses
     const wrongIndices = [0, 1, 2, 3].filter(i => i !== correctIdx);
-    // En choisir 2 au hasard à masquer
     const toHide = [...wrongIndices].sort(() => Math.random() - 0.5).slice(0, 2);
     
     setHiddenIndices(toHide);
@@ -222,7 +285,12 @@ export default function HomePage() {
     const currentQuiz = sessionQuizzes[currentQuestionIdx];
     const isCorrect = index === currentQuiz.correctIndex;
     const isTimeout = index === -1;
-    const pointsEarned = isCorrect ? (currentQuiz.points || 100) : 0;
+    
+    // Royal Challenge Logic: 100 PTS if active, else standard points
+    const royalChallengeUntil = appStatus?.royalChallengeActiveUntil?.toDate?.() || null;
+    const isRoyalActive = royalChallengeUntil && royalChallengeUntil > new Date();
+    
+    const pointsEarned = isCorrect ? (isRoyalActive ? 100 : (currentQuiz.points || 10)) : 0;
 
     let penalty = 0;
     if (isTimeout && profile && (profile.totalPoints || 0) > 10) {
@@ -267,6 +335,7 @@ export default function HomePage() {
           updatedAt: serverTimestamp()
         };
 
+        // Referral logic
         if (pointsEarned > 0 && profile && profile.referredBy && !profile.referralRewardClaimed) {
           const newTotal = (profile.totalPoints || 0) + pointsEarned;
           if (newTotal >= 100) {
@@ -286,6 +355,29 @@ export default function HomePage() {
           }
         }
         await updateDoc(userDocRef, updatePayload);
+
+        // Community Goal update
+        if (pointsEarned > 0 && appStatusRef) {
+          const newCommunityPoints = (appStatus?.communityGoalPoints || 0) + pointsEarned;
+          const target = appStatus?.communityGoalTarget || 10000;
+          
+          const commUpdate: any = {
+            communityGoalPoints: increment(pointsEarned),
+            updatedAt: serverTimestamp()
+          };
+
+          // Trigger Royal Challenge if threshold reached
+          if (newCommunityPoints >= target && !isRoyalActive) {
+            const oneHourLater = new Date(Date.now() + 60 * 60 * 1000);
+            commUpdate.royalChallengeActiveUntil = oneHourLater;
+            toast({
+              title: "Éveil Royal !",
+              description: "L'objectif communautaire est atteint. Profitez de 100 PTS par défi pendant 1 heure !",
+            });
+          }
+
+          await updateDoc(appStatusRef, commUpdate);
+        }
       }
     } catch (error) {
       console.error("Erreur lors de la finalisation de la réponse:", error);
@@ -308,9 +400,6 @@ export default function HomePage() {
     } else {
       setQuizComplete(true);
       haptic.impact();
-      if (score === sessionQuizzes.length * 100) {
-        haptic.success();
-      }
     }
   };
 
@@ -364,11 +453,14 @@ export default function HomePage() {
   }
 
   const question = sessionQuizzes[currentQuestionIdx];
+  const isRoyalActive = appStatus?.royalChallengeActiveUntil?.toDate?.() > new Date();
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
       <main className="flex-1 flex flex-col items-center justify-center p-6 pt-24 space-y-6">
         <GlobalActivityTicker />
+        
+        <CommunityGoalProgress appStatus={appStatus} />
 
         <div className="w-full max-w-lg">
           <AnimatePresence mode="wait">
@@ -404,7 +496,10 @@ export default function HomePage() {
                   </motion.div>
                 )}
 
-                <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[3rem] overflow-hidden relative">
+                <Card className={cn(
+                  "border-none backdrop-blur-3xl shadow-2xl rounded-[3rem] overflow-hidden relative",
+                  isRoyalActive ? "bg-yellow-500/5 ring-2 ring-yellow-500/20" : "bg-card/40"
+                )}>
                   <AnimatePresence mode="wait">
                     {showPointsPreview ? (
                       <motion.div
@@ -417,16 +512,27 @@ export default function HomePage() {
                         className="p-12 sm:p-20 text-center flex flex-col items-center justify-center space-y-10 cursor-pointer h-full min-h-[500px] bg-primary/5"
                       >
                         <div className="relative">
-                          <div className="relative h-32 w-32 bg-background rounded-[3rem] flex items-center justify-center border border-primary/10 shadow-2xl">
-                            <Zap className="h-14 w-14 text-primary fill-current" />
+                          <div className={cn(
+                            "relative h-32 w-32 bg-background rounded-[3rem] flex items-center justify-center border shadow-2xl",
+                            isRoyalActive ? "border-yellow-500/30" : "border-primary/10"
+                          )}>
+                            {isRoyalActive ? <Crown className="h-14 w-14 text-yellow-500 fill-current" /> : <Zap className="h-14 w-14 text-primary fill-current" />}
                           </div>
                         </div>
                         <div className="space-y-4">
                           <p className="text-[10px] font-black uppercase tracking-[0.6em] opacity-30">Valeur de l'Éveil</p>
                           <div className="flex items-baseline justify-center gap-2">
-                            <span className="text-7xl font-black tabular-nums tracking-tighter">+{question?.points || 100}</span>
+                            <span className={cn(
+                              "text-7xl font-black tabular-nums tracking-tighter",
+                              isRoyalActive && "text-yellow-600"
+                            )}>+{isRoyalActive ? 100 : (question?.points || 10)}</span>
                             <span className="text-sm font-black uppercase tracking-widest opacity-20">PTS</span>
                           </div>
+                          {isRoyalActive && (
+                            <div className="bg-yellow-500 text-black px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mx-auto inline-block">
+                              Bonus Royal Activé
+                            </div>
+                          )}
                         </div>
                         <p className="text-[9px] font-black uppercase tracking-[0.3em] opacity-40">
                           Cliquez pour masquer
@@ -519,14 +625,6 @@ export default function HomePage() {
                                     {isAnswered && isCorrect && <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />}
                                     {isAnswered && isSelected && !isCorrect && <XCircle className="h-4 w-4 sm:h-5 sm:w-5" />}
                                   </div>
-                                  
-                                  {isAnswered && isCorrect && (
-                                    <motion.div 
-                                      initial={{ scale: 0, opacity: 0 }}
-                                      animate={{ scale: 1, opacity: 0.1 }}
-                                      className="absolute inset-0 bg-green-500 rounded-full blur-3xl"
-                                    />
-                                  )}
                                 </motion.button>
                               );
                             })}
@@ -584,7 +682,7 @@ export default function HomePage() {
                 <div className="relative inline-block">
                   <div className="absolute inset-0 bg-primary/20 blur-[100px] rounded-full scale-150 animate-pulse" />
                   <div className="relative h-40 w-40 bg-card rounded-[3.5rem] flex items-center justify-center border border-primary/10 shadow-[0_32px_128px_-16px_rgba(0,0,0,0.4)]">
-                    {score === sessionQuizzes.length * 100 ? (
+                    {score >= 100 ? (
                       <div className="relative">
                         <Star className="h-20 w-20 text-yellow-500 fill-current" />
                         <motion.div 
@@ -601,7 +699,7 @@ export default function HomePage() {
 
                 <div className="space-y-4">
                   <h2 className="text-5xl font-black tracking-tighter italic">
-                    {score === sessionQuizzes.length * 100 ? "Oracle Absolu" : "Éclat Final"}
+                    {score >= 100 ? "Oracle Absolu" : "Éclat Final"}
                   </h2>
                   <p className="text-muted-foreground font-medium text-lg">Votre esprit a rayonné avec une intensité de {score} points.</p>
                 </div>
