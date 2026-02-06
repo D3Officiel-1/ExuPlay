@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Logique des Titres Honorifiques et Thèmes Visuels d'Exu Play.
  * Définit la hiérarchie basée sur la lumière et les styles visuels des sceaux.
@@ -78,33 +77,12 @@ export const THEMES: Record<string, VisualTheme> = {
     borderColor: "border-primary/20",
     auraClass: "bg-primary/10 blur-xl"
   },
-  "theme_amethyst": {
-    id: "theme_amethyst",
-    name: "Améthyste",
-    color: "text-purple-500",
-    borderColor: "border-purple-500/50",
-    auraClass: "bg-purple-500/20 blur-2xl shadow-[0_0_30px_rgba(168,85,247,0.3)]"
-  },
-  "theme_emerald": {
-    id: "theme_emerald",
-    name: "Émeraude",
-    color: "text-emerald-500",
-    borderColor: "border-emerald-500/50",
-    auraClass: "bg-emerald-500/20 blur-2xl shadow-[0_0_30px_rgba(16,185,129,0.3)]"
-  },
   "theme_ruby": {
     id: "theme_ruby",
     name: "Rubis",
     color: "text-red-500",
     borderColor: "border-red-500/50",
     auraClass: "bg-red-500/20 blur-2xl shadow-[0_0_30px_rgba(239,68,68,0.3)]"
-  },
-  "theme_sapphire": {
-    id: "theme_sapphire",
-    name: "Saphir",
-    color: "text-blue-500",
-    borderColor: "border-blue-500/60",
-    auraClass: "bg-blue-600/20 blur-2xl shadow-[0_0_40px_rgba(37,99,235,0.4)]"
   },
   "theme_obsidian": {
     id: "theme_obsidian",

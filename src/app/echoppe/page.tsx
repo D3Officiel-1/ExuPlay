@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState } from "react";
@@ -77,28 +76,6 @@ const STORE_ITEMS = [
     field: "multiplierCount"
   },
   {
-    id: "theme_amethyst",
-    type: "theme",
-    name: "Sceau d'Améthyste",
-    description: "Une aura pourpre mystique pour votre profil.",
-    price: 1000,
-    icon: Gem,
-    color: "text-purple-500",
-    bg: "bg-purple-500/10",
-    action: "theme"
-  },
-  {
-    id: "theme_emerald",
-    type: "theme",
-    name: "Sceau d'Émeraude",
-    description: "La résonance de la nature éternelle.",
-    price: 1000,
-    icon: Shield,
-    color: "text-emerald-500",
-    bg: "bg-emerald-500/10",
-    action: "theme"
-  },
-  {
     id: "theme_ruby",
     type: "theme",
     name: "Sceau de Rubis",
@@ -107,17 +84,6 @@ const STORE_ITEMS = [
     icon: Flame,
     color: "text-red-500",
     bg: "bg-red-500/10",
-    action: "theme"
-  },
-  {
-    id: "theme_sapphire",
-    type: "theme",
-    name: "Sceau de Saphir",
-    description: "La sérénité d'un esprit calme et limpide.",
-    price: 1500,
-    icon: Droplets,
-    color: "text-blue-500",
-    bg: "bg-blue-500/10",
     action: "theme"
   },
   {
@@ -185,9 +151,9 @@ export default function EchoppePage() {
         updatedAt: serverTimestamp()
       };
 
-      if (item.type === 'consumable' && item.field) {
-        updatePayload[item.field] = increment(1);
-      } else if (item.action === 'theme') {
+      if (item.type === 'consumable' && 'field' in item) {
+        updatePayload[item.field!] = increment(1);
+      } else if ('action' in item && item.action === 'theme') {
         updatePayload.ownedThemes = arrayUnion(item.id);
       }
 
@@ -236,7 +202,8 @@ export default function EchoppePage() {
             </div>
             <div className="grid gap-4">
               {STORE_ITEMS.filter(i => i.type === 'consumable').map((item) => {
-                const count = profile?.[item.field as keyof typeof profile] || 0;
+                const field = (item as any).field;
+                const count = profile?.[field as keyof typeof profile] || 0;
                 return (
                   <Card key={item.id} className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2rem] overflow-hidden group">
                     <CardContent className="p-6 flex items-center gap-5">
@@ -246,7 +213,7 @@ export default function EchoppePage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <h3 className="font-black text-base">{item.name}</h3>
-                          {count > 0 && <span className="bg-primary/10 text-primary text-[10px] font-black px-2 py-0.5 rounded-full">x{count}</span>}
+                          {typeof count === 'number' && count > 0 && <span className="bg-primary/10 text-primary text-[10px] font-black px-2 py-0.5 rounded-full">x{count}</span>}
                         </div>
                         <p className="text-[10px] font-medium opacity-40 line-clamp-2 leading-relaxed">{item.description}</p>
                       </div>
