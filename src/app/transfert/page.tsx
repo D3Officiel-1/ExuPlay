@@ -88,36 +88,58 @@ export default function TransfertPage() {
     if (!qrRef.current || !user?.uid) return;
     
     try {
-      const QRCodeStyling = (await import("qr-code-styling")).default;
-      // Pour une visibilité parfaite et scannable, on utilise toujours des points noirs sur fond blanc
-      const dotColor = "#000000";
+      const QRCodeStylingLib = await import("qr-code-styling");
+      const QRCodeStyling = QRCodeStylingLib.default;
+      
+      // On s'assure que le conteneur est vide avant de générer
+      if (qrRef.current) {
+        qrRef.current.innerHTML = "";
+      }
       
       const options = {
         width: 280,
         height: 280,
         type: "svg" as const,
         data: user.uid,
-        dotsOptions: { color: dotColor, type: "dots" as const },
-        backgroundOptions: { color: "#FFFFFF" },
-        cornersSquareOptions: { color: dotColor, type: "extra-rounded" as const },
-        cornersDotOptions: { color: dotColor, type: "dot" as const },
-        qrOptions: { typeNumber: 0, mode: "Byte" as const, errorCorrectionLevel: "H" as const },
+        dotsOptions: { 
+          color: "#000000", 
+          type: "dots" as const 
+        },
+        backgroundOptions: { 
+          color: "#FFFFFF" 
+        },
+        cornersSquareOptions: { 
+          color: "#000000", 
+          type: "extra-rounded" as const 
+        },
+        cornersDotOptions: { 
+          color: "#000000", 
+          type: "dot" as const 
+        },
+        qrOptions: { 
+          typeNumber: 0, 
+          mode: "Byte" as const, 
+          errorCorrectionLevel: "H" as const 
+        },
       };
 
-      qrRef.current.innerHTML = "";
       const qrCode = new QRCodeStyling(options);
       qrCode.append(qrRef.current);
     } catch (error) {
-      console.error("Erreur QR:", error);
+      console.error("Erreur de l'Oracle QR:", error);
     }
   };
 
   useEffect(() => {
+    // Petit délai pour s'assurer que le ref est bien monté dans le DOM après le switch d'onglet
+    let timer: NodeJS.Timeout;
     if (activeTab === "qr" && !recipient && !isSuccess && validationStatus === 'idle') {
-      const timer = setTimeout(() => generateQRCode(), 100);
-      return () => clearTimeout(timer);
+      timer = setTimeout(() => {
+        generateQRCode();
+      }, 200);
     }
-  }, [activeTab, user?.uid, resolvedTheme, recipient, isSuccess, validationStatus]);
+    return () => clearTimeout(timer);
+  }, [activeTab, user?.uid, recipient, isSuccess, validationStatus]);
 
   const stopScanner = async () => {
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
@@ -283,7 +305,6 @@ export default function TransfertPage() {
         haptic.success();
         setIsSuccess(true);
       } else {
-        // Mode Duel : Déduction immédiate de la mise (Séquestre)
         await updateDoc(senderRef, { totalPoints: increment(-transferAmount), updatedAt: serverTimestamp() });
         
         await addDoc(collection(db, "duels"), {
@@ -342,13 +363,16 @@ export default function TransfertPage() {
                 </motion.div>
               ) : !recipient && !isSuccess ? (
                 <motion.div key="selection" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
-                  <TabsContent value="qr" className="mt-0 h-full flex flex-col items-center justify-start pt-28 px-6 space-y-8">
+                  <TabsContent value="qr" className="mt-0 h-full flex flex-col items-center justify-start pt-28 px-6 space-y-8 outline-none">
                     <div className="relative group flex justify-center w-full max-w-[340px]">
                       <motion.div animate={{ scale: [1, 1.05, 1], opacity: [0.05, 0.1, 0.05] }} transition={{ duration: 4, repeat: Infinity }} className="absolute inset-0 blur-[60px] rounded-full bg-primary" />
                       <Card className="border-none bg-card/60 backdrop-blur-3xl shadow-2xl rounded-[3.5rem] overflow-hidden relative w-full">
                         <CardContent className="p-8 flex flex-col items-center gap-6">
                           {/* Le fond du QR code est forcé en blanc pour garantir le contraste de scan */}
-                          <div className="w-full aspect-square rounded-[3rem] flex items-center justify-center p-4 shadow-2xl bg-white" ref={qrRef} />
+                          <div 
+                            className="w-full aspect-square rounded-[3rem] flex items-center justify-center p-4 shadow-2xl bg-white min-h-[200px]" 
+                            ref={qrRef} 
+                          />
                         </CardContent>
                       </Card>
                     </div>
@@ -374,7 +398,7 @@ export default function TransfertPage() {
                       </div>
                     </div>
                   </TabsContent>
-                  <TabsContent value="scan" className="mt-0 h-full">
+                  <TabsContent value="scan" className="mt-0 h-full outline-none">
                     <div id="reader" className="absolute inset-0 w-full h-full bg-black" />
                     {hasCameraPermission === false && <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-background/90 z-50 text-center"><ShieldAlert className="h-12 w-12 text-destructive mb-4" /><h2 className="text-xl font-black">Permission Requise</h2><Button variant="outline" onClick={() => window.location.reload()} className="mt-4 rounded-xl">Réessayer</Button></div>}
                   </TabsContent>
