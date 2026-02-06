@@ -78,6 +78,7 @@
         },
         "correctIndex": { "type": "integer" },
         "points": { "type": "integer", "default": 100 },
+        "playedCount": { "type": "integer", "default": 0, "description": "Nombre de fois que ce quiz a été terminé par des utilisateurs" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["question", "options", "correctIndex", "points"]

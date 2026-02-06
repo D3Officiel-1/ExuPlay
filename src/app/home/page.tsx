@@ -15,7 +15,9 @@ import {
   orderBy, 
   where, 
   limit, 
-  getDocs 
+  getDocs,
+  getDoc,
+  deleteDoc
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -391,9 +393,11 @@ export default function HomePage() {
 
     const attemptRef = doc(db, "users", user.uid, "attempts", currentQuiz.id);
     const userDocRef = doc(db, "users", user.uid);
+    const quizDocRef = doc(db, "quizzes", currentQuiz.id);
 
     setUpdating(true);
     try {
+      // 1. Mise à jour de la tentative
       await updateDoc(attemptRef, {
         isPlayed: true,
         status: 'completed',
@@ -402,6 +406,25 @@ export default function HomePage() {
         isTimeout: isTimeout,
         updatedAt: serverTimestamp()
       });
+
+      // 2. Gestion de l'usure du quiz (Oracle de l'Éphémère)
+      // On vérifie le nombre de résolutions globales
+      const quizSnap = await getDoc(quizDocRef);
+      if (quizSnap.exists()) {
+        const data = quizSnap.data();
+        const newPlayedCount = (data.playedCount || 0) + 1;
+        
+        if (newPlayedCount >= 3) {
+          // Dissolution du savoir s'il a été trop partagé
+          await deleteDoc(quizDocRef);
+        } else {
+          // Sinon on marque le passage
+          await updateDoc(quizDocRef, { 
+            playedCount: newPlayedCount,
+            updatedAt: serverTimestamp() 
+          });
+        }
+      }
 
       const totalChange = pointsEarned + penalty;
       

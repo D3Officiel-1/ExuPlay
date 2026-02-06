@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -314,6 +315,7 @@ export default function AdminPage() {
     try {
       await addDoc(collection(db, "quizzes"), {
         ...newQuiz,
+        playedCount: 0,
         createdAt: serverTimestamp()
       });
       haptic.success();
@@ -532,7 +534,7 @@ export default function AdminPage() {
                       <CardContent className="p-4 flex items-center justify-between gap-4">
                         <div className="space-y-1 flex-1 overflow-hidden">
                           <p className="text-sm font-black line-clamp-2">{q.question}</p>
-                          <p className="text-[10px] font-bold opacity-30 uppercase">{q.points} PTS • {q.options.length} OPTIONS</p>
+                          <p className="text-[10px] font-bold opacity-30 uppercase">{q.points} PTS • {q.playedCount || 0}/3 VUES</p>
                         </div>
                         <Button 
                           variant="ghost" 
