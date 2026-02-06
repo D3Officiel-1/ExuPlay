@@ -16,7 +16,7 @@ import confetti from "canvas-confetti";
 const BET_AMOUNTS = [50, 100, 200];
 const DIRECTIONS = [
   "En haut à gauche", "En haut", "En haut à droite",
-  "À gauche", "À droite",
+  "À gauche", "Centre", "À droite",
   "En bas à gauche", "En bas", "En bas à droite"
 ] as const;
 
@@ -108,12 +108,12 @@ export default function PenaltiesPage() {
     shooting: (direction: Direction) => {
       const xMap: Record<Direction, number> = { 
         "En haut à gauche": -120, "En haut": 0, "En haut à droite": 120,
-        "À gauche": -120, "À droite": 120,
+        "À gauche": -120, "Centre": 0, "À droite": 120,
         "En bas à gauche": -120, "En bas": 0, "En bas à droite": 120
       };
       const yMap: Record<Direction, number> = {
         "En haut à gauche": -380, "En haut": -380, "En haut à droite": -380,
-        "À gauche": -320, "À droite": -320,
+        "À gauche": -320, "Centre": -320, "À droite": -320,
         "En bas à gauche": -260, "En bas": -260, "En bas à droite": -260
       };
       return {
@@ -133,17 +133,17 @@ export default function PenaltiesPage() {
       if (!direction) return {};
       const xMap: Record<Direction, number> = {
         "En haut à gauche": -80, "En haut": 0, "En haut à droite": 80,
-        "À gauche": -80, "À droite": 80,
+        "À gauche": -80, "Centre": 0, "À droite": 80,
         "En bas à gauche": -80, "En bas": 0, "En bas à droite": 80
       };
       const yMap: Record<Direction, number> = {
         "En haut à gauche": -40, "En haut": -40, "En haut à droite": -40,
-        "À gauche": 15, "À droite": 15,
+        "À gauche": 15, "Centre": 0, "À droite": 15,
         "En bas à gauche": 40, "En bas": 40, "En bas à droite": 40
       };
       const rotateMap: Record<Direction, number> = {
         "En haut à gauche": -45, "En haut": 0, "En haut à droite": 45,
-        "À gauche": -45, "À droite": 45,
+        "À gauche": -45, "Centre": 0, "À droite": 45,
         "En bas à gauche": -45, "En bas": 0, "En bas à droite": 45
       };
       return {
@@ -161,6 +161,7 @@ export default function PenaltiesPage() {
       case "En haut": return "top-[5%] left-[50%] -translate-x-1/2";
       case "En haut à droite": return "top-[5%] right-[5%]";
       case "À gauche": return "top-[50%] left-[5%] -translate-y-1/2";
+      case "Centre": return "top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2";
       case "À droite": return "top-[50%] right-[5%] -translate-y-1/2";
       case "En bas à gauche": return "bottom-[5%] left-[5%]";
       case "En bas": return "bottom-[5%] left-[50%] -translate-x-1/2";
@@ -231,7 +232,6 @@ export default function PenaltiesPage() {
                     {DIRECTIONS.map((dir) => (
                       <motion.button
                         key={dir}
-                        whileHover={{ scale: 1.2 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => handleShoot(dir)}
                         disabled={loading}
@@ -243,13 +243,9 @@ export default function PenaltiesPage() {
                         )}
                       >
                         <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                        <motion.div 
-                          initial={{ opacity: 0 }}
-                          whileHover={{ opacity: 1 }}
-                          className="absolute -top-8 bg-card px-2 py-1 rounded text-[8px] font-black uppercase whitespace-nowrap border border-primary/10 pointer-events-none"
-                        >
+                        <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-opacity bg-card px-2 py-1 rounded text-[8px] font-black uppercase whitespace-nowrap border border-primary/10 pointer-events-none">
                           {dir}
-                        </motion.div>
+                        </div>
                       </motion.button>
                     ))}
 
@@ -264,7 +260,7 @@ export default function PenaltiesPage() {
               <div className="p-6 bg-primary/5 rounded-[2rem] border border-primary/5 flex items-center gap-4">
                 <Sparkles className="h-5 w-5 text-primary opacity-40" />
                 <p className="text-[10px] leading-relaxed font-medium opacity-40 italic">
-                  "Chaque point lumineux est une faille dans la garde de l'Oracle. Choisissez avec sagesse."
+                  "Chaque point lumineux est une faille dans la garde de l'Oracle. Le centre est le choix des audacieux."
                 </p>
               </div>
             </motion.div>
