@@ -39,7 +39,9 @@ import {
   Swords,
   ShieldCheck,
   Ghost,
-  QrCode
+  QrCode,
+  Flashlight,
+  Plus
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
@@ -65,6 +67,10 @@ export default function TransfertPage() {
   
   const [cachedQr, setCachedQr] = useState<string | null>(null);
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
+
+  // Nouvel état pour le FAB et la torche
+  const [isFabOpen, setIsFabOpen] = useState(false);
+  const [isTorchOn, setIsTorchOn] = useState(false);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -134,6 +140,7 @@ export default function TransfertPage() {
       try {
         await html5QrCodeRef.current.stop();
         html5QrCodeRef.current = null;
+        setIsTorchOn(false);
       } catch (err) {
         console.warn("Stop scanner error:", err);
       }
@@ -173,9 +180,6 @@ export default function TransfertPage() {
                 return { width: viewfinderWidth, height: viewfinderHeight };
               },
               aspectRatio: screenRatio,
-              experimentalFeatures: {
-                useBarCodeDetectorIfSupported: true
-              },
               videoConstraints: {
                 aspectRatio: screenRatio,
                 facingMode: "environment"
@@ -255,6 +259,7 @@ export default function TransfertPage() {
   const handlePickRandomRecipient = async () => {
     setIsProcessing(true);
     haptic.medium();
+    setIsFabOpen(false);
     try {
       const q = query(collection(db, "users"), orderBy("totalPoints", "asc"), limit(15));
       const snap = await getDocs(q);
@@ -274,6 +279,23 @@ export default function TransfertPage() {
       toast({ variant: "destructive", title: "Dissonance réseau" });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const toggleTorch = async () => {
+    if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+      try {
+        const state = !isTorchOn;
+        // @ts-ignore
+        await html5QrCodeRef.current.applyVideoConstraints({
+          advanced: [{ torch: state }]
+        });
+        setIsTorchOn(state);
+        haptic.light();
+      } catch (err) {
+        console.warn("Torch not supported on this device/browser");
+        toast({ title: "Lumière indisponible", description: "Votre appareil ne supporte pas le flash via le navigateur." });
+      }
     }
   };
 
@@ -419,10 +441,57 @@ export default function TransfertPage() {
                       </div>
                     )}
                     
-                    <div className="absolute bottom-10 left-0 right-0 z-[50] px-10 flex flex-col items-center gap-4 max-w-lg mx-auto">
-                      <Button onClick={handlePickRandomRecipient} disabled={isProcessing} className="w-full h-16 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.3em] gap-3 bg-white/10 backdrop-blur-md text-white border border-white/20 hover:bg-white/20">
-                        {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Répandre l'Éveil
+                    {/* Menu FAB Cinématique */}
+                    <div className="absolute bottom-10 right-6 z-[100] flex flex-col items-end gap-4">
+                      <AnimatePresence>
+                        {isFabOpen && (
+                          <motion.div 
+                            initial={{ opacity: 0, y: 20, scale: 0.8 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 20, scale: 0.8 }}
+                            className="flex flex-col items-end gap-3 mb-2"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-white border border-white/10">Oracle de Lumière</span>
+                              <Button 
+                                size="icon" 
+                                onClick={toggleTorch}
+                                className={cn(
+                                  "h-14 w-14 rounded-2xl backdrop-blur-xl border border-white/20 shadow-2xl transition-all",
+                                  isTorchOn ? "bg-white text-black" : "bg-white/10 text-white"
+                                )}
+                              >
+                                <Flashlight className={cn("h-6 w-6", isTorchOn && "fill-current")} />
+                              </Button>
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                              <span className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-white border border-white/10">Répandre l'Éveil</span>
+                              <Button 
+                                size="icon" 
+                                onClick={handlePickRandomRecipient}
+                                disabled={isProcessing}
+                                className="h-14 w-14 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 text-white shadow-2xl"
+                              >
+                                {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : <RefreshCw className="h-6 w-6" />}
+                              </Button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      <Button 
+                        onClick={() => { haptic.medium(); setIsFabOpen(!isFabOpen); }}
+                        className={cn(
+                          "h-16 w-16 rounded-[2rem] shadow-2xl transition-all duration-500",
+                          isFabOpen ? "bg-white text-black rotate-45" : "bg-primary text-primary-foreground"
+                        )}
+                      >
+                        <Plus className="h-8 w-8" />
                       </Button>
+                    </div>
+
+                    <div className="absolute bottom-10 left-6 z-[50]">
                       <Button variant="ghost" onClick={() => router.push("/profil")} className="text-[10px] font-black uppercase opacity-60 text-white hover:bg-white/5"><X className="h-4 w-4 mr-2" /> Annuler</Button>
                     </div>
                   </TabsContent>
