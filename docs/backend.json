@@ -37,6 +37,8 @@
         "referredBy": { "type": "string", "description": "Code du parrain si applicable" },
         "referralRewardClaimed": { "type": "boolean", "description": "Si la prime de parrainage a été versée au parrain", "default": false },
         "totalPoints": { "type": "integer", "description": "Points totaux accumulés par l'utilisateur", "default": 0 },
+        "hintCount": { "type": "integer", "description": "Nombre d'indices de perception possédés", "default": 0 },
+        "ownedThemes": { "type": "array", "items": { "type": "string" }, "description": "Liste des thèmes visuels possédés" },
         "profileImage": { "type": "string", "description": "Image de profil en format Base64" },
         "theme": { "type": "string", "description": "Préférence de thème de l'utilisateur", "enum": ["light", "dark", "system"] },
         "createdAt": { "type": "string", "format": "date-time" },

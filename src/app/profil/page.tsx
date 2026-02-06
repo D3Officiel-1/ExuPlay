@@ -38,7 +38,9 @@ import {
   Zap,
   History,
   Shield,
-  ShieldCheck
+  ShieldCheck,
+  Eye,
+  Settings
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
@@ -464,14 +466,22 @@ export default function ProfilPage() {
                 </div>
               </div>
               
-              <Button 
-                onClick={() => { haptic.medium(); router.push("/transfert"); }}
-                className="w-full h-16 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] gap-3 shadow-2xl shadow-primary/10 group transition-all"
-              >
-                <QrCode className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                Transférer
-                <ArrowRightLeft className="h-4 w-4 opacity-40 ml-auto" />
-              </Button>
+              <div className="grid grid-cols-2 gap-3">
+                <Button 
+                  onClick={() => { haptic.medium(); router.push("/transfert"); }}
+                  className="h-16 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.3em] gap-2 shadow-2xl shadow-primary/10 group transition-all"
+                >
+                  <QrCode className="h-4 w-4" />
+                  Transférer
+                </Button>
+                <div className="bg-primary/5 rounded-[2rem] border border-primary/5 flex items-center justify-center gap-3">
+                  <div className="flex flex-col items-center">
+                    <span className="text-xl font-black">{profile?.hintCount || 0}</span>
+                    <span className="text-[8px] font-black uppercase opacity-40 tracking-widest">Indices</span>
+                  </div>
+                  <Eye className="h-5 w-5 text-primary opacity-20" />
+                </div>
+              </div>
 
               {recentActivities && recentActivities.length > 0 && (
                 <div className="pt-4 border-t border-primary/5 space-y-4">
@@ -507,27 +517,40 @@ export default function ProfilPage() {
           </Card>
         </motion.div>
 
-        {profile?.role === 'admin' && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-            <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 pl-4">Maître de l'Éveil</h2>
-            <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden border border-primary/10">
-              <CardContent className="p-2">
-                <button onClick={() => { haptic.light(); router.push("/admin"); }} className="w-full flex items-center justify-between p-4 hover:bg-primary/5 transition-colors rounded-2xl group text-left">
+        <div className="space-y-4">
+          <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 pl-4">Configuration</h2>
+          <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden">
+            <CardContent className="p-2 space-y-1">
+              <button onClick={() => { haptic.light(); router.push("/parametres"); }} className="w-full flex items-center justify-between p-4 hover:bg-primary/5 transition-colors rounded-2xl group text-left">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
+                    <Settings className="h-5 w-5 text-primary opacity-60" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold">Paramètres de l'App</p>
+                    <p className="text-[10px] opacity-40 font-medium">Thèmes et Sceau Biométrique</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 opacity-20 group-hover:opacity-60 transition-opacity" />
+              </button>
+
+              {profile?.role === 'admin' && (
+                <button onClick={() => { haptic.light(); router.push("/admin"); }} className="w-full flex items-center justify-between p-4 hover:bg-primary/5 transition-colors rounded-2xl group text-left border-t border-primary/5">
                   <div className="flex items-center gap-4">
                     <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
                       <ShieldAlert className="h-5 w-5 text-primary opacity-60" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold">Console d'Administration</p>
+                      <p className="text-sm font-bold">Console Maître</p>
                       <p className="text-[10px] opacity-40 font-medium">Gestion du savoir et des esprits</p>
                     </div>
                   </div>
                   <ChevronRight className="h-4 w-4 opacity-20 group-hover:opacity-60 transition-opacity" />
                 </button>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="space-y-4">
           <div className="flex items-center justify-between px-4">
@@ -567,12 +590,6 @@ export default function ProfilPage() {
                   <Share2 className="h-5 w-5" />
                   Envoyer le Lien Magique
                 </Button>
-              </div>
-              
-              <div className="p-5 bg-primary-foreground/5 rounded-2xl border border-primary-foreground/5">
-                <p className="text-[11px] font-medium opacity-80 leading-relaxed text-center italic">
-                  "Chaque esprit éveillé grâce à vous renforce votre propre Lumière de 100 PTS."
-                </p>
               </div>
             </CardContent>
           </Card>

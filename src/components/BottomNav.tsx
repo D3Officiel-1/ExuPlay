@@ -2,14 +2,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Trophy, User, Settings, Medal } from "lucide-react";
+import { Trophy, User, ShoppingBag, Medal } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { haptic } from "@/lib/haptics";
 
 const NAV_ITEMS = [
-  { name: "Réglages", href: "/parametres", icon: Settings },
+  { name: "Échoppe", href: "/echoppe", icon: ShoppingBag },
   { name: "Défis", href: "/home", icon: Trophy },
   { name: "Hall", href: "/classement", icon: Medal },
   { name: "Profil", href: "/profil", icon: User },

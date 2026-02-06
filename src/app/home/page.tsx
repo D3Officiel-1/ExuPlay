@@ -19,7 +19,7 @@ import {
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, Brain, Timer, Zap, Users, Star, AlertTriangle } from "lucide-react";
+import { Trophy, CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, Brain, Timer, Zap, Users, Star, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
@@ -98,6 +98,7 @@ export default function HomePage() {
   const [quizStarted, setQuizStarted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(15);
   const [showPointsPreview, setShowPointsPreview] = useState(false);
+  const [hiddenIndices, setHiddenIndices] = useState<number[]>([]);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   
   const { user } = useUser();
@@ -167,11 +168,37 @@ export default function HomePage() {
       
       setQuizStarted(true);
       setShowPointsPreview(false);
+      setHiddenIndices([]);
       setTimeLeft(15);
     } catch (error) {
       console.error("Erreur lors du démarrage du défi:", error);
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleUseHint = async () => {
+    if (!user || !db || !profile?.hintCount || isAnswered || !quizStarted) return;
+    
+    haptic.impact();
+    const currentQuiz = sessionQuizzes[currentQuestionIdx];
+    const correctIdx = currentQuiz.correctIndex;
+    
+    // Trouver toutes les mauvaises réponses
+    const wrongIndices = [0, 1, 2, 3].filter(i => i !== correctIdx);
+    // En choisir 2 au hasard à masquer
+    const toHide = [...wrongIndices].sort(() => Math.random() - 0.5).slice(0, 2);
+    
+    setHiddenIndices(toHide);
+    
+    try {
+      await updateDoc(userRef!, {
+        hintCount: increment(-1),
+        updatedAt: serverTimestamp()
+      });
+      toast({ title: "Perception activée", description: "L'illusion se dissipe..." });
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -276,6 +303,7 @@ export default function HomePage() {
       setIsAnswered(false);
       setQuizStarted(false);
       setShowPointsPreview(false);
+      setHiddenIndices([]);
       setTimeLeft(15);
     } else {
       setQuizComplete(true);
@@ -295,6 +323,7 @@ export default function HomePage() {
     setIsAnswered(false);
     setQuizStarted(false);
     setShowPointsPreview(false);
+    setHiddenIndices([]);
     setScore(0);
     setTimeLeft(15);
   };
@@ -459,14 +488,21 @@ export default function HomePage() {
                             {question?.options.map((option: string, idx: number) => {
                               const isCorrect = idx === question.correctIndex;
                               const isSelected = idx === selectedOption;
+                              const isHidden = hiddenIndices.includes(idx);
                               
                               return (
                                 <motion.button
                                   key={idx}
-                                  whileHover={(!isAnswered && quizStarted) ? { scale: 1.02, backgroundColor: "hsl(var(--primary) / 0.05)" } : {}}
-                                  whileTap={(!isAnswered && quizStarted) ? { scale: 0.98 } : {}}
+                                  initial={false}
+                                  animate={{ 
+                                    opacity: isHidden ? 0 : 1, 
+                                    scale: isHidden ? 0.8 : 1,
+                                    filter: isHidden ? "blur(10px)" : "blur(0px)"
+                                  }}
+                                  whileHover={(!isAnswered && quizStarted && !isHidden) ? { scale: 1.02, backgroundColor: "hsl(var(--primary) / 0.05)" } : {}}
+                                  whileTap={(!isAnswered && quizStarted && !isHidden) ? { scale: 0.98 } : {}}
                                   onClick={() => handleAnswer(idx)}
-                                  disabled={isAnswered || !quizStarted || updating}
+                                  disabled={isAnswered || !quizStarted || updating || isHidden}
                                   className={`
                                     relative w-full p-4 sm:p-6 rounded-2xl text-center font-black transition-all duration-500 flex flex-col items-center justify-center border min-h-[120px] sm:min-h-[140px] overflow-hidden
                                     ${!isAnswered 
@@ -497,26 +533,39 @@ export default function HomePage() {
                           </div>
 
                           <AnimatePresence>
-                            {(isAnswered || (timeLeft === 0 && quizStarted)) && (
+                            {((isAnswered || (timeLeft === 0 && quizStarted)) || (quizStarted && !isAnswered && profile?.hintCount && profile.hintCount > 0)) && (
                               <motion.div
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="pt-4"
+                                className="pt-4 flex flex-col gap-3"
                               >
-                                <Button 
-                                  onClick={nextQuestion} 
-                                  disabled={updating}
-                                  className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-[0.4em] gap-3 shadow-2xl shadow-primary/20 bg-primary text-primary-foreground hover:scale-[1.02] transition-transform active:scale-95"
-                                >
-                                  {updating ? (
-                                    <Loader2 className="h-5 w-5 animate-spin" />
-                                  ) : (
-                                    <>
-                                      {currentQuestionIdx === sessionQuizzes.length - 1 ? "Finaliser l'Éveil" : "Défi Suivant"}
-                                      <ArrowRight className="h-5 w-5" />
-                                    </>
-                                  )}
-                                </Button>
+                                {quizStarted && !isAnswered && profile?.hintCount && profile.hintCount > 0 && hiddenIndices.length === 0 && (
+                                  <Button 
+                                    onClick={handleUseHint}
+                                    variant="outline"
+                                    className="w-full h-14 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] gap-3 border-primary/10 hover:bg-primary/5"
+                                  >
+                                    <Eye className="h-4 w-4 text-primary" />
+                                    Utiliser un Indice ({profile.hintCount})
+                                  </Button>
+                                )}
+
+                                {(isAnswered || (timeLeft === 0 && quizStarted)) && (
+                                  <Button 
+                                    onClick={nextQuestion} 
+                                    disabled={updating}
+                                    className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-[0.4em] gap-3 shadow-2xl shadow-primary/20 bg-primary text-primary-foreground hover:scale-[1.02] transition-transform active:scale-95"
+                                  >
+                                    {updating ? (
+                                      <Loader2 className="h-5 w-5 animate-spin" />
+                                    ) : (
+                                      <>
+                                        {currentQuestionIdx === sessionQuizzes.length - 1 ? "Finaliser l'Éveil" : "Défi Suivant"}
+                                        <ArrowRight className="h-5 w-5" />
+                                      </>
+                                    )}
+                                  </Button>
+                                )}
                               </motion.div>
                             )}
                           </AnimatePresence>
