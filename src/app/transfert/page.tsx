@@ -89,7 +89,8 @@ export default function TransfertPage() {
     
     try {
       const QRCodeStyling = (await import("qr-code-styling")).default;
-      const dotColor = resolvedTheme === 'dark' ? '#FFFFFF' : '#000000';
+      // Pour une visibilité parfaite et scannable, on utilise toujours des points noirs sur fond blanc
+      const dotColor = "#000000";
       
       const options = {
         width: 280,
@@ -97,7 +98,7 @@ export default function TransfertPage() {
         type: "svg" as const,
         data: user.uid,
         dotsOptions: { color: dotColor, type: "dots" as const },
-        backgroundOptions: { color: "transparent" },
+        backgroundOptions: { color: "#FFFFFF" },
         cornersSquareOptions: { color: dotColor, type: "extra-rounded" as const },
         cornersDotOptions: { color: dotColor, type: "dot" as const },
         qrOptions: { typeNumber: 0, mode: "Byte" as const, errorCorrectionLevel: "H" as const },
@@ -346,7 +347,8 @@ export default function TransfertPage() {
                       <motion.div animate={{ scale: [1, 1.05, 1], opacity: [0.05, 0.1, 0.05] }} transition={{ duration: 4, repeat: Infinity }} className="absolute inset-0 blur-[60px] rounded-full bg-primary" />
                       <Card className="border-none bg-card/60 backdrop-blur-3xl shadow-2xl rounded-[3.5rem] overflow-hidden relative w-full">
                         <CardContent className="p-8 flex flex-col items-center gap-6">
-                          <div className={`w-full aspect-square rounded-[3rem] flex items-center justify-center p-4 shadow-2xl transition-colors duration-500 ${resolvedTheme === 'dark' ? 'bg-white' : 'bg-black'}`} ref={qrRef} />
+                          {/* Le fond du QR code est forcé en blanc pour garantir le contraste de scan */}
+                          <div className="w-full aspect-square rounded-[3rem] flex items-center justify-center p-4 shadow-2xl bg-white" ref={qrRef} />
                         </CardContent>
                       </Card>
                     </div>
