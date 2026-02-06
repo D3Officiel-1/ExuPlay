@@ -144,13 +144,11 @@ export default function TransfertPage() {
     let isMounted = true;
 
     const initScanner = async () => {
-      // Déclenchement automatique dès que l'onglet 'scan' est actif et qu'aucun destinataire n'est choisi
       if (activeTab === "scan" && !recipient && !isSuccess && validationStatus === 'idle') {
-        // Attente dynamique du DOM pour garantir la présence de l'élément #reader
         let attempts = 0;
         let container = document.getElementById("reader");
         
-        while (!container && attempts < 10) {
+        while (!container && attempts < 15) {
           await new Promise(resolve => setTimeout(resolve, 100));
           container = document.getElementById("reader");
           attempts++;
@@ -165,12 +163,18 @@ export default function TransfertPage() {
           const scanner = new Html5Qrcode("reader");
           html5QrCodeRef.current = scanner;
 
+          // Calcul dynamique du qrbox pour une meilleure détection
+          const qrboxSize = Math.min(window.innerWidth * 0.7, 280);
+
           await scanner.start(
             { facingMode: "environment" },
             { 
               fps: 30, 
-              qrbox: { width: 280, height: 280 },
-              aspectRatio: 1.0 
+              qrbox: { width: qrboxSize, height: qrboxSize },
+              aspectRatio: 1.0,
+              experimentalFeatures: {
+                useBarCodeDetectorIfSupported: true
+              }
             },
             (text) => {
               if (isMounted) onScanSuccess(text);
@@ -356,7 +360,7 @@ export default function TransfertPage() {
           <div className="flex-1 w-full relative">
             <AnimatePresence mode="wait">
               {validationStatus !== 'idle' ? (
-                <motion.div key="validation-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.1, filter: "blur(20px)" }} className="fixed inset-0 z-[200] bg-background flex flex-col items-center justify-center overflow-hidden">
+                <motion.div key="validation-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.1, filter: "blur(40px)" }} className="fixed inset-0 z-[200] bg-background flex flex-col items-center justify-center overflow-hidden">
                   <div className="relative flex flex-col items-center">
                     <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="h-32 w-32 rounded-[3rem] bg-card border-2 shadow-2xl flex items-center justify-center overflow-hidden relative">
                       {validationStatus === 'error' ? <AlertCircle className="h-12 w-12 text-red-500" /> : recipient?.profileImage ? <img src={recipient.profileImage} alt="" className="w-full h-full object-cover" /> : <Sparkles className="h-12 w-12 text-primary opacity-20" />}
@@ -473,7 +477,30 @@ export default function TransfertPage() {
           </div>
         </Tabs>
       </main>
-      <style jsx global>{` #reader video { object-fit: cover !important; width: 100vw !important; height: 100vh !important; position: fixed !important; top: 0 !important; left: 0 !important; z-index: 1; } #reader { border: none !important; background: black !important; } #reader__scan_region { display: none !important; } #reader__dashboard { display: none !important; } `}</style>
+      <style jsx global>{` 
+        #reader { 
+          border: none !important; 
+          background: black !important; 
+          height: 100% !important;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        } 
+        #reader video { 
+          object-fit: cover !important; 
+          width: 100% !important; 
+          height: 100% !important;
+        } 
+        #reader__scan_region { 
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        #reader__scan_region video {
+          border-radius: 0px !important;
+        }
+        #reader__dashboard { display: none !important; } 
+      `}</style>
     </div>
   );
 }
