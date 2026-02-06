@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { 
   QrCode, 
   Loader2, 
@@ -38,7 +39,8 @@ import {
   Zap,
   AlertCircle,
   Swords,
-  ShieldCheck
+  ShieldCheck,
+  Ghost
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
@@ -61,12 +63,10 @@ export default function TransfertPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [mode, setMode] = useState<'transfer' | 'duel'>('transfer');
+  const [isAnonymous, setIsAnonymous] = useState(false);
   
   const [hasTorch, setHasTorch] = useState(false);
   const [isTorchOn, setIsTorchOn] = useState(false);
-
-  const [activeIncomingTransfer, setActiveIncomingTransfer] = useState<any>(null);
-  const lastPointsRef = useRef<number | null>(null);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -81,43 +81,11 @@ export default function TransfertPage() {
 
   const DAILY_LIMIT = profile?.trustBadge ? 2500 : 500;
 
-  useEffect(() => {
-    if (!profile || !db || !user?.uid) return;
-
-    if (lastPointsRef.current !== null && profile.totalPoints > lastPointsRef.current) {
-      const checkIncomingTransfer = async () => {
-        try {
-          const q = query(
-            collection(db, "transfers"),
-            where("toId", "==", user.uid),
-            where("read", "==", false),
-            orderBy("timestamp", "desc"),
-            limit(1)
-          );
-          const snap = await getDocs(q);
-          if (!snap.empty) {
-            haptic.impact();
-            const transfer = { id: snap.docs[0].id, ...snap.docs[0].data() };
-            setActiveIncomingTransfer(transfer);
-            setTimeout(async () => {
-              setActiveIncomingTransfer(null);
-              await updateDoc(doc(db, "transfers", transfer.id), { read: true });
-            }, 6000);
-          }
-        } catch (e) {
-          console.error("Résonance interrompue:", e);
-        }
-      };
-      checkIncomingTransfer();
-    }
-    lastPointsRef.current = profile.totalPoints;
-  }, [profile?.totalPoints, db, user?.uid, profile]);
-
   const qrRef = useRef<HTMLDivElement>(null);
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
   const generateQRCode = async () => {
-    if (!qrRef.current || !user?.uid || activeIncomingTransfer) return;
+    if (!qrRef.current || !user?.uid) return;
     
     try {
       const QRCodeStyling = (await import("qr-code-styling")).default;
@@ -144,11 +112,11 @@ export default function TransfertPage() {
   };
 
   useEffect(() => {
-    if (activeTab === "qr" && !recipient && !isSuccess && validationStatus === 'idle' && !activeIncomingTransfer) {
+    if (activeTab === "qr" && !recipient && !isSuccess && validationStatus === 'idle') {
       const timer = setTimeout(() => generateQRCode(), 100);
       return () => clearTimeout(timer);
     }
-  }, [activeTab, user?.uid, resolvedTheme, recipient, isSuccess, validationStatus, activeIncomingTransfer]);
+  }, [activeTab, user?.uid, resolvedTheme, recipient, isSuccess, validationStatus]);
 
   const stopScanner = async () => {
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
@@ -209,16 +177,6 @@ export default function TransfertPage() {
     return () => { isMounted = false; clearTimeout(scannerTimeout); stopScanner(); };
   }, [activeTab, recipient, isSuccess, validationStatus]);
 
-  const toggleTorch = async () => {
-    if (!html5QrCodeRef.current || !html5QrCodeRef.current.isScanning) return;
-    haptic.light();
-    try {
-      const newState = !isTorchOn;
-      await html5QrCodeRef.current.applyVideoConstraints({ advanced: [{ torch: newState }] } as any);
-      setIsTorchOn(newState);
-    } catch (err) {}
-  };
-
   const onScanSuccess = async (decodedText: string) => {
     await stopScanner();
     haptic.medium();
@@ -265,7 +223,7 @@ export default function TransfertPage() {
       toast({ 
         variant: "destructive", 
         title: "Limite dépassée", 
-        description: `Votre flux est limité à ${DAILY_LIMIT} PTS. ${!profile?.trustBadge ? "Obtenez le Sceau de Confiance pour augmenter cette limite." : ""}`
+        description: `Votre flux est limité à ${DAILY_LIMIT} PTS.`
       });
       return;
     }
@@ -286,13 +244,19 @@ export default function TransfertPage() {
         await updateDoc(senderRef, { totalPoints: increment(-totalCost), updatedAt: serverTimestamp() });
         await updateDoc(receiverRef, { totalPoints: increment(transferAmount), updatedAt: serverTimestamp() });
         await addDoc(collection(db, "transfers"), {
-          fromId: user.uid, fromName: profile?.username || "Anonyme", fromPhoto: profile?.profileImage || "",
-          toId: recipient.id, amount: transferAmount, fees: fees, timestamp: new Date().toISOString(), read: false
+          fromId: isAnonymous ? "anonymous" : user.uid,
+          fromName: isAnonymous ? "Un Esprit Inconnu" : (profile?.username || "Anonyme"),
+          fromPhoto: isAnonymous ? "" : (profile?.profileImage || ""),
+          toId: recipient.id,
+          amount: transferAmount,
+          fees: fees,
+          timestamp: new Date().toISOString(),
+          read: false
         });
         haptic.success();
         setIsSuccess(true);
       } else {
-        const duelRef = await addDoc(collection(db, "duels"), {
+        await addDoc(collection(db, "duels"), {
           challengerId: user.uid,
           challengerName: profile?.username || "Anonyme",
           challengerPhoto: profile?.profileImage || "",
@@ -310,6 +274,29 @@ export default function TransfertPage() {
     } catch (error) {
       haptic.error();
       toast({ variant: "destructive", title: "Erreur" });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePickRandomRecipient = async () => {
+    setIsProcessing(true);
+    haptic.medium();
+    try {
+      const q = query(collection(db, "users"), limit(50));
+      const snap = await getDocs(q);
+      const others = snap.docs.filter(d => d.id !== user?.uid);
+      if (others.length > 0) {
+        const randomDoc = others[Math.floor(Math.random() * others.length)];
+        haptic.success();
+        setRecipient({ id: randomDoc.id, ...randomDoc.data() });
+        setMode('transfer');
+        setIsAnonymous(true);
+      } else {
+        toast({ title: "Solitude", description: "Aucun autre esprit n'a été trouvé." });
+      }
+    } catch (e) {
+      toast({ variant: "destructive", title: "Dissonance réseau" });
     } finally {
       setIsProcessing(false);
     }
@@ -347,7 +334,7 @@ export default function TransfertPage() {
                 </motion.div>
               ) : !recipient && !isSuccess ? (
                 <motion.div key="selection" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
-                  <TabsContent value="qr" className="mt-0 h-full flex flex-col items-center justify-start pt-28 px-6">
+                  <TabsContent value="qr" className="mt-0 h-full flex flex-col items-center justify-start pt-28 px-6 space-y-8">
                     <div className="relative group flex justify-center w-full max-w-[340px]">
                       <motion.div animate={{ scale: [1, 1.05, 1], opacity: [0.05, 0.1, 0.05] }} transition={{ duration: 4, repeat: Infinity }} className="absolute inset-0 blur-[60px] rounded-full bg-primary" />
                       <Card className="border-none bg-card/60 backdrop-blur-3xl shadow-2xl rounded-[3.5rem] overflow-hidden relative w-full">
@@ -356,14 +343,26 @@ export default function TransfertPage() {
                         </CardContent>
                       </Card>
                     </div>
-                    <div className="mt-8 flex flex-col items-center gap-4">
-                      {profile?.trustBadge && (
-                        <div className="flex items-center gap-2 px-4 py-2 bg-primary/5 border border-primary/10 rounded-full shadow-inner">
-                          <ShieldCheck className="h-3 w-3 text-primary" />
-                          <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Flux Étendu : {DAILY_LIMIT} PTS</span>
-                        </div>
-                      )}
-                      <Button variant="ghost" onClick={() => router.push("/profil")} className="text-[10px] font-black uppercase opacity-40"><X className="h-4 w-4 mr-2" /> Fermer</Button>
+                    
+                    <div className="flex flex-col items-center gap-4 w-full px-4">
+                      <Button 
+                        onClick={handlePickRandomRecipient}
+                        disabled={isProcessing}
+                        className="w-full h-16 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.3em] gap-3 bg-primary/5 text-primary border border-primary/10 hover:bg-primary/10"
+                      >
+                        {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                        Répandre l'Éveil
+                      </Button>
+                      
+                      <div className="flex flex-col items-center gap-2">
+                        {profile?.trustBadge && (
+                          <div className="flex items-center gap-2 px-4 py-2 bg-primary/5 border border-primary/10 rounded-full shadow-inner">
+                            <ShieldCheck className="h-3 w-3 text-primary" />
+                            <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Flux Étendu : {DAILY_LIMIT} PTS</span>
+                          </div>
+                        )}
+                        <Button variant="ghost" onClick={() => router.push("/profil")} className="text-[10px] font-black uppercase opacity-40"><X className="h-4 w-4 mr-2" /> Fermer</Button>
+                      </div>
                     </div>
                   </TabsContent>
                   <TabsContent value="scan" className="mt-0 h-full">
@@ -384,17 +383,30 @@ export default function TransfertPage() {
                         <Button variant={mode === 'duel' ? 'default' : 'ghost'} onClick={() => setMode('duel')} className="h-10 rounded-full text-[10px] font-black uppercase gap-2"><Swords className="h-3 w-3" /> Duel</Button>
                       </div>
                     </CardHeader>
-                    <CardContent className="px-8 pb-10 space-y-6">
+                    <CardContent className="px-8 pb-6 space-y-6">
                       <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase opacity-40 ml-2">{mode === 'duel' ? "Mise du duel" : "Montant du transfert"}</Label>
                         <Input type="number" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-16 text-3xl font-black text-center rounded-2xl bg-primary/5 border-none" autoFocus />
                       </div>
+                      
+                      {mode === 'transfer' && (
+                        <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/5">
+                          <div className="flex items-center gap-3">
+                            <Ghost className={cn("h-5 w-5 transition-colors", isAnonymous ? "text-primary" : "opacity-20")} />
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-widest">Don Anonyme</p>
+                              <p className="text-[8px] font-medium opacity-40 uppercase">Masquer votre identité</p>
+                            </div>
+                          </div>
+                          <Switch checked={isAnonymous} onCheckedChange={setIsAnonymous} />
+                        </div>
+                      )}
+
                       <div className="flex justify-between items-center px-2">
                         <div className="space-y-1">
                           {transferAmount > 0 && mode === 'transfer' && (
-                            <p className="text-[10px] font-bold uppercase opacity-40 flex justify-between gap-4">
-                              <span>Frais (10%) : +{fees} PTS</span>
-                              <span>Total : {totalCost} PTS</span>
+                            <p className="text-[10px] font-bold uppercase opacity-40">
+                              Total : {totalCost} PTS
                             </p>
                           )}
                         </div>

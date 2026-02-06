@@ -14,6 +14,7 @@ import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
 import { BiometricLock } from "@/components/BiometricLock";
 import { SuccessfulExchangeOverlay } from "@/components/SuccessfulExchangeOverlay";
 import { DuelInvitationListener } from "@/components/DuelInvitationListener";
+import { IncomingTransferOverlay } from "@/components/IncomingTransferOverlay";
 import { doc, getDoc, collection, query, orderBy, limit, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/Logo";
@@ -228,6 +229,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
       <ThemeSync />
       <BiometricLock />
       <SuccessfulExchangeOverlay />
+      <IncomingTransferOverlay />
       <DuelInvitationListener />
       <AutoQuizGenerator />
       {showNav && <Header />}
