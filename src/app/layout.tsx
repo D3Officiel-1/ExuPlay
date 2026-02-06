@@ -170,7 +170,6 @@ function OfflineOverlay() {
 
 function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const [isOffline, setIsOffline] = useState(false);
-  const [showPwaPrompt, setShowPwaPrompt] = useState(false);
   const { user, isLoading: isAuthLoading } = useUser();
   const db = useFirestore();
   const pathname = usePathname();
@@ -214,8 +213,12 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div>;
   }
 
-  const showNav = user && !["/", "/login", "/autoriser", "/offline", "/transfert", "/duels"].some(p => pathname.startsWith(p));
-  const showBottomNav = user && !["/", "/login", "/autoriser", "/offline", "/transfert", "/echange", "/duels"].some(p => pathname.startsWith(p));
+  // Correction de la logique d'affichage pour éviter que "/" ne match tout
+  const excludedNavPaths = ["/", "/login", "/autoriser", "/offline", "/transfert", "/duels"];
+  const excludedBottomNavPaths = ["/", "/login", "/autoriser", "/offline", "/transfert", "/echange", "/duels"];
+
+  const showNav = user && !excludedNavPaths.some(p => p === "/" ? pathname === "/" : pathname.startsWith(p));
+  const showBottomNav = user && !excludedBottomNavPaths.some(p => p === "/" ? pathname === "/" : pathname.startsWith(p));
 
   return (
     <>
