@@ -16,7 +16,7 @@ import {
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Trophy, ArrowRight, Loader2, Timer, Zap, Users, Star, Eye, Clock, ShieldCheck } from "lucide-react";
+import { Trophy, ArrowRight, Loader2, Timer, Zap, Users, Star, Eye, Clock, ShieldCheck, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
@@ -122,6 +122,7 @@ export default function HomePage() {
   const [hiddenIndices, setHiddenIndices] = useState<number[]>([]);
   const [isProtected, setIsProtected] = useState(false);
   const [isMultiplied, setIsMultiplied] = useState(false);
+  const [isPeekingPoints, setIsPeekingPoints] = useState(false);
   
   const { user } = useUser();
   const db = useFirestore();
@@ -199,7 +200,15 @@ export default function HomePage() {
       setTimeLeft(15);
       setIsProtected(false);
       setIsMultiplied(false);
+      setIsPeekingPoints(false);
     } catch (error) {} finally { setUpdating(false); }
+  };
+
+  const handlePeekPoints = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    if (quizStarted || updating) return;
+    haptic.impact();
+    setIsPeekingPoints(true);
   };
 
   const handleUseHint = async () => {
@@ -274,7 +283,7 @@ export default function HomePage() {
   if (quizzesLoading || attemptsLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin opacity-20" /></div>;
 
   const question = sessionQuizzes[currentQuestionIdx];
-  const hasInventory = profile && (profile.hintCount > 0 || profile.timeBoostCount > 0 || profile.shieldCount > 0 || profile.multiplierCount > 0);
+  const hasInventory = profile && ((profile.hintCount || 0) > 0 || (profile.timeBoostCount || 0) > 0 || (profile.shieldCount || 0) > 0 || (profile.multiplierCount || 0) > 0);
 
   return (
     <div className={cn("min-h-screen bg-background flex flex-col pb-32 transition-colors duration-1000", isRoyalActive && "bg-yellow-500/[0.02]")}>
@@ -307,70 +316,110 @@ export default function HomePage() {
                   </motion.div>
                 )}
 
-                <Card className={cn("border-none backdrop-blur-3xl shadow-2xl rounded-[3rem] overflow-hidden relative", isRoyalActive ? "bg-yellow-500/[0.03] ring-2 ring-yellow-500/20 shadow-yellow-500/10" : "bg-card/40")}>
-                  <CardContent className="p-8 sm:p-12 space-y-12">
-                    <div className="relative min-h-[140px] flex items-center justify-center overflow-hidden rounded-[2rem]">
-                      <AnimatePresence>
-                        {quizStarted ? (
-                          <motion.p initial={{ opacity: 0, filter: "blur(8px)" }} animate={{ opacity: 1, filter: "blur(0px)" }} className="text-xl sm:text-2xl font-black leading-tight tracking-tight text-center px-4">{question?.question}</motion.p>
-                        ) : (
-                          <motion.div key="mask" exit={{ opacity: 0 }} className="absolute inset-0 z-20 flex items-center justify-center">
-                            <SpoilerOverlay />
-                            <Button onClick={handleStartChallenge} disabled={updating} className="h-16 px-12 rounded-2xl font-black text-[10px] uppercase tracking-[0.4em] z-30 shadow-2xl">{updating ? <Loader2 className="h-5 w-5 animate-spin" /> : "Dévoiler l'Inconnu"}</Button>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
+                <div className="relative">
+                  <AnimatePresence>
+                    {isPeekingPoints && !quizStarted && (
+                      <motion.div
+                        key="points-preview"
+                        initial={{ opacity: 0, scale: 0.8, rotateY: 90, filter: "blur(20px)" }}
+                        animate={{ opacity: 1, scale: 1, rotateY: 0, filter: "blur(0px)" }}
+                        exit={{ opacity: 0, scale: 1.2, rotateY: -90, filter: "blur(40px)" }}
+                        transition={{ type: "spring", damping: 15, stiffness: 100 }}
+                        className="absolute inset-0 z-[100] bg-card/95 backdrop-blur-[50px] rounded-[3rem] border border-primary/10 shadow-2xl flex flex-col items-center justify-center text-center cursor-pointer overflow-hidden"
+                        onClick={() => { haptic.light(); setIsPeekingPoints(false); }}
+                      >
+                        <motion.div 
+                          animate={{ y: [0, -10, 0], scale: [1, 1.05, 1] }} 
+                          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                          className="space-y-6"
+                        >
+                          <div className="mx-auto h-20 w-20 bg-primary/5 rounded-[2rem] flex items-center justify-center relative">
+                            <Zap className="h-10 w-10 text-primary" />
+                            <motion.div animate={{ opacity: [0, 1, 0], scale: [1, 1.5, 1] }} transition={{ duration: 2, repeat: Infinity }} className="absolute inset-0 bg-primary/20 rounded-full blur-xl" />
+                          </div>
+                          <div className="space-y-1">
+                            <span className="text-7xl font-black tracking-tighter tabular-nums">{question?.points || 10}</span>
+                            <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-30">Lumière en Jeu</p>
+                          </div>
+                        </motion.div>
+                        <Button variant="ghost" size="icon" className="absolute top-8 right-8 rounded-full opacity-20 hover:opacity-100"><X className="h-5 w-5" /></Button>
+                        <div className="absolute bottom-10 opacity-10 text-[8px] font-black uppercase tracking-widest animate-pulse">Toucher pour masquer</div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                      {question?.options.map((option: string, idx: number) => {
-                        const isCorrect = idx === question.correctIndex;
-                        const isSelected = idx === selectedOption;
-                        const isHidden = hiddenIndices.includes(idx);
-                        return (
-                          <motion.button key={idx} animate={{ opacity: isHidden ? 0 : 1, scale: isHidden ? 0.8 : 1 }} onClick={() => handleAnswer(idx)} disabled={isAnswered || !quizStarted || updating || isHidden} className={cn("relative w-full p-4 sm:p-6 rounded-2xl text-center font-black transition-all duration-500 flex flex-col items-center justify-center border min-h-[120px]", !isAnswered ? "bg-background/20 border-primary/5" : isCorrect ? "bg-green-500/10 border-green-500/30 text-green-600" : isSelected ? "bg-red-500/10 border-red-500/30 text-red-600" : "opacity-20 scale-95")}>
-                            <span className="text-lg leading-tight relative z-10">{option}</span>
-                          </motion.button>
-                        );
-                      })}
-                    </div>
-
-                    {quizStarted && !isAnswered && hasInventory && (
-                      <div className="flex justify-center gap-2 pt-4">
-                        {profile?.hintCount > 0 && (
-                          <Button size="icon" variant="ghost" disabled={hiddenIndices.length > 0} onClick={handleUseHint} className="h-12 w-12 rounded-xl bg-primary/5 border border-primary/5 relative">
-                            <Eye className="h-5 w-5 text-blue-500" />
-                            <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[8px] font-black px-1.5 rounded-full">{profile.hintCount}</span>
-                          </Button>
-                        )}
-                        {profile?.timeBoostCount > 0 && (
-                          <Button size="icon" variant="ghost" onClick={handleAddTime} className="h-12 w-12 rounded-xl bg-primary/5 border border-primary/5 relative">
-                            <Clock className="h-5 w-5 text-orange-500" />
-                            <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[8px] font-black px-1.5 rounded-full">{profile.timeBoostCount}</span>
-                          </Button>
-                        )}
-                        {profile?.shieldCount > 0 && (
-                          <Button size="icon" variant="ghost" disabled={isProtected} onClick={handleUseShield} className="h-12 w-12 rounded-xl bg-primary/5 border border-primary/5 relative">
-                            <ShieldCheck className={cn("h-5 w-5", isProtected ? "opacity-20" : "text-green-500")} />
-                            <span className="absolute -top-1 -right-1 bg-green-500 text-white text-[8px] font-black px-1.5 rounded-full">{profile.shieldCount}</span>
-                          </Button>
-                        )}
-                        {profile?.multiplierCount > 0 && (
-                          <Button size="icon" variant="ghost" disabled={isMultiplied} onClick={handleUseMultiplier} className="h-12 w-12 rounded-xl bg-primary/5 border border-primary/5 relative">
-                            <Star className={cn("h-5 w-5", isMultiplied ? "opacity-20" : "text-yellow-500")} />
-                            <span className="absolute -top-1 -right-1 bg-yellow-500 text-white text-[8px] font-black px-1.5 rounded-full">{profile.multiplierCount}</span>
-                          </Button>
-                        )}
+                  <Card className={cn("border-none backdrop-blur-3xl shadow-2xl rounded-[3rem] overflow-hidden relative transition-all duration-700", isRoyalActive ? "bg-yellow-500/[0.03] ring-2 ring-yellow-500/20 shadow-yellow-500/10" : "bg-card/40", isPeekingPoints && "opacity-0 scale-95 blur-xl pointer-events-none")}>
+                    <CardContent className="p-8 sm:p-12 space-y-12">
+                      <div className="relative min-h-[140px] flex items-center justify-center overflow-hidden rounded-[2rem]">
+                        <AnimatePresence>
+                          {quizStarted ? (
+                            <motion.p initial={{ opacity: 0, filter: "blur(8px)" }} animate={{ opacity: 1, filter: "blur(0px)" }} className="text-xl sm:text-2xl font-black leading-tight tracking-tight text-center px-4">{question?.question}</motion.p>
+                          ) : (
+                            <motion.div key="mask" exit={{ opacity: 0 }} className="absolute inset-0 z-20 flex items-center justify-center">
+                              <SpoilerOverlay />
+                              <Button 
+                                onClick={handleStartChallenge} 
+                                onContextMenu={handlePeekPoints}
+                                disabled={updating} 
+                                className="h-16 px-12 rounded-2xl font-black text-[10px] uppercase tracking-[0.4em] z-30 shadow-2xl active:scale-95 transition-transform"
+                              >
+                                {updating ? <Loader2 className="h-5 w-5 animate-spin" /> : "Dévoiler l'Inconnu"}
+                              </Button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                    )}
 
-                    {isAnswered && (
-                      <Button onClick={nextQuestion} disabled={updating} className={cn("w-full h-16 rounded-2xl font-black text-xs uppercase gap-3 shadow-2xl", isRoyalActive ? "bg-yellow-500 text-black" : "bg-primary text-primary-foreground")}>
-                        {currentQuestionIdx === sessionQuizzes.length - 1 ? "Finaliser l'Éveil" : "Défi Suivant"}<ArrowRight className="h-5 w-5" />
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
+                      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                        {question?.options.map((option: string, idx: number) => {
+                          const isCorrect = idx === question.correctIndex;
+                          const isSelected = idx === selectedOption;
+                          const isHidden = hiddenIndices.includes(idx);
+                          return (
+                            <motion.button key={idx} animate={{ opacity: isHidden ? 0 : 1, scale: isHidden ? 0.8 : 1 }} onClick={() => handleAnswer(idx)} disabled={isAnswered || !quizStarted || updating || isHidden} className={cn("relative w-full p-4 sm:p-6 rounded-2xl text-center font-black transition-all duration-500 flex flex-col items-center justify-center border min-h-[120px]", !isAnswered ? "bg-background/20 border-primary/5" : isCorrect ? "bg-green-500/10 border-green-500/30 text-green-600" : isSelected ? "bg-red-500/10 border-red-500/30 text-red-600" : "opacity-20 scale-95")}>
+                              <span className="text-lg leading-tight relative z-10">{option}</span>
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+
+                      {quizStarted && !isAnswered && hasInventory && (
+                        <div className="flex justify-center gap-2 pt-4">
+                          {(profile?.hintCount || 0) > 0 && (
+                            <Button size="icon" variant="ghost" disabled={hiddenIndices.length > 0} onClick={handleUseHint} className="h-12 w-12 rounded-xl bg-primary/5 border border-primary/5 relative">
+                              <Eye className="h-5 w-5 text-blue-500" />
+                              <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[8px] font-black px-1.5 rounded-full">{profile?.hintCount}</span>
+                            </Button>
+                          )}
+                          {(profile?.timeBoostCount || 0) > 0 && (
+                            <Button size="icon" variant="ghost" onClick={handleAddTime} className="h-12 w-12 rounded-xl bg-primary/5 border border-primary/5 relative">
+                              <Clock className="h-5 w-5 text-orange-500" />
+                              <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[8px] font-black px-1.5 rounded-full">{profile?.timeBoostCount}</span>
+                            </Button>
+                          )}
+                          {(profile?.shieldCount || 0) > 0 && (
+                            <Button size="icon" variant="ghost" disabled={isProtected} onClick={handleUseShield} className="h-12 w-12 rounded-xl bg-primary/5 border border-primary/5 relative">
+                              <ShieldCheck className={cn("h-5 w-5", isProtected ? "opacity-20" : "text-green-500")} />
+                              <span className="absolute -top-1 -right-1 bg-green-500 text-white text-[8px] font-black px-1.5 rounded-full">{profile?.shieldCount}</span>
+                            </Button>
+                          )}
+                          {(profile?.multiplierCount || 0) > 0 && (
+                            <Button size="icon" variant="ghost" disabled={isMultiplied} onClick={handleUseMultiplier} className="h-12 w-12 rounded-xl bg-primary/5 border border-primary/5 relative">
+                              <Star className={cn("h-5 w-5", isMultiplied ? "opacity-20" : "text-yellow-500")} />
+                              <span className="absolute -top-1 -right-1 bg-yellow-500 text-white text-[8px] font-black px-1.5 rounded-full">{profile?.multiplierCount}</span>
+                            </Button>
+                          )}
+                        </div>
+                      )}
+
+                      {isAnswered && (
+                        <Button onClick={nextQuestion} disabled={updating} className={cn("w-full h-16 rounded-2xl font-black text-xs uppercase gap-3 shadow-2xl", isRoyalActive ? "bg-yellow-500 text-black" : "bg-primary text-primary-foreground")}>
+                          {currentQuestionIdx === sessionQuizzes.length - 1 ? "Finaliser l'Éveil" : "Défi Suivant"}<ArrowRight className="h-5 w-5" />
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               </motion.div>
             ) : (
               <div className="text-center space-y-12">
