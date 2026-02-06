@@ -142,7 +142,6 @@ export default function HomePage() {
   const [updating, setUpdating] = useState(false);
   const [quizStarted, setQuizStarted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(15);
-  const [showPointsPreview, setShowPointsPreview] = useState(false);
   const [hiddenIndices, setHiddenIndices] = useState<number[]>([]);
   const [isProtected, setIsProtected] = useState(false);
   const [isMultiplied, setIsMultiplied] = useState(false);
@@ -170,6 +169,28 @@ export default function HomePage() {
   }, [db, user?.uid]);
 
   const { data: userAttempts, loading: attemptsLoading } = useCollection(attemptsQuery);
+
+  // Oracle du Flux Temporel : Désactivation automatique de l'Éveil Royal après expiration
+  useEffect(() => {
+    if (!appStatus || !db) return;
+    
+    const checkExpiry = async () => {
+      const until = appStatus.royalChallengeActiveUntil?.toDate?.();
+      if (until && until < new Date()) {
+        try {
+          const statusRef = doc(db, "appConfig", "status");
+          await updateDoc(statusRef, {
+            communityGoalPoints: 0,
+            royalChallengeActiveUntil: null,
+            updatedAt: serverTimestamp()
+          });
+        } catch (e) {}
+      }
+    };
+
+    const interval = setInterval(checkExpiry, 10000); // Surveillance toutes les 10s
+    return () => clearInterval(interval);
+  }, [appStatus, db]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -230,7 +251,6 @@ export default function HomePage() {
         status: 'started'
       }, { merge: true });
       setQuizStarted(true);
-      setShowPointsPreview(false);
       setHiddenIndices([]);
       setTimeLeft(15);
       setIsProtected(false);
@@ -259,7 +279,7 @@ export default function HomePage() {
     haptic.impact();
     setTimeLeft(prev => prev + 15);
     updateDoc(userRef!, { timeBoostCount: increment(-1), updatedAt: serverTimestamp() });
-    toast({ title: "Temps Suspendu", description: "15 secondes ont été ajoutées." });
+    toast({ title: "Temps Suspendu", description: "15 secondes ajoutées." });
   };
 
   const handleUseShield = async () => {
@@ -275,7 +295,7 @@ export default function HomePage() {
     haptic.impact();
     setIsMultiplied(true);
     updateDoc(userRef!, { multiplierCount: increment(-1), updatedAt: serverTimestamp() });
-    toast({ title: "Prisme de Lumière", description: "Lumière multipliée pour ce défi." });
+    toast({ title: "Prisme de Lumière", description: "Lumière multipliée." });
   };
 
   const handleAnswer = (index: number) => {
@@ -290,7 +310,7 @@ export default function HomePage() {
     let penalty = 0;
     if (isTimeout && profile && (profile.totalPoints || 0) > 10 && !isProtected) {
       penalty = -10;
-      toast({ variant: "destructive", title: "Temps Épuisé", description: "-10 PTS de Lumière." });
+      toast({ variant: "destructive", title: "Temps Épuisé", description: "-10 PTS." });
     } else if (!isCorrect && !isTimeout && !isProtected) {
       penalty = -2;
       setShowPenaltyAnim(true);
@@ -307,7 +327,29 @@ export default function HomePage() {
     const totalChange = pointsEarned + penalty;
     if (totalChange !== 0) {
       updateDoc(doc(db, "users", user.uid), { totalPoints: increment(totalChange), lastQuizAt: serverTimestamp(), updatedAt: serverTimestamp() });
-      if (pointsEarned > 0 && appStatusRef) updateDoc(appStatusRef, { communityGoalPoints: increment(pointsEarned), updatedAt: serverTimestamp() });
+      
+      if (pointsEarned > 0 && appStatusRef && appStatus) {
+        const currentProgress = (appStatus.communityGoalPoints || 0) + pointsEarned;
+        const target = appStatus.communityGoalTarget || 10000;
+        
+        let updateData: any = { 
+          communityGoalPoints: increment(pointsEarned), 
+          updatedAt: serverTimestamp() 
+        };
+
+        if (currentProgress >= target && !isRoyalActive) {
+          const expiry = new Date();
+          expiry.setMinutes(expiry.getMinutes() + 10);
+          updateData.royalChallengeActiveUntil = expiry;
+          haptic.impact();
+          toast({ 
+            title: "Éveil Royal Activé !", 
+            description: "Le flux a atteint son paroxysme. +100 PTS par défi pendant 10 minutes !" 
+          });
+        }
+        
+        updateDoc(appStatusRef, updateData);
+      }
     }
   };
 

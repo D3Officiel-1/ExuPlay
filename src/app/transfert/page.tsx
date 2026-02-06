@@ -49,7 +49,6 @@ import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
 export default function TransfertPage() {
-  const { user } = user;
   const { user: firebaseUser } = useUser();
   const db = useFirestore();
   const router = useRouter();
@@ -140,7 +139,6 @@ export default function TransfertPage() {
   const stopScanner = async () => {
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
       try {
-        // Éteindre la lampe avant de stopper si elle est allumée
         if (isTorchOn) {
           try {
             // @ts-ignore
@@ -186,7 +184,6 @@ export default function TransfertPage() {
             { 
               fps: 30, 
               qrbox: (viewfinderWidth, viewfinderHeight) => {
-                // Zone de détection globale (viseur invisible)
                 return { width: viewfinderWidth, height: viewfinderHeight };
               },
               aspectRatio: screenRatio,
@@ -270,7 +267,6 @@ export default function TransfertPage() {
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
       try {
         const state = !isTorchOn;
-        // La méthode applyVideoConstraints permet de contrôler le matériel directement
         // @ts-ignore
         await html5QrCodeRef.current.applyVideoConstraints({
           advanced: [{ torch: state }]
@@ -282,11 +278,9 @@ export default function TransfertPage() {
         toast({ 
           variant: "destructive",
           title: "Lumière Indisponible", 
-          description: "Votre appareil ou navigateur ne permet pas le contrôle du flash." 
+          description: "Le flash ne peut être matérialisé." 
         });
       }
-    } else {
-      toast({ title: "Scanner inactif", description: "La caméra doit être active pour utiliser la lumière." });
     }
   };
 
@@ -351,7 +345,6 @@ export default function TransfertPage() {
           fromPhoto: isAnonymous ? "" : (profile?.profileImage || ""),
           toId: recipient.id,
           amount: transferAmount,
-          fees: fees,
           timestamp: new Date().toISOString(),
           read: false
         });
@@ -373,12 +366,12 @@ export default function TransfertPage() {
         });
         
         haptic.success();
-        toast({ title: "Défi Lancé !", description: "Mise prélevée. Attendez que votre adversaire accepte." });
+        toast({ title: "Défi Lancé !", description: "Mise prélevée." });
         router.push("/home");
       }
     } catch (error) {
       haptic.error();
-      toast({ variant: "destructive", title: "Erreur lors de la transmission" });
+      toast({ variant: "destructive", title: "Erreur de transmission" });
     } finally {
       setIsProcessing(false);
     }
@@ -435,10 +428,6 @@ export default function TransfertPage() {
                         )}
                         <div className="absolute inset-0 border-[12px] border-white rounded-[3.5rem] pointer-events-none" />
                       </div>
-                    </div>
-
-                    <div className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/5">
-                      <p className="text-[10px] leading-relaxed font-medium opacity-40 italic">"Présentez ce Sceau à un autre esprit pour qu'il puisse puiser dans votre lumière ou vous défier dans l'arène."</p>
                     </div>
 
                     <Button variant="ghost" onClick={() => router.push("/profil")} className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 hover:opacity-100 transition-opacity">Retour au Sanctuaire</Button>
@@ -543,10 +532,6 @@ export default function TransfertPage() {
                           <Switch checked={isAnonymous} onCheckedChange={setIsAnonymous} />
                         </div>
                       )}
-                      <div className="flex justify-between items-center px-2">
-                        <div className="space-y-1">{transferAmount > 0 && mode === 'transfer' && (<p className="text-[10px] font-bold uppercase opacity-40">Total : {totalCost} PTS</p>)}</div>
-                        <div className="text-right"><p className="text-[9px] font-black uppercase tracking-widest opacity-20">Limite : {DAILY_LIMIT} PTS</p></div>
-                      </div>
                     </CardContent>
                     <CardFooter className="px-8 pb-10 flex flex-col gap-3">
                       <Button onClick={handleAction} disabled={isProcessing || !amount || transferAmount <= 0 || (profile?.totalPoints || 0) < totalCost} className="w-full h-16 rounded-2xl font-black text-sm uppercase gap-3 shadow-xl">
