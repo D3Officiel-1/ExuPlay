@@ -145,6 +145,13 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const { data: profile } = useDoc(userDocRef);
   const { data: appStatus } = useDoc(appConfigRef);
 
+  // Oracle de l'Inviolabilité : Neutralise le menu contextuel système
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => e.preventDefault();
+    window.addEventListener('contextmenu', handleContextMenu);
+    return () => window.removeEventListener('contextmenu', handleContextMenu);
+  }, []);
+
   useEffect(() => {
     if (isAuthLoading) return;
     const publicPaths = ["/", "/login", "/offline", "/autoriser"];

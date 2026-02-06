@@ -137,8 +137,19 @@ export default function ProfilPage() {
           <div className="relative inline-block">
             <button 
               onClick={() => fileInputRef.current?.click()} 
-              onPointerDown={() => longPressTimer.current = setTimeout(() => { haptic.medium(); setIsFullImageOpen(true); }, 600)} 
+              onContextMenu={(e) => {
+                e.preventDefault();
+                haptic.medium();
+                setIsFullImageOpen(true);
+              }}
+              onPointerDown={() => {
+                longPressTimer.current = setTimeout(() => { 
+                  haptic.medium(); 
+                  setIsFullImageOpen(true); 
+                }, 600);
+              }} 
               onPointerUp={() => clearTimeout(longPressTimer.current)} 
+              onPointerLeave={() => clearTimeout(longPressTimer.current)}
               className="group active:scale-95 transition-transform"
             >
               <ProfileAvatar imageUrl={currentImage} points={profile?.totalPoints || 0} activeTheme={profile?.activeTheme} isTrusted={profile?.trustBadge} size="xl" />
