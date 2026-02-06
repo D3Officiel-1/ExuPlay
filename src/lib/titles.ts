@@ -103,8 +103,8 @@ export const THEMES: Record<string, VisualTheme> = {
     id: "theme_sapphire",
     name: "Saphir",
     color: "text-blue-500",
-    borderColor: "border-blue-500/50",
-    auraClass: "bg-blue-500/20 blur-2xl shadow-[0_0_30px_rgba(59,130,246,0.3)]"
+    borderColor: "border-blue-500/60",
+    auraClass: "bg-blue-600/20 blur-2xl shadow-[0_0_40px_rgba(37,99,235,0.4)]"
   },
   "theme_obsidian": {
     id: "theme_obsidian",
