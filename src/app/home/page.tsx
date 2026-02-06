@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -172,7 +173,7 @@ export default function HomePage() {
 
   const { data: userAttempts, loading: attemptsLoading } = useCollection(attemptsQuery);
 
-  // Oracle de Discipline : Sentence en cas d'abandon (réduction/fermeture de l'app)
+  // Oracle de Discipline : Sentence en cas d'abandon
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden' && quizStarted && !isAnswered && user?.uid && profile?.totalPoints) {
@@ -230,7 +231,7 @@ export default function HomePage() {
     return () => clearInterval(timer);
   }, [quizStarted, isAnswered, timeLeft]);
 
-  // Oracle de l'Éveil Royal : Gestion Automatisée et Silencieuse (10 min)
+  // Oracle de l'Éveil Royal
   const royalChallengeUntil = appStatus?.royalChallengeActiveUntil?.toDate?.() || null;
   const isRoyalActive = royalChallengeUntil && royalChallengeUntil > new Date();
 
@@ -240,17 +241,15 @@ export default function HomePage() {
     const royalUntil = appStatus.royalChallengeActiveUntil?.toDate?.() || null;
     const now = new Date();
     
-    // 1. Désactivation automatique en arrière-plan (Fin de cycle)
     if (royalUntil && now > royalUntil) {
       updateDoc(appStatusRef, {
         royalChallengeActiveUntil: null,
-        communityGoalPoints: 0, // Réinitialisation pour le prochain cycle
+        communityGoalPoints: 0,
         updatedAt: serverTimestamp()
-      }).catch(() => {}); // Transparence totale
+      }).catch(() => {});
       return;
     }
 
-    // 2. Déclenchement de l'Éveil (Activation)
     const currentPoints = appStatus.communityGoalPoints || 0;
     const targetPoints = appStatus.communityGoalTarget || 10000;
 
@@ -379,20 +378,6 @@ export default function HomePage() {
     toast({ title: "Prisme de Lumière", description: "Lumière multipliée pour ce défi." });
   };
 
-  const handleLongPressStart = () => {
-    if (updating || quizStarted) return;
-    longPressTimer.current = setTimeout(() => {
-      haptic.light();
-      setShowPointsPreview(true);
-    }, 600);
-  };
-
-  const handleLongPressEnd = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-    }
-  };
-
   const handleAnswer = (index: number) => {
     if (!quizStarted || isAnswered || sessionQuizzes.length === 0 || !user || !db) return;
     
@@ -430,7 +415,6 @@ export default function HomePage() {
     const userDocRef = doc(db, "users", user.uid);
     const quizDocRef = doc(db, "quizzes", currentQuiz.id);
 
-    // Maintenance Silencieuse en Arrière-plan
     const attemptData = {
       isPlayed: true,
       status: 'completed',
@@ -442,7 +426,6 @@ export default function HomePage() {
 
     updateDoc(attemptRef, attemptData).catch(() => {});
 
-    // Oracle de l'Éphémère (Suppression après 3 résolutions)
     getDoc(quizDocRef).then(snap => {
       if (snap.exists()) {
         const data = snap.data();
@@ -568,8 +551,21 @@ export default function HomePage() {
       </AnimatePresence>
 
       <main className="flex-1 flex flex-col items-center justify-center p-6 pt-24 space-y-6 z-10">
-        <GlobalActivityTicker />
-        <CommunityGoalProgress appStatus={appStatus} />
+        <AnimatePresence mode="wait">
+          {!quizStarted && !quizComplete && (
+            <motion.div
+              key="flux-stats"
+              initial={{ opacity: 0, y: -20, filter: "blur(10px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, y: -20, filter: "blur(10px)" }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full flex flex-col items-center space-y-6"
+            >
+              <GlobalActivityTicker />
+              <CommunityGoalProgress appStatus={appStatus} />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="w-full max-w-lg relative">
           <AnimatePresence>
