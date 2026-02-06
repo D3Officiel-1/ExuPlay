@@ -17,7 +17,10 @@ import {
   Check,
   ChevronRight,
   Shield,
-  History
+  History,
+  Clock,
+  ShieldCheck,
+  Star
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { haptic } from "@/lib/haptics";
@@ -25,7 +28,7 @@ import { cn } from "@/lib/utils";
 
 const STORE_ITEMS = [
   {
-    id: "hint_pack_1",
+    id: "hint",
     type: "consumable",
     name: "Indice de Perception",
     description: "Dissipe l'illusion. Supprime 2 mauvaises réponses pendant un défi.",
@@ -33,7 +36,40 @@ const STORE_ITEMS = [
     icon: Eye,
     color: "text-blue-500",
     bg: "bg-blue-500/10",
-    action: "hint"
+    field: "hintCount"
+  },
+  {
+    id: "time_boost",
+    type: "consumable",
+    name: "Sablier d'Éternité",
+    description: "Le temps est relatif. Ajoute 15 secondes au chronomètre.",
+    price: 100,
+    icon: Clock,
+    color: "text-orange-500",
+    bg: "bg-orange-500/10",
+    field: "timeBoostCount"
+  },
+  {
+    id: "shield",
+    type: "consumable",
+    name: "Sceau de Protection",
+    description: "L'échec n'a pas de prix. Annule la pénalité de points en cas d'erreur.",
+    price: 150,
+    icon: ShieldCheck,
+    color: "text-green-500",
+    bg: "bg-green-500/10",
+    field: "shieldCount"
+  },
+  {
+    id: "multiplier",
+    type: "consumable",
+    name: "Prisme de Lumière",
+    description: "La résonance amplifiée. Double les points gagnés pour ce défi.",
+    price: 200,
+    icon: Star,
+    color: "text-yellow-500",
+    bg: "bg-yellow-500/10",
+    field: "multiplierCount"
   },
   {
     id: "theme_amethyst",
@@ -99,8 +135,8 @@ export default function EchoppePage() {
         updatedAt: serverTimestamp()
       };
 
-      if (item.action === 'hint') {
-        updatePayload.hintCount = increment(1);
+      if (item.type === 'consumable' && item.field) {
+        updatePayload[item.field] = increment(1);
       } else if (item.action === 'theme') {
         updatePayload.ownedThemes = arrayUnion(item.id);
       }
@@ -139,10 +175,6 @@ export default function EchoppePage() {
               <Zap className="h-3 w-3 text-primary" />
               <span className="text-sm font-black">{profile?.totalPoints?.toLocaleString()} <span className="text-[10px] opacity-40">PTS</span></span>
             </div>
-            <div className="mt-1 flex items-center gap-1.5 opacity-40">
-              <Eye className="h-2.5 w-2.5" />
-              <span className="text-[9px] font-bold uppercase tracking-widest">{profile?.hintCount || 0} Indices</span>
-            </div>
           </div>
         </div>
 
@@ -153,27 +185,33 @@ export default function EchoppePage() {
               <h2 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">Outils d'Éveil</h2>
             </div>
             <div className="grid gap-4">
-              {STORE_ITEMS.filter(i => i.type === 'consumable').map((item) => (
-                <Card key={item.id} className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2rem] overflow-hidden group">
-                  <CardContent className="p-6 flex items-center gap-5">
-                    <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110", item.bg)}>
-                      <item.icon className={cn("h-7 w-7", item.color)} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-black text-base">{item.name}</h3>
-                      <p className="text-[10px] font-medium opacity-40 line-clamp-2 leading-relaxed">{item.description}</p>
-                    </div>
-                    <Button 
-                      onClick={() => handlePurchase(item)}
-                      disabled={buyingId === item.id}
-                      className="rounded-xl h-12 px-4 font-black text-xs gap-2 shadow-lg"
-                    >
-                      {buyingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : item.price}
-                      <Zap className="h-3 w-3" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+              {STORE_ITEMS.filter(i => i.type === 'consumable').map((item) => {
+                const count = profile?.[item.field as keyof typeof profile] || 0;
+                return (
+                  <Card key={item.id} className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2rem] overflow-hidden group">
+                    <CardContent className="p-6 flex items-center gap-5">
+                      <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110", item.bg)}>
+                        <item.icon className={cn("h-7 w-7", item.color)} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-black text-base">{item.name}</h3>
+                          {count > 0 && <span className="bg-primary/10 text-primary text-[10px] font-black px-2 py-0.5 rounded-full">x{count}</span>}
+                        </div>
+                        <p className="text-[10px] font-medium opacity-40 line-clamp-2 leading-relaxed">{item.description}</p>
+                      </div>
+                      <Button 
+                        onClick={() => handlePurchase(item)}
+                        disabled={buyingId === item.id}
+                        className="rounded-xl h-12 px-4 font-black text-xs gap-2 shadow-lg"
+                      >
+                        {buyingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : item.price}
+                        <Zap className="h-3 w-3" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </section>
 
