@@ -144,22 +144,37 @@ export default function TransfertPage() {
     let isMounted = true;
 
     const initScanner = async () => {
+      // Déclenchement automatique dès que l'onglet 'scan' est actif et qu'aucun destinataire n'est choisi
       if (activeTab === "scan" && !recipient && !isSuccess && validationStatus === 'idle') {
-        // Attente courte pour s'assurer que le DOM est prêt après le changement d'onglet
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Attente dynamique du DOM pour garantir la présence de l'élément #reader
+        let attempts = 0;
+        let container = document.getElementById("reader");
         
-        const container = document.getElementById("reader");
+        while (!container && attempts < 10) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          container = document.getElementById("reader");
+          attempts++;
+        }
+
         if (!container || !isMounted) return;
 
         try {
           await stopScanner();
+          if (!isMounted) return;
+
           const scanner = new Html5Qrcode("reader");
           html5QrCodeRef.current = scanner;
 
           await scanner.start(
             { facingMode: "environment" },
-            { fps: 20, qrbox: { width: 250, height: 250 } },
-            (text) => onScanSuccess(text),
+            { 
+              fps: 30, 
+              qrbox: { width: 280, height: 280 },
+              aspectRatio: 1.0 
+            },
+            (text) => {
+              if (isMounted) onScanSuccess(text);
+            },
             () => {}
           );
           
@@ -191,7 +206,10 @@ export default function TransfertPage() {
       haptic.error();
       setErrorMessage("C'est votre propre Sceau");
       setValidationStatus('error');
-      setTimeout(() => { setValidationStatus('idle'); setActiveTab("scan"); }, 2500);
+      setTimeout(() => { 
+        setValidationStatus('idle'); 
+        setActiveTab("scan"); 
+      }, 2500);
       return;
     }
 
@@ -211,11 +229,17 @@ export default function TransfertPage() {
         haptic.error();
         setErrorMessage("Esprit non identifié");
         setValidationStatus('error');
-        setTimeout(() => { setValidationStatus('idle'); setActiveTab("scan"); }, 2500);
+        setTimeout(() => { 
+          setValidationStatus('idle'); 
+          setActiveTab("scan"); 
+        }, 2500);
       }
     } catch (error) {
       setValidationStatus('error');
-      setTimeout(() => { setValidationStatus('idle'); setActiveTab("scan"); }, 2500);
+      setTimeout(() => { 
+        setValidationStatus('idle'); 
+        setActiveTab("scan"); 
+      }, 2500);
     }
   };
 
@@ -374,8 +398,8 @@ export default function TransfertPage() {
                 </motion.div>
               ) : !recipient && !isSuccess ? (
                 <motion.div key="selection" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
-                  <TabsContent value="scan" className="mt-0 h-full outline-none relative flex flex-col">
-                    <div id="reader" className="flex-1 w-full bg-black relative">
+                  <TabsContent value="scan" className="mt-0 h-full outline-none relative flex flex-col border-none">
+                    <div id="reader" className="flex-1 w-full bg-black relative overflow-hidden">
                       {!hasCameraPermission && hasCameraPermission !== null && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-background/90 z-50 text-center">
                           <ShieldAlert className="h-12 w-12 text-destructive mb-4" />
