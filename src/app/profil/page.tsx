@@ -199,6 +199,32 @@ export default function ProfilPage() {
           </div>
         )}
 
+        <div className="space-y-5">
+          <div className="flex items-center gap-3 px-4">
+            <Settings className="h-4 w-4 opacity-40" />
+            <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Configuration</h2>
+          </div>
+          <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden">
+            <CardContent className="p-2">
+              <button 
+                onClick={() => { haptic.light(); router.push("/parametres"); }}
+                className="w-full flex items-center justify-between p-6 hover:bg-primary/5 transition-colors rounded-[2rem] group text-left"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 bg-primary/5 rounded-2xl flex items-center justify-center">
+                    <Settings className="h-6 w-6 text-primary opacity-60" />
+                  </div>
+                  <div>
+                    <p className="text-base font-black">Paramètres de l'Esprit</p>
+                    <p className="text-[10px] opacity-40 font-medium uppercase tracking-widest">Aura, Sécurité & Sagesse</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 opacity-20 group-hover:opacity-60 transition-opacity" />
+              </button>
+            </CardContent>
+          </Card>
+        </div>
+
         <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] p-8 space-y-10">
           <div className="text-center space-y-2">
             <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-30">Lumière Totale</p>
