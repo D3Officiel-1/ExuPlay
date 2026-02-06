@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -166,6 +167,36 @@ export default function HomePage() {
   }, [db, user?.uid]);
 
   const { data: userAttempts, loading: attemptsLoading } = useCollection(attemptsQuery);
+
+  // LOGIQUE DE DISCIPLINE : Punition si l'app est fermée/réduite pendant le quiz
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'hidden' && quizStarted && !isAnswered && user?.uid && profile?.totalPoints) {
+        // Punition sévère : Perte de 50% des points
+        const penalty = Math.floor(profile.totalPoints / 2);
+        
+        if (penalty > 0) {
+          const userDocRef = doc(db, "users", user.uid);
+          
+          // Mise à jour silencieuse car l'utilisateur est en train de quitter
+          updateDoc(userDocRef, {
+            totalPoints: increment(-penalty),
+            updatedAt: serverTimestamp()
+          });
+
+          // On stoppe le quiz pour éviter les glitchs au retour
+          setIsAnswered(true);
+          setQuizStarted(false);
+          haptic.error();
+          
+          console.warn(`[Oracle] Esprit dissipé. Pénalité de ${penalty} PTS appliquée.`);
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [quizStarted, isAnswered, user?.uid, profile?.totalPoints, db]);
 
   useEffect(() => {
     if (allQuizzes && userAttempts !== null && sessionQuizzes.length === 0) {
