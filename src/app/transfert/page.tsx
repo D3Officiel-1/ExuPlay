@@ -163,7 +163,6 @@ export default function TransfertPage() {
           const scanner = new Html5Qrcode("reader");
           html5QrCodeRef.current = scanner;
 
-          // Calcul dynamique du qrbox pour une meilleure détection
           const qrboxSize = Math.min(window.innerWidth * 0.7, 280);
 
           await scanner.start(
@@ -344,7 +343,7 @@ export default function TransfertPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col overflow-hidden">
-      <main className="flex-1 max-w-lg mx-auto w-full relative h-full">
+      <main className={cn("flex-1 mx-auto w-full relative h-full", activeTab !== 'scan' && "max-w-lg")}>
         <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); haptic.light(); }} className="w-full h-full flex flex-col">
           <div className="fixed top-6 left-0 right-0 z-[100] px-6 max-w-lg mx-auto">
             <TabsList className="w-full bg-card/20 backdrop-blur-3xl border border-primary/10 p-1 h-14 rounded-2xl grid grid-cols-2 shadow-2xl">
@@ -401,20 +400,20 @@ export default function TransfertPage() {
                   </div>
                 </motion.div>
               ) : !recipient && !isSuccess ? (
-                <motion.div key="selection" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
-                  <TabsContent value="scan" className="mt-0 h-full outline-none relative flex flex-col border-none">
-                    <div id="reader" className="flex-1 w-full bg-black relative overflow-hidden">
-                      {!hasCameraPermission && hasCameraPermission !== null && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-background/90 z-50 text-center">
-                          <ShieldAlert className="h-12 w-12 text-destructive mb-4" />
-                          <h2 className="text-xl font-black">Permission Requise</h2>
-                          <p className="text-xs opacity-40 mt-2">Activez la caméra pour scanner les Sceaux.</p>
-                          <Button variant="outline" onClick={() => window.location.reload()} className="mt-6 rounded-xl font-black text-[10px] uppercase">Réessayer</Button>
-                        </div>
-                      )}
-                    </div>
+                <motion.div key="selection" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 w-full h-full">
+                  <TabsContent value="scan" className="mt-0 h-full w-full outline-none relative flex flex-col border-none p-0">
+                    <div id="reader" className="w-full h-full bg-black relative overflow-hidden" />
                     
-                    <div className="absolute bottom-10 left-0 right-0 z-[50] px-10 flex flex-col items-center gap-4">
+                    {!hasCameraPermission && hasCameraPermission !== null && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-background/90 z-50 text-center">
+                        <ShieldAlert className="h-12 w-12 text-destructive mb-4" />
+                        <h2 className="text-xl font-black">Permission Requise</h2>
+                        <p className="text-xs opacity-40 mt-2">Activez la caméra pour scanner les Sceaux.</p>
+                        <Button variant="outline" onClick={() => window.location.reload()} className="mt-6 rounded-xl font-black text-[10px] uppercase">Réessayer</Button>
+                      </div>
+                    )}
+                    
+                    <div className="absolute bottom-10 left-0 right-0 z-[50] px-10 flex flex-col items-center gap-4 max-w-lg mx-auto">
                       <Button onClick={handlePickRandomRecipient} disabled={isProcessing} className="w-full h-16 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.3em] gap-3 bg-white/10 backdrop-blur-md text-white border border-white/20 hover:bg-white/20">
                         {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Répandre l'Éveil
                       </Button>
@@ -482,24 +481,36 @@ export default function TransfertPage() {
           border: none !important; 
           background: black !important; 
           height: 100% !important;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          display: block !important;
         } 
         #reader video { 
           object-fit: cover !important; 
           width: 100% !important; 
           height: 100% !important;
+          display: block !important;
         } 
         #reader__scan_region { 
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          width: 100% !important;
+          height: 100% !important;
+          border: none !important;
+          padding: 0 !important;
+          margin: 0 !important;
         }
         #reader__scan_region video {
           border-radius: 0px !important;
+          object-fit: cover !important;
         }
-        #reader__dashboard { display: none !important; } 
+        #reader__dashboard, 
+        #reader__status_span, 
+        #reader__header_message { 
+          display: none !important; 
+        } 
+        div[id^="reader__"] {
+          border: none !important;
+        }
       `}</style>
     </div>
   );
