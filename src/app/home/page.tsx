@@ -172,6 +172,7 @@ export default function HomePage() {
 
   const { data: userAttempts, loading: attemptsLoading } = useCollection(attemptsQuery);
 
+  // Oracle de Discipline : Sentence en cas d'abandon (réduction/fermeture de l'app)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden' && quizStarted && !isAnswered && user?.uid && profile?.totalPoints) {
@@ -229,16 +230,31 @@ export default function HomePage() {
     return () => clearInterval(timer);
   }, [quizStarted, isAnswered, timeLeft]);
 
+  // Oracle de l'Éveil Royal : Gestion Automatisée et Silencieuse (10 min)
   const royalChallengeUntil = appStatus?.royalChallengeActiveUntil?.toDate?.() || null;
   const isRoyalActive = royalChallengeUntil && royalChallengeUntil > new Date();
 
   useEffect(() => {
-    if (!appStatus || !appStatusRef || isRoyalActive) return;
+    if (!appStatus || !appStatusRef) return;
 
+    const royalUntil = appStatus.royalChallengeActiveUntil?.toDate?.() || null;
+    const now = new Date();
+    
+    // 1. Désactivation automatique en arrière-plan (Fin de cycle)
+    if (royalUntil && now > royalUntil) {
+      updateDoc(appStatusRef, {
+        royalChallengeActiveUntil: null,
+        communityGoalPoints: 0, // Réinitialisation pour le prochain cycle
+        updatedAt: serverTimestamp()
+      }).catch(() => {}); // Transparence totale
+      return;
+    }
+
+    // 2. Déclenchement de l'Éveil (Activation)
     const currentPoints = appStatus.communityGoalPoints || 0;
     const targetPoints = appStatus.communityGoalTarget || 10000;
 
-    if (currentPoints >= targetPoints) {
+    if (currentPoints >= targetPoints && !royalUntil) {
       haptic.success();
       const activationEnd = new Date();
       activationEnd.setMinutes(activationEnd.getMinutes() + 10);
@@ -246,11 +262,9 @@ export default function HomePage() {
       updateDoc(appStatusRef, {
         royalChallengeActiveUntil: activationEnd,
         updatedAt: serverTimestamp()
-      }).catch(err => {
-        console.warn("L'Oracle n'a pas pu déclencher l'activation globale:", err);
-      });
+      }).catch(() => {});
     }
-  }, [appStatus, appStatusRef, isRoyalActive]);
+  }, [appStatus, appStatusRef]);
 
   const handleStartChallenge = async () => {
     if (!user || !db || sessionQuizzes.length === 0 || updating) return;
@@ -416,7 +430,7 @@ export default function HomePage() {
     const userDocRef = doc(db, "users", user.uid);
     const quizDocRef = doc(db, "quizzes", currentQuiz.id);
 
-    setUpdating(true);
+    // Maintenance Silencieuse en Arrière-plan
     const attemptData = {
       isPlayed: true,
       status: 'completed',
@@ -426,16 +440,17 @@ export default function HomePage() {
       updatedAt: serverTimestamp()
     };
 
-    updateDoc(attemptRef, attemptData).finally(() => setUpdating(false));
+    updateDoc(attemptRef, attemptData).catch(() => {});
 
+    // Oracle de l'Éphémère (Suppression après 3 résolutions)
     getDoc(quizDocRef).then(snap => {
       if (snap.exists()) {
         const data = snap.data();
         const newPlayedCount = (data.playedCount || 0) + 1;
         if (newPlayedCount >= 3) {
-          deleteDoc(quizDocRef);
+          deleteDoc(quizDocRef).catch(() => {});
         } else {
-          updateDoc(quizDocRef, { playedCount: newPlayedCount, updatedAt: serverTimestamp() });
+          updateDoc(quizDocRef, { playedCount: newPlayedCount, updatedAt: serverTimestamp() }).catch(() => {});
         }
       }
     });
