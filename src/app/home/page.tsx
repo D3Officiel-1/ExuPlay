@@ -559,8 +559,40 @@ export default function HomePage() {
         <div className="w-full max-w-lg relative">
           <AnimatePresence>
             {showPenaltyAnim && (
-              <motion.div initial={{ opacity: 0, y: 0, scale: 0.5 }} animate={{ opacity: 1, y: -100, scale: 1.5 }} exit={{ opacity: 0 }} className="absolute inset-0 flex items-center justify-center z-[100] pointer-events-none">
-                <span className="text-4xl font-black text-red-500 italic drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]">-2 PTS</span>
+              <motion.div 
+                initial={{ opacity: 0, y: 40, scale: 0.5, filter: "blur(20px)" }} 
+                animate={{ 
+                  opacity: [0, 1, 1, 0], 
+                  y: -140, 
+                  scale: [0.8, 1.4, 1.2, 1.5],
+                  filter: ["blur(10px)", "blur(0px)", "blur(0px)", "blur(20px)"]
+                }} 
+                transition={{ 
+                  duration: 1.2, 
+                  times: [0, 0.2, 0.8, 1],
+                  ease: [0.22, 1, 0.36, 1] 
+                }}
+                className="absolute inset-0 flex flex-col items-center justify-center z-[100] pointer-events-none"
+              >
+                <div className="relative">
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ opacity: [0, 0.5, 0], scale: [1, 3, 4] }}
+                    transition={{ duration: 0.8 }}
+                    className="absolute inset-0 bg-red-500/40 rounded-full blur-2xl"
+                  />
+                  <span className="text-6xl font-black text-red-500 italic drop-shadow-[0_0_25px_rgba(239,68,68,0.8)] tracking-tighter">
+                    -2 PTS
+                  </span>
+                </div>
+                <motion.p 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: [0, 0.6, 0] }}
+                  transition={{ duration: 1, delay: 0.1 }}
+                  className="text-[10px] font-black uppercase tracking-[0.5em] text-red-600 mt-4"
+                >
+                  Dissonance détectée
+                </motion.p>
               </motion.div>
             )}
           </AnimatePresence>
