@@ -46,6 +46,7 @@ import { haptic } from "@/lib/haptics";
 import { ProfilePhotoDialog } from "@/components/ProfilePhotoDialog";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { getHonorTitle } from "@/lib/titles";
+import { cn } from "@/lib/utils";
 
 export default function ProfilPage() {
   const { user } = useUser();
