@@ -37,7 +37,8 @@ import {
   RefreshCw,
   Zap,
   AlertCircle,
-  Swords
+  Swords,
+  ShieldCheck
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
@@ -77,6 +78,8 @@ export default function TransfertPage() {
   const transferAmount = parseInt(amount) || 0;
   const fees = mode === 'transfer' ? Math.floor(transferAmount * 0.1) : 0;
   const totalCost = transferAmount + fees;
+
+  const DAILY_LIMIT = profile?.trustBadge ? 2500 : 500;
 
   useEffect(() => {
     if (!profile || !db || !user?.uid) return;
@@ -256,6 +259,17 @@ export default function TransfertPage() {
 
   const handleAction = async () => {
     if (!transferAmount || transferAmount <= 0 || !user?.uid || !recipient?.id) return;
+    
+    if (transferAmount > DAILY_LIMIT) {
+      haptic.error();
+      toast({ 
+        variant: "destructive", 
+        title: "Limite dépassée", 
+        description: `Votre flux est limité à ${DAILY_LIMIT} PTS. ${!profile?.trustBadge ? "Obtenez le Sceau de Confiance pour augmenter cette limite." : ""}`
+      });
+      return;
+    }
+
     if ((profile?.totalPoints || 0) < totalCost) {
       haptic.error();
       toast({ variant: "destructive", title: "Lumière insuffisante" });
@@ -278,7 +292,6 @@ export default function TransfertPage() {
         haptic.success();
         setIsSuccess(true);
       } else {
-        // Mode Duel
         const duelRef = await addDoc(collection(db, "duels"), {
           challengerId: user.uid,
           challengerName: profile?.username || "Anonyme",
@@ -343,7 +356,15 @@ export default function TransfertPage() {
                         </CardContent>
                       </Card>
                     </div>
-                    <Button variant="ghost" onClick={() => router.push("/profil")} className="mt-8 text-[10px] font-black uppercase opacity-40"><X className="h-4 w-4 mr-2" /> Fermer</Button>
+                    <div className="mt-8 flex flex-col items-center gap-4">
+                      {profile?.trustBadge && (
+                        <div className="flex items-center gap-2 px-4 py-2 bg-primary/5 border border-primary/10 rounded-full shadow-inner">
+                          <ShieldCheck className="h-3 w-3 text-primary" />
+                          <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Flux Étendu : {DAILY_LIMIT} PTS</span>
+                        </div>
+                      )}
+                      <Button variant="ghost" onClick={() => router.push("/profil")} className="text-[10px] font-black uppercase opacity-40"><X className="h-4 w-4 mr-2" /> Fermer</Button>
+                    </div>
                   </TabsContent>
                   <TabsContent value="scan" className="mt-0 h-full">
                     <div id="reader" className="absolute inset-0 w-full h-full bg-black" />
@@ -368,12 +389,19 @@ export default function TransfertPage() {
                         <Label className="text-[10px] font-black uppercase opacity-40 ml-2">{mode === 'duel' ? "Mise du duel" : "Montant du transfert"}</Label>
                         <Input type="number" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-16 text-3xl font-black text-center rounded-2xl bg-primary/5 border-none" autoFocus />
                       </div>
-                      {transferAmount > 0 && mode === 'transfer' && (
-                        <div className="space-y-2 text-[10px] font-bold uppercase opacity-40 px-2 flex justify-between">
-                          <span>Frais (10%) : +{fees} PTS</span>
-                          <span>Total : {totalCost} PTS</span>
+                      <div className="flex justify-between items-center px-2">
+                        <div className="space-y-1">
+                          {transferAmount > 0 && mode === 'transfer' && (
+                            <p className="text-[10px] font-bold uppercase opacity-40 flex justify-between gap-4">
+                              <span>Frais (10%) : +{fees} PTS</span>
+                              <span>Total : {totalCost} PTS</span>
+                            </p>
+                          )}
                         </div>
-                      )}
+                        <div className="text-right">
+                          <p className="text-[9px] font-black uppercase tracking-widest opacity-20">Limite : {DAILY_LIMIT} PTS</p>
+                        </div>
+                      </div>
                     </CardContent>
                     <CardFooter className="px-8 pb-10 flex flex-col gap-3">
                       <Button onClick={handleAction} disabled={isProcessing || !amount || transferAmount <= 0 || (profile?.totalPoints || 0) < totalCost} className="w-full h-16 rounded-2xl font-black text-sm uppercase gap-3 shadow-xl">

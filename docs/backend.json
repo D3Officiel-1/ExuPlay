@@ -43,7 +43,8 @@
         "role": { "type": "string", "description": "Rôle de l'utilisateur", "default": "user" },
         "cameraAuthorized": { "type": "boolean" },
         "biometricEnabled": { "type": "boolean", "default": false },
-        "passkeyId": { "type": "string", "description": "ID de la clé biométrique enregistrée" }
+        "passkeyId": { "type": "string", "description": "ID de la clé biométrique enregistrée" },
+        "trustBadge": { "type": "boolean", "description": "Si l'utilisateur possède le Sceau de Confiance", "default": false }
       },
       "required": ["username", "phoneNumber", "acceptedTerms", "gender", "referralCode", "role"]
     },

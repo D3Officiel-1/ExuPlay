@@ -19,10 +19,13 @@ import {
   CheckCircle2,
   Zap,
   Target,
-  TrendingUp
+  TrendingUp,
+  ShieldCheck
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 export default function ParrainagePage() {
   const { user } = useUser();
@@ -68,6 +71,7 @@ export default function ParrainagePage() {
   }
 
   const isLoading = profile?.referralCode && usersLoading;
+  const trustProgress = Math.min((stats.awakened / 10) * 100, 100);
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
@@ -86,6 +90,44 @@ export default function ParrainagePage() {
             <h1 className="text-3xl font-black tracking-tight">Esprits Liés</h1>
           </div>
         </div>
+
+        {/* trust seal progress section */}
+        <Card className="border-none bg-primary text-primary-foreground shadow-2xl rounded-[2.5rem] overflow-hidden relative">
+          <div className="absolute top-0 right-0 p-6 opacity-10"><ShieldCheck className="h-20 w-20" /></div>
+          <CardContent className="p-8 space-y-6 relative z-10">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 bg-primary-foreground/10 rounded-2xl flex items-center justify-center shadow-inner">
+                <ShieldCheck className={cn("h-6 w-6", stats.awakened >= 10 ? "text-green-400" : "opacity-40")} />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-black tracking-tight">Sceau de Confiance</h3>
+                <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">
+                  {stats.awakened >= 10 ? "Authentifié & Certifié" : "En cours d'harmonisation"}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex justify-between items-end px-1">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Progression</p>
+                <p className="text-xs font-black">{stats.awakened}/10 <span className="opacity-40 text-[10px]">ÉVEILLÉS</span></p>
+              </div>
+              <div className="h-2 bg-primary-foreground/10 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${trustProgress}%` }}
+                  transition={{ duration: 1.5, ease: "easeOut" }}
+                  className="h-full bg-primary-foreground shadow-[0_0_15px_rgba(255,255,255,0.5)]"
+                />
+              </div>
+              <p className="text-[10px] font-medium leading-relaxed opacity-60 italic text-center">
+                {stats.awakened >= 10 
+                  ? "Vous êtes un pilier de confiance du Sanctuaire." 
+                  : `Éveillez encore ${10 - stats.awakened} esprits pour augmenter votre flux quotidien.`}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Expansion Summary Dashboard */}
         {!isLoading && referredUsers && referredUsers.length > 0 && (

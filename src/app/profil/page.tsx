@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
@@ -36,7 +37,8 @@ import {
   QrCode,
   Zap,
   History,
-  Shield
+  Shield,
+  ShieldCheck
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
@@ -123,6 +125,29 @@ export default function ProfilPage() {
     const timeoutId = setTimeout(checkUsername, 500);
     return () => clearTimeout(timeoutId);
   }, [editedUsername, db, isEditingName, profile?.username]);
+
+  // Synchronisation du Sceau de Confiance
+  useEffect(() => {
+    if (!db || !profile?.referralCode || !user?.uid) return;
+
+    const checkTrustStatus = async () => {
+      const q = query(
+        collection(db, "users"),
+        where("referredBy", "==", profile.referralCode)
+      );
+      const snap = await getDocs(q);
+      const activeReferralsCount = snap.docs.filter(d => (d.data().totalPoints || 0) >= 100).length;
+      
+      const isTrusted = activeReferralsCount >= 10;
+      if (isTrusted !== profile.trustBadge) {
+        updateDoc(doc(db, "users", user.uid), {
+          trustBadge: isTrusted,
+          updatedAt: serverTimestamp()
+        });
+      }
+    };
+    checkTrustStatus();
+  }, [db, profile?.referralCode, profile?.trustBadge, user?.uid]);
 
   const handleCopyCode = async () => {
     if (profile?.referralCode) {
@@ -333,6 +358,7 @@ export default function ProfilPage() {
               <ProfileAvatar 
                 imageUrl={currentImage} 
                 points={profile?.totalPoints || 0} 
+                isTrusted={profile?.trustBadge}
                 size="xl" 
               />
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
@@ -392,20 +418,33 @@ export default function ProfilPage() {
             </AnimatePresence>
             
             {!isEditingName && (
-              <motion.div 
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={cn(
-                  "px-4 py-1.5 rounded-full flex items-center gap-2 border-2 transition-all duration-500",
-                  currentTitle.bgClass,
-                  currentTitle.borderColor
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <motion.div 
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={cn(
+                    "px-4 py-1.5 rounded-full flex items-center gap-2 border-2 transition-all duration-500",
+                    currentTitle.bgClass,
+                    currentTitle.borderColor
+                  )}
+                >
+                  <Shield className={cn("h-3 w-3", currentTitle.color)} />
+                  <span className={cn("text-[10px] font-black uppercase tracking-[0.3em]", currentTitle.color)}>
+                    {currentTitle.name}
+                  </span>
+                </motion.div>
+
+                {profile?.trustBadge && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="px-4 py-1.5 rounded-full flex items-center gap-2 border-2 border-primary/20 bg-primary/5 shadow-inner"
+                  >
+                    <ShieldCheck className="h-3 w-3 text-primary" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Sceau Certifié</span>
+                  </motion.div>
                 )}
-              >
-                <Shield className={cn("h-3 w-3", currentTitle.color)} />
-                <span className={cn("text-[10px] font-black uppercase tracking-[0.3em]", currentTitle.color)}>
-                  {currentTitle.name}
-                </span>
-              </motion.div>
+              </div>
             )}
           </div>
         </motion.div>
@@ -450,7 +489,7 @@ export default function ProfilPage() {
                             {act.fromPhoto ? (
                               <Image src={act.fromPhoto} alt="" fill className="object-cover" />
                             ) : (
-                              <UserIcon className="h-4 w-4 opacity-20" />
+                              <Users className="h-4 w-4 opacity-20" />
                             )}
                           </div>
                           <div className="flex flex-col">
