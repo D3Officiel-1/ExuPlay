@@ -1,104 +1,73 @@
 
 /**
  * @fileOverview Oracle de la Palette Sacrée.
- * Définit les harmonies de couleurs primaires pour l'application.
+ * Définit les harmonies de couleurs et les convertisseurs pour l'application.
  */
 
 export interface AppColor {
   id: string;
   name: string;
   hex: string;
-  light: {
-    primary: string;
-    foreground: string;
-  };
-  dark: {
-    primary: string;
-    foreground: string;
+}
+
+export const PRESET_COLORS: AppColor[] = [
+  { id: "azure", name: "Azur", hex: "#3b82f6" },
+  { id: "emerald", name: "Émeraude", hex: "#10b981" },
+  { id: "amber", name: "Ambre", hex: "#f59e0b" },
+  { id: "ruby", name: "Rubis", hex: "#e11d48" },
+  { id: "amethyst", name: "Améthyste", hex: "#8b5cf6" },
+  { id: "obsidian", name: "Obsidienne", hex: "#1f2937" },
+];
+
+/**
+ * Convertit un Hexadécimal (#RRGGBB) en composantes HSL pour Tailwind.
+ * Retourne une chaîne "h s% l%"
+ */
+export function hexToHsl(hex: string): { h: number; s: number; l: number; toString: string } {
+  // Retirer le # si présent
+  hex = hex.replace(/^#/, '');
+
+  // Convertir en RGB
+  let r = parseInt(hex.substring(0, 2), 16) / 255;
+  let g = parseInt(hex.substring(2, 4), 16) / 255;
+  let b = parseInt(hex.substring(4, 6), 16) / 255;
+
+  let max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0, l = (max + min) / 2;
+
+  if (max !== min) {
+    let d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
+  }
+
+  const hDeg = Math.round(h * 360);
+  const sPct = Math.round(s * 100);
+  const lPct = Math.round(l * 100);
+
+  return {
+    h: hDeg,
+    s: sPct,
+    l: lPct,
+    toString: `${hDeg} ${sPct}% ${lPct}%`
   };
 }
 
-export const APP_COLORS: Record<string, AppColor> = {
-  "default": {
-    id: "default",
-    name: "Puriste",
-    hex: "#000000",
-    light: {
-      primary: "0 0% 0%",
-      foreground: "0 0% 100%"
-    },
-    dark: {
-      primary: "0 0% 100%",
-      foreground: "0 0% 0%"
-    }
-  },
-  "azure": {
-    id: "azure",
-    name: "Azur",
-    hex: "#3b82f6",
-    light: {
-      primary: "221.2 83.2% 53.3%",
-      foreground: "0 0% 100%"
-    },
-    dark: {
-      primary: "217.2 91.2% 59.8%",
-      foreground: "222.2 47.4% 11.2%"
-    }
-  },
-  "emerald": {
-    id: "emerald",
-    name: "Émeraude",
-    hex: "#10b981",
-    light: {
-      primary: "142.1 76.2% 36.3%",
-      foreground: "355.7 100% 97.3%"
-    },
-    dark: {
-      primary: "142.1 70.6% 45.3%",
-      foreground: "144.9 80.4% 10%"
-    }
-  },
-  "amber": {
-    id: "amber",
-    name: "Ambre",
-    hex: "#f59e0b",
-    light: {
-      primary: "37.9 92.1% 50.2%",
-      foreground: "0 0% 0%"
-    },
-    dark: {
-      primary: "37.9 92.1% 50.2%",
-      foreground: "0 0% 0%"
-    }
-  },
-  "ruby": {
-    id: "ruby",
-    name: "Rubis",
-    hex: "#e11d48",
-    light: {
-      primary: "346.8 77.2% 49.8%",
-      foreground: "355.7 100% 97.3%"
-    },
-    dark: {
-      primary: "346.8 77.2% 49.8%",
-      foreground: "355.7 100% 97.3%"
-    }
-  },
-  "amethyst": {
-    id: "amethyst",
-    name: "Améthyste",
-    hex: "#8b5cf6",
-    light: {
-      primary: "262.1 83.3% 57.8%",
-      foreground: "210 40% 98%"
-    },
-    dark: {
-      primary: "263.4 70% 50.4%",
-      foreground: "210 40% 98%"
-    }
-  }
-};
-
-export function getAppColor(colorId?: string): AppColor {
-  return APP_COLORS[colorId || "default"] || APP_COLORS["default"];
+/**
+ * Détermine si une couleur est "claire" ou "sombre" pour le contraste du texte.
+ */
+export function getContrastColor(hex: string): string {
+  hex = hex.replace(/^#/, '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  
+  // Formule de luminance relative
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness > 128 ? "0 0% 0%" : "0 0% 100%";
 }

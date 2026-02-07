@@ -23,7 +23,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
 import { cn } from "@/lib/utils";
-import { getAppColor } from "@/lib/colors";
+import { hexToHsl, getContrastColor } from "@/lib/colors";
 
 function ThemeSync() {
   const { user } = useUser();
@@ -55,20 +55,22 @@ function ColorInjector() {
 
   const cssVariables = useMemo(() => {
     if (!profile?.customColor || profile.customColor === 'default') return "";
-    const color = getAppColor(profile.customColor);
     
-    return `
-      :root {
-        --primary: ${color.light.primary};
-        --primary-foreground: ${color.light.foreground};
-        --ring: ${color.light.primary};
-      }
-      .dark {
-        --primary: ${color.dark.primary};
-        --primary-foreground: ${color.dark.foreground};
-        --ring: ${color.dark.primary};
-      }
-    `;
+    // Si c'est une couleur personnalisée (Hex)
+    try {
+      const hsl = hexToHsl(profile.customColor);
+      const contrast = getContrastColor(profile.customColor);
+      
+      return `
+        :root, .dark {
+          --primary: ${hsl.toString};
+          --primary-foreground: ${contrast};
+          --ring: ${hsl.toString};
+        }
+      `;
+    } catch (e) {
+      return "";
+    }
   }, [profile?.customColor]);
 
   if (!cssVariables) return null;
