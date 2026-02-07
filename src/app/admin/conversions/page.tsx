@@ -14,7 +14,7 @@ import {
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { 
   Table, 
   TableBody, 
@@ -33,7 +33,12 @@ import {
   X,
   Calendar,
   Info,
-  ArrowRight
+  ArrowRight,
+  Filter,
+  TrendingUp,
+  Clock,
+  Banknote,
+  ShieldCheck
 } from "lucide-react";
 import { 
   Dialog,
@@ -41,6 +46,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { haptic } from "@/lib/haptics";
@@ -49,13 +61,16 @@ import { fr } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import { cn } from "@/lib/utils";
 
 export default function ConversionsAdminPage() {
   const { user, isLoading: authLoading } = useUser();
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+  
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [selectedExchange, setSelectedExchange] = useState<any | null>(null);
 
@@ -81,18 +96,41 @@ export default function ConversionsAdminPage() {
     }
   }, [profile, profileLoading, authLoading, router]);
 
+  const metrics = useMemo(() => {
+    if (!exchanges) return { pendingCount: 0, pendingAmount: 0, totalPaid: 0, pointsInLimbo: 0 };
+    
+    const pending = exchanges.filter(e => e.status === 'pending');
+    const completed = exchanges.filter(e => e.status === 'completed');
+    
+    return {
+      pendingCount: pending.length,
+      pendingAmount: pending.reduce((acc, e) => acc + (e.amount || 0), 0),
+      totalPaid: completed.reduce((acc, e) => acc + (e.amount || 0), 0),
+      pointsInLimbo: pending.reduce((acc, e) => acc + (e.points || 0), 0)
+    };
+  }, [exchanges]);
+
   const filteredExchanges = useMemo(() => {
     if (!exchanges) return [];
+    let result = exchanges;
+    
     const q = search.toLowerCase().trim();
-    if (!q) return exchanges;
-    return exchanges.filter(ex => 
-      (ex.username?.toLowerCase() || "").includes(q) || 
-      (ex.phoneNumber || "").includes(q)
-    );
-  }, [exchanges, search]);
+    if (q) {
+      result = result.filter(ex => 
+        (ex.username?.toLowerCase() || "").includes(q) || 
+        (ex.phoneNumber || "").includes(q)
+      );
+    }
+
+    if (statusFilter !== "all") {
+      result = result.filter(ex => ex.status === statusFilter);
+    }
+
+    return result;
+  }, [exchanges, search, statusFilter]);
 
   const handleUpdateStatus = (e: React.MouseEvent, id: string, newStatus: 'completed' | 'rejected') => {
-    e.stopPropagation(); // Éviter d'ouvrir le dialogue lors du clic sur les boutons
+    e.stopPropagation();
     if (!db) return;
     setProcessingId(id);
     haptic.medium();
@@ -113,7 +151,7 @@ export default function ConversionsAdminPage() {
       })
       .then(() => {
         haptic.success();
-        toast({ title: "Demande validée", description: "La transaction est terminée." });
+        toast({ title: "Flux validé", description: "La Lumière a été matérialisée." });
         if (selectedExchange?.id === id) setSelectedExchange(null);
       })
       .catch(async (error) => {
@@ -137,7 +175,7 @@ export default function ConversionsAdminPage() {
         })
         .then(() => {
           haptic.success();
-          toast({ title: "Demande rejetée", description: "Les points ont été rendus à l'utilisateur." });
+          toast({ title: "Flux révoqué", description: "Les points ont réintégré l'essence de l'esprit." });
           if (selectedExchange?.id === id) setSelectedExchange(null);
         })
         .catch(async (error) => {
@@ -187,45 +225,94 @@ export default function ConversionsAdminPage() {
               <h1 className="text-xl md:text-2xl font-black tracking-tight">Flux des Conversions</h1>
             </div>
           </div>
-          
-          <div className="relative w-full max-w-[240px] hidden sm:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-40" />
+        </div>
+
+        {/* Métriques de Flux */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[1.5rem] p-6 space-y-2">
+            <div className="h-10 w-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
+              <Clock className="h-5 w-5 text-orange-500" />
+            </div>
+            <div>
+              <p className="text-[8px] font-black uppercase tracking-widest opacity-40">En Attente</p>
+              <p className="text-2xl font-black">{metrics.pendingAmount.toLocaleString()} <span className="text-xs opacity-30">FCFA</span></p>
+              <p className="text-[9px] font-bold opacity-30 uppercase">{metrics.pendingCount} demandes actives</p>
+            </div>
+          </Card>
+
+          <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[1.5rem] p-6 space-y-2">
+            <div className="h-10 w-10 rounded-xl bg-primary/5 flex items-center justify-center">
+              <Zap className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-[8px] font-black uppercase tracking-widest opacity-40">Lumière Séquestrée</p>
+              <p className="text-2xl font-black">{metrics.pointsInLimbo.toLocaleString()} <span className="text-xs opacity-30">PTS</span></p>
+              <p className="text-[9px] font-bold opacity-30 uppercase">En attente de matérialisation</p>
+            </div>
+          </Card>
+
+          <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[1.5rem] p-6 space-y-2">
+            <div className="h-10 w-10 rounded-xl bg-green-500/10 flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-green-500" />
+            </div>
+            <div>
+              <p className="text-[8px] font-black uppercase tracking-widest opacity-40">Prospérité Versée</p>
+              <p className="text-2xl font-black">{metrics.totalPaid.toLocaleString()} <span className="text-xs opacity-30">FCFA</span></p>
+              <p className="text-[9px] font-bold opacity-30 uppercase">Volume total historique</p>
+            </div>
+          </Card>
+        </div>
+
+        {/* Filtres et Recherche */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-40" />
             <Input 
-              placeholder="Chercher un esprit..." 
-              className="pl-10 h-10 rounded-xl bg-card/40 border-primary/5" 
+              placeholder="Chercher un esprit ou un numéro..." 
+              className="pl-12 h-12 rounded-2xl bg-card/40 border-none" 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          <div className="flex items-center gap-3 w-full sm:w-[240px]">
+            <Filter className="h-4 w-4 opacity-40 shrink-0" />
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-12 rounded-2xl bg-card/40 border-none px-6 font-bold">
+                <SelectValue placeholder="Tous les états" />
+              </SelectTrigger>
+              <SelectContent className="bg-card/95 backdrop-blur-2xl rounded-2xl border-primary/5">
+                <SelectItem value="all" className="font-bold">Toute la stase</SelectItem>
+                <SelectItem value="pending" className="font-bold text-orange-500">En attente</SelectItem>
+                <SelectItem value="completed" className="font-bold text-green-500">Traité</SelectItem>
+                <SelectItem value="rejected" className="font-bold text-red-500">Refusé</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2rem] overflow-hidden">
-          <CardHeader className="p-8 pb-4">
-            <CardTitle className="text-sm font-black uppercase tracking-widest opacity-40">Demandes de Retrait</CardTitle>
-          </CardHeader>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="border-primary/5">
                   <TableHead className="font-black text-xs uppercase px-6 md:px-8 py-4">Esprit & Contact</TableHead>
-                  <TableHead className="hidden sm:table-cell font-black text-xs uppercase px-8 py-4">Lumière</TableHead>
-                  <TableHead className="font-black text-xs uppercase px-6 md:px-8 py-4">Montant Net</TableHead>
-                  <TableHead className="hidden sm:table-cell font-black text-xs uppercase px-8 py-4">Date</TableHead>
-                  <TableHead className="hidden sm:table-cell font-black text-xs uppercase px-8 py-4">Statut</TableHead>
+                  <TableHead className="hidden sm:table-cell font-black text-xs uppercase px-8 py-4 text-center">Lumière</TableHead>
+                  <TableHead className="font-black text-xs uppercase px-6 md:px-8 py-4 text-right">Montant Net</TableHead>
+                  <TableHead className="hidden sm:table-cell font-black text-xs uppercase px-8 py-4 text-right">Statut</TableHead>
                   <TableHead className="font-black text-xs uppercase px-6 md:px-8 py-4 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {exchangesLoading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-32 text-center">
+                    <TableCell colSpan={5} className="h-32 text-center">
                       <Loader2 className="h-6 w-6 animate-spin opacity-20 mx-auto" />
                     </TableCell>
                   </TableRow>
                 ) : filteredExchanges.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-32 text-center opacity-40 font-bold uppercase text-[10px] tracking-widest">
-                      Aucune demande trouvée
+                    <TableCell colSpan={5} className="h-32 text-center opacity-40 font-bold uppercase text-[10px] tracking-widest">
+                      Aucun flux ne résonne ici
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -244,24 +331,18 @@ export default function ConversionsAdminPage() {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell px-8 py-6 font-black text-sm">
-                        <div className="flex items-center gap-1.5">
-                          <Zap className="h-3 w-3 text-primary opacity-40" />
-                          {ex.points?.toLocaleString()} PTS
+                      <TableCell className="hidden sm:table-cell px-8 py-6 font-black text-sm text-center">
+                        <div className="flex items-center justify-center gap-1.5 opacity-60">
+                          <Zap className="h-3 w-3 text-primary" />
+                          {ex.points?.toLocaleString()} <span className="text-[9px] opacity-40">PTS</span>
                         </div>
                       </TableCell>
-                      <TableCell className="px-6 md:px-8 py-6">
-                        <span className="font-black text-primary text-base">
-                          {ex.amount?.toLocaleString()} <span className="text-[10px] opacity-40">FCFA</span>
+                      <TableCell className="px-6 md:px-8 py-6 text-right">
+                        <span className="font-black text-primary text-base tabular-nums">
+                          {ex.amount?.toLocaleString()} <span className="text-[10px] opacity-40 font-bold">FCFA</span>
                         </span>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell px-8 py-6">
-                        <div className="flex flex-col text-[10px] font-bold opacity-40">
-                          <span>{ex.requestedAt && typeof ex.requestedAt.toDate === 'function' ? format(ex.requestedAt.toDate(), "dd MMM yyyy", { locale: fr }) : "---"}</span>
-                          <span>{ex.requestedAt && typeof ex.requestedAt.toDate === 'function' ? format(ex.requestedAt.toDate(), "HH:mm") : ""}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell px-8 py-6">
+                      <TableCell className="hidden sm:table-cell px-8 py-6 text-right">
                         {ex.status === 'pending' && (
                           <Badge variant="secondary" className="bg-orange-500/10 text-orange-600 border-none font-black text-[9px] uppercase tracking-widest px-3 py-1">
                             En attente
@@ -279,8 +360,8 @@ export default function ConversionsAdminPage() {
                         )}
                       </TableCell>
                       <TableCell className="px-6 md:px-8 py-6 text-right">
-                        {ex.status === 'pending' && (
-                          <div className="flex justify-end gap-2">
+                        {ex.status === 'pending' ? (
+                          <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
                             <Button 
                               size="icon" 
                               variant="ghost" 
@@ -294,15 +375,14 @@ export default function ConversionsAdminPage() {
                               size="icon" 
                               onClick={(e) => handleUpdateStatus(e, ex.id, 'completed')}
                               disabled={processingId === ex.id}
-                              className="h-10 w-10 rounded-xl"
+                              className="h-10 w-10 rounded-xl shadow-lg shadow-primary/10"
                             >
                               {processingId === ex.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-5 w-5" />}
                             </Button>
                           </div>
-                        )}
-                        {ex.status !== 'pending' && (
-                          <div className="text-[10px] font-black opacity-20 uppercase tracking-widest">
-                            {ex.status === 'completed' ? 'Traité' : 'Refusé'}
+                        ) : (
+                          <div className="text-[10px] font-black opacity-20 uppercase tracking-[0.2em]">
+                            {ex.status === 'completed' ? 'Archivé' : 'Révoqué'}
                           </div>
                         )}
                       </TableCell>
@@ -320,7 +400,7 @@ export default function ConversionsAdminPage() {
           <div className="p-8 space-y-8">
             <DialogHeader>
               <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Fiche de Transaction</p>
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Fiche de Flux Financier</p>
                 <DialogTitle className="text-2xl font-black tracking-tight">Détails de la Conversion</DialogTitle>
               </div>
             </DialogHeader>
@@ -339,24 +419,24 @@ export default function ConversionsAdminPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-5 bg-background/40 rounded-3xl border border-primary/5 space-y-1">
-                    <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Lumière brute</p>
-                    <p className="font-black text-base">{selectedExchange.points?.toLocaleString()} <span className="text-[10px] opacity-30">PTS</span></p>
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Énergie Totale</p>
+                    <p className="font-black text-base">{selectedExchange.points?.toLocaleString()} <span className="text-[10px] opacity-30 font-bold">PTS</span></p>
                   </div>
                   <div className="p-5 bg-background/40 rounded-3xl border border-primary/5 space-y-1">
-                    <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Montant Net</p>
-                    <p className="font-black text-base text-primary">{selectedExchange.amount?.toLocaleString()} <span className="text-[10px] opacity-30">FCFA</span></p>
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Prospérité Nette</p>
+                    <p className="font-black text-base text-primary">{selectedExchange.amount?.toLocaleString()} <span className="text-[10px] opacity-30 font-bold">FCFA</span></p>
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between px-2">
+                <div className="space-y-3 px-2">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 opacity-40">
                       <Smartphone className="h-3 w-3" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Liaison Wave</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest">Compte Wave</span>
                     </div>
                     <span className="text-xs font-bold">{selectedExchange.phoneNumber}</span>
                   </div>
-                  <div className="flex items-center justify-between px-2">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 opacity-40">
                       <Calendar className="h-3 w-3" />
                       <span className="text-[10px] font-black uppercase tracking-widest">Date de Requête</span>
@@ -367,14 +447,14 @@ export default function ConversionsAdminPage() {
                         : "---"}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between px-2">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 opacity-40">
                       <Info className="h-3 w-3" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">État Actuel</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest">État du Flux</span>
                     </div>
-                    {selectedExchange.status === 'pending' && <span className="text-[10px] font-black uppercase text-orange-500">En Attente</span>}
-                    {selectedExchange.status === 'completed' && <span className="text-[10px] font-black uppercase text-green-500">Traité le {selectedExchange.processedAt && typeof selectedExchange.processedAt.toDate === 'function' ? format(selectedExchange.processedAt.toDate(), "dd/MM") : ""}</span>}
-                    {selectedExchange.status === 'rejected' && <span className="text-[10px] font-black uppercase text-red-500">Rejeté le {selectedExchange.processedAt && typeof selectedExchange.processedAt.toDate === 'function' ? format(selectedExchange.processedAt.toDate(), "dd/MM") : ""}</span>}
+                    {selectedExchange.status === 'pending' && <span className="text-[10px] font-black uppercase text-orange-500 animate-pulse">En Attente</span>}
+                    {selectedExchange.status === 'completed' && <span className="text-[10px] font-black uppercase text-green-500">Versé le {selectedExchange.processedAt && typeof selectedExchange.processedAt.toDate === 'function' ? format(selectedExchange.processedAt.toDate(), "dd/MM") : ""}</span>}
+                    {selectedExchange.status === 'rejected' && <span className="text-[10px] font-black uppercase text-red-500">Révoqué le {selectedExchange.processedAt && typeof selectedExchange.processedAt.toDate === 'function' ? format(selectedExchange.processedAt.toDate(), "dd/MM") : ""}</span>}
                   </div>
                 </div>
 
@@ -386,15 +466,15 @@ export default function ConversionsAdminPage() {
                       disabled={processingId === selectedExchange.id}
                       className="flex-1 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest text-destructive hover:bg-destructive/5 border-destructive/10"
                     >
-                      Refuser
+                      Révoquer
                     </Button>
                     <Button 
                       onClick={(e) => handleUpdateStatus(e, selectedExchange.id, 'completed')}
                       disabled={processingId === selectedExchange.id}
-                      className="flex-2 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2 shadow-xl shadow-primary/20"
+                      className="flex-[2] h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2 shadow-xl shadow-primary/20"
                     >
                       {processingId === selectedExchange.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                      Valider Retrait
+                      Valider le Transfert
                     </Button>
                   </div>
                 )}
@@ -403,7 +483,7 @@ export default function ConversionsAdminPage() {
 
             <div className="p-6 bg-primary/5 rounded-[2rem] border border-primary/5">
               <p className="text-[10px] leading-relaxed font-medium opacity-40 text-center italic">
-                "Chaque flux validé matérialise la Lumière en prospérité terrestre."
+                "Chaque validation harmonise l'éther et matérialise la récompense terrestre."
               </p>
             </div>
           </div>
