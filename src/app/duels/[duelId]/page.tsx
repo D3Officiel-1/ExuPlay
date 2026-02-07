@@ -13,7 +13,8 @@ import {
   collection,
   query,
   limit,
-  getDocs
+  getDocs,
+  Timestamp
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Loader2, Swords, Trophy, Zap, Clock, XCircle, CheckCircle2, User, RefreshCw, Sparkles, Users } from "lucide-react";
@@ -44,7 +45,6 @@ export default function DuelArenaPage() {
   useEffect(() => {
     if (!duel || duel.quizId || !isChallenger || !db || duel.status !== 'accepted') return;
     
-    // Si tout le monde a accepté, le challenger lance le quiz
     const fetchQuiz = async () => {
       try {
         const q = query(collection(db, "quizzes"), limit(50));
@@ -70,13 +70,17 @@ export default function DuelArenaPage() {
       const snap = await getDocs(query(collection(db, "quizzes")));
       const q = snap.docs.find(d => d.id === duel.quizId)?.data();
       if (q) {
-        setQuiz(q); setAnswered(false); setTimeLeft(15); setStartTime(Date.now()); setIsResetting(false);
+        setQuiz(q); 
+        setAnswered(false); 
+        setTimeLeft(15); 
+        setStartTime(Date.now()); 
+        setIsResetting(false);
       }
     };
     loadQuiz();
   }, [duel?.quizId, db]);
 
-  // 3. Chronomètre
+  // 3. Chronomètre de Question
   useEffect(() => {
     if (duel?.status === 'active' && !answered && timeLeft > 0 && quiz && !isResetting) {
       const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
@@ -86,36 +90,63 @@ export default function DuelArenaPage() {
     }
   }, [duel?.status, answered, timeLeft, quiz, isResetting]);
 
-  // 4. Détection du match nul collectif (si tout le monde a tort)
+  // 4. Synchronisation de la Réinitialisation (Tout le monde a tort)
   useEffect(() => {
-    if (duel?.status === 'active' && !isResetting) {
+    if (duel?.status === 'active' && !duel.resetStartedAt) {
       const participantResults = Object.values(duel.participants);
       const everyoneAnswered = participantResults.every((p: any) => p.result?.answered);
       const everyoneFailed = participantResults.every((p: any) => p.result?.answered && !p.result?.correct);
 
-      if (everyoneAnswered && everyoneFailed) {
-        setIsResetting(true); setResetCountdown(3); haptic.medium();
-        const countdown = setInterval(() => {
-          setResetCountdown(prev => {
-            if (prev <= 1) {
-              clearInterval(countdown);
-              if (isChallenger) {
-                // Nettoyage des résultats pour le nouveau round
-                const resetParticipants: any = {};
-                Object.keys(duel.participants).forEach(uid => {
-                  resetParticipants[`participants.${uid}.result`] = null;
-                });
-                updateDoc(duelRef!, { ...resetParticipants, quizId: null, round: increment(1), updatedAt: serverTimestamp() });
-              }
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-        return () => clearInterval(countdown);
+      if (everyoneAnswered && everyoneFailed && isChallenger) {
+        // Le Challenger ancre le début du reset pour tout le monde
+        updateDoc(duelRef!, {
+          resetStartedAt: serverTimestamp()
+        });
       }
     }
-  }, [duel, isResetting, isChallenger, duelRef]);
+  }, [duel, isChallenger, duelRef]);
+
+  // 5. Gestion du compte à rebours synchronisé
+  useEffect(() => {
+    if (duel?.resetStartedAt && duel.status === 'active') {
+      const start = (duel.resetStartedAt as Timestamp).toDate().getTime();
+      
+      const updateSyncCountdown = () => {
+        const now = Date.now();
+        const elapsed = Math.floor((now - start) / 1000);
+        const remaining = Math.max(0, 3 - elapsed);
+        
+        setIsResetting(true);
+        setResetCountdown(remaining);
+
+        if (remaining === 0) {
+          clearInterval(interval);
+          if (isChallenger) {
+            // Le Challenger effectue le nettoyage effectif
+            const resetParticipants: any = {};
+            Object.keys(duel.participants).forEach(uid => {
+              resetParticipants[`participants.${uid}.result`] = null;
+            });
+            updateDoc(duelRef!, { 
+              ...resetParticipants, 
+              quizId: null, 
+              resetStartedAt: null, // On libère l'ancre pour le prochain tour
+              round: increment(1), 
+              updatedAt: serverTimestamp() 
+            });
+          }
+        }
+      };
+
+      const interval = setInterval(updateSyncCountdown, 200);
+      updateSyncCountdown();
+      haptic.medium();
+
+      return () => clearInterval(interval);
+    } else {
+      setIsResetting(false);
+    }
+  }, [duel?.resetStartedAt, duel?.status, isChallenger, duelRef, duel?.participants]);
 
   const handleAnswer = async (idx: number) => {
     if (!duel || !user || !db || answered || isResetting) return;
@@ -127,8 +158,9 @@ export default function DuelArenaPage() {
       [`participants.${user.uid}.result`]: { answered: true, correct: isCorrect, time: responseTime }
     });
 
-    // Si tout le monde a répondu et au moins un a juste, on finit
-    const updatedDuel = (await getDocs(query(collection(db, "duels")))).docs.find(d => d.id === duelId)?.data();
+    // Vérification de la fin du duel (si quelqu'un a bon)
+    const updatedDuelSnap = await getDocs(query(collection(db, "duels")));
+    const updatedDuel = updatedDuelSnap.docs.find(d => d.id === duelId)?.data();
     if (updatedDuel) {
       const results = Object.values(updatedDuel.participants);
       const allFinished = results.every((p: any) => p.result?.answered);
@@ -139,7 +171,7 @@ export default function DuelArenaPage() {
     }
   };
 
-  // 5. Arbitrage Final
+  // 6. Arbitrage Final
   useEffect(() => {
     if (duel?.status === 'finished' && !duel.winnerId && db && duelRef) {
       const determineWinner = async () => {
@@ -154,7 +186,6 @@ export default function DuelArenaPage() {
 
         await updateDoc(duelRef, { winnerId, finishedAt: serverTimestamp() });
         if (winnerId !== 'draw') {
-          // Pot total = wager * nombre de participants
           const totalPot = duel.wager * duel.participantIds.length;
           await updateDoc(doc(db, "users", winnerId), { totalPoints: increment(totalPot), updatedAt: serverTimestamp() });
         }
@@ -202,9 +233,22 @@ export default function DuelArenaPage() {
         {(duel.status === 'pending' || duel.status === 'accepted' || (duel.status === 'active' && !quiz) || isResetting) ? (
           <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col items-center justify-center text-center space-y-8">
             <div className="relative">
-              {isResetting ? <div className="h-24 w-24 rounded-full border-4 border-primary/10 flex items-center justify-center"><span className="text-5xl font-black">{resetCountdown}</span></div> : <RefreshCw className="h-16 w-16 animate-spin opacity-10" />}
+              {isResetting ? (
+                <motion.div 
+                  initial={{ scale: 0.8 }}
+                  animate={{ scale: 1.1 }}
+                  key={resetCountdown}
+                  className="h-24 w-24 rounded-full border-4 border-primary/10 flex items-center justify-center"
+                >
+                  <span className="text-5xl font-black">{resetCountdown}</span>
+                </motion.div>
+              ) : (
+                <RefreshCw className="h-16 w-16 animate-spin opacity-10" />
+              )}
             </div>
-            <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-40">{isResetting ? "Équilibre Rompu" : "Invocation de l'Arène"}</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-40">
+              {isResetting ? "Équilibre Rompu - Harmonisation" : "Invocation de l'Arène"}
+            </p>
           </motion.div>
         ) : duel.status === 'active' ? (
           <motion.div key="active" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col space-y-12">
