@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -17,7 +18,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Swords, X, Check, Zap, Sparkles, Loader2, User, Timer, ShieldAlert } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import Image from "next/image";
 
@@ -30,12 +31,12 @@ export function DuelInvitationListener() {
   const { user } = useUser();
   const db = useFirestore();
   const router = useRouter();
+  const pathname = usePathname();
   const [isProcessing, setIsProcessing] = useState(false);
 
   // On écoute les duels où l'utilisateur est impliqué et qui ne sont pas finis
   const activeDuelsQuery = useMemo(() => {
     if (!db || !user?.uid) return null;
-    // Correction : Utilisation explicite de and() pour combiner or() et where()
     return query(
       collection(db, "duels"),
       and(
@@ -50,7 +51,6 @@ export function DuelInvitationListener() {
 
   const { data: duels } = useCollection(activeDuelsQuery);
 
-  // On prend le duel le plus récent
   const activeDuel = useMemo(() => {
     if (!duels || duels.length === 0) return null;
     return duels[0];
@@ -58,13 +58,16 @@ export function DuelInvitationListener() {
 
   // Redirection automatique vers l'arène quand le duel est accepté
   useEffect(() => {
-    if (activeDuel?.status === 'accepted') {
-      const timer = setTimeout(() => {
-        router.push(`/duels/${activeDuel.id}`);
-      }, 2000);
-      return () => clearTimeout(timer);
+    if (activeDuel?.status === 'accepted' || activeDuel?.status === 'active') {
+      // Si on n'est pas déjà sur la page du duel, on y va
+      if (!pathname.includes(`/duels/${activeDuel.id}`)) {
+        const timer = setTimeout(() => {
+          router.push(`/duels/${activeDuel.id}`);
+        }, 1500);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [activeDuel?.status, activeDuel?.id, router]);
+  }, [activeDuel?.status, activeDuel?.id, router, pathname]);
 
   const handleAccept = async () => {
     if (!activeDuel || !db || !user?.uid || isProcessing) return;
@@ -93,7 +96,6 @@ export function DuelInvitationListener() {
     haptic.light();
     try {
       const challengerUserRef = doc(db, "users", activeDuel.challengerId);
-      // Toujours rembourser le challenger quand le duel est annulé/refusé au stade pending
       if (activeDuel.status === 'pending') {
         await updateDoc(challengerUserRef, {
           totalPoints: increment(activeDuel.wager),
@@ -101,7 +103,6 @@ export function DuelInvitationListener() {
         });
       }
       await updateDoc(doc(db, "duels", activeDuel.id), { status: 'cancelled' });
-      // On nettoie le document après un court délai pour laisser l'autre voir le message
       setTimeout(async () => {
         await deleteDoc(doc(db, "duels", activeDuel.id));
       }, 3000);
@@ -117,7 +118,8 @@ export function DuelInvitationListener() {
     await deleteDoc(doc(db, "duels", activeDuel.id));
   };
 
-  if (!activeDuel || !user) return null;
+  // Ne pas afficher l'overlay si on est déjà dans l'arène de CE duel
+  if (!activeDuel || !user || pathname.includes(`/duels/${activeDuel.id}`)) return null;
 
   const isOpponent = activeDuel.opponentId === user.uid;
   const isChallenger = activeDuel.challengerId === user.uid;
@@ -143,7 +145,6 @@ export function DuelInvitationListener() {
           animate={{ scale: 1, y: 0, opacity: 1 }}
           className="w-full max-w-sm space-y-12 relative z-10"
         >
-          {/* Avatar Section */}
           <div className="space-y-6">
             <div className="relative mx-auto w-32 h-32">
               <motion.div 
@@ -175,7 +176,6 @@ export function DuelInvitationListener() {
             </div>
           </div>
 
-          {/* Center Card */}
           <div className="p-10 bg-primary/5 rounded-[3.5rem] border border-primary/10 shadow-inner relative overflow-hidden group">
             <motion.div animate={{ x: ["-100%", "200%"] }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent skew-x-12" />
             
@@ -200,16 +200,15 @@ export function DuelInvitationListener() {
             )}
           </div>
 
-          {/* Action Buttons */}
           <div className="flex flex-col gap-4">
             {activeDuel.status === 'pending' && isOpponent && (
               <>
                 <Button onClick={handleAccept} disabled={isProcessing} className="w-full h-20 rounded-[2rem] font-black text-sm uppercase gap-4 shadow-2xl shadow-primary/20">
                   {isProcessing ? <Loader2 className="animate-spin h-6 w-6" /> : <Check className="h-6 w-6" />} Accepter le Défie
                 </Button>
-                <Button variant="ghost" onClick={handleDeclineOrCancel} disabled={isProcessing} className="w-full h-14 rounded-2xl font-black text-[10px] uppercase tracking-[0.4em] opacity-40 hover:opacity-100">
+                <button onClick={handleDeclineOrCancel} disabled={isProcessing} className="w-full h-14 rounded-2xl font-black text-[10px] uppercase tracking-[0.4em] opacity-40 hover:opacity-100 transition-opacity">
                   Refuser l'épreuve
-                </Button>
+                </button>
               </>
             )}
 
