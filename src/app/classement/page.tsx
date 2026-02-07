@@ -1,19 +1,61 @@
 
 "use client";
 
-import { useMemo } from "react";
-import { motion } from "framer-motion";
-import { useFirestore, useCollection, useUser } from "@/firebase";
-import { collection, query, orderBy, limit } from "firebase/firestore";
+import { useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useFirestore, useCollection, useUser, useDoc } from "@/firebase";
+import { 
+  collection, 
+  query, 
+  orderBy, 
+  limit, 
+  doc, 
+  updateDoc, 
+  increment, 
+  serverTimestamp, 
+  addDoc 
+} from "firebase/firestore";
 import { Card, CardContent } from "@/components/ui/card";
-import { Trophy, Loader2, Zap, Shield } from "lucide-react";
+import { 
+  Trophy, 
+  Loader2, 
+  Zap, 
+  Shield, 
+  Swords, 
+  ArrowRightLeft, 
+  X, 
+  Check, 
+  User as UserIcon,
+  ShieldCheck,
+  AlertCircle
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { getHonorTitle } from "@/lib/titles";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { haptic } from "@/lib/haptics";
 
 export default function ClassementPage() {
   const db = useFirestore();
   const { user } = useUser();
+  const { toast } = useToast();
+
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [amount, setAmount] = useState("");
+  const [mode, setMode] = useState<'transfer' | 'duel'>('transfer');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const myProfileRef = useMemo(() => (db && user?.uid) ? doc(db, "users", user.uid) : null, [db, user?.uid]);
+  const { data: myProfile } = useDoc(myProfileRef);
 
   const topUsersQuery = useMemo(() => {
     if (!db) return null;
@@ -29,6 +71,90 @@ export default function ClassementPage() {
       rest: allUsers.slice(3)
     };
   }, [allUsers]);
+
+  const handleUserClick = (u: any) => {
+    if (u.id === user?.uid) {
+      haptic.medium();
+      toast({ title: "C'est vous !", description: "Explorez votre propre profil pour voir vos statistiques." });
+      return;
+    }
+    haptic.light();
+    setSelectedUser(u);
+    setAmount("");
+    setMode('transfer');
+  };
+
+  const handleAction = async () => {
+    if (!selectedUser || !amount || isProcessing || !user?.uid || !db) return;
+    
+    const transferAmount = parseInt(amount);
+    if (isNaN(transferAmount) || transferAmount <= 0) {
+      toast({ variant: "destructive", title: "Montant invalide" });
+      return;
+    }
+
+    const fees = mode === 'transfer' ? Math.floor(transferAmount * 0.1) : 0;
+    const totalCost = transferAmount + fees;
+    const dailyLimit = myProfile?.trustBadge ? 2500 : 500;
+
+    if (transferAmount > dailyLimit) {
+      haptic.error();
+      toast({ variant: "destructive", title: "Limite dépassée", description: `Votre limite est de ${dailyLimit} PTS.` });
+      return;
+    }
+
+    if ((myProfile?.totalPoints || 0) < totalCost) {
+      haptic.error();
+      toast({ variant: "destructive", title: "Lumière insuffisante", description: `Il vous faut ${totalCost} PTS pour cette action.` });
+      return;
+    }
+
+    setIsProcessing(true);
+    haptic.medium();
+
+    try {
+      const senderRef = doc(db, "users", user.uid);
+      const receiverRef = doc(db, "users", selectedUser.id);
+
+      if (mode === 'transfer') {
+        await updateDoc(senderRef, { totalPoints: increment(-totalCost), updatedAt: serverTimestamp() });
+        await updateDoc(receiverRef, { totalPoints: increment(transferAmount), updatedAt: serverTimestamp() });
+        await addDoc(collection(db, "transfers"), {
+          fromId: user.uid,
+          fromName: myProfile?.username || "Anonyme",
+          fromPhoto: myProfile?.profileImage || "",
+          toId: selectedUser.id,
+          amount: transferAmount,
+          timestamp: new Date().toISOString(),
+          read: false
+        });
+        haptic.success();
+        toast({ title: "Transmission réussie", description: `${transferAmount} PTS envoyés à @${selectedUser.username}` });
+      } else {
+        await updateDoc(senderRef, { totalPoints: increment(-transferAmount), updatedAt: serverTimestamp() });
+        await addDoc(collection(db, "duels"), {
+          challengerId: user.uid,
+          challengerName: myProfile?.username || "Anonyme",
+          challengerPhoto: myProfile?.profileImage || "",
+          opponentId: selectedUser.id,
+          opponentName: selectedUser.username || "Adversaire",
+          opponentPhoto: selectedUser.profileImage || "",
+          wager: transferAmount,
+          status: 'pending',
+          createdAt: serverTimestamp(),
+          round: 1
+        });
+        haptic.success();
+        toast({ title: "Défi lancé !", description: `Attente de la réponse de @${selectedUser.username}` });
+      }
+      setSelectedUser(null);
+    } catch (e) {
+      console.error(e);
+      toast({ variant: "destructive", title: "Dissonance", description: "Le flux a été interrompu." });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -71,7 +197,8 @@ export default function ClassementPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="flex flex-col items-center gap-3"
+                className="flex flex-col items-center gap-3 cursor-pointer"
+                onClick={() => handleUserClick(podium[1])}
               >
                 <div className="relative">
                   <ProfileAvatar imageUrl={podium[1].profileImage} points={podium[1].totalPoints} activeTheme={podium[1].activeTheme} size="md" />
@@ -92,7 +219,8 @@ export default function ClassementPage() {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ type: "spring", damping: 12 }}
-                className="flex flex-col items-center gap-4 -mt-8"
+                className="flex flex-col items-center gap-4 -mt-8 cursor-pointer"
+                onClick={() => handleUserClick(podium[0])}
               >
                 <div className="relative">
                   <ProfileAvatar imageUrl={podium[0].profileImage} points={podium[0].totalPoints} activeTheme={podium[0].activeTheme} size="lg" className="z-10" />
@@ -116,7 +244,8 @@ export default function ClassementPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="flex flex-col items-center gap-3"
+                className="flex flex-col items-center gap-3 cursor-pointer"
+                onClick={() => handleUserClick(podium[2])}
               >
                 <div className="relative">
                   <ProfileAvatar imageUrl={podium[2].profileImage} points={podium[2].totalPoints} activeTheme={podium[2].activeTheme} size="md" />
@@ -145,10 +274,10 @@ export default function ClassementPage() {
             const title = getHonorTitle(u.totalPoints || 0);
 
             return (
-              <motion.div key={u.id} variants={itemVariants}>
+              <motion.div key={u.id} variants={itemVariants} onClick={() => handleUserClick(u)}>
                 <Card className={cn(
-                  "border-none backdrop-blur-3xl transition-all duration-500 overflow-hidden rounded-[2rem]",
-                  isMe ? "bg-primary text-primary-foreground shadow-2xl scale-[1.02]" : "bg-card/40 shadow-lg"
+                  "border-none backdrop-blur-3xl transition-all duration-500 overflow-hidden rounded-[2rem] cursor-pointer",
+                  isMe ? "bg-primary text-primary-foreground shadow-2xl scale-[1.02]" : "bg-card/40 shadow-lg hover:bg-card/60"
                 )}>
                   <CardContent className="p-4 flex items-center gap-4">
                     <div className="flex flex-col items-center justify-center w-10 shrink-0">
@@ -181,6 +310,110 @@ export default function ClassementPage() {
           })}
         </motion.div>
       </main>
+
+      {/* Interaction Dialog */}
+      <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
+        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-3xl border-white/5 rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
+          <div className="p-8 space-y-8">
+            <DialogHeader>
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Résonance Inter-Esprits</p>
+                <DialogTitle className="text-2xl font-black tracking-tight">Action de Flux</DialogTitle>
+              </div>
+            </DialogHeader>
+
+            {selectedUser && (
+              <div className="space-y-8">
+                <div className="flex items-center gap-4 p-6 bg-primary/5 rounded-[2rem] border border-primary/5">
+                  <ProfileAvatar imageUrl={selectedUser.profileImage} points={selectedUser.totalPoints} size="md" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-lg truncate">@{selectedUser.username}</p>
+                    <div className="flex items-center gap-1.5">
+                      <Shield className={cn("h-3 w-3", getHonorTitle(selectedUser.totalPoints || 0).color)} />
+                      <p className={cn("text-[10px] font-black uppercase tracking-widest", getHonorTitle(selectedUser.totalPoints || 0).color)}>
+                        {getHonorTitle(selectedUser.totalPoints || 0).name}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="flex gap-2 p-1 bg-primary/5 rounded-2xl border border-primary/5">
+                    <Button 
+                      variant={mode === 'transfer' ? 'default' : 'ghost'} 
+                      onClick={() => setMode('transfer')}
+                      className="flex-1 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest gap-2"
+                    >
+                      <ArrowRightLeft className="h-3.5 w-3.5" />
+                      Transfert
+                    </Button>
+                    <Button 
+                      variant={mode === 'duel' ? 'default' : 'ghost'} 
+                      onClick={() => setMode('duel')}
+                      className="flex-1 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest gap-2"
+                    >
+                      <Swords className="h-3.5 w-3.5" />
+                      Duel
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase opacity-40 ml-2">Montant de Lumière</Label>
+                    <div className="relative">
+                      <Zap className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-20" />
+                      <Input 
+                        type="number" 
+                        placeholder="0" 
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        className="h-16 text-3xl font-black text-center pl-12 rounded-2xl bg-primary/5 border-none focus-visible:ring-1 focus-visible:ring-primary/20"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {mode === 'transfer' && (
+                      <div className="flex items-center justify-between p-4 bg-orange-500/5 rounded-2xl border border-orange-500/10">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="h-3 w-3 text-orange-500 opacity-60" />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-orange-600/60">Taxe de passage (10%)</span>
+                        </div>
+                        <span className="text-xs font-black text-orange-600">+{Math.floor((parseInt(amount) || 0) * 0.1)} PTS</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between px-2">
+                      <p className="text-[10px] font-black uppercase opacity-40">Votre Lumière</p>
+                      <p className="text-xs font-black">{myProfile?.totalPoints?.toLocaleString()} PTS</p>
+                    </div>
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={handleAction}
+                  disabled={isProcessing || !amount || parseInt(amount) <= 0}
+                  className="w-full h-16 rounded-2xl font-black text-sm uppercase tracking-widest gap-3 shadow-xl shadow-primary/20"
+                >
+                  {isProcessing ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <>
+                      {mode === 'transfer' ? <ArrowRightLeft className="h-5 w-5" /> : <Swords className="h-5 w-5" />}
+                      {mode === 'transfer' ? "Transmettre la Lumière" : "Lancer le Défi"}
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            <div className="p-6 bg-primary/5 rounded-[2rem] border border-primary/5">
+              <p className="text-[10px] leading-relaxed font-medium opacity-40 text-center italic">
+                "Chaque interaction entre esprits renforce le flux du Sanctuaire."
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
