@@ -33,7 +33,7 @@ export const TITLES: HonorTitle[] = [
     borderColor: "border-blue-500/30",
     glowColor: "bg-blue-500/10",
     description: "La résonance commence à s'ancrer.",
-    auraClass: "bg-blue-500/5 blur-xl"
+    auraClass: "bg-blue-500/20"
   },
   {
     name: "Sage",
@@ -43,7 +43,7 @@ export const TITLES: HonorTitle[] = [
     borderColor: "border-purple-500/40",
     glowColor: "bg-purple-500/20",
     description: "La pensée est devenue une seconde nature.",
-    auraClass: "bg-purple-500/10 blur-2xl"
+    auraClass: "bg-purple-500/30"
   },
   {
     name: "Oracle",
@@ -53,7 +53,7 @@ export const TITLES: HonorTitle[] = [
     borderColor: "border-yellow-500/50",
     glowColor: "bg-yellow-500/30",
     description: "Maître absolu du flux de l'éveil.",
-    auraClass: "bg-yellow-500/20 blur-3xl animate-pulse"
+    auraClass: "bg-yellow-500/40"
   }
 ];
 
@@ -75,28 +75,28 @@ export const THEMES: Record<string, VisualTheme> = {
     name: "Neutre",
     color: "text-primary",
     borderColor: "border-primary/20",
-    auraClass: "bg-primary/20 blur-2xl"
+    auraClass: "bg-primary/30"
   },
   "theme_ruby": {
     id: "theme_ruby",
     name: "Rubis",
     color: "text-red-500",
     borderColor: "border-red-500 ring-2 ring-red-500/20",
-    auraClass: "bg-red-600/40 blur-2xl shadow-[0_0_40px_rgba(220,38,38,0.4)]"
+    auraClass: "bg-red-600/60 shadow-[0_0_50px_rgba(220,38,38,0.6)]"
   },
   "theme_obsidian": {
     id: "theme_obsidian",
     name: "Obsidienne",
     color: "text-zinc-100",
-    borderColor: "border-zinc-400 ring-4 ring-black/50 shadow-2xl",
-    auraClass: "bg-zinc-950/90 blur-2xl border border-white/5 shadow-[0_0_50px_rgba(0,0,0,1)]"
+    borderColor: "border-zinc-200 ring-4 ring-black/80 shadow-2xl",
+    auraClass: "bg-white/10 shadow-[0_0_60px_rgba(255,255,255,0.2)]"
   },
   "theme_gold": {
     id: "theme_gold",
     name: "Or Pur",
     color: "text-yellow-400",
-    borderColor: "border-yellow-400 border-4 ring-4 ring-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.5)]",
-    auraClass: "bg-yellow-500/80 blur-3xl animate-pulse shadow-[0_0_80px_rgba(234,179,8,0.8)]"
+    borderColor: "border-yellow-400 border-[3px] ring-4 ring-yellow-500/40 shadow-[0_0_40px_rgba(234,179,8,0.6)]",
+    auraClass: "bg-yellow-400/90 shadow-[0_0_100px_rgba(234,179,8,0.9)]"
   }
 };
 

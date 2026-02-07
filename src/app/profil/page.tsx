@@ -257,12 +257,12 @@ export default function ProfilPage() {
               <Palette className="h-4 w-4 opacity-40" />
               <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Sélecteur d'Aura</h2>
             </div>
-            <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] overflow-hidden">
-              <CardContent className="p-6 flex gap-6 overflow-x-auto no-scrollbar items-center justify-center">
+            <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] overflow-visible">
+              <CardContent className="p-6 flex gap-8 overflow-x-auto no-scrollbar items-center justify-center">
                 <button 
                   onClick={() => handleApplyTheme("default")} 
                   className={cn(
-                    "h-16 w-16 shrink-0 rounded-[1.5rem] border-2 transition-all flex items-center justify-center", 
+                    "h-16 w-16 shrink-0 rounded-[1.5rem] border-2 transition-all flex items-center justify-center relative", 
                     (profile?.activeTheme === "default" || !profile?.activeTheme) 
                       ? "border-primary bg-primary/10 shadow-xl scale-110" 
                       : "border-primary/5 bg-background/50 opacity-40"
@@ -280,12 +280,13 @@ export default function ProfilPage() {
                       key={tid} 
                       onClick={() => handleApplyTheme(tid)} 
                       className={cn(
-                        "h-16 w-16 shrink-0 rounded-[1.5rem] border-2 transition-all flex items-center justify-center relative overflow-hidden",
+                        "h-16 w-16 shrink-0 rounded-[1.5rem] border-2 transition-all flex items-center justify-center relative",
                         isActive ? theme.borderColor + " scale-110 shadow-xl bg-background" : "border-primary/5 bg-card opacity-60"
                       )}
                     >
-                      <div className={cn("h-8 w-8 rounded-full shadow-inner", theme.color.replace('text-', 'bg-'))} />
-                      {isActive && <div className="absolute inset-0 bg-primary/[0.03] pointer-events-none" />}
+                      <div className={cn("h-8 w-8 rounded-full shadow-inner relative z-10", theme.color.replace('text-', 'bg-'))} />
+                      {/* Prévisualisation de la Lumière Divine dans le sélecteur */}
+                      <div className={cn("absolute inset-[-20%] rounded-full blur-xl opacity-40", theme.auraClass.split(' ').find(c => c.startsWith('bg-')))} />
                     </button>
                   );
                 })}

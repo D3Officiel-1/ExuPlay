@@ -17,6 +17,7 @@ interface ProfileAvatarProps {
 
 /**
  * @fileOverview Composant Avatar avec aura thématique et Sceau de Confiance.
+ * Reforgé avec l'Oracle de la Lumière Divine pour un rayonnement sacré.
  */
 export function ProfileAvatar({ 
   imageUrl, 
@@ -49,22 +50,58 @@ export function ProfileAvatar({
     xl: "h-10 w-10 -bottom-2.5 -right-2.5"
   };
 
+  const isSpecial = activeTheme !== 'default';
+
   return (
     <div className={cn("relative inline-block", className)}>
-      <AnimatePresence mode="wait">
+      {/* --- LA LUMIÈRE DIVINE (Background Layers) --- */}
+      <div className="absolute inset-0 z-0 pointer-events-none flex items-center justify-center">
+        {/* Layer 1: Halo de base fixe */}
+        <AnimatePresence mode="wait">
+          <motion.div 
+            key={activeTheme}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1.3 }}
+            exit={{ opacity: 0, scale: 1.5 }}
+            transition={{ duration: 1, ease: "easeOut" }}
+            className={cn(
+              "absolute inset-[-35%] rounded-full blur-[40px]",
+              visualTheme.auraClass.split(' ').filter(c => c.startsWith('bg-')).join(' ') || "bg-primary/20"
+            )} 
+          />
+        </AnimatePresence>
+
+        {/* Layer 2: Pulsation Divine Dynamique */}
         <motion.div 
-          key={activeTheme}
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1.1 }}
-          exit={{ opacity: 0, scale: 1.2 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
+          animate={{ 
+            scale: [1, 1.5, 1],
+            opacity: [0.3, 0.6, 0.3]
+          }}
+          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
           className={cn(
-            "absolute inset-[-25%] rounded-full z-0 pointer-events-none",
-            visualTheme.auraClass
-          )} 
+            "absolute inset-[-55%] rounded-full blur-[60px]",
+            activeTheme === 'theme_gold' ? "bg-yellow-400/40" : 
+            activeTheme === 'theme_ruby' ? "bg-red-500/30" : 
+            activeTheme === 'theme_obsidian' ? "bg-white/10" : "bg-primary/15"
+          )}
         />
-      </AnimatePresence>
+
+        {/* Layer 3: Rayons de l'Oracle (Uniquement thèmes de prestige) */}
+        {isSpecial && (
+          <motion.div 
+            animate={{ rotate: 360 }}
+            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+            className="absolute inset-[-70%] opacity-40 blur-[30px]"
+            style={{
+              background: `conic-gradient(from 0deg, transparent, currentColor, transparent 30deg, transparent 60deg, currentColor, transparent 90deg)`,
+              color: activeTheme === 'theme_gold' ? '#fbbf24' : 
+                     activeTheme === 'theme_ruby' ? '#ef4444' : '#ffffff'
+            }}
+          />
+        )}
+      </div>
       
+      {/* Conteneur Physique de l'Avatar */}
       <div className={cn(
         "relative overflow-hidden flex items-center justify-center border-2 transition-all duration-700 bg-card shadow-2xl z-10",
         sizeClasses[size],
@@ -81,15 +118,17 @@ export function ProfileAvatar({
           <UserIcon className={cn("text-primary opacity-20", iconSizes[size])} />
         )}
 
+        {/* Effet de scintillement interne (Shimmer) */}
         {(activeTheme === 'theme_gold' || activeTheme === 'theme_obsidian') && (
           <motion.div 
             animate={{ x: ["-100%", "200%"] }}
             transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12 pointer-events-none"
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-12 pointer-events-none"
           />
         )}
       </div>
 
+      {/* Sceau de Confiance */}
       {isTrusted && (
         <motion.div 
           initial={{ scale: 0, rotate: -45 }}
