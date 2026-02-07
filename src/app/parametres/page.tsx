@@ -2,7 +2,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
 import { useUser, useFirestore, useDoc } from "@/firebase";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
@@ -13,6 +13,12 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { 
   Moon, 
   Sun, 
@@ -27,12 +33,17 @@ import {
   LogOut,
   Loader2,
   ZapOff,
-  Eye
+  Eye,
+  Palette,
+  Sparkles,
+  Check
 } from "lucide-react";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
+import { APP_COLORS } from "@/lib/colors";
+import { cn } from "@/lib/utils";
 
 export default function ParametresPage() {
   const { theme, setTheme } = useTheme();
@@ -41,7 +52,10 @@ export default function ParametresPage() {
   const auth = getAuth();
   const router = useRouter();
   const { toast } = useToast();
+  
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isColorDialogOpen, setIsColorDialogOpen] = useState(false);
+  const [isUpdatingColor, setIsUpdatingColor] = useState(false);
   
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -72,6 +86,24 @@ export default function ParametresPage() {
   const handleThemeChange = (newTheme: string) => {
     setTheme(newTheme);
     handleUpdateSetting('theme', newTheme);
+  };
+
+  const handleColorSelect = async (colorId: string) => {
+    if (!userDocRef || isUpdatingColor) return;
+    haptic.medium();
+    setIsUpdatingColor(true);
+    try {
+      await updateDoc(userDocRef, {
+        customColor: colorId,
+        updatedAt: serverTimestamp()
+      });
+      toast({ title: "Harmonie mise à jour", description: `L'aura ${APP_COLORS[colorId].name} a été infusée.` });
+      setIsColorDialogOpen(false);
+    } catch (e) {
+      toast({ variant: "destructive", title: "Dissonance" });
+    } finally {
+      setIsUpdatingColor(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -156,6 +188,21 @@ export default function ParametresPage() {
             </div>
             <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden">
               <CardContent className="p-4 space-y-1">
+                {/* Harmonie de l'Aura */}
+                <div className="flex items-center justify-between p-3 rounded-2xl group hover:bg-primary/5 transition-colors cursor-pointer" onClick={() => { haptic.light(); setIsColorDialogOpen(true); }}>
+                  <div className="flex items-center gap-4">
+                    <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center relative">
+                      <Palette className="h-5 w-5 text-primary opacity-60" />
+                      <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background bg-primary shadow-sm" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">Harmonie de l'Aura</p>
+                      <p className="text-[10px] opacity-40 font-medium">Couleur : {APP_COLORS[profile?.customColor || 'default'].name}</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 opacity-20 group-hover:opacity-60 transition-opacity" />
+                </div>
+
                 {/* Animations (Eco mode) */}
                 <div className="flex items-center justify-between p-3 rounded-2xl">
                   <div className="flex items-center gap-4">
@@ -305,6 +352,73 @@ export default function ParametresPage() {
           </motion.section>
         </motion.div>
       </main>
+
+      {/* Dialogue de sélection de couleur */}
+      <Dialog open={isColorDialogOpen} onOpenChange={setIsColorDialogOpen}>
+        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-3xl border-white/5 rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
+          <div className="p-8 space-y-10">
+            <DialogHeader>
+              <div className="space-y-1 text-center">
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Personnalisation</p>
+                <DialogTitle className="text-2xl font-black tracking-tight italic">Harmonie de l'Aura</DialogTitle>
+              </div>
+            </DialogHeader>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {Object.values(APP_COLORS).map((color) => {
+                const isActive = (profile?.customColor || 'default') === color.id;
+                return (
+                  <button
+                    key={color.id}
+                    onClick={() => handleColorSelect(color.id)}
+                    disabled={isUpdatingColor}
+                    className={cn(
+                      "group relative flex flex-col items-center gap-3 p-5 rounded-[2rem] border-2 transition-all duration-500",
+                      isActive 
+                        ? "border-primary bg-primary/5 shadow-lg" 
+                        : "border-transparent bg-background/40 hover:bg-primary/5 opacity-60 hover:opacity-100"
+                    )}
+                  >
+                    <div 
+                      className="h-12 w-12 rounded-2xl shadow-inner flex items-center justify-center relative overflow-hidden"
+                      style={{ backgroundColor: color.hex }}
+                    >
+                      {isActive && <Check className="h-6 w-6 text-white mix-blend-difference" />}
+                      <motion.div 
+                        animate={{ opacity: [0.1, 0.3, 0.1] }}
+                        transition={{ duration: 3, repeat: Infinity }}
+                        className="absolute inset-0 bg-white/20"
+                      />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest">{color.name}</span>
+                    
+                    {isActive && (
+                      <motion.div 
+                        layoutId="active-glow"
+                        className="absolute inset-0 bg-primary/5 rounded-[2rem] blur-xl -z-10"
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="p-6 bg-primary/5 rounded-[2rem] border border-primary/5">
+              <p className="text-[10px] leading-relaxed font-medium opacity-40 text-center italic">
+                "La couleur est la vibration visible de votre esprit dans le flux."
+              </p>
+            </div>
+
+            <Button 
+              variant="outline" 
+              onClick={() => setIsColorDialogOpen(false)}
+              className="w-full h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest"
+            >
+              Fermer le dialogue
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

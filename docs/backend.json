@@ -44,6 +44,7 @@
         "ownedThemes": { "type": "array", "items": { "type": "string" }, "description": "Liste des thèmes visuels possédés" },
         "profileImage": { "type": "string", "description": "Image de profil en format Base64" },
         "theme": { "type": "string", "description": "Préférence de thème de l'utilisateur", "enum": ["light", "dark", "system"] },
+        "customColor": { "type": "string", "description": "Couleur primaire personnalisée de l'utilisateur", "default": "default" },
         "createdAt": { "type": "string", "format": "date-time" },
         "role": { "type": "string", "description": "Rôle de l'utilisateur", "default": "user" },
         "cameraAuthorized": { "type": "boolean" },

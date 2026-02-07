@@ -1,3 +1,4 @@
+
 "use client";
 
 import "./globals.css";
@@ -22,6 +23,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
 import { cn } from "@/lib/utils";
+import { getAppColor } from "@/lib/colors";
 
 function ThemeSync() {
   const { user } = useUser();
@@ -43,6 +45,35 @@ function ThemeSync() {
   }, [user, db, setTheme, theme]);
 
   return null;
+}
+
+function ColorInjector() {
+  const { user } = useUser();
+  const db = useFirestore();
+  const userDocRef = useMemo(() => (db && user?.uid) ? doc(db, "users", user.uid) : null, [db, user?.uid]);
+  const { data: profile } = useDoc(userDocRef);
+
+  const cssVariables = useMemo(() => {
+    if (!profile?.customColor || profile.customColor === 'default') return "";
+    const color = getAppColor(profile.customColor);
+    
+    return `
+      :root {
+        --primary: ${color.light.primary};
+        --primary-foreground: ${color.light.foreground};
+        --ring: ${color.light.primary};
+      }
+      .dark {
+        --primary: ${color.dark.primary};
+        --primary-foreground: ${color.dark.foreground};
+        --ring: ${color.dark.primary};
+      }
+    `;
+  }, [profile?.customColor]);
+
+  if (!cssVariables) return null;
+
+  return <style dangerouslySetInnerHTML={{ __html: cssVariables }} />;
 }
 
 function CommunityFluxPulsar() {
@@ -200,6 +231,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
           {showOffline ? <OfflineOverlay key="offline" /> : showMaintenance ? <MaintenanceOverlay key="maintenance" message={appStatus?.maintenanceMessage} /> : null}
         </AnimatePresence>
         <ThemeSync />
+        <ColorInjector />
         <BiometricLock />
         <SuccessfulExchangeOverlay />
         <IncomingTransferOverlay />
