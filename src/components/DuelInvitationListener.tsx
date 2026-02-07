@@ -45,6 +45,26 @@ export function DuelInvitationListener() {
   const { data: duels } = useCollection(activeDuelsQuery);
   const activeDuel = duels?.[0];
 
+  // Calcul de la visibilité réelle de l'overlay
+  const isVisible = useMemo(() => {
+    if (!activeDuel || !user || pathname.includes(`/duels/${activeDuel.id}`)) return false;
+    const isChallenger = activeDuel.challengerId === user.uid;
+    const myStatus = activeDuel.participants[user.uid]?.status;
+    return myStatus === 'pending' || isChallenger;
+  }, [activeDuel, user, pathname]);
+
+  // Oracle du Verrouillage de Scroll
+  useEffect(() => {
+    if (isVisible) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isVisible]);
+
   // Redirection automatique vers l'arène
   useEffect(() => {
     if (activeDuel?.status === 'accepted' || activeDuel?.status === 'active') {
@@ -67,7 +87,6 @@ export function DuelInvitationListener() {
         [`participants.${user.uid}.status`]: 'accepted'
       });
 
-      // Vérifier si tout le monde a répondu
       const allParticipants = Object.values(activeDuel.participants);
       const allResponded = allParticipants.every((p: any) => p.status !== 'pending' || p.userId === user.uid);
       if (allResponded) {
@@ -85,12 +104,10 @@ export function DuelInvitationListener() {
     setIsProcessing(true);
     haptic.medium();
     try {
-      // Identifier tous les esprits ayant accepté (y compris le challenger)
       const acceptedUids = Object.entries(activeDuel.participants)
         .filter(([_, p]: [string, any]) => p.status === 'accepted')
         .map(([uid, _]) => uid);
 
-      // Rembourser chaque esprit
       const refundPromises = acceptedUids.map(uid => 
         updateDoc(doc(db, "users", uid), {
           totalPoints: increment(activeDuel.wager),
@@ -99,10 +116,7 @@ export function DuelInvitationListener() {
       );
 
       await Promise.all(refundPromises);
-      
-      // Supprimer définitivement le duel
       await deleteDoc(doc(db, "duels", activeDuel.id));
-      
       toast({ title: "Invocation annulée", description: "Les mises de lumière ont été restituées." });
     } catch (e) {
       console.error(e);
@@ -117,7 +131,6 @@ export function DuelInvitationListener() {
     setIsProcessing(true);
     haptic.light();
     try {
-      // Si un participant refuse, on annule et on rembourse tout le monde
       const acceptedUids = Object.entries(activeDuel.participants)
         .filter(([_, p]: [string, any]) => p.status === 'accepted')
         .map(([uid, _]) => uid);
@@ -131,7 +144,6 @@ export function DuelInvitationListener() {
 
       await Promise.all(refundPromises);
       await deleteDoc(doc(db, "duels", activeDuel.id));
-
       toast({ title: "Choc évité", description: "Le duel a été dissous et les points rendus." });
     } catch (e) {
       console.error(e);
@@ -140,12 +152,9 @@ export function DuelInvitationListener() {
     }
   };
 
-  if (!activeDuel || !user || pathname.includes(`/duels/${activeDuel.id}`)) return null;
+  if (!isVisible) return null;
 
-  const isChallenger = activeDuel.challengerId === user.uid;
-  const myStatus = activeDuel.participants[user.uid]?.status;
-
-  if (myStatus !== 'pending' && !isChallenger) return null;
+  const isChallenger = activeDuel.challengerId === user?.uid;
 
   return (
     <AnimatePresence>
