@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Oracle de la Palette Sacrée.
  * Définit les harmonies de couleurs et les convertisseurs pour l'application.
@@ -21,9 +20,9 @@ export const PRESET_COLORS: AppColor[] = [
 
 /**
  * Convertit un Hexadécimal (#RRGGBB) en composantes HSL pour Tailwind.
- * Retourne une chaîne "h s% l%"
+ * Retourne une chaîne "h s% l%" compatible avec les variables CSS de Shadcn.
  */
-export function hexToHsl(hex: string): { h: number; s: number; l: number; toString: string } {
+export function hexToHsl(hex: string): { h: number; s: number; l: number; hslValue: string } {
   // Retirer le # si présent
   hex = hex.replace(/^#/, '');
 
@@ -54,20 +53,25 @@ export function hexToHsl(hex: string): { h: number; s: number; l: number; toStri
     h: hDeg,
     s: sPct,
     l: lPct,
-    toString: `${hDeg} ${sPct}% ${lPct}%`
+    hslValue: `${hDeg} ${sPct}% ${lPct}%`
   };
 }
 
 /**
- * Détermine si une couleur est "claire" ou "sombre" pour le contraste du texte.
+ * Détermine la couleur de contraste (noir ou blanc) basée sur la luminance d'une couleur hex.
+ * Retourne une valeur HSL compatible avec Tailwind.
  */
 export function getContrastColor(hex: string): string {
+  if (hex === 'default') return "0 0% 100%";
+  
   hex = hex.replace(/^#/, '');
   const r = parseInt(hex.substring(0, 2), 16);
   const g = parseInt(hex.substring(2, 4), 16);
   const b = parseInt(hex.substring(4, 6), 16);
   
-  // Formule de luminance relative
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-  return brightness > 128 ? "0 0% 0%" : "0 0% 100%";
+  // Formule de luminance relative standard
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  
+  // Si la couleur est claire, texte noir (0 0% 0%), sinon texte blanc (0 0% 100%)
+  return luminance > 0.5 ? "0 0% 0%" : "0 0% 100%";
 }

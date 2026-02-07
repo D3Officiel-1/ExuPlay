@@ -75,7 +75,8 @@ export const THEMES: Record<string, VisualTheme> = {
     name: "Neutre",
     color: "text-primary",
     borderColor: "border-primary/20",
-    auraClass: "bg-primary/10 blur-xl"
+    // Utilise la variable --primary injectée pour l'aura par défaut
+    auraClass: "bg-primary/20 blur-2xl shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)]"
   },
   "theme_ruby": {
     id: "theme_ruby",

@@ -1,4 +1,3 @@
-
 "use client";
 
 import "./globals.css";
@@ -56,37 +55,41 @@ function ColorInjector() {
   const cssVariables = useMemo(() => {
     let styles = "";
     
-    // Aura Primaire
+    // Aura Primaire (Injectée dans --primary et dérivées)
     if (profile?.customColor && profile.customColor !== 'default') {
       try {
         const hsl = hexToHsl(profile.customColor);
         const contrast = getContrastColor(profile.customColor);
         styles += `
-          --primary: ${hsl.toString};
+          --primary: ${hsl.hslValue};
           --primary-foreground: ${contrast};
-          --ring: ${hsl.toString};
+          --ring: ${hsl.hslValue};
+          --accent: ${hsl.hslValue};
+          --accent-foreground: ${contrast};
         `;
-      } catch (e) {}
+      } catch (e) {
+        console.error("Dissonance lors de l'infusion de l'aura:", e);
+      }
     }
 
-    // Fond du Sanctuaire
+    // Fond du Sanctuaire (Injecté dans --background et dérivées)
     if (profile?.customBgColor && profile.customBgColor !== 'default') {
       try {
         const hsl = hexToHsl(profile.customBgColor);
         const contrast = getContrastColor(profile.customBgColor);
         styles += `
-          --background: ${hsl.toString};
+          --background: ${hsl.hslValue};
           --foreground: ${contrast};
-          --card: ${hsl.toString};
+          --card: ${hsl.hslValue};
           --card-foreground: ${contrast};
-          --popover: ${hsl.toString};
+          --popover: ${hsl.hslValue};
           --popover-foreground: ${contrast};
-          --muted: ${hsl.toString};
+          --muted: ${hsl.hslValue};
           --muted-foreground: ${contrast};
-          --accent: ${hsl.toString};
-          --accent-foreground: ${contrast};
         `;
-      } catch (e) {}
+      } catch (e) {
+        console.error("Dissonance lors de l'ancrage du fond:", e);
+      }
     }
 
     if (!styles) return "";
@@ -204,7 +207,6 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const { data: profile } = useDoc(userDocRef);
   const { data: appStatus } = useDoc(appConfigRef);
 
-  // Oracle de l'Inviolabilité : Neutralise le menu contextuel système
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => e.preventDefault();
     window.addEventListener('contextmenu', handleContextMenu);
@@ -243,11 +245,9 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div>;
   }
 
-  // Chemins où les composants de navigation (Header/BottomNav) doivent être masqués
   const excludedNavPaths = ["/", "/login", "/autoriser", "/offline", "/transfert", "/duels", "/_not-found"];
   const excludedBottomNavPaths = ["/", "/login", "/autoriser", "/offline", "/transfert", "/echange", "/duels", "/_not-found"];
 
-  // Fonction pour vérifier si le chemin actuel fait partie des exclusions
   const isPathExcluded = (path: string, exclusions: string[]) => {
     return exclusions.some(p => p === "/" ? path === "/" : path.startsWith(p));
   };
