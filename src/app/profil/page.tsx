@@ -229,6 +229,34 @@ export default function ProfilPage() {
           </Card>
         </div>
 
+        {profile?.role === 'admin' && (
+          <div className="space-y-5">
+            <div className="flex items-center gap-3 px-4">
+              <ShieldCheck className="h-4 w-4 text-primary opacity-40" />
+              <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Commandement</h2>
+            </div>
+            <Card className="border-none bg-primary text-primary-foreground shadow-2xl rounded-[2.5rem] overflow-hidden">
+              <CardContent className="p-2">
+                <button 
+                  onClick={() => { haptic.medium(); router.push("/admin"); }}
+                  className="w-full flex items-center justify-between p-6 hover:bg-primary-foreground/10 transition-colors rounded-[2rem] group text-left"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 bg-primary-foreground/20 rounded-2xl flex items-center justify-center">
+                      <ShieldCheck className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="text-base font-black">Espace Maître</p>
+                      <p className="text-[10px] opacity-60 font-medium uppercase tracking-widest">Gérer le Sanctuaire</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 opacity-40 group-hover:opacity-100 transition-opacity" />
+                </button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         <div className="space-y-5">
           <div className="flex items-center gap-3 px-4">
             <Settings className="h-4 w-4 opacity-40" />
