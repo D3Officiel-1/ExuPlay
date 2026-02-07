@@ -12,6 +12,7 @@ import {
   addDoc,
   deleteDoc,
   updateDoc,
+  increment,
   limit
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
@@ -79,7 +80,10 @@ import {
   Megaphone,
   Percent,
   Lock,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Crown,
+  Minus,
+  AlertTriangle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -121,6 +125,7 @@ export default function AdminPage() {
   const [editedQuiz, setEditedQuiz] = useState<any>(null);
 
   const [selectedUserForView, setSelectedUserForView] = useState<any | null>(null);
+  const [isUpdatingUser, setIsUpdatingUser] = useState(false);
   
   // États Système
   const [maintenanceMessageInput, setMaintenanceMessageInput] = useState("");
@@ -445,6 +450,48 @@ export default function AdminPage() {
   const handleSelectUser = (u: any) => {
     haptic.light();
     setSelectedUserForView(u);
+  };
+
+  const handleUpdateUserField = async (userId: string, field: string, value: any) => {
+    if (!db || isUpdatingUser) return;
+    setIsUpdatingUser(true);
+    haptic.medium();
+    try {
+      const userRef = doc(db, "users", userId);
+      await updateDoc(userRef, {
+        [field]: value,
+        updatedAt: serverTimestamp()
+      });
+      toast({ title: "Essence harmonisée", description: "La modification a été ancrée." });
+      // Mettre à jour l'état local du dialogue si nécessaire
+      setSelectedUserForView({ ...selectedUserForView, [field]: value });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Dissonance", description: "Échec de la modification." });
+    } finally {
+      setIsUpdatingUser(false);
+    }
+  };
+
+  const handleAdjustPoints = async (userId: string, amount: number) => {
+    if (!db || isUpdatingUser) return;
+    setIsUpdatingUser(true);
+    haptic.medium();
+    try {
+      const userRef = doc(db, "users", userId);
+      await updateDoc(userRef, {
+        totalPoints: increment(amount),
+        updatedAt: serverTimestamp()
+      });
+      toast({ 
+        title: amount > 0 ? "Lumière insufflée" : "Lumière drainée", 
+        description: `${Math.abs(amount)} PTS ont été ${amount > 0 ? 'ajoutés' : 'retirés'}.` 
+      });
+      setSelectedUserForView({ ...selectedUserForView, totalPoints: (selectedUserForView.totalPoints || 0) + amount });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Dissonance" });
+    } finally {
+      setIsUpdatingUser(false);
+    }
   };
 
   if (authLoading || profileLoading || profile?.role !== 'admin') {
@@ -861,6 +908,9 @@ export default function AdminPage() {
                 <TableBody>
                   {filteredUsers.map((u) => {
                     const title = getHonorTitle(u.totalPoints || 0);
+                    const isAdmin = u.role === 'admin';
+                    const isTrusted = u.trustBadge === true;
+
                     return (
                       <TableRow 
                         key={u.id} 
@@ -869,9 +919,12 @@ export default function AdminPage() {
                       >
                         <TableCell className="py-4 px-6">
                           <div className="flex items-center gap-3">
-                            <ProfileAvatar imageUrl={u.profileImage} points={u.totalPoints} size="sm" />
+                            <ProfileAvatar imageUrl={u.profileImage} points={u.totalPoints} isTrusted={isTrusted} size="sm" />
                             <div className="flex flex-col">
-                              <span className="font-black text-sm">@{u.username}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-black text-sm">@{u.username}</span>
+                                {isAdmin && <Crown className="h-3 w-3 text-yellow-500" />}
+                              </div>
                               <div className="flex items-center gap-1 opacity-40">
                                 <Shield className={cn("h-2.5 w-2.5", title.color)} />
                                 <span className={cn("text-[8px] font-black uppercase tracking-widest", title.color)}>{title.name}</span>
@@ -952,28 +1005,30 @@ export default function AdminPage() {
                     <div className="space-y-4">
                       <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Options de Résonance</Label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {editedQuiz?.options.map((opt: string, idx: number) => (
-                          <div key={idx} className="relative group">
-                            <Input 
-                              className={`h-14 rounded-2xl bg-primary/5 border-none pl-12 font-bold ${editedQuiz.correctIndex === idx ? 'ring-2 ring-green-500/30' : ''}`}
-                              value={opt}
-                              onChange={e => {
-                                const newOpts = [...editedQuiz.options];
-                                newOpts[idx] = e.target.value;
-                                setEditedQuiz({...editedQuiz, options: newOpts});
-                              }}
-                            />
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                              <input 
-                                type="radio" 
-                                name="edit-correct" 
-                                checked={editedQuiz.correctIndex === idx} 
-                                onChange={() => { haptic.light(); setEditedQuiz({...editedQuiz, correctIndex: idx}); }}
-                                className="h-4 w-4 accent-primary"
+                        {editedQuiz?.options.map((opt: string, idx: number) => {
+                          return (
+                            <div key={idx} className="relative group">
+                              <Input 
+                                className={`h-14 rounded-2xl bg-primary/5 border-none pl-12 font-bold ${editedQuiz.correctIndex === idx ? 'ring-2 ring-green-500/30' : ''}`}
+                                value={opt}
+                                onChange={e => {
+                                  const newOpts = [...editedQuiz.options];
+                                  newOpts[idx] = e.target.value;
+                                  setEditedQuiz({...editedQuiz, options: newOpts});
+                                }}
                               />
+                              <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                                <input 
+                                  type="radio" 
+                                  name="edit-correct" 
+                                  checked={editedQuiz.correctIndex === idx} 
+                                  onChange={() => { haptic.light(); setEditedQuiz({...editedQuiz, correctIndex: idx}); }}
+                                  className="h-4 w-4 accent-primary"
+                                />
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -1118,10 +1173,14 @@ export default function AdminPage() {
                 <ProfileAvatar 
                   imageUrl={selectedUserForView.profileImage} 
                   points={selectedUserForView.totalPoints || 0} 
+                  isTrusted={selectedUserForView.trustBadge}
                   size="xl" 
                 />
                 <div className="text-center">
-                  <h3 className="text-xl font-black">@{selectedUserForView.username}</h3>
+                  <div className="flex items-center justify-center gap-2">
+                    <h3 className="text-xl font-black">@{selectedUserForView.username}</h3>
+                    {selectedUserForView.role === 'admin' && <Crown className="h-4 w-4 text-yellow-500" />}
+                  </div>
                   <p className={cn(
                     "text-[9px] font-black uppercase tracking-[0.3em] mt-2",
                     getHonorTitle(selectedUserForView.totalPoints || 0).color
@@ -1131,26 +1190,98 @@ export default function AdminPage() {
                 </div>
               </div>
 
+              {/* Commandement de l'Esprit */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 pl-2">
+                  <ShieldCheck className="h-4 w-4 opacity-40" />
+                  <h3 className="text-[10px] font-black uppercase tracking-widest opacity-40">Commandement</h3>
+                </div>
+                <Card className="border-none bg-primary/5 rounded-[2rem] overflow-hidden">
+                  <CardContent className="p-6 space-y-6">
+                    {/* Trust Badge Toggle */}
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-black">Sceau de Confiance</p>
+                        <p className="text-[10px] opacity-40">Élargit les limites de flux</p>
+                      </div>
+                      <Switch 
+                        checked={selectedUserForView.trustBadge || false} 
+                        onCheckedChange={(checked) => handleUpdateUserField(selectedUserForView.id, 'trustBadge', checked)}
+                        disabled={isUpdatingUser}
+                      />
+                    </div>
+
+                    <div className="h-px bg-primary/5" />
+
+                    {/* Role Selection */}
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-black">Rôle Hiérarchique</p>
+                        <p className="text-[10px] opacity-40">Pouvoirs administratifs</p>
+                      </div>
+                      <Select 
+                        value={selectedUserForView.role || 'user'} 
+                        onValueChange={(val) => handleUpdateUserField(selectedUserForView.id, 'role', val)}
+                        disabled={isUpdatingUser}
+                      >
+                        <SelectTrigger className="w-32 h-10 rounded-xl bg-background border-none font-black text-[10px] uppercase">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card/95 backdrop-blur-xl border-primary/5 rounded-xl">
+                          <SelectItem value="user" className="font-bold text-[10px] uppercase">Adepte</SelectItem>
+                          <SelectItem value="admin" className="font-bold text-[10px] uppercase">Maître</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="h-px bg-primary/5" />
+
+                    {/* Quick Points Adjustment */}
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Manipulation de Lumière</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => handleAdjustPoints(selectedUserForView.id, -100)} disabled={isUpdatingUser} className="flex-1 h-10 rounded-xl border-destructive/10 text-destructive hover:bg-destructive/5 font-black text-[10px]">
+                            -100
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => handleAdjustPoints(selectedUserForView.id, -500)} disabled={isUpdatingUser} className="flex-1 h-10 rounded-xl border-destructive/10 text-destructive hover:bg-destructive/5 font-black text-[10px]">
+                            -500
+                          </Button>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => handleAdjustPoints(selectedUserForView.id, 100)} disabled={isUpdatingUser} className="flex-1 h-10 rounded-xl border-primary/10 text-primary hover:bg-primary/5 font-black text-[10px]">
+                            +100
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => handleAdjustPoints(selectedUserForView.id, 500)} disabled={isUpdatingUser} className="flex-1 h-10 rounded-xl border-primary/10 text-primary hover:bg-primary/5 font-black text-[10px]">
+                            +500
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-5 bg-primary/5 rounded-[2rem] border border-primary/5 space-y-1">
-                  <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Lumière Totale</p>
+                <div className="p-5 bg-background border border-primary/5 rounded-[2rem] space-y-1">
+                  <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Lumière Actuelle</p>
                   <p className="text-xl font-black">{selectedUserForView.totalPoints?.toLocaleString()} <span className="text-[10px] opacity-30">PTS</span></p>
                 </div>
-                <div className="p-5 bg-primary/5 rounded-[2rem] border border-primary/5 space-y-1">
+                <div className="p-5 bg-background border border-primary/5 rounded-[2rem] space-y-1">
                   <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Parrainage</p>
                   <p className="text-xl font-black tracking-tighter">{selectedUserForView.referralCode || "---"}</p>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between px-2">
+              <div className="space-y-3 px-2">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 opacity-40">
                     <Smartphone className="h-3 w-3" />
                     <span className="text-[10px] font-black uppercase tracking-widest">Liaison Wave</span>
                   </div>
                   <span className="text-xs font-bold">{selectedUserForView.phoneNumber || "Non lié"}</span>
                 </div>
-                <div className="flex items-center justify-between px-2">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 opacity-40">
                     <Calendar className="h-3 w-3" />
                     <span className="text-[10px] font-black uppercase tracking-widest">Éveil Initial</span>
@@ -1169,7 +1300,7 @@ export default function AdminPage() {
               onClick={() => setSelectedUserForView(null)}
               className="w-full h-14 rounded-2xl font-black text-xs uppercase tracking-widest"
             >
-              Fermer la fiche
+              Quitter la Fiche
             </Button>
           </div>
         </DialogContent>
