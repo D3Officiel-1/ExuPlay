@@ -193,7 +193,7 @@ export function PendingExchangesDialog({ open, onOpenChange }: PendingExchangesD
             Fermer l'Historique
           </Button>
         </div>
-      </div>
+      </DialogContent>
     </Dialog>
   );
 }
