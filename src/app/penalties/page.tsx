@@ -55,7 +55,7 @@ export default function PenaltiesPage() {
     setPlayerChoice(direction);
     haptic.medium();
 
-    // L'Oracle décide de sa direction instantanément
+    // L'Oracle décide de sa direction simultanément
     const keeperDir = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
     const scored = direction !== keeperDir;
     
@@ -70,7 +70,7 @@ export default function PenaltiesPage() {
         updatedAt: serverTimestamp()
       });
 
-      // L'animation dure 800ms
+      // L'animation dure 800ms pour une tension maximale
       setTimeout(async () => {
         setGameState('result');
         if (scored) {
@@ -104,18 +104,19 @@ export default function PenaltiesPage() {
     setIsScored(null);
   };
 
+  // Coordonnées ultra-précises alignées sur la grille visuelle du but
   const ballVariants = {
     idle: { y: 0, x: 0, scale: 1, filter: "blur(0px)", rotate: 0 },
     shooting: (direction: Direction) => {
       const xMap: Record<Direction, number> = { 
-        "En haut à gauche": -120, "En haut": 0, "En haut à droite": 120,
-        "À gauche": -120, "Centre": 0, "À droite": 120,
-        "En bas à gauche": -120, "En bas": 0, "En bas à droite": 120
+        "En haut à gauche": -115, "En haut": 0, "En haut à droite": 115,
+        "À gauche": -115, "Centre": 0, "À droite": 115,
+        "En bas à gauche": -115, "En bas": 0, "En bas à droite": 115
       };
       const yMap: Record<Direction, number> = {
-        "En haut à gauche": -380, "En haut": -380, "En haut à droite": -380,
-        "À gauche": -320, "Centre": -320, "À droite": -320,
-        "En bas à gauche": -260, "En bas": -260, "En bas à droite": -260
+        "En haut à gauche": -385, "En haut": -385, "En haut à droite": -385,
+        "À gauche": -315, "Centre": -315, "À droite": -315,
+        "En bas à gauche": -245, "En bas": -245, "En bas à droite": -245
       };
       return {
         y: yMap[direction],
@@ -133,15 +134,19 @@ export default function PenaltiesPage() {
     shooting: (direction: Direction | null) => {
       if (!direction) return {};
       const xMap: Record<Direction, number> = {
-        "En haut à gauche": -100, "En haut": 0, "En haut à droite": 100,
-        "À gauche": -100, "Centre": 0, "À droite": 100,
-        "En bas à gauche": -100, "En bas": 0, "En bas à droite": 100
+        "En haut à gauche": -105, "En haut": 0, "En haut à droite": 105,
+        "À gauche": -105, "Centre": 0, "À droite": 105,
+        "En bas à gauche": -105, "En bas": 0, "En bas à droite": 105
       };
       const yMap: Record<Direction, number> = {
-        "En haut à gauche": -40, "En haut": -40, "En haut à droite": -40,
-        "À gauche": 15, "Centre": 0, "À droite": 15,
-        "En bas à gauche": 40, "En bas": 40, "En bas à droite": 40
+        "En haut à gauche": -55, "En haut": -55, "En haut à droite": -55,
+        "À gauche": 10, "Centre": 0, "À droite": 10,
+        "En bas au centre": 75, "En bas": 75, "En bas à droite": 75,
+        "En bas à gauche": 75 // Ajustement pour couvrir toutes les directions
       };
+      // Forcer le yMap pour les manquants
+      const finalY = yMap[direction as keyof typeof yMap] || 0;
+
       const rotateMap: Record<Direction, number> = {
         "En haut à gauche": -45, "En haut": 0, "En haut à droite": 45,
         "À gauche": -45, "Centre": 0, "À droite": 45,
@@ -149,7 +154,7 @@ export default function PenaltiesPage() {
       };
       return {
         x: `calc(-50% + ${xMap[direction]}px)`,
-        y: yMap[direction],
+        y: finalY,
         rotate: rotateMap[direction],
         transition: { duration: 0.6, type: "spring", stiffness: 120, damping: 12 }
       };
@@ -162,7 +167,7 @@ export default function PenaltiesPage() {
       case "En haut": return "top-0 left-1/3 w-[33.33%]";
       case "En haut à droite": return "top-0 right-0";
       case "À gauche": return "top-1/3 left-0 h-[33.33%]";
-      case "Centre": return "top-1/3 left-1/3 w-[33.33%] h-[33.33%]";
+      case "Centre": return "top-[17.5%] left-[36%] w-[28%] h-[50%] z-[70]"; // Superposition prioritaire sur le gardien
       case "À droite": return "top-1/3 right-0 h-[33.33%]";
       case "En bas à gauche": return "bottom-0 left-0";
       case "En bas": return "bottom-0 left-1/3 w-[33.33%]";
@@ -213,7 +218,7 @@ export default function PenaltiesPage() {
                    style={{ background: 'repeating-linear-gradient(90deg, transparent, transparent 40px, hsl(var(--primary)) 41px)' }} />
             </div>
 
-            {/* La Cage de But - Devient prioritaire (z-[60]) pendant la visée */}
+            {/* La Cage de But - Prioritaire au premier plan (z-[60]) lors de la visée */}
             <div className={cn(
               "absolute top-[15%] left-1/2 -translate-x-1/2 w-72 h-40 border-x-4 border-t-4 border-primary/20 rounded-t-xl transition-all duration-300",
               gameState === 'idle' ? "z-[60]" : "z-10"
@@ -221,22 +226,22 @@ export default function PenaltiesPage() {
               <div className="absolute inset-0 bg-primary/[0.02] backdrop-blur-[1px]" />
               <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(hsl(var(--primary)) 1px, transparent 1px)', backgroundSize: '12px 12px' }} />
               
-              {/* Zones de tir invisibles */}
+              {/* Zones de tir invisibles intégrées à la structure */}
               {gameState === 'idle' && DIRECTIONS.map((dir) => (
                 <button
                   key={dir}
                   onClick={() => handleShoot(dir)}
                   disabled={loading}
                   className={cn(
-                    "absolute z-50 opacity-0 hover:opacity-5 transition-opacity bg-primary rounded-lg",
+                    "absolute opacity-0 bg-primary transition-opacity cursor-crosshair",
                     getTargetPosition(dir),
-                    dir.includes("Haut") || dir.includes("Bas") ? "h-1/3" : "w-1/3 h-1/3"
+                    (dir.includes("Haut") || dir.includes("Bas")) && dir !== "Centre" ? "h-1/3" : "w-1/3 h-1/3"
                   )}
                 />
               ))}
             </div>
 
-            {/* Le Gardien - Placé derrière les zones de visée lors du tir */}
+            {/* Le Gardien - Placé en arrière-plan du but (z-20) */}
             <motion.div 
               variants={keeperVariants} 
               animate={gameState === 'shooting' || gameState === 'result' ? "shooting" : "idle"} 
@@ -311,7 +316,7 @@ export default function PenaltiesPage() {
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/5 flex items-start gap-4">
                 <Sparkles className="h-5 w-5 text-primary opacity-40 shrink-0 mt-1" />
                 <p className="text-[11px] leading-relaxed font-medium opacity-40 italic">
-                  "Visez les recoins de la cage sacrée pour tromper l'Oracle. Le tir se déclenche au toucher."
+                  "L'Inconnu réside dans les recoins. Touchez les zones invisibles du filet pour déclencher votre tir simultanément au plongeon de l'Oracle."
                 </p>
               </motion.div>
             )}
