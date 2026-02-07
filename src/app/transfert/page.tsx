@@ -37,7 +37,8 @@ import {
   Swords,
   Ghost,
   QrCode,
-  Flashlight
+  Flashlight,
+  Percent
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
@@ -66,12 +67,20 @@ export default function TransfertPage() {
   const [isTorchOn, setIsTorchOn] = useState(false);
 
   const userDocRef = useMemo(() => (db && firebaseUser?.uid) ? doc(db, "users", firebaseUser.uid) : null, [db, firebaseUser?.uid]);
-  const { data: profile, loading } = useDoc(userDocRef);
+  const appStatusRef = useMemo(() => (db ? doc(db, "appConfig", "status") : null), [db]);
 
+  const { data: profile, loading: profileLoading } = useDoc(userDocRef);
+  const { data: appStatus, loading: configLoading } = useDoc(appStatusRef);
+
+  // Lois Économiques Dynamiques
   const transferAmount = parseInt(amount) || 0;
-  const fees = mode === 'transfer' ? Math.floor(transferAmount * 0.1) : 0;
+  const transferFeePercent = appStatus?.transferFeePercent ?? 10;
+  const fees = mode === 'transfer' ? Math.floor(transferAmount * (transferFeePercent / 100)) : 0;
   const totalCost = transferAmount + fees;
-  const DAILY_LIMIT = profile?.trustBadge ? 2500 : 500;
+  
+  const dailyLimit = profile?.trustBadge 
+    ? (appStatus?.dailyTransferLimitTrusted ?? 2500) 
+    : (appStatus?.dailyTransferLimitDefault ?? 500);
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
@@ -147,7 +156,6 @@ export default function TransfertPage() {
         const data = snap.data();
         setRecipient({ id: decodedText, ...data }); 
         setValidationStatus('success'); 
-        // Si l'utilisateur est protégé, on force le mode transfert
         if (data.duelProtected) setMode('transfer');
         setTimeout(() => setValidationStatus('idle'), 2000); 
       }
@@ -167,8 +175,28 @@ export default function TransfertPage() {
 
   const handleAction = async () => {
     if (!transferAmount || transferAmount <= 0 || !firebaseUser?.uid || !recipient?.id) return;
-    if (transferAmount > DAILY_LIMIT) { toast({ variant: "destructive", title: "Limite dépassée" }); return; }
-    if ((profile?.totalPoints || 0) < totalCost) { toast({ variant: "destructive", title: "Lumière insuffisante" }); return; }
+    
+    // Vérification de la limite économique
+    if (transferAmount > dailyLimit) { 
+      haptic.error();
+      toast({ 
+        variant: "destructive", 
+        title: "Loi transgressée", 
+        description: `Votre limite actuelle est de ${dailyLimit} PTS.` 
+      }); 
+      return; 
+    }
+
+    if ((profile?.totalPoints || 0) < totalCost) { 
+      haptic.error();
+      toast({ 
+        variant: "destructive", 
+        title: "Lumière insuffisante", 
+        description: `Il vous faut ${totalCost} PTS (incluant les frais).` 
+      }); 
+      return; 
+    }
+
     setIsProcessing(true); haptic.medium();
     try {
       const senderRef = doc(db, "users", firebaseUser.uid);
@@ -184,7 +212,6 @@ export default function TransfertPage() {
         });
         setIsSuccess(true);
       } else {
-        // Double vérification au cas où
         if (recipient.duelProtected) {
           toast({ variant: "destructive", title: "Action impossible", description: "Cet esprit est sous le Sceau de Paix." });
           return;
@@ -220,7 +247,7 @@ export default function TransfertPage() {
     } finally { setIsProcessing(false); }
   };
 
-  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div>;
+  if (profileLoading || configLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div>;
 
   return (
     <div className="min-h-screen bg-background flex flex-col overflow-hidden">
@@ -306,13 +333,24 @@ export default function TransfertPage() {
                         <Label className="text-[10px] font-black uppercase opacity-40 ml-2">Montant</Label>
                         <Input type="number" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-16 text-3xl font-black text-center rounded-2xl bg-primary/5 border-none" autoFocus />
                       </div>
+
                       {mode === 'transfer' && (
-                        <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/5">
-                          <div className="flex items-center gap-3">
-                            <Ghost className={cn("h-5 w-5", isAnonymous ? "text-primary" : "opacity-20")} />
-                            <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Mode Anonyme</span>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between p-4 bg-orange-500/5 rounded-2xl border border-orange-500/10">
+                            <div className="flex items-center gap-2 opacity-60">
+                              <Percent className="h-3 w-3" />
+                              <span className="text-[10px] font-black uppercase">Taxe de flux ({transferFeePercent}%)</span>
+                            </div>
+                            <span className="text-xs font-black text-orange-600">+{fees} PTS</span>
                           </div>
-                          <Switch checked={isAnonymous} onCheckedChange={setIsAnonymous} />
+
+                          <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/5">
+                            <div className="flex items-center gap-3">
+                              <Ghost className={cn("h-5 w-5", isAnonymous ? "text-primary" : "opacity-20")} />
+                              <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Mode Anonyme</span>
+                            </div>
+                            <Switch checked={isAnonymous} onCheckedChange={setIsAnonymous} />
+                          </div>
                         </div>
                       )}
                     </CardContent>
@@ -320,6 +358,9 @@ export default function TransfertPage() {
                       <Button onClick={handleAction} disabled={isProcessing || !amount || transferAmount <= 0} className="w-full h-16 rounded-2xl font-black text-sm uppercase shadow-xl">
                         {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : mode === 'duel' ? "Lancer le Duel" : "Confirmer"}
                       </Button>
+                      <p className="text-[8px] font-bold text-center opacity-20 uppercase tracking-widest">
+                        Limite quotidienne: {dailyLimit} PTS
+                      </p>
                     </CardFooter>
                   </Card>
                 </motion.div>
@@ -345,3 +386,4 @@ export default function TransfertPage() {
     </div>
   );
 }
+    
