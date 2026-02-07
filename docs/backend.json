@@ -54,7 +54,8 @@
         "trustBadge": { "type": "boolean", "description": "Si l'utilisateur possède le Sceau de Confiance", "default": false },
         "rankingHidden": { "type": "boolean", "description": "Si l'utilisateur est masqué du classement public", "default": false },
         "reducedMotion": { "type": "boolean", "description": "Si les animations sont réduites pour cet utilisateur", "default": false },
-        "hidePointsInHeader": { "type": "boolean", "description": "Si les points sont masqués dans l'entête", "default": false }
+        "hidePointsInHeader": { "type": "boolean", "description": "Si les points sont masqués dans l'entête", "default": false },
+        "duelProtected": { "type": "boolean", "description": "Si l'utilisateur refuse les duels entrants", "default": false }
       },
       "required": ["username", "phoneNumber", "acceptedTerms", "gender", "referralCode", "role"]
     },

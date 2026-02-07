@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -142,7 +143,14 @@ export default function TransfertPage() {
     setValidationStatus('validating');
     try {
       const recipientRef = doc(db, "users", decodedText); const snap = await getDoc(recipientRef);
-      if (snap.exists()) { setRecipient({ id: decodedText, ...snap.data() }); setValidationStatus('success'); setTimeout(() => setValidationStatus('idle'), 2000); }
+      if (snap.exists()) { 
+        const data = snap.data();
+        setRecipient({ id: decodedText, ...data }); 
+        setValidationStatus('success'); 
+        // Si l'utilisateur est protégé, on force le mode transfert
+        if (data.duelProtected) setMode('transfer');
+        setTimeout(() => setValidationStatus('idle'), 2000); 
+      }
       else { setErrorMessage("Esprit inconnu"); setValidationStatus('error'); setTimeout(() => { setValidationStatus('idle'); setActiveTab("scan"); }, 2500); }
     } catch (error) { setValidationStatus('error'); setTimeout(() => { setValidationStatus('idle'); setActiveTab("scan"); }, 2500); }
   };
@@ -176,11 +184,36 @@ export default function TransfertPage() {
         });
         setIsSuccess(true);
       } else {
+        // Double vérification au cas où
+        if (recipient.duelProtected) {
+          toast({ variant: "destructive", title: "Action impossible", description: "Cet esprit est sous le Sceau de Paix." });
+          return;
+        }
         await updateDoc(senderRef, { totalPoints: increment(-transferAmount), updatedAt: serverTimestamp() });
+        
+        const participants: Record<string, any> = {
+          [firebaseUser.uid]: {
+            name: profile?.username || "Anonyme",
+            photo: profile?.profileImage || "",
+            status: 'accepted'
+          },
+          [recipient.id]: {
+            name: recipient.username || "Anonyme",
+            photo: recipient.profileImage || "",
+            status: 'pending'
+          }
+        };
+
         await addDoc(collection(db, "duels"), {
-          challengerId: firebaseUser.uid, challengerName: profile?.username || "Anonyme", challengerPhoto: profile?.profileImage || "",
-          opponentId: recipient.id, opponentName: recipient.username || "Adversaire", opponentPhoto: recipient.profileImage || "",
-          wager: transferAmount, status: 'pending', createdAt: serverTimestamp()
+          challengerId: firebaseUser.uid, 
+          challengerName: profile?.username || "Anonyme", 
+          challengerPhoto: profile?.profileImage || "",
+          participantIds: [firebaseUser.uid, recipient.id],
+          participants,
+          wager: transferAmount, 
+          status: 'pending', 
+          createdAt: serverTimestamp(),
+          round: 1
         });
         toast({ title: "Défi Lancé !" }); router.push("/home");
       }
@@ -257,8 +290,16 @@ export default function TransfertPage() {
                       <CardTitle className="text-2xl font-black">@{recipient.username}</CardTitle>
                       <div className="flex gap-2 justify-center mt-4">
                         <Button variant={mode === 'transfer' ? 'default' : 'ghost'} onClick={() => setMode('transfer')} className="h-10 rounded-full text-[10px] font-black uppercase">Transfert</Button>
-                        <Button variant={mode === 'duel' ? 'default' : 'ghost'} onClick={() => setMode('duel')} className="h-10 rounded-full text-[10px] font-black uppercase gap-2"><Swords className="h-3 w-3" /> Duel</Button>
+                        {!recipient.duelProtected && (
+                          <Button variant={mode === 'duel' ? 'default' : 'ghost'} onClick={() => setMode('duel')} className="h-10 rounded-full text-[10px] font-black uppercase gap-2"><Swords className="h-3 w-3" /> Duel</Button>
+                        )}
                       </div>
+                      {recipient.duelProtected && (
+                        <div className="mt-4 px-4 py-2 bg-primary/5 rounded-full flex items-center justify-center gap-2 border border-primary/5">
+                          <Swords className="h-3 w-3 opacity-20" />
+                          <span className="text-[8px] font-black uppercase tracking-widest opacity-40">Protégé par le Sceau de Paix</span>
+                        </div>
+                      )}
                     </CardHeader>
                     <CardContent className="px-8 pb-6 space-y-6">
                       <div className="space-y-2">

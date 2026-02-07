@@ -73,8 +73,6 @@ export default function ClassementPage() {
   const { podium, rest } = useMemo(() => {
     if (!allUsers) return { podium: [], rest: [] };
     
-    // Logique du Voile de l'Esprit : on filtre ceux qui veulent être masqués,
-    // SAUF si c'est l'utilisateur actuel lui-même.
     const visibleUsers = allUsers.filter(u => !u.rankingHidden || u.id === user?.uid);
     
     return {
@@ -91,6 +89,11 @@ export default function ClassementPage() {
     }
 
     if (isSelectionMode) {
+      if (u.duelProtected) {
+        haptic.error();
+        toast({ variant: "destructive", title: "Sceau de Paix", description: `@{u.username} refuse les duels.` });
+        return;
+      }
       haptic.light();
       setBattleParty(prev => {
         const exists = prev.find(p => p.id === u.id);
@@ -155,6 +158,14 @@ export default function ClassementPage() {
         });
         toast({ title: "Transmission réussie" });
       } else {
+        // Double vérification si quelqu'un a activé le sceau entre-temps
+        const protectedParticipant = battleParty.find(p => p.duelProtected);
+        if (protectedParticipant) {
+          toast({ variant: "destructive", title: "Dissonance", description: "Un des participants est désormais sous le Sceau de Paix." });
+          setIsProcessing(false);
+          return;
+        }
+
         await updateDoc(senderRef, { totalPoints: increment(-(bet * battleParty.length)), updatedAt: serverTimestamp() });
         
         const participants: Record<string, any> = {
@@ -243,33 +254,31 @@ export default function ClassementPage() {
           <div className="grid grid-cols-3 items-end gap-2 px-2 pt-8 pb-4 relative">
             <div className="absolute inset-0 bg-primary/5 blur-[100px] rounded-full -z-10" />
             
-            {podium.map((u, idx) => {
-              const rankMap = [2, 1, 3];
-              const rank = rankMap[idx];
-              // Podium index: Left(2nd), Center(1st), Right(3rd)
-              const displayOrder = [1, 0, 2]; // 0 is 1st, 1 is 2nd, 2 is 3rd
-              const userInPodium = podium[displayOrder[idx]];
-              if (!userInPodium) return null;
-              const isSelected = battleParty.find(p => p.id === userInPodium.id);
+            {[1, 0, 2].map((displayIdx, i) => {
+              const u = podium[displayIdx];
+              if (!u) return null;
+              const rank = displayIdx + 1;
+              const isSelected = battleParty.find(p => p.id === u.id);
 
               return (
                 <motion.div 
-                  key={userInPodium.id}
+                  key={u.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   className={cn(
                     "flex flex-col items-center gap-3 cursor-pointer select-none transition-all",
                     rank === 1 && "-mt-8",
-                    isSelected && "scale-110"
+                    isSelected && "scale-110",
+                    u.duelProtected && isSelectionMode && "opacity-20 grayscale"
                   )}
-                  onClick={() => handleUserClick(userInPodium)}
-                  onContextMenu={(e) => handleContextMenu(e, userInPodium)}
-                  onPointerDown={() => handleLongPressStart(userInPodium)}
+                  onClick={() => handleUserClick(u)}
+                  onContextMenu={(e) => handleContextMenu(e, u)}
+                  onPointerDown={() => handleLongPressStart(u)}
                   onPointerUp={handleLongPressEnd}
                   onPointerLeave={handleLongPressEnd}
                 >
                   <div className="relative">
-                    <ProfileAvatar imageUrl={userInPodium.profileImage} points={userInPodium.totalPoints} size={rank === 1 ? "lg" : "md"} className={cn(isSelected && "ring-4 ring-primary ring-offset-4 ring-offset-background")} />
+                    <ProfileAvatar imageUrl={u.profileImage} points={u.totalPoints} size={rank === 1 ? "lg" : "md"} className={cn(isSelected && "ring-4 ring-primary ring-offset-4 ring-offset-background")} />
                     <div className={cn(
                       "absolute -top-3 flex items-center justify-center rounded-full border-2 border-background shadow-lg",
                       rank === 1 ? "-right-2 bg-yellow-500 text-black h-8 w-8" : rank === 2 ? "-right-2 bg-gray-400 text-white h-6 w-6" : "-left-2 bg-orange-400 text-white h-6 w-6"
@@ -278,8 +287,8 @@ export default function ClassementPage() {
                     </div>
                   </div>
                   <div className="text-center">
-                    <p className="text-[9px] font-black uppercase truncate w-24">@{userInPodium.username}</p>
-                    <p className="text-[10px] font-bold opacity-40">{userInPodium.totalPoints} PTS</p>
+                    <p className="text-[9px] font-black uppercase truncate w-24">@{u.username}</p>
+                    <p className="text-[10px] font-bold opacity-40">{u.totalPoints} PTS</p>
                   </div>
                 </motion.div>
               );
@@ -304,7 +313,7 @@ export default function ClassementPage() {
                 onPointerDown={() => handleLongPressStart(u)}
                 onPointerUp={handleLongPressEnd}
                 onPointerLeave={handleLongPressEnd}
-                className="select-none"
+                className={cn("select-none", u.duelProtected && isSelectionMode && "opacity-20 grayscale pointer-events-none")}
               >
                 <Card className={cn(
                   "border-none backdrop-blur-3xl transition-all duration-500 overflow-hidden rounded-[2rem] cursor-pointer",
@@ -326,6 +335,11 @@ export default function ClassementPage() {
                       </div>
                     </div>
                     {isSelected && <Check className="h-5 w-5 text-primary-foreground" />}
+                    {u.duelProtected && !isSelectionMode && (
+                      <div className="h-8 w-8 bg-primary/5 rounded-full flex items-center justify-center">
+                        <Swords className="h-3.5 w-3.5 opacity-20" />
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
@@ -403,12 +417,21 @@ export default function ClassementPage() {
                     <Button variant={mode === 'transfer' ? 'default' : 'ghost'} onClick={() => { setMode('transfer'); setBattleParty([selectedUser]); setIsSelectionMode(false); }} className="flex-1 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest gap-2">
                       <ArrowRightLeft className="h-3.5 w-3.5" /> Transfert
                     </Button>
-                    <Button variant={mode === 'duel' ? 'default' : 'ghost'} onClick={() => setMode('duel')} className="flex-1 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest gap-2">
-                      <Swords className="h-3.5 w-3.5" /> Duel
-                    </Button>
+                    {!selectedUser.duelProtected && (
+                      <Button variant={mode === 'duel' ? 'default' : 'ghost'} onClick={() => setMode('duel')} className="flex-1 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest gap-2">
+                        <Swords className="h-3.5 w-3.5" /> Duel
+                      </Button>
+                    )}
                   </div>
 
-                  {mode === 'duel' && (
+                  {selectedUser.duelProtected && (
+                    <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex items-center gap-3">
+                      <Swords className="h-4 w-4 opacity-20" />
+                      <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Cet esprit est protégé par le Sceau de Paix.</p>
+                    </div>
+                  )}
+
+                  {mode === 'duel' && !selectedUser.duelProtected && (
                     <Button variant="outline" onClick={handleEnterSelectionMode} className="w-full h-12 rounded-xl text-[10px] font-black uppercase tracking-widest gap-2 bg-primary/5 border-primary/10">
                       <Plus className="h-4 w-4" /> Ajouter un autre opposant
                     </Button>
