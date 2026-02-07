@@ -12,7 +12,6 @@ import {
   serverTimestamp, 
   increment, 
   deleteDoc,
-  or,
   and
 } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
@@ -22,12 +21,14 @@ import { useRouter, usePathname } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 export function DuelInvitationListener() {
   const { user } = useUser();
   const db = useFirestore();
   const router = useRouter();
   const pathname = usePathname();
+  const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
 
   const activeDuelsQuery = useMemo(() => {
@@ -66,7 +67,7 @@ export function DuelInvitationListener() {
         [`participants.${user.uid}.status`]: 'accepted'
       });
 
-      // Vérifier si tout le monde a répondu (serveur ou client)
+      // Vérifier si tout le monde a répondu
       const allParticipants = Object.values(activeDuel.participants);
       const allResponded = allParticipants.every((p: any) => p.status !== 'pending' || p.userId === user.uid);
       if (allResponded) {
@@ -79,16 +80,59 @@ export function DuelInvitationListener() {
     }
   };
 
+  const handleCancelInvitation = async () => {
+    if (!activeDuel || !db || !user?.uid || isProcessing) return;
+    setIsProcessing(true);
+    haptic.medium();
+    try {
+      // Identifier tous les esprits ayant accepté (y compris le challenger)
+      const acceptedUids = Object.entries(activeDuel.participants)
+        .filter(([_, p]: [string, any]) => p.status === 'accepted')
+        .map(([uid, _]) => uid);
+
+      // Rembourser chaque esprit
+      const refundPromises = acceptedUids.map(uid => 
+        updateDoc(doc(db, "users", uid), {
+          totalPoints: increment(activeDuel.wager),
+          updatedAt: serverTimestamp()
+        })
+      );
+
+      await Promise.all(refundPromises);
+      
+      // Supprimer définitivement le duel
+      await deleteDoc(doc(db, "duels", activeDuel.id));
+      
+      toast({ title: "Invocation annulée", description: "Les mises de lumière ont été restituées." });
+    } catch (e) {
+      console.error(e);
+      toast({ variant: "destructive", title: "Erreur de restitution" });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleDecline = async () => {
     if (!activeDuel || !db || !user?.uid || isProcessing) return;
     setIsProcessing(true);
     haptic.light();
     try {
-      await updateDoc(doc(db, "duels", activeDuel.id), {
-        [`participants.${user.uid}.status`]: 'rejected'
-      });
-      // Si un rejet annule le choc collectif (optionnel, ici on l'annule)
-      await updateDoc(doc(db, "duels", activeDuel.id), { status: 'cancelled' });
+      // Si un participant refuse, on annule et on rembourse tout le monde
+      const acceptedUids = Object.entries(activeDuel.participants)
+        .filter(([_, p]: [string, any]) => p.status === 'accepted')
+        .map(([uid, _]) => uid);
+
+      const refundPromises = acceptedUids.map(uid => 
+        updateDoc(doc(db, "users", uid), {
+          totalPoints: increment(activeDuel.wager),
+          updatedAt: serverTimestamp()
+        })
+      );
+
+      await Promise.all(refundPromises);
+      await deleteDoc(doc(db, "duels", activeDuel.id));
+
+      toast({ title: "Choc évité", description: "Le duel a été dissous et les points rendus." });
     } catch (e) {
       console.error(e);
     } finally {
@@ -143,7 +187,6 @@ export function DuelInvitationListener() {
             </div>
           </div>
 
-          {/* Liste des Participants et leurs statuts */}
           <div className="space-y-4">
             <p className="text-[8px] font-black uppercase tracking-[0.3em] opacity-30">Cohorte du Combat</p>
             <div className="grid grid-cols-4 gap-3 bg-primary/5 p-4 rounded-[2.5rem] border border-primary/5">
@@ -189,10 +232,12 @@ export function DuelInvitationListener() {
                 <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Attente de la sentence des autres...</p>
               </div>
               <Button 
-                variant="ghost" 
-                onClick={handleDecline} 
-                className="text-[10px] font-black uppercase tracking-widest opacity-30 hover:opacity-100"
+                variant="outline" 
+                onClick={handleCancelInvitation} 
+                disabled={isProcessing}
+                className="w-full h-16 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2 border-destructive/20 text-destructive hover:bg-destructive/5"
               >
+                {isProcessing ? <Loader2 className="animate-spin h-4 w-4" /> : <X className="h-4 w-4" />}
                 Annuler l'Invocation
               </Button>
             </div>
