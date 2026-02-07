@@ -16,15 +16,10 @@ import {
   getDocs
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
-import { Loader2, Swords, Trophy, Zap, Clock, XCircle, CheckCircle2, User, RefreshCw, Sparkles } from "lucide-react";
+import { Loader2, Swords, Trophy, Zap, Clock, XCircle, CheckCircle2, User, RefreshCw, Sparkles, Users } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-
-/**
- * @fileOverview L'Arène du Duel.
- * Gère la logique de combat en temps réel entre deux esprits.
- */
 
 export default function DuelArenaPage() {
   const { duelId } = useParams() as { duelId: string };
@@ -45,55 +40,43 @@ export default function DuelArenaPage() {
 
   const isChallenger = duel?.challengerId === user?.uid;
 
-  // 1. Initialisation : Le Challenger choisit le quiz si le duel est accepté
+  // 1. Initialisation de l'Arène
   useEffect(() => {
-    if (!duel || duel.quizId || !isChallenger || !db || (duel.status !== 'accepted' && duel.status !== 'active')) return;
+    if (!duel || duel.quizId || !isChallenger || !db || duel.status !== 'accepted') return;
     
-    // Si on est en phase accepted ou si on doit reset, on pioche un quiz
-    if (duel.status === 'accepted' || (duel.status === 'active' && !duel.quizId)) {
-      const fetchQuiz = async () => {
-        try {
-          const q = query(collection(db, "quizzes"), limit(50));
-          const snap = await getDocs(q);
-          const allQuizzes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          const randomQuiz = allQuizzes[Math.floor(Math.random() * allQuizzes.length)];
-          
-          if (randomQuiz) {
-            await updateDoc(duelRef!, { 
-              quizId: randomQuiz.id, 
-              status: 'active',
-              updatedAt: serverTimestamp()
-            });
-          }
-        } catch (e) {
-          console.error("Erreur d'invocation de l'Oracle:", e);
-        }
-      };
-      fetchQuiz();
-    }
-  }, [duel?.quizId, duel?.status, isChallenger, db, duelRef]);
-
-  // 2. Chargement des détails du quiz pour l'affichage
-  useEffect(() => {
-    if (!duel?.quizId || !db) return;
-    const loadQuizDetails = async () => {
+    // Si tout le monde a accepté, le challenger lance le quiz
+    const fetchQuiz = async () => {
       try {
-        const quizSnap = await getDocs(query(collection(db, "quizzes")));
-        const q = quizSnap.docs.find(d => d.id === duel.quizId)?.data();
-        if (q) { 
-          setQuiz(q); 
-          setAnswered(false); 
-          setTimeLeft(15); 
-          setStartTime(Date.now()); 
-          setIsResetting(false); 
-          setResetCountdown(3);
+        const q = query(collection(db, "quizzes"), limit(50));
+        const snap = await getDocs(q);
+        const allQuizzes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const randomQuiz = allQuizzes[Math.floor(Math.random() * allQuizzes.length)];
+        if (randomQuiz) {
+          await updateDoc(duelRef!, { 
+            quizId: randomQuiz.id, 
+            status: 'active',
+            updatedAt: serverTimestamp()
+          });
         }
       } catch (e) {}
     };
-    loadQuizDetails();
+    fetchQuiz();
+  }, [duel?.quizId, duel?.status, isChallenger, db, duelRef]);
+
+  // 2. Chargement du Quiz
+  useEffect(() => {
+    if (!duel?.quizId || !db) return;
+    const loadQuiz = async () => {
+      const snap = await getDocs(query(collection(db, "quizzes")));
+      const q = snap.docs.find(d => d.id === duel.quizId)?.data();
+      if (q) {
+        setQuiz(q); setAnswered(false); setTimeLeft(15); setStartTime(Date.now()); setIsResetting(false);
+      }
+    };
+    loadQuiz();
   }, [duel?.quizId, db]);
 
-  // 3. Chronomètre sacré
+  // 3. Chronomètre
   useEffect(() => {
     if (duel?.status === 'active' && !answered && timeLeft > 0 && quiz && !isResetting) {
       const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
@@ -103,276 +86,149 @@ export default function DuelArenaPage() {
     }
   }, [duel?.status, answered, timeLeft, quiz, isResetting]);
 
-  // 4. Détection du match nul synchronisé
+  // 4. Détection du match nul collectif (si tout le monde a tort)
   useEffect(() => {
-    if (duel?.status === 'active' && 
-        duel.challengerResult?.answered && 
-        duel.opponentResult?.answered && 
-        !duel.challengerResult?.correct && 
-        !duel.opponentResult?.correct &&
-        !isResetting) {
-      
-      setIsResetting(true);
-      setResetCountdown(3);
-      haptic.medium();
-      
-      const countdownInterval = setInterval(() => {
-        setResetCountdown(prev => {
-          if (prev <= 1) {
-            clearInterval(countdownInterval);
-            if (isChallenger) {
-              // Seul le challenger effectue la mise à jour pour éviter les race conditions
-              updateDoc(duelRef!, { 
-                challengerResult: null, 
-                opponentResult: null, 
-                quizId: null, 
-                round: increment(1),
-                updatedAt: serverTimestamp()
-              });
-            }
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    if (duel?.status === 'active' && !isResetting) {
+      const participantResults = Object.values(duel.participants);
+      const everyoneAnswered = participantResults.every((p: any) => p.result?.answered);
+      const everyoneFailed = participantResults.every((p: any) => p.result?.answered && !p.result?.correct);
 
-      return () => clearInterval(countdownInterval);
+      if (everyoneAnswered && everyoneFailed) {
+        setIsResetting(true); setResetCountdown(3); haptic.medium();
+        const countdown = setInterval(() => {
+          setResetCountdown(prev => {
+            if (prev <= 1) {
+              clearInterval(countdown);
+              if (isChallenger) {
+                // Nettoyage des résultats pour le nouveau round
+                const resetParticipants: any = {};
+                Object.keys(duel.participants).forEach(uid => {
+                  resetParticipants[`participants.${uid}.result`] = null;
+                });
+                updateDoc(duelRef!, { ...resetParticipants, quizId: null, round: increment(1), updatedAt: serverTimestamp() });
+              }
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        return () => clearInterval(countdown);
+      }
     }
   }, [duel, isResetting, isChallenger, duelRef]);
 
   const handleAnswer = async (idx: number) => {
     if (!duel || !user || !db || answered || isResetting) return;
-    
-    setAnswered(true); 
-    haptic.medium();
-    
+    setAnswered(true); haptic.medium();
     const isCorrect = idx === quiz?.correctIndex;
     const responseTime = Date.now() - (startTime || Date.now());
     
-    const result = { 
-      answered: true, 
-      correct: isCorrect, 
-      time: responseTime 
-    };
+    await updateDoc(duelRef!, {
+      [`participants.${user.uid}.result`]: { answered: true, correct: isCorrect, time: responseTime }
+    });
 
-    const otherResult = isChallenger ? duel.opponentResult : duel.challengerResult;
-    let updatePayload: any = isChallenger ? { challengerResult: result } : { opponentResult: result };
-
-    // Si l'autre a déjà répondu et qu'au moins un a juste, on finit
-    if (otherResult?.answered && (isCorrect || otherResult.correct)) {
-      updatePayload.status = 'finished'; 
+    // Si tout le monde a répondu et au moins un a juste, on finit
+    const updatedDuel = (await getDocs(query(collection(db, "duels")))).docs.find(d => d.id === duelId)?.data();
+    if (updatedDuel) {
+      const results = Object.values(updatedDuel.participants);
+      const allFinished = results.every((p: any) => p.result?.answered);
+      const someoneCorrect = results.some((p: any) => p.result?.correct);
+      if (allFinished && someoneCorrect) {
+        await updateDoc(duelRef!, { status: 'finished' });
+      }
     }
-    
-    await updateDoc(duelRef!, updatePayload);
   };
 
-  // 5. Arbitrage final
+  // 5. Arbitrage Final
   useEffect(() => {
-    if (duel?.status === 'finished' && duel.challengerResult && duel.opponentResult && !duel.winnerId && db && duelRef) {
+    if (duel?.status === 'finished' && !duel.winnerId && db && duelRef) {
       const determineWinner = async () => {
-        let winnerId: string | 'draw' = 'draw'; 
-        const c = duel.challengerResult; 
-        const o = duel.opponentResult;
-
-        if (c.correct && !o.correct) winnerId = duel.challengerId;
-        else if (!c.correct && o.correct) winnerId = duel.opponentId;
-        else if (c.correct && o.correct) { 
-          winnerId = c.time < o.time ? duel.challengerId : duel.opponentId; 
-        }
-
-        await updateDoc(duelRef, { 
-          winnerId: winnerId, 
-          finishedAt: serverTimestamp() 
+        let bestTime = Infinity;
+        let winnerId = 'draw';
+        Object.entries(duel.participants).forEach(([uid, p]: [string, any]) => {
+          if (p.result?.correct && p.result.time < bestTime) {
+            bestTime = p.result.time;
+            winnerId = uid;
+          }
         });
 
-        if (winnerId && winnerId !== 'draw') {
-          await updateDoc(doc(db, "users", winnerId), { 
-            totalPoints: increment(duel.wager * 2), 
-            updatedAt: serverTimestamp() 
-          });
+        await updateDoc(duelRef, { winnerId, finishedAt: serverTimestamp() });
+        if (winnerId !== 'draw') {
+          // Pot total = wager * nombre de participants
+          const totalPot = duel.wager * duel.participantIds.length;
+          await updateDoc(doc(db, "users", winnerId), { totalPoints: increment(totalPot), updatedAt: serverTimestamp() });
         }
       };
       determineWinner();
     }
   }, [duel, db, duelRef]);
 
-  // Oracle de la Dualité Simple : Filtrer pour n'afficher que 2 options (la juste + 1 fausse)
   const duelOptions = useMemo(() => {
     if (!quiz || !quiz.options) return [];
-    
-    const correctOption = { 
-      text: quiz.options[quiz.correctIndex], 
-      originalIndex: quiz.correctIndex 
-    };
-    
-    const wrongOptions = quiz.options
-      .map((text: string, i: number) => ({ text, originalIndex: i }))
-      .filter((o: any) => o.originalIndex !== quiz.correctIndex);
-    
-    // On pioche une seule option fausse au hasard pour le duel
+    const correctOption = { text: quiz.options[quiz.correctIndex], originalIndex: quiz.correctIndex };
+    const wrongOptions = quiz.options.map((text: string, i: number) => ({ text, originalIndex: i })).filter((o: any) => o.originalIndex !== quiz.correctIndex);
     const randomWrong = wrongOptions[Math.floor(Math.random() * wrongOptions.length)];
-    
-    // On retourne le duo mélangé
     return [correctOption, randomWrong].sort(() => Math.random() - 0.5);
   }, [quiz]);
 
-  if (duelLoading || !duel) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin opacity-20" />
-      </div>
-    );
-  }
-
-  const challengerAnswered = duel.challengerResult?.answered;
-  const opponentAnswered = duel.opponentResult?.answered;
+  if (duelLoading || !duel) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin opacity-20" /></div>;
 
   return (
     <div className="min-h-screen bg-background flex flex-col p-6 pt-24 space-y-8">
-      {/* Barre de Status des Esprits */}
-      <div className="flex items-center justify-between px-2">
-        <div className="flex flex-col items-center gap-3">
-          <div className={cn(
-            "h-20 w-20 rounded-[2rem] border-2 transition-all duration-500 overflow-hidden relative", 
-            challengerAnswered 
-              ? (duel.challengerResult.correct ? "border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.3)] scale-110" : "border-red-500 opacity-60") 
-              : "border-primary/10"
-          )}>
-            {duel.challengerPhoto ? <img src={duel.challengerPhoto} alt="" className="object-cover w-full h-full" /> : <User className="m-auto h-10 w-10 opacity-10" />}
-            {challengerAnswered && (
-              <div className="absolute inset-0 bg-background/40 backdrop-blur-sm flex items-center justify-center">
-                {duel.challengerResult.correct ? <CheckCircle2 className="h-8 w-8 text-green-500" /> : <XCircle className="h-8 w-8 text-red-500" />}
+      {/* Grille des Esprits */}
+      <div className="flex flex-wrap justify-center gap-4 px-2">
+        {Object.entries(duel.participants).map(([uid, p]: [string, any]) => {
+          const res = p.result;
+          return (
+            <div key={uid} className="flex flex-col items-center gap-2">
+              <div className={cn(
+                "h-16 w-16 rounded-2xl border-2 transition-all duration-500 overflow-hidden relative",
+                res?.answered ? (res.correct ? "border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.3)]" : "border-red-500 opacity-40") : "border-primary/10"
+              )}>
+                {p.photo ? <img src={p.photo} alt="" className="object-cover w-full h-full" /> : <User className="m-auto h-8 w-8 opacity-10" />}
+                {res?.answered && (
+                  <div className="absolute inset-0 bg-background/40 flex items-center justify-center">
+                    {res.correct ? <CheckCircle2 className="h-6 w-6 text-green-500" /> : <XCircle className="h-6 w-6 text-red-500" />}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <span className="text-[10px] font-black uppercase tracking-widest">@{duel.challengerName}</span>
-        </div>
-
-        <div className="flex flex-col items-center gap-2">
-          <div className="bg-primary text-primary-foreground px-5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-xl">vs</div>
-          <p className="text-[9px] font-black opacity-30 uppercase tracking-[0.3em]">Manche {duel.round || 1}</p>
-          <div className="flex items-center gap-1 mt-1">
-            <Zap className="h-3 w-3 text-primary" />
-            <span className="text-xs font-black">{duel.wager * 2}</span>
-          </div>
-        </div>
-
-        <div className="flex flex-col items-center gap-3">
-          <div className={cn(
-            "h-20 w-20 rounded-[2rem] border-2 transition-all duration-500 overflow-hidden relative", 
-            opponentAnswered 
-              ? (duel.opponentResult.correct ? "border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.3)] scale-110" : "border-red-500 opacity-60") 
-              : "border-primary/10"
-          )}>
-            {duel.opponentPhoto ? <img src={duel.opponentPhoto} alt="" className="object-cover w-full h-full" /> : <User className="m-auto h-10 w-10 opacity-10" />}
-            {opponentAnswered && (
-              <div className="absolute inset-0 bg-background/40 backdrop-blur-sm flex items-center justify-center">
-                {duel.opponentResult.correct ? <CheckCircle2 className="h-8 w-8 text-green-500" /> : <XCircle className="h-8 w-8 text-red-500" />}
-              </div>
-            )}
-          </div>
-          <span className="text-[10px] font-black uppercase tracking-widest">@{duel.opponentName}</span>
-        </div>
+              <span className="text-[8px] font-black uppercase opacity-40 truncate w-16 text-center">@{p.name}</span>
+            </div>
+          );
+        })}
       </div>
 
       <AnimatePresence mode="wait">
         {(duel.status === 'pending' || duel.status === 'accepted' || (duel.status === 'active' && !quiz) || isResetting) ? (
-          <motion.div 
-            key="loading"
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }}
-            className="flex-1 flex flex-col items-center justify-center text-center space-y-8"
-          >
+          <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col items-center justify-center text-center space-y-8">
             <div className="relative">
-              {isResetting ? (
-                <div className="h-24 w-24 rounded-full border-4 border-primary/10 flex items-center justify-center">
-                  <span className="text-5xl font-black tabular-nums">{resetCountdown}</span>
-                </div>
-              ) : (
-                <>
-                  <RefreshCw className="h-16 w-16 animate-spin opacity-10" />
-                  <Swords className="absolute inset-0 m-auto h-8 w-8 opacity-40" />
-                </>
-              )}
+              {isResetting ? <div className="h-24 w-24 rounded-full border-4 border-primary/10 flex items-center justify-center"><span className="text-5xl font-black">{resetCountdown}</span></div> : <RefreshCw className="h-16 w-16 animate-spin opacity-10" />}
             </div>
-            <div className="space-y-2">
-              <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-40">
-                {isResetting ? "Équilibre Rompu" : "Oracle en Consultation"}
-              </p>
-              <p className="text-sm font-medium opacity-60 max-w-[200px]">
-                {isResetting ? "Concentrez-vous. Nouveau défi dans quelques instants..." : "L'Arène se matérialise..."}
-              </p>
-            </div>
+            <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-40">{isResetting ? "Équilibre Rompu" : "Invocation de l'Arène"}</p>
           </motion.div>
         ) : duel.status === 'active' ? (
-          <motion.div 
-            key="active"
-            initial={{ opacity: 0, y: 20 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            className="flex-1 flex flex-col space-y-12"
-          >
+          <motion.div key="active" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col space-y-12">
             <div className="flex flex-col items-center gap-8">
-              <div className={cn(
-                "h-24 w-24 rounded-full border-4 flex items-center justify-center font-black text-4xl tabular-nums shadow-2xl transition-colors",
-                timeLeft <= 5 ? "border-red-500 text-red-500 animate-pulse" : "border-primary/10"
-              )}>
-                {timeLeft}
-              </div>
-              <h2 className="text-2xl font-black text-center leading-tight tracking-tight px-4 italic">
-                "{quiz?.question}"
-              </h2>
+              <div className={cn("h-20 w-20 rounded-full border-4 flex items-center justify-center font-black text-3xl tabular-nums transition-colors", timeLeft <= 5 ? "border-red-500 text-red-500" : "border-primary/10")}>{timeLeft}</div>
+              <h2 className="text-xl font-black text-center leading-tight italic px-4">"{quiz?.question}"</h2>
             </div>
-
             <div className="grid grid-cols-1 gap-4">
               {duelOptions.map((opt: any, idx: number) => (
-                <Button 
-                  key={idx} 
-                  disabled={answered} 
-                  onClick={() => handleAnswer(opt.originalIndex)} 
-                  className={cn(
-                    "h-24 rounded-[2.5rem] font-black text-xl border-2 shadow-xl transition-all duration-300", 
-                    "text-black dark:text-white bg-card border-primary/5",
-                    !answered ? "hover:bg-primary/5" : 
-                    opt.originalIndex === quiz.correctIndex ? "bg-green-500 border-green-600 text-white" : 
-                    "opacity-40 grayscale"
-                  )}
-                >
+                <Button key={idx} disabled={answered} onClick={() => handleAnswer(opt.originalIndex)} className={cn(
+                  "h-24 rounded-[2.5rem] font-black text-xl border-2 transition-all", 
+                  "text-black dark:text-white bg-card border-primary/5",
+                  !answered ? "hover:bg-primary/5" : opt.originalIndex === quiz.correctIndex ? "bg-green-500 border-green-600 text-white" : "opacity-40 grayscale"
+                )}>
                   {opt.text}
                 </Button>
               ))}
             </div>
           </motion.div>
         ) : duel.status === 'finished' ? (
-          <motion.div 
-            key="finished"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex-1 flex flex-col items-center justify-center space-y-12 text-center"
-          >
-            <div className="relative">
-              <div className="absolute inset-0 bg-primary/10 blur-[80px] rounded-full" />
-              <Trophy className={cn(
-                "h-32 w-32 relative z-10", 
-                duel.winnerId === user?.uid ? "text-yellow-500 drop-shadow-[0_0_30px_rgba(234,179,8,0.5)]" : "opacity-10"
-              )} />
-            </div>
-            
-            <div className="space-y-4">
-              <h2 className="text-6xl font-black uppercase italic tracking-tighter">
-                {duel.winnerId === user?.uid ? "Triomphe !" : duel.winnerId === 'draw' ? "Équilibre" : "Dissonance"}
-              </h2>
-              <p className="text-sm font-medium opacity-40 uppercase tracking-widest">
-                {duel.winnerId === user?.uid ? `+${duel.wager * 2} PTS de Lumière Récoltés` : "Retour au Sanctuaire"}
-              </p>
-            </div>
-
-            <Button 
-              onClick={() => { haptic.light(); router.push("/home"); }} 
-              className="w-full h-20 rounded-[3rem] font-black uppercase tracking-[0.4em] shadow-2xl"
-            >
-              Quitter l'Arène
-            </Button>
+          <motion.div key="finished" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 flex flex-col items-center justify-center space-y-8 text-center">
+            <Trophy className={cn("h-32 w-32", duel.winnerId === user?.uid ? "text-yellow-500" : "opacity-10")} />
+            <h2 className="text-5xl font-black uppercase italic tracking-tighter">{duel.winnerId === user?.uid ? "Triomphe !" : "Dissonance"}</h2>
+            <Button onClick={() => { haptic.light(); router.push("/home"); }} className="w-full h-20 rounded-[3rem] font-black uppercase tracking-[0.4em]">Retour au Sanctuaire</Button>
           </motion.div>
         ) : null}
       </AnimatePresence>

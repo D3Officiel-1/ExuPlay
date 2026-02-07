@@ -116,24 +116,34 @@
     },
     "Duel": {
       "title": "Duel",
-      "description": "Un affrontement intellectuel entre deux esprits",
+      "description": "Un affrontement intellectuel entre plusieurs esprits",
       "type": "object",
       "properties": {
         "challengerId": { "type": "string" },
-        "opponentId": { "type": "string" },
         "challengerName": { "type": "string" },
-        "opponentName": { "type": "string" },
         "challengerPhoto": { "type": "string" },
-        "opponentPhoto": { "type": "string" },
+        "participantIds": { "type": "array", "items": { "type": "string" }, "description": "Liste de tous les IDs incluant le challenger et les opposants" },
+        "participants": { 
+          "type": "object",
+          "description": "Map des états des participants",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "photo": { "type": "string" },
+              "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
+              "result": { "type": "object", "properties": { "answered": { "type": "boolean" }, "correct": { "type": "boolean" }, "time": { "type": "number" } } }
+            }
+          }
+        },
         "wager": { "type": "integer" },
         "quizId": { "type": "string" },
         "status": { "type": "string", "enum": ["pending", "accepted", "active", "finished", "cancelled"] },
-        "challengerResult": { "type": "object", "properties": { "answered": { "type": "boolean" }, "correct": { "type": "boolean" }, "time": { "type": "number" } } },
-        "opponentResult": { "type": "object", "properties": { "answered": { "type": "boolean" }, "correct": { "type": "boolean" }, "time": { "type": "number" } } },
         "winnerId": { "type": "string" },
+        "round": { "type": "integer", "default": 1 },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["challengerId", "opponentId", "wager", "status", "createdAt"]
+      "required": ["challengerId", "participantIds", "wager", "status", "createdAt"]
     }
   },
   "auth": {
