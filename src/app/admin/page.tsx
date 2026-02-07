@@ -12,6 +12,7 @@ import {
   addDoc,
   deleteDoc,
   updateDoc,
+  setDoc,
   increment,
   limit
 } from "firebase/firestore";
@@ -83,7 +84,8 @@ import {
   ArrowRightLeft,
   Crown,
   Minus,
-  AlertTriangle
+  AlertTriangle,
+  X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -195,8 +197,8 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (appStatus) {
-      if (appStatus.maintenanceMessage !== undefined) setMaintenanceMessageInput(appStatus.maintenanceMessage);
-      if (appStatus.globalAnnouncement !== undefined) setGlobalAnnouncementInput(appStatus.globalAnnouncement);
+      if (appStatus.maintenanceMessage !== undefined) setMaintenanceMessageInput(appStatus.maintenanceMessage || "");
+      if (appStatus.globalAnnouncement !== undefined) setGlobalAnnouncementInput(appStatus.globalAnnouncement || "");
       if (appStatus.communityGoalTarget !== undefined) setCommunityTargetInput(appStatus.communityGoalTarget.toString());
       if (appStatus.pointConversionRate !== undefined) setConversionRateInput(appStatus.pointConversionRate.toString());
       if (appStatus.transferFeePercent !== undefined) setTransferFeeInput(appStatus.transferFeePercent.toString());
@@ -289,9 +291,10 @@ export default function AdminPage() {
     setIsSavingConfig(true);
     haptic.light();
     try {
-      await updateDoc(appConfigRef, {
-        maintenanceMessage: maintenanceMessageInput,
-        globalAnnouncement: globalAnnouncementInput,
+      // Utilisation de setDoc avec merge pour assurer la création du document s'il manque
+      await setDoc(appConfigRef, {
+        maintenanceMessage: maintenanceMessageInput.trim(),
+        globalAnnouncement: globalAnnouncementInput.trim(),
         communityGoalTarget: parseInt(communityTargetInput) || 10000,
         pointConversionRate: parseFloat(conversionRateInput) || 0.5,
         transferFeePercent: parseInt(transferFeeInput) || 10,
@@ -299,7 +302,7 @@ export default function AdminPage() {
         dailyTransferLimitDefault: parseInt(defaultLimitInput) || 500,
         dailyTransferLimitTrusted: parseInt(trustedLimitInput) || 2500,
         updatedAt: serverTimestamp()
-      });
+      }, { merge: true });
       haptic.success();
       toast({ title: "Configuration harmonisée", description: "Les lois du Sanctuaire ont été mises à jour." });
     } catch (error) {
@@ -463,7 +466,6 @@ export default function AdminPage() {
         updatedAt: serverTimestamp()
       });
       toast({ title: "Essence harmonisée", description: "La modification a été ancrée." });
-      // Mettre à jour l'état local du dialogue si nécessaire
       setSelectedUserForView({ ...selectedUserForView, [field]: value });
     } catch (error) {
       toast({ variant: "destructive", title: "Dissonance", description: "Échec de la modification." });
@@ -805,16 +807,36 @@ export default function AdminPage() {
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 pl-2">
                     <Megaphone className="h-4 w-4 opacity-40" />
-                    <h3 className="text-[10px] font-black uppercase tracking-widest opacity-40">Voix de l'Oracle</h3>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest opacity-40">Voix de l'Oracle (Annonce Globale)</h3>
                   </div>
                   <div className="space-y-2 px-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">Annonce Globale</Label>
-                    <Input 
-                      placeholder="Message diffusé à tous les esprits (laisser vide pour masquer)..." 
-                      className="h-12 rounded-xl bg-background/50 border-primary/10 font-bold"
-                      value={globalAnnouncementInput}
-                      onChange={(e) => setGlobalAnnouncementInput(e.target.value)}
-                    />
+                    <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">Texte de l'annonce</Label>
+                    <div className="relative">
+                      <Input 
+                        placeholder="Message diffusé à tous les esprits (laisser vide pour masquer)..." 
+                        className="h-12 rounded-xl bg-background/50 border-primary/10 font-bold pr-10"
+                        value={globalAnnouncementInput}
+                        onChange={(e) => setGlobalAnnouncementInput(e.target.value)}
+                      />
+                      {globalAnnouncementInput && (
+                        <button 
+                          onClick={() => { haptic.light(); setGlobalAnnouncementInput(""); }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-destructive opacity-40 hover:opacity-100"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                    {globalAnnouncementInput && (
+                      <div className="mt-4 p-4 bg-primary rounded-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
+                        <div className="flex items-center gap-2">
+                          <Megaphone className="h-3 w-3 text-primary-foreground" />
+                          <p className="text-[9px] font-black text-primary-foreground uppercase tracking-widest truncate">
+                            Aperçu : {globalAnnouncementInput}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -943,7 +965,9 @@ export default function AdminPage() {
         </Tabs>
       </main>
 
+      {/* Dialogues Quizz et User omis pour briéveté mais conservés dans la logique réelle */}
       <Dialog open={!!selectedQuizForView} onOpenChange={(open) => !open && (setSelectedQuizForView(null), setIsEditingQuiz(false))}>
+        {/* ... Contenu du dialogue Quizz ... */}
         <DialogContent className="sm:max-w-[600px] bg-card/95 backdrop-blur-2xl rounded-[2.5rem] p-8 max-h-[90vh] overflow-y-auto border-none">
           <DialogHeader>
             <div className="flex justify-between items-center w-full">

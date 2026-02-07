@@ -48,6 +48,9 @@ export function Header() {
 
   const hidePoints = profile?.hidePointsInHeader === true;
 
+  // L'annonce n'est visible que si elle contient du texte réel
+  const hasAnnouncement = appStatus?.globalAnnouncement && appStatus.globalAnnouncement.trim() !== "";
+
   return (
     <motion.header 
       initial={{ y: -60, opacity: 0 }}
@@ -63,18 +66,27 @@ export function Header() {
         "bg-background/10 backdrop-blur-3xl"
       )}
     >
-      {/* Annonce Globale */}
+      {/* Annonce Globale - Se manifeste uniquement si invoquée par le Maître */}
       <AnimatePresence>
-        {appStatus?.globalAnnouncement && (
+        {hasAnnouncement && (
           <motion.div 
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="w-full bg-primary overflow-hidden"
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full bg-primary overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.1)]"
           >
-            <div className="px-6 py-2 flex items-center justify-center gap-2">
-              <Megaphone className="h-3 w-3 text-primary-foreground animate-bounce" />
-              <p className="text-[9px] font-black text-primary-foreground uppercase tracking-widest text-center truncate">
+            <div className="px-6 py-2.5 flex items-center justify-center gap-3">
+              <motion.div
+                animate={{ 
+                  scale: [1, 1.2, 1],
+                  rotate: [0, 10, -10, 0]
+                }}
+                transition={{ duration: 3, repeat: Infinity }}
+              >
+                <Megaphone className="h-3 w-3 text-primary-foreground" />
+              </motion.div>
+              <p className="text-[9px] font-black text-primary-foreground uppercase tracking-[0.2em] text-center leading-none">
                 {appStatus.globalAnnouncement}
               </p>
             </div>
