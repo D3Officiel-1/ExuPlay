@@ -150,17 +150,17 @@ export default function PenaltiesPage() {
     setPlayerChoice(direction);
     haptic.medium();
 
-    // Logique Oracle : 60% de chances de bloquer (Récupération), 40% de chances de feindre l'erreur (Générosité)
+    // Oracle de la Dualité : 50% de chances de bloquer, 50% de chances de marquer
     const roll = Math.random();
     let keeperDir: Direction;
     let scored: boolean;
 
-    if (roll < 0.60) {
-      // L'Oracle utilise son omniscience et bloque (60%)
+    if (roll < 0.50) {
+      // L'Oracle utilise son omniscience et bloque (50%)
       keeperDir = direction;
       scored = false;
     } else {
-      // L'Oracle feint l'erreur pour laisser passer la Lumière (40%)
+      // L'Oracle feint l'erreur pour laisser passer la Lumière (50%)
       const otherDirections = DIRECTIONS.filter(d => d !== direction);
       keeperDir = otherDirections[Math.floor(Math.random() * otherDirections.length)];
       scored = true;
@@ -272,7 +272,8 @@ export default function PenaltiesPage() {
       case "En haut": return "top-0 left-1/3 w-[33.33%]";
       case "En haut à droite": return "top-0 right-0";
       case "À gauche": return "top-1/3 left-0 h-[33.33%]";
-      case "Centre": return "top-[17.5%] left-[36%] w-[28%] h-[50%] z-[70]";
+      // Ajustement : Légèrement à gauche (left 36% -> 34%) et en bas (top 17.5% -> 20%)
+      case "Centre": return "top-[20%] left-[34%] w-[28%] h-[50%] z-[70]";
       case "À droite": return "top-1/3 right-0 h-[33.33%]";
       case "En bas à gauche": return "bottom-0 left-0";
       case "En bas": return "bottom-0 left-1/3 w-[33.33%]";
@@ -401,7 +402,12 @@ export default function PenaltiesPage() {
 
           <AnimatePresence mode="wait">
             {gameState === 'result' ? (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }} 
+                animate={{ opacity: 1, y: 0, x: -10 }} // Ajustement : Légèrement à gauche et en bas
+                exit={{ opacity: 0 }}
+                className="mt-4"
+              >
                 <Button 
                   onClick={resetGame} 
                   className="w-full h-20 rounded-[2.5rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-primary/20"
@@ -413,7 +419,7 @@ export default function PenaltiesPage() {
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/5 flex items-start gap-4">
                 <Sparkles className="h-5 w-5 text-primary opacity-40 shrink-0 mt-1" />
                 <p className="text-[11px] font-medium opacity-40 italic">
-                  "L'Oracle observe vos intentions. Saurez-vous déceler l'instant où il choisit de ne pas regarder ?"
+                  "L'équilibre est parfait. 50% de chance, 100% d'intuition."
                 </p>
               </motion.div>
             )}
