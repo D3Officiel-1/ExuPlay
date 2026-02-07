@@ -23,13 +23,27 @@ import {
   Dices,
   Clock,
   TrendingUp,
-  Boxes
+  Boxes,
+  ShieldAlert,
+  Medal
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
 const STORE_ITEMS = [
+  // --- PRESTIGE & ACCRÉDITATION ---
+  {
+    id: "verified_badge",
+    type: "upgrade",
+    category: "prestige",
+    name: "Sceau de Confiance",
+    description: "Accréditation officielle de l'Oracle. Augmente vos limites de flux et marque votre identité d'un sceau d'authenticité.",
+    price: 5000,
+    icon: ShieldCheck,
+    color: "text-primary",
+    bg: "bg-primary/10",
+  },
   // --- OUTILS INDIVIDUELS ---
   {
     id: "hint",
@@ -86,7 +100,7 @@ const STORE_ITEMS = [
     category: "packs",
     name: "Pacte d'Initiation",
     description: "Contient 2 exemplaires de chaque outil d'éveil.",
-    price: 800, // Valeur réelle 1000
+    price: 800,
     icon: Package,
     color: "text-purple-500",
     bg: "bg-purple-500/10",
@@ -98,7 +112,7 @@ const STORE_ITEMS = [
     category: "packs",
     name: "Pacte du Maître",
     description: "Contient 5 exemplaires de chaque outil d'éveil.",
-    price: 1800, // Valeur réelle 2500
+    price: 1800,
     icon: Boxes,
     color: "text-primary",
     bg: "bg-primary/5",
@@ -178,6 +192,11 @@ export default function EchoppePage() {
       return;
     }
 
+    // Checks for upgrades or themes already owned
+    if (item.id === 'verified_badge' && profile.trustBadge) {
+      toast({ title: "Sceau déjà manifesté" });
+      return;
+    }
     if (item.type === 'theme' && profile.ownedThemes?.includes(item.id)) {
       toast({ title: "Déjà possédé" });
       return;
@@ -192,7 +211,9 @@ export default function EchoppePage() {
         updatedAt: serverTimestamp()
       };
 
-      if (item.type === 'consumable' && 'field' in item) {
+      if (item.id === 'verified_badge') {
+        updatePayload.trustBadge = true;
+      } else if (item.type === 'consumable' && 'field' in item) {
         updatePayload[item.field!] = increment(1);
       } else if (item.type === 'bundle' && 'fields' in item) {
         Object.entries(item.fields!).forEach(([f, val]) => {
@@ -235,13 +256,46 @@ export default function EchoppePage() {
             <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Arsenal</p>
             <h1 className="text-3xl font-black tracking-tight">L'Échoppe</h1>
           </div>
-          <div className="bg-primary/5 px-4 py-2 rounded-2xl border border-primary/5 flex items-center gap-2">
+          <div className="bg-primary/5 px-4 py-2 rounded-2xl border border-primary/5 flex items-center gap-2 shadow-sm">
             <Zap className="h-3 w-3 text-primary" />
             <span className="text-sm font-black">{profile?.totalPoints?.toLocaleString()}</span>
           </div>
         </div>
 
         <div className="space-y-12">
+          {/* SECTION PRESTIGE */}
+          <section className="space-y-5">
+            <div className="flex items-center gap-3 pl-2">
+              <Medal className="h-4 w-4 opacity-40" />
+              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Prestige & Titres</h2>
+            </div>
+            {STORE_ITEMS.filter(i => i.category === 'prestige').map((item) => {
+              const isOwned = profile?.trustBadge === true;
+              return (
+                <Card key={item.id} className={cn("border-none bg-primary text-primary-foreground shadow-2xl rounded-[2.5rem] overflow-hidden relative group transition-all", isOwned && "opacity-50 grayscale")}>
+                  <div className="absolute top-0 right-0 p-6 opacity-10"><ShieldCheck className="h-24 w-24" /></div>
+                  <CardContent className="p-8 flex items-center gap-6 relative z-10">
+                    <div className="h-16 w-16 bg-primary-foreground/10 rounded-[1.5rem] flex items-center justify-center shrink-0 border border-white/10 shadow-inner">
+                      <item.icon className="h-8 w-8" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-black tracking-tight uppercase italic">{item.name}</h3>
+                      <p className="text-[10px] font-medium opacity-60 leading-relaxed">{item.description}</p>
+                    </div>
+                    <Button 
+                      onClick={() => handlePurchase(item)} 
+                      disabled={buyingId === item.id || isOwned} 
+                      variant="secondary" 
+                      className="rounded-xl h-14 px-6 font-black text-xs gap-2 shadow-2xl"
+                    >
+                      {isOwned ? <Check className="h-4 w-4" /> : buyingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : `${item.price} PTS`}
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </section>
+
           {/* SECTION OUTILS */}
           <section className="space-y-5">
             <div className="flex items-center gap-3 pl-2">
@@ -282,17 +336,17 @@ export default function EchoppePage() {
                 <h2 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Hasard Sacré</h2>
               </div>
               {STORE_ITEMS.filter(i => i.category === 'mystery').map((item) => (
-                <Card key={item.id} className="border-none bg-primary text-primary-foreground shadow-2xl rounded-[2.5rem] overflow-hidden relative group">
-                  <div className="absolute top-0 right-0 p-6 opacity-10"><Dices className="h-20 w-20" /></div>
+                <Card key={item.id} className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden relative group">
+                  <div className="absolute top-0 right-0 p-6 opacity-5"><Dices className="h-20 w-20 text-primary" /></div>
                   <CardContent className="p-8 flex items-center gap-6 relative z-10">
-                    <div className="h-16 w-16 bg-primary-foreground/10 rounded-2xl flex items-center justify-center shrink-0">
-                      <item.icon className="h-8 w-8" />
+                    <div className="h-16 w-16 bg-primary/5 rounded-2xl flex items-center justify-center shrink-0">
+                      <item.icon className="h-8 w-8 text-primary" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-lg font-black tracking-tight uppercase italic">{item.name}</h3>
-                      <p className="text-[10px] font-medium opacity-60">{item.description}</p>
+                      <h3 className="text-lg font-black tracking-tight uppercase italic text-primary">{item.name}</h3>
+                      <p className="text-[10px] font-medium opacity-40">{item.description}</p>
                     </div>
-                    <Button onClick={() => handlePurchase(item)} disabled={buyingId === item.id} variant="secondary" className="rounded-xl h-14 px-6 font-black text-xs gap-2 shadow-2xl">
+                    <Button onClick={() => handlePurchase(item)} disabled={buyingId === item.id} className="rounded-xl h-14 px-6 font-black text-xs gap-2 shadow-xl shadow-primary/5">
                       {buyingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : item.price} <Zap className="h-3 w-3" />
                     </Button>
                   </CardContent>
