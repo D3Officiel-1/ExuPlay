@@ -62,8 +62,8 @@ export default function ClassementPage() {
   const [amount, setAmount] = useState("");
   const [mode, setMode] = useState<'transfer' | 'duel'>('transfer');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [battleParty, setBattleParty] = useState<any[]>([]);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [battleParty, setBattleParty] = useState<any[]>([]);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const myProfileRef = useMemo(() => (db && user?.uid) ? doc(db, "users", user.uid) : null, [db, user?.uid]);
@@ -170,7 +170,6 @@ export default function ClassementPage() {
       return;
     }
 
-    // Filtrage automatique des participants insolvables pour le duel
     let finalParticipants = [...battleParty];
     if (mode === 'duel') {
       finalParticipants = battleParty.filter(p => (p.totalPoints || 0) >= bet);
@@ -311,7 +310,6 @@ export default function ClassementPage() {
       isSelectionMode && "bg-primary/[0.03]"
     )}>
       <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
-        {/* Header Dynamique */}
         <div className="flex flex-col gap-6">
           <div className="flex items-center justify-between">
             <AnimatePresence mode="wait">
@@ -351,7 +349,6 @@ export default function ClassementPage() {
             )}
           </div>
 
-          {/* Intégration de la Barre de Validation dans l'entête */}
           <AnimatePresence>
             {isSelectionMode && battleParty.length > 0 && (
               <motion.div 
@@ -390,7 +387,6 @@ export default function ClassementPage() {
           </AnimatePresence>
         </div>
 
-        {/* Barre de Flux Journalier & Recherche - Masquée en sélection pour épurer */}
         <AnimatePresence>
           {!isSelectionMode && (
             <motion.div 
@@ -431,7 +427,6 @@ export default function ClassementPage() {
           )}
         </AnimatePresence>
 
-        {/* Podium - Adapté pour la sélection */}
         {podium.length > 0 && (
           <div className="grid grid-cols-3 items-end gap-2 px-2 pt-8 pb-4 relative">
             <div className="absolute inset-0 bg-primary/5 blur-[100px] rounded-full -z-10" />
@@ -488,8 +483,8 @@ export default function ClassementPage() {
                     </AnimatePresence>
 
                     <div className={cn(
-                      "absolute -top-3 flex items-center justify-center rounded-full border-2 border-background shadow-lg",
-                      rank === 1 ? "-right-2 bg-yellow-500 text-black h-8 w-8" : rank === 2 ? "-right-2 bg-gray-400 text-white h-6 w-6" : "-left-2 bg-orange-400 text-white h-6 w-6"
+                      "absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center rounded-full border-2 border-background shadow-lg z-20",
+                      rank === 1 ? "bg-yellow-500 text-black h-8 w-8" : rank === 2 ? "bg-gray-400 text-white h-6 w-6" : "bg-orange-400 text-white h-6 w-6"
                     )}>
                       {rank === 1 ? <Trophy className="h-4 w-4" /> : <span className="text-[10px] font-black">{rank}</span>}
                     </div>
@@ -504,7 +499,6 @@ export default function ClassementPage() {
           </div>
         )}
 
-        {/* Liste des Esprits - Adaptée pour la sélection */}
         <div className="space-y-4">
           {rest.map((u, idx) => {
             const isMe = u.id === user?.uid;
@@ -595,7 +589,6 @@ export default function ClassementPage() {
         </div>
       </main>
 
-      {/* Vision de l'Oracle - Dialog amélioré */}
       <Dialog open={!!selectedUserForVision} onOpenChange={(open) => !open && setSelectedUserForVision(null)}>
         <DialogContent className="max-w-[90vw] sm:max-w-md bg-transparent border-none p-0 overflow-hidden shadow-none ring-0 [&>button]:hidden">
           {selectedUserForVision && (
@@ -634,7 +627,6 @@ export default function ClassementPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Carte d'Action de Flux - Adaptative */}
       <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
         <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-3xl border-white/5 rounded-[2.5rem] p-0 overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
           <div className="p-8 space-y-8 overflow-y-auto flex-1 no-scrollbar">
