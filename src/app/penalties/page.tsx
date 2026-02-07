@@ -150,17 +150,17 @@ export default function PenaltiesPage() {
     setPlayerChoice(direction);
     haptic.medium();
 
-    // Logique Oracle : 40% de chances de bloquer (Omniscience), 60% de chances de feindre l'erreur (Générosité)
+    // Logique Oracle : 60% de chances de bloquer (Récupération), 40% de chances de feindre l'erreur (Générosité)
     const roll = Math.random();
     let keeperDir: Direction;
     let scored: boolean;
 
-    if (roll < 0.40) {
-      // L'Oracle utilise son omniscience et bloque (40%)
+    if (roll < 0.60) {
+      // L'Oracle utilise son omniscience et bloque (60%)
       keeperDir = direction;
       scored = false;
     } else {
-      // L'Oracle feint l'erreur pour laisser passer la Lumière (60%)
+      // L'Oracle feint l'erreur pour laisser passer la Lumière (40%)
       const otherDirections = DIRECTIONS.filter(d => d !== direction);
       keeperDir = otherDirections[Math.floor(Math.random() * otherDirections.length)];
       scored = true;
