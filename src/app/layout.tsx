@@ -243,11 +243,17 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div>;
   }
 
-  const excludedNavPaths = ["/", "/login", "/autoriser", "/offline", "/transfert", "/duels"];
-  const excludedBottomNavPaths = ["/", "/login", "/autoriser", "/offline", "/transfert", "/echange", "/duels"];
+  // Chemins où les composants de navigation (Header/BottomNav) doivent être masqués
+  const excludedNavPaths = ["/", "/login", "/autoriser", "/offline", "/transfert", "/duels", "/_not-found"];
+  const excludedBottomNavPaths = ["/", "/login", "/autoriser", "/offline", "/transfert", "/echange", "/duels", "/_not-found"];
 
-  const showNav = user && !excludedNavPaths.some(p => p === "/" ? pathname === "/" : pathname.startsWith(p));
-  const showBottomNav = user && !excludedBottomNavPaths.some(p => p === "/" ? pathname === "/" : pathname.startsWith(p));
+  // Fonction pour vérifier si le chemin actuel fait partie des exclusions
+  const isPathExcluded = (path: string, exclusions: string[]) => {
+    return exclusions.some(p => p === "/" ? path === "/" : path.startsWith(p));
+  };
+
+  const showNav = user && !isPathExcluded(pathname, excludedNavPaths);
+  const showBottomNav = user && !isPathExcluded(pathname, excludedBottomNavPaths);
 
   const isEcoMode = profile?.reducedMotion === true;
 
