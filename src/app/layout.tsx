@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { ToastProvider } from "@/components/ui/toast";
 import { useEffect, useState, useMemo } from "react";
 import { WifiOff, ShieldAlert, Loader2 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, MotionConfig } from "framer-motion";
 import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
 import { BiometricLock } from "@/components/BiometricLock";
 import { SuccessfulExchangeOverlay } from "@/components/SuccessfulExchangeOverlay";
@@ -21,6 +21,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { PageTransition } from "@/components/PageTransition";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
+import { cn } from "@/lib/utils";
 
 function ThemeSync() {
   const { user } = useUser();
@@ -118,7 +119,7 @@ function OfflineOverlay() {
         <div className="flex justify-center"><Logo className="scale-110" /></div>
         <div className="space-y-8">
           <div className="relative mx-auto w-24 h-24">
-            <div className="relative h-full w-full bg-card/40 backdrop-blur-2xl border border-destructive/10 rounded-[2.5rem] flex items-center justify-center shadow-2xl">
+            <div className="relative h-full w-full bg-card/40 backdrop-blur-2xl border border-destructive/10 rounded-[2.5rem] flex items-center justify-center shadow-2xl overflow-hidden">
               <WifiOff className="h-10 w-10 text-destructive" />
             </div>
           </div>
@@ -190,22 +191,26 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const showNav = user && !excludedNavPaths.some(p => p === "/" ? pathname === "/" : pathname.startsWith(p));
   const showBottomNav = user && !excludedBottomNavPaths.some(p => p === "/" ? pathname === "/" : pathname.startsWith(p));
 
+  const isEcoMode = profile?.reducedMotion === true;
+
   return (
-    <>
-      <AnimatePresence mode="wait">
-        {showOffline ? <OfflineOverlay key="offline" /> : showMaintenance ? <MaintenanceOverlay key="maintenance" message={appStatus?.maintenanceMessage} /> : null}
-      </AnimatePresence>
-      <ThemeSync />
-      <BiometricLock />
-      <SuccessfulExchangeOverlay />
-      <IncomingTransferOverlay />
-      <DuelInvitationListener />
-      <CommunityFluxPulsar />
-      <RewardQuickView />
-      {showNav && <Header />}
-      <PageTransition>{children}</PageTransition>
-      {showBottomNav && <BottomNav />}
-    </>
+    <div className={cn(isEcoMode && "reduced-motion")}>
+      <MotionConfig reducedMotion={isEcoMode ? "always" : "no-preference"}>
+        <AnimatePresence mode="wait">
+          {showOffline ? <OfflineOverlay key="offline" /> : showMaintenance ? <MaintenanceOverlay key="maintenance" message={appStatus?.maintenanceMessage} /> : null}
+        </AnimatePresence>
+        <ThemeSync />
+        <BiometricLock />
+        <SuccessfulExchangeOverlay />
+        <IncomingTransferOverlay />
+        <DuelInvitationListener />
+        <CommunityFluxPulsar />
+        <RewardQuickView />
+        {showNav && <Header />}
+        <PageTransition>{children}</PageTransition>
+        {showBottomNav && <BottomNav />}
+      </MotionConfig>
+    </div>
   );
 }
 

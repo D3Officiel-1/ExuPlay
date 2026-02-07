@@ -59,3 +59,17 @@
     -webkit-touch-callout: none; /* Désactive le menu contextuel iOS sur appui long */
   }
 }
+
+/* Oracle du Mode Éco-Éther */
+.reduced-motion * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+.reduced-motion .animate-pulse,
+.reduced-motion .animate-spin,
+.reduced-motion .animate-bounce {
+  animation: none !important;
+}
