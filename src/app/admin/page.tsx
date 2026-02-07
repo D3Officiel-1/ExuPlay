@@ -254,7 +254,7 @@ export default function AdminPage() {
     }
   }, [profile, profileLoading, authLoading, router]);
 
-  const handleToggleMaintenance = async (checked: boolean) => {
+  const handleToggleMaintenance = (checked: boolean) => {
     if (!appConfigRef) return;
     haptic.medium();
     updateDoc(appConfigRef, {
@@ -270,7 +270,7 @@ export default function AdminPage() {
     });
   };
 
-  const handleToggleExchange = async (checked: boolean) => {
+  const handleToggleExchange = (checked: boolean) => {
     if (!appConfigRef) return;
     haptic.medium();
     updateDoc(appConfigRef, {
@@ -286,49 +286,65 @@ export default function AdminPage() {
     });
   };
 
-  const handleUpdateConfig = async () => {
+  const handleUpdateConfig = () => {
     if (!appConfigRef) return;
     setIsSavingConfig(true);
     haptic.light();
-    try {
-      // Utilisation de setDoc avec merge pour assurer la création du document s'il manque
-      await setDoc(appConfigRef, {
-        maintenanceMessage: maintenanceMessageInput.trim(),
-        globalAnnouncement: globalAnnouncementInput.trim(),
-        communityGoalTarget: parseInt(communityTargetInput) || 10000,
-        pointConversionRate: parseFloat(conversionRateInput) || 0.5,
-        transferFeePercent: parseInt(transferFeeInput) || 10,
-        exchangeFeePercent: parseInt(exchangeFeeInput) || 1,
-        dailyTransferLimitDefault: parseInt(defaultLimitInput) || 500,
-        dailyTransferLimitTrusted: parseInt(trustedLimitInput) || 2500,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+    
+    const configData = {
+      maintenanceMessage: maintenanceMessageInput.trim(),
+      globalAnnouncement: globalAnnouncementInput.trim(),
+      communityGoalTarget: parseInt(communityTargetInput) || 10000,
+      pointConversionRate: parseFloat(conversionRateInput) || 0.5,
+      transferFeePercent: parseInt(transferFeeInput) || 10,
+      exchangeFeePercent: parseInt(exchangeFeeInput) || 1,
+      dailyTransferLimitDefault: parseInt(defaultLimitInput) || 500,
+      dailyTransferLimitTrusted: parseInt(trustedLimitInput) || 2500,
+      updatedAt: serverTimestamp()
+    };
+
+    setDoc(appConfigRef, configData, { merge: true })
+    .then(() => {
       haptic.success();
       toast({ title: "Configuration harmonisée", description: "Les lois du Sanctuaire ont été mises à jour." });
-    } catch (error) {
-      toast({ variant: "destructive", title: "Erreur", description: "Échec de la mise à jour." });
-    } finally {
+    })
+    .catch((error) => {
+      const permissionError = new FirestorePermissionError({
+        path: appConfigRef.path,
+        operation: 'update',
+        requestResourceData: configData,
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    })
+    .finally(() => {
       setIsSavingConfig(false);
-    }
+    });
   };
 
-  const handleResetGoal = async () => {
+  const handleResetGoal = () => {
     if (!appConfigRef) return;
     setIsResettingGoal(true);
     haptic.medium();
-    try {
-      await updateDoc(appConfigRef, {
-        communityGoalPoints: 0,
-        royalChallengeActiveUntil: null,
-        updatedAt: serverTimestamp()
-      });
+    updateDoc(appConfigRef, {
+      communityGoalPoints: 0,
+      royalChallengeActiveUntil: null,
+      updatedAt: serverTimestamp()
+    })
+    .then(() => {
       haptic.success();
       toast({ title: "Cycle réinitialisé", description: "La jauge communautaire est revenue à zéro." });
-    } catch (error) {
-      toast({ variant: "destructive", title: "Erreur" });
-    } finally {
+    })
+    .catch((error) => {
+      const permissionError = new FirestorePermissionError({
+        path: appConfigRef.path,
+        operation: 'update',
+        requestResourceData: { communityGoalPoints: 0 },
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    })
+    .finally(() => {
       setIsResettingGoal(false);
-    }
+    });
   };
 
   const handleAiGenerate = async (isForEdit: boolean = false) => {
@@ -369,7 +385,7 @@ export default function AdminPage() {
     }
   };
 
-  const handleAddQuiz = async (e: React.FormEvent) => {
+  const handleAddQuiz = (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || isSubmitting) return;
     
@@ -379,39 +395,57 @@ export default function AdminPage() {
     }
 
     setIsSubmitting(true);
-    try {
-      await addDoc(collection(db, "quizzes"), {
-        ...newQuiz,
-        playedCount: 0,
-        createdAt: serverTimestamp()
-      });
+    const quizData = {
+      ...newQuiz,
+      playedCount: 0,
+      createdAt: serverTimestamp()
+    };
+
+    addDoc(collection(db, "quizzes"), quizData)
+    .then(() => {
       haptic.success();
       setNewQuiz({ question: "", options: ["", "", "", ""], correctIndex: 0, points: 10 });
       setIsAddDialogOpen(false);
-    } catch (error) {
-      console.error(error);
-    } finally {
+    })
+    .catch((error) => {
+      const permissionError = new FirestorePermissionError({
+        path: 'quizzes',
+        operation: 'create',
+        requestResourceData: quizData,
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    })
+    .finally(() => {
       setIsSubmitting(false);
-    }
+    });
   };
 
-  const handleDuplicateQuiz = async (e: React.MouseEvent, q: any) => {
+  const handleDuplicateQuiz = (e: React.MouseEvent, q: any) => {
     e.stopPropagation();
     if (!db) return;
     haptic.medium();
-    try {
-      await addDoc(collection(db, "quizzes"), {
-        question: `${q.question} (Copie)`,
-        options: [...q.options],
-        correctIndex: q.correctIndex,
-        points: q.points,
-        playedCount: 0,
-        createdAt: serverTimestamp()
-      });
+    
+    const quizData = {
+      question: `${q.question} (Copie)`,
+      options: [...q.options],
+      correctIndex: q.correctIndex,
+      points: q.points,
+      playedCount: 0,
+      createdAt: serverTimestamp()
+    };
+
+    addDoc(collection(db, "quizzes"), quizData)
+    .then(() => {
       toast({ title: "Défi dupliqué avec succès" });
-    } catch (error) {
-      toast({ variant: "destructive", title: "Erreur de résonance" });
-    }
+    })
+    .catch((error) => {
+      const permissionError = new FirestorePermissionError({
+        path: 'quizzes',
+        operation: 'create',
+        requestResourceData: quizData,
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    });
   };
 
   const handleSelectQuiz = (q: any) => {
@@ -426,28 +460,37 @@ export default function AdminPage() {
     setIsEditingQuiz(true);
   };
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = () => {
     if (!db || !selectedQuizForView?.id || !editedQuiz || isSubmitting) return;
     
     setIsSubmitting(true);
     haptic.medium();
-    try {
-      const quizRef = doc(db, "quizzes", selectedQuizForView.id);
-      await updateDoc(quizRef, {
-        question: editedQuiz.question,
-        options: editedQuiz.options,
-        correctIndex: editedQuiz.correctIndex,
-        points: editedQuiz.points,
-        updatedAt: serverTimestamp()
-      });
+    const quizRef = doc(db, "quizzes", selectedQuizForView.id);
+    const updateData = {
+      question: editedQuiz.question,
+      options: editedQuiz.options,
+      correctIndex: editedQuiz.correctIndex,
+      points: editedQuiz.points,
+      updatedAt: serverTimestamp()
+    };
+
+    updateDoc(quizRef, updateData)
+    .then(() => {
       haptic.success();
       setSelectedQuizForView({ ...editedQuiz, id: selectedQuizForView.id });
       setIsEditingQuiz(false);
-    } catch (error) {
-      console.error(error);
-    } finally {
+    })
+    .catch((error) => {
+      const permissionError = new FirestorePermissionError({
+        path: quizRef.path,
+        operation: 'update',
+        requestResourceData: updateData,
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    })
+    .finally(() => {
       setIsSubmitting(false);
-    }
+    });
   };
 
   const handleSelectUser = (u: any) => {
@@ -455,45 +498,61 @@ export default function AdminPage() {
     setSelectedUserForView(u);
   };
 
-  const handleUpdateUserField = async (userId: string, field: string, value: any) => {
+  const handleUpdateUserField = (userId: string, field: string, value: any) => {
     if (!db || isUpdatingUser) return;
     setIsUpdatingUser(true);
     haptic.medium();
-    try {
-      const userRef = doc(db, "users", userId);
-      await updateDoc(userRef, {
-        [field]: value,
-        updatedAt: serverTimestamp()
-      });
+    
+    const userRef = doc(db, "users", userId);
+    updateDoc(userRef, {
+      [field]: value,
+      updatedAt: serverTimestamp()
+    })
+    .then(() => {
       toast({ title: "Essence harmonisée", description: "La modification a été ancrée." });
-      setSelectedUserForView({ ...selectedUserForView, [field]: value });
-    } catch (error) {
-      toast({ variant: "destructive", title: "Dissonance", description: "Échec de la modification." });
-    } finally {
+      setSelectedUserForView((prev: any) => prev ? { ...prev, [field]: value } : null);
+    })
+    .catch((error) => {
+      const permissionError = new FirestorePermissionError({
+        path: userRef.path,
+        operation: 'update',
+        requestResourceData: { [field]: value },
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    })
+    .finally(() => {
       setIsUpdatingUser(false);
-    }
+    });
   };
 
-  const handleAdjustPoints = async (userId: string, amount: number) => {
+  const handleAdjustPoints = (userId: string, amount: number) => {
     if (!db || isUpdatingUser) return;
     setIsUpdatingUser(true);
     haptic.medium();
-    try {
-      const userRef = doc(db, "users", userId);
-      await updateDoc(userRef, {
-        totalPoints: increment(amount),
-        updatedAt: serverTimestamp()
-      });
+    
+    const userRef = doc(db, "users", userId);
+    updateDoc(userRef, {
+      totalPoints: increment(amount),
+      updatedAt: serverTimestamp()
+    })
+    .then(() => {
       toast({ 
         title: amount > 0 ? "Lumière insufflée" : "Lumière drainée", 
         description: `${Math.abs(amount)} PTS ont été ${amount > 0 ? 'ajoutés' : 'retirés'}.` 
       });
-      setSelectedUserForView({ ...selectedUserForView, totalPoints: (selectedUserForView.totalPoints || 0) + amount });
-    } catch (error) {
-      toast({ variant: "destructive", title: "Dissonance" });
-    } finally {
+      setSelectedUserForView((prev: any) => prev ? { ...prev, totalPoints: (prev.totalPoints || 0) + amount } : null);
+    })
+    .catch((error) => {
+      const permissionError = new FirestorePermissionError({
+        path: userRef.path,
+        operation: 'update',
+        requestResourceData: { totalPoints: `increment ${amount}` },
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    })
+    .finally(() => {
       setIsUpdatingUser(false);
-    }
+    });
   };
 
   if (authLoading || profileLoading || profile?.role !== 'admin') {
@@ -965,9 +1024,7 @@ export default function AdminPage() {
         </Tabs>
       </main>
 
-      {/* Dialogues Quizz et User omis pour briéveté mais conservés dans la logique réelle */}
       <Dialog open={!!selectedQuizForView} onOpenChange={(open) => !open && (setSelectedQuizForView(null), setIsEditingQuiz(false))}>
-        {/* ... Contenu du dialogue Quizz ... */}
         <DialogContent className="sm:max-w-[600px] bg-card/95 backdrop-blur-2xl rounded-[2.5rem] p-8 max-h-[90vh] overflow-y-auto border-none">
           <DialogHeader>
             <div className="flex justify-between items-center w-full">
