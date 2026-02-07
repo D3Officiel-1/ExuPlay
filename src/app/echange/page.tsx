@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState } from "react";
@@ -85,7 +84,7 @@ export default function EchangePage() {
   const exchangeFees = Math.ceil(grossMoneyValue * feeRate);
   const netMoneyValue = Math.max(0, grossMoneyValue - exchangeFees);
   
-  const minPoints = 1000;
+  const minPoints = 100; // Oracle: Seuil abaissé à 100 PTS
   const isExchangeGloballyEnabled = appStatus?.exchangeEnabled === true;
 
   const handleExchange = async () => {
