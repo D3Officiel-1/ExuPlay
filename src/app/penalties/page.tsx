@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -214,8 +213,11 @@ export default function PenaltiesPage() {
                    style={{ background: 'repeating-linear-gradient(90deg, transparent, transparent 40px, hsl(var(--primary)) 41px)' }} />
             </div>
 
-            {/* La Cage de But */}
-            <div className="absolute top-[15%] left-1/2 -translate-x-1/2 w-72 h-40 border-x-4 border-t-4 border-primary/20 rounded-t-xl z-10">
+            {/* La Cage de But - Devient prioritaire (z-[60]) pendant la visée */}
+            <div className={cn(
+              "absolute top-[15%] left-1/2 -translate-x-1/2 w-72 h-40 border-x-4 border-t-4 border-primary/20 rounded-t-xl transition-all duration-300",
+              gameState === 'idle' ? "z-[60]" : "z-10"
+            )}>
               <div className="absolute inset-0 bg-primary/[0.02] backdrop-blur-[1px]" />
               <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(hsl(var(--primary)) 1px, transparent 1px)', backgroundSize: '12px 12px' }} />
               
@@ -234,7 +236,7 @@ export default function PenaltiesPage() {
               ))}
             </div>
 
-            {/* Le Gardien - Synchronisé avec le tir */}
+            {/* Le Gardien - Placé derrière les zones de visée lors du tir */}
             <motion.div 
               variants={keeperVariants} 
               animate={gameState === 'shooting' || gameState === 'result' ? "shooting" : "idle"} 
