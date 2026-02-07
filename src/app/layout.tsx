@@ -28,6 +28,7 @@ import { hexToHsl, hexToRgb, getContrastColor } from "@/lib/colors";
 /**
  * @fileOverview Oracle de la Symbiose Système.
  * Synchronise la couleur de la barre d'état et de navigation du système avec le fond de l'app.
+ * Gère l'immersion totale sur Android (Status & Nav bar) et iOS.
  */
 function SystemBarSync() {
   const { resolvedTheme } = useTheme();
@@ -37,7 +38,7 @@ function SystemBarSync() {
   const { data: profile } = useDoc(userDocRef);
 
   useEffect(() => {
-    // Déterminer la couleur de fond actuelle
+    // Déterminer la couleur de fond actuelle du Sanctuaire
     let bgColor = "#ffffff"; // Défaut clair
     
     if (profile?.customBgColor && profile.customBgColor !== 'default') {
@@ -46,7 +47,7 @@ function SystemBarSync() {
       bgColor = resolvedTheme === 'dark' ? "#000000" : "#ffffff";
     }
 
-    // Mise à jour de la meta tag theme-color (Chrome Android, Safari iOS)
+    // 1. Mise à jour du Theme Color (Barre de statut haute & Barre de navigation basse Android)
     let metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (!metaThemeColor) {
       metaThemeColor = document.createElement('meta');
@@ -55,15 +56,18 @@ function SystemBarSync() {
     }
     metaThemeColor.setAttribute('content', bgColor);
 
-    // Spécificités iOS pour la barre d'état
+    // 2. Spécificités iOS pour la barre d'état (Status Bar)
     let metaApple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
     if (!metaApple) {
       metaApple = document.createElement('meta');
       metaApple.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
       document.head.appendChild(metaApple);
     }
-    // 'default' permet à Safari d'utiliser la couleur définie dans theme-color
+    // 'default' permet à Safari d'utiliser la couleur définie dans theme-color ou de s'adapter au thème
     metaApple.setAttribute('content', 'default');
+
+    // 3. Force la couleur de fond du body pour aider les navigateurs à intégrer les bordures système
+    document.body.style.backgroundColor = bgColor;
 
   }, [resolvedTheme, profile?.customBgColor]);
 
@@ -289,7 +293,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   
   const showOffline = isOffline && !["/", "/login", "/autoriser", "/offline"].includes(pathname);
 
-  if (isAuthLoading && !["/", "/login", "/offline", "/autoriser"].includes(pathname)) {
+  if (isAuthLoading && !["/", "/login", "/autoriser", "/offline"].includes(pathname)) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div>;
   }
 
