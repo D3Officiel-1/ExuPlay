@@ -23,7 +23,8 @@ export function Header() {
   const pathname = usePathname();
   const { toasts, dismiss } = useToast();
   
-  const [showPointsVision, setShowPointsVision] = useState(false);
+  const [showPointsVision] = useState(false);
+  const [showPointsVisionOverlay, setShowPointsVisionOverlay] = useState(false);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const userDocRef = useMemo(() => {
@@ -56,21 +57,19 @@ export function Header() {
 
   const hidePoints = profile?.hidePointsInHeader === true;
 
-  // L'annonce n'est visible que si elle contient du texte réel
   const hasAnnouncement = appStatus?.globalAnnouncement && appStatus.globalAnnouncement.trim() !== "";
 
   const handlePointsVisionStart = (e: React.MouseEvent | React.TouchEvent) => {
-    // Empêcher le menu contextuel par défaut
     if ('button' in e && e.button === 2) {
       e.preventDefault();
       haptic.impact();
-      setShowPointsVision(true);
+      setShowPointsVisionOverlay(true);
       return;
     }
 
     longPressTimer.current = setTimeout(() => {
       haptic.impact();
-      setShowPointsVision(true);
+      setShowPointsVisionOverlay(true);
     }, 600);
   };
 
@@ -84,7 +83,7 @@ export function Header() {
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     haptic.impact();
-    setShowPointsVision(true);
+    setShowPointsVisionOverlay(true);
   };
 
   return (
@@ -103,7 +102,6 @@ export function Header() {
           "bg-background/10 backdrop-blur-3xl"
         )}
       >
-        {/* Annonce Globale - Se manifeste uniquement si invoquée par le Maître */}
         <AnimatePresence>
           {hasAnnouncement && (
             <motion.div 
@@ -279,17 +277,18 @@ export function Header() {
         />
       </motion.header>
 
-      {/* Vision de la Prospérité - Plein Écran */}
+      {/* Vision de la Prospérité - Plein Écran Adaptatif */}
       <AnimatePresence>
-        {showPointsVision && (
+        {showPointsVisionOverlay && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, filter: "blur(20px)" }}
-            className="fixed inset-0 z-[10000] bg-background/90 backdrop-blur-[40px] flex flex-col items-center justify-center p-8 text-center"
-            onClick={() => setShowPointsVision(false)}
+            className="fixed inset-0 z-[10000] bg-background/90 backdrop-blur-[40px] overflow-y-auto"
+            onClick={() => setShowPointsVisionOverlay(false)}
           >
-            <div className="absolute inset-0 pointer-events-none opacity-20">
+            {/* Background éthéré fixe */}
+            <div className="fixed inset-0 pointer-events-none opacity-20 overflow-hidden">
               <motion.div 
                 animate={{ scale: [1, 1.5, 1], opacity: [0.1, 0.3, 0.1] }}
                 transition={{ duration: 4, repeat: Infinity }}
@@ -297,76 +296,83 @@ export function Header() {
               />
             </div>
 
-            <motion.div
-              initial={{ scale: 0.8, y: 40, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.8, y: 20, opacity: 0 }}
-              transition={{ type: "spring", damping: 20, stiffness: 100 }}
-              className="w-full max-w-sm space-y-12 relative z-10"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="space-y-6">
-                <div className="relative mx-auto w-24 h-24">
-                  <motion.div 
-                    animate={{ scale: [1, 1.4, 1], opacity: [0.2, 0.5, 0.2] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    className="absolute inset-0 bg-primary/20 rounded-[2.5rem] blur-3xl"
-                  />
-                  <div className="relative h-full w-full bg-card rounded-[2.5rem] flex items-center justify-center border border-primary/10 shadow-2xl">
-                    <Zap className="h-10 w-10 text-primary" />
+            <div className="min-h-full w-full flex flex-col items-center justify-center p-6 sm:p-12 relative z-10">
+              <motion.div
+                initial={{ scale: 0.8, y: 40, opacity: 0 }}
+                animate={{ 
+                  scale: 1, 
+                  y: 0, 
+                  opacity: 1,
+                  transition: { type: "spring", damping: 20, stiffness: 100, delay: 0.1 }
+                }}
+                exit={{ scale: 0.8, y: 20, opacity: 0 }}
+                className="w-full max-w-sm space-y-10 sm:space-y-12 text-center py-10"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="space-y-6">
+                  <div className="relative mx-auto w-24 h-24">
                     <motion.div 
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                      className="absolute inset-[-10px] border border-dashed border-primary/20 rounded-full"
+                      animate={{ scale: [1, 1.4, 1], opacity: [0.2, 0.5, 0.2] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="absolute inset-0 bg-primary/20 rounded-[2.5rem] blur-3xl"
                     />
+                    <div className="relative h-full w-full bg-card rounded-[2.5rem] flex items-center justify-center border border-primary/10 shadow-2xl">
+                      <Zap className="h-10 w-10 text-primary" />
+                      <motion.div 
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                        className="absolute inset-[-10px] border border-dashed border-primary/20 rounded-full"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-40">Oracle de la Valeur</p>
+                    <h2 className="text-3xl font-black italic tracking-tight uppercase">Énergie Matérialisée</h2>
                   </div>
                 </div>
-                
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-40">Oracle de la Valeur</p>
-                  <h2 className="text-3xl font-black italic tracking-tight uppercase">Énergie Matérialisée</h2>
+
+                <div className="p-8 sm:p-10 bg-primary/5 rounded-[3.5rem] border border-primary/10 shadow-inner space-y-8 relative overflow-hidden group">
+                  <motion.div 
+                    animate={{ x: ["-100%", "200%"] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent skew-x-12"
+                  />
+                  
+                  <div className="space-y-1">
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-30">Votre Lumière</p>
+                    <p className="text-4xl font-black tabular-nums">{totalPoints.toLocaleString()} <span className="text-xs opacity-20">PTS</span></p>
+                  </div>
+
+                  <div className="h-px w-12 bg-primary/10 mx-auto" />
+
+                  <div className="space-y-1">
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-30">Prospérité Terrestre</p>
+                    <p className="text-5xl font-black text-primary tabular-nums tracking-tighter">
+                      {fcfaValue.toLocaleString()} <span className="text-sm opacity-40">FCFA</span>
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="p-10 bg-primary/5 rounded-[3.5rem] border border-primary/10 shadow-inner space-y-8 relative overflow-hidden group">
-                <motion.div 
-                  animate={{ x: ["-100%", "200%"] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent skew-x-12"
-                />
-                
-                <div className="space-y-1">
-                  <p className="text-[9px] font-black uppercase tracking-widest opacity-30">Votre Lumière</p>
-                  <p className="text-4xl font-black tabular-nums">{totalPoints.toLocaleString()} <span className="text-xs opacity-20">PTS</span></p>
-                </div>
-
-                <div className="h-px w-12 bg-primary/10 mx-auto" />
-
-                <div className="space-y-1">
-                  <p className="text-[9px] font-black uppercase tracking-widest opacity-30">Prospérité Terrestre</p>
-                  <p className="text-5xl font-black text-primary tabular-nums tracking-tighter">
-                    {fcfaValue.toLocaleString()} <span className="text-sm opacity-40">FCFA</span>
+                <div className="space-y-6">
+                  <p className="text-[9px] font-medium opacity-40 px-8 leading-relaxed italic">
+                    "Chaque point de lumière est un pas vers l'abondance. La pensée se transforme en réalité."
                   </p>
+                  <Button 
+                    onClick={() => setShowPointsVisionOverlay(false)}
+                    className="w-full h-16 rounded-2xl font-black text-[10px] uppercase tracking-[0.4em] shadow-2xl shadow-primary/20"
+                  >
+                    Refermer le Portail
+                  </Button>
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="space-y-6">
-                <p className="text-[9px] font-medium opacity-40 px-8 leading-relaxed italic">
-                  "Chaque point de lumière est un pas vers l'abondance. La pensée se transforme en réalité."
-                </p>
-                <Button 
-                  onClick={() => setShowPointsVision(false)}
-                  className="w-full h-16 rounded-2xl font-black text-[10px] uppercase tracking-[0.4em] shadow-2xl shadow-primary/20"
-                >
-                  Refermer le Portail
-                </Button>
+              {/* Indicateur de bas de page interne au scroll */}
+              <div className="py-8 flex items-center gap-4 opacity-20">
+                <div className="h-px w-12 bg-primary/20" />
+                <Sparkles className="h-4 w-4" />
+                <div className="h-px w-12 bg-primary/20" />
               </div>
-            </motion.div>
-
-            <div className="absolute bottom-12 flex items-center gap-4 opacity-20">
-              <div className="h-px w-12 bg-primary/20" />
-              <Sparkles className="h-4 w-4" />
-              <div className="h-px w-12 bg-primary/20" />
             </div>
           </motion.div>
         )}
