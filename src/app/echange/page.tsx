@@ -55,11 +55,12 @@ export default function EchangePage() {
   const waveIcon = placeholderImages.placeholderImages.find(img => img.id === "wave-icon")?.imageUrl;
 
   const points = profile?.totalPoints || 0;
-  // Nouveau taux : 2 points = 1 FCFA (conversionRate = 0.5)
-  const conversionRate = 0.5; 
-  const grossMoneyValue = Math.floor(points * conversionRate);
   
-  const feeRate = 0.01;
+  // Utilisation des valeurs dynamiques de l'AppStatus ou valeurs par défaut
+  const conversionRate = appStatus?.pointConversionRate ?? 0.5; 
+  const feeRate = (appStatus?.exchangeFeePercent ?? 1) / 100;
+  
+  const grossMoneyValue = Math.floor(points * conversionRate);
   const exchangeFees = Math.ceil(grossMoneyValue * feeRate);
   const netMoneyValue = Math.max(0, grossMoneyValue - exchangeFees);
   
@@ -124,12 +125,10 @@ export default function EchangePage() {
         requestedAt: serverTimestamp()
       };
 
-      // 1. Déduire les points immédiatement (Séquestre)
       updateDoc(userDocRef, {
         totalPoints: increment(-points),
         updatedAt: serverTimestamp()
       }).then(() => {
-        // 2. Créer la demande d'échange
         addDoc(collection(db, "exchanges"), exchangeData)
           .then(() => {
             setIsSuccess(true);
@@ -140,7 +139,6 @@ export default function EchangePage() {
             });
           })
           .catch(async (error) => {
-            // En cas d'échec de la création de la demande, on rend les points
             updateDoc(userDocRef, {
               totalPoints: increment(points)
             });
@@ -224,7 +222,7 @@ export default function EchangePage() {
                   <span className="text-5xl font-black tracking-tighter">{points.toLocaleString()}</span>
                   <span className="text-xs font-bold opacity-30 ml-2">PTS</span>
                 </div>
-                <p className="text-[9px] font-black uppercase tracking-widest opacity-20 mt-2">Taux : 2 PTS = 1 FCFA</p>
+                <p className="text-[9px] font-black uppercase tracking-widest opacity-20 mt-2">Taux actuel : 1 PTS = {conversionRate} FCFA</p>
               </CardHeader>
               
               <CardContent className="px-8 pb-10 space-y-6">
@@ -236,7 +234,7 @@ export default function EchangePage() {
                   <div className="flex justify-between items-center px-2 text-destructive">
                     <p className="text-[10px] font-black uppercase opacity-60 flex items-center gap-1.5">
                       <Percent className="h-2.5 w-2.5" />
-                      Frais de traitement (1%)
+                      Frais de traitement ({appStatus?.exchangeFeePercent ?? 1}%)
                     </p>
                     <p className="text-sm font-black">-{exchangeFees.toLocaleString()} FCFA</p>
                   </div>

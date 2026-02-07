@@ -66,10 +66,16 @@
       "properties": {
         "maintenanceMode": { "type": "boolean", "default": false },
         "maintenanceMessage": { "type": "string" },
+        "globalAnnouncement": { "type": "string", "description": "Message diffusé à tous les esprits" },
         "exchangeEnabled": { "type": "boolean", "default": false },
         "communityGoalPoints": { "type": "integer", "default": 0, "description": "Points accumulés par la communauté cette semaine" },
         "communityGoalTarget": { "type": "integer", "default": 10000, "description": "Objectif de points à atteindre" },
-        "royalChallengeActiveUntil": { "type": "string", "format": "date-time", "description": "Fin du défi royal si activé" }
+        "royalChallengeActiveUntil": { "type": "string", "format": "date-time", "description": "Fin du défi royal si activé" },
+        "pointConversionRate": { "type": "number", "default": 0.5, "description": "Taux de conversion 1 point = X FCFA" },
+        "transferFeePercent": { "type": "integer", "default": 10 },
+        "exchangeFeePercent": { "type": "integer", "default": 1 },
+        "dailyTransferLimitDefault": { "type": "integer", "default": 500 },
+        "dailyTransferLimitTrusted": { "type": "integer", "default": 2500 }
       }
     },
     "Quiz": {

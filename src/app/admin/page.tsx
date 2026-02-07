@@ -75,7 +75,11 @@ import {
   Activity,
   Trophy,
   Copy,
-  Filter
+  Filter,
+  Megaphone,
+  Percent,
+  Lock,
+  ArrowRightLeft
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -118,9 +122,17 @@ export default function AdminPage() {
 
   const [selectedUserForView, setSelectedUserForView] = useState<any | null>(null);
   
+  // États Système
   const [maintenanceMessageInput, setMaintenanceMessageInput] = useState("");
+  const [globalAnnouncementInput, setGlobalAnnouncementInput] = useState("");
   const [communityTargetInput, setCommunityTargetInput] = useState("");
-  const [isSavingMessage, setIsSavingMessage] = useState(false);
+  const [conversionRateInput, setConversionRateInput] = useState("0.5");
+  const [transferFeeInput, setTransferFeeInput] = useState("10");
+  const [exchangeFeeInput, setExchangeFeeInput] = useState("1");
+  const [defaultLimitInput, setDefaultLimitInput] = useState("500");
+  const [trustedLimitInput, setTrustedLimitInput] = useState("2500");
+  
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [isResettingGoal, setIsResettingGoal] = useState(false);
 
   const [quizSearch, setQuizSearch] = useState("");
@@ -150,11 +162,6 @@ export default function AdminPage() {
     return query(collection(db, "quizzes"), orderBy("createdAt", "desc"));
   }, [db]);
 
-  const transfersQuery = useMemo(() => {
-    if (!db) return null;
-    return query(collection(db, "transfers"), orderBy("timestamp", "desc"), limit(20));
-  }, [db]);
-
   const exchangesQuery = useMemo(() => {
     if (!db) return null;
     return query(collection(db, "exchanges"), orderBy("requestedAt", "desc"));
@@ -162,7 +169,6 @@ export default function AdminPage() {
 
   const { data: users, loading: usersLoading } = useCollection(usersQuery);
   const { data: quizzes, loading: quizzesLoading } = useCollection(quizzesQuery);
-  const { data: recentTransfers } = useCollection(transfersQuery);
   const { data: exchanges, loading: exchangesLoading } = useCollection(exchangesQuery);
 
   const globalMetrics = useMemo(() => {
@@ -183,11 +189,15 @@ export default function AdminPage() {
   }, [users]);
 
   useEffect(() => {
-    if (appStatus?.maintenanceMessage !== undefined) {
-      setMaintenanceMessageInput(appStatus.maintenanceMessage);
-    }
-    if (appStatus?.communityGoalTarget !== undefined) {
-      setCommunityTargetInput(appStatus.communityGoalTarget.toString());
+    if (appStatus) {
+      if (appStatus.maintenanceMessage !== undefined) setMaintenanceMessageInput(appStatus.maintenanceMessage);
+      if (appStatus.globalAnnouncement !== undefined) setGlobalAnnouncementInput(appStatus.globalAnnouncement);
+      if (appStatus.communityGoalTarget !== undefined) setCommunityTargetInput(appStatus.communityGoalTarget.toString());
+      if (appStatus.pointConversionRate !== undefined) setConversionRateInput(appStatus.pointConversionRate.toString());
+      if (appStatus.transferFeePercent !== undefined) setTransferFeeInput(appStatus.transferFeePercent.toString());
+      if (appStatus.exchangeFeePercent !== undefined) setExchangeFeeInput(appStatus.exchangeFeePercent.toString());
+      if (appStatus.dailyTransferLimitDefault !== undefined) setDefaultLimitInput(appStatus.dailyTransferLimitDefault.toString());
+      if (appStatus.dailyTransferLimitTrusted !== undefined) setTrustedLimitInput(appStatus.dailyTransferLimitTrusted.toString());
     }
   }, [appStatus]);
 
@@ -271,20 +281,26 @@ export default function AdminPage() {
 
   const handleUpdateConfig = async () => {
     if (!appConfigRef) return;
-    setIsSavingMessage(true);
+    setIsSavingConfig(true);
     haptic.light();
     try {
       await updateDoc(appConfigRef, {
         maintenanceMessage: maintenanceMessageInput,
+        globalAnnouncement: globalAnnouncementInput,
         communityGoalTarget: parseInt(communityTargetInput) || 10000,
+        pointConversionRate: parseFloat(conversionRateInput) || 0.5,
+        transferFeePercent: parseInt(transferFeeInput) || 10,
+        exchangeFeePercent: parseInt(exchangeFeeInput) || 1,
+        dailyTransferLimitDefault: parseInt(defaultLimitInput) || 500,
+        dailyTransferLimitTrusted: parseInt(trustedLimitInput) || 2500,
         updatedAt: serverTimestamp()
       });
       haptic.success();
-      toast({ title: "Configuration harmonisée", description: "Les paramètres système ont été mis à jour." });
+      toast({ title: "Configuration harmonisée", description: "Les lois du Sanctuaire ont été mises à jour." });
     } catch (error) {
       toast({ variant: "destructive", title: "Erreur", description: "Échec de la mise à jour." });
     } finally {
-      setIsSavingMessage(false);
+      setIsSavingConfig(false);
     }
   };
 
@@ -696,56 +712,106 @@ export default function AdminPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="system" className="space-y-6">
+          <TabsContent value="system" className="space-y-8">
             <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2rem]">
               <CardHeader className="p-8 pb-4">
-                <CardTitle className="text-xl font-black">Sécurité & Flux</CardTitle>
-                <CardDescription className="text-sm">Gérez l'accès et les objectifs des esprits.</CardDescription>
+                <CardTitle className="text-xl font-black">Lois du Sanctuaire</CardTitle>
+                <CardDescription className="text-sm">Définissez la structure de la réalité éthérée.</CardDescription>
               </CardHeader>
-              <CardContent className="p-8 pt-0 space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center justify-between p-6 bg-background/50 rounded-3xl border border-primary/5">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck className="h-4 w-4 opacity-40" />
+              <CardContent className="p-8 pt-0 space-y-10">
+                
+                {/* Section Accès */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 pl-2">
+                    <Lock className="h-4 w-4 opacity-40" />
+                    <h3 className="text-[10px] font-black uppercase tracking-widest opacity-40">Accès & Maintenance</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center justify-between p-6 bg-background/50 rounded-3xl border border-primary/5">
+                      <div className="space-y-1">
                         <p className="font-black text-sm uppercase tracking-widest">Maintenance</p>
+                        <p className="text-[10px] opacity-40 font-medium italic">Fermeture du portail</p>
                       </div>
-                      <p className="text-[10px] opacity-40 font-medium italic">Accès restreint</p>
+                      <Switch checked={appStatus?.maintenanceMode || false} onCheckedChange={handleToggleMaintenance} className="scale-110" />
                     </div>
-                    <Switch checked={appStatus?.maintenanceMode || false} onCheckedChange={handleToggleMaintenance} className="scale-110" />
-                  </div>
 
-                  <div className="flex items-center justify-between p-6 bg-background/50 rounded-3xl border border-primary/5">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 opacity-40" />
-                        <p className="font-black text-sm uppercase tracking-widest">Flux Financier</p>
+                    <div className="flex items-center justify-between p-6 bg-background/50 rounded-3xl border border-primary/5">
+                      <div className="space-y-1">
+                        <p className="font-black text-sm uppercase tracking-widest">Flux de Retrait</p>
+                        <p className="text-[10px] opacity-40 font-medium italic">Conversion en liquidité</p>
                       </div>
-                      <p className="text-[10px] opacity-40 font-medium italic">Ouverture des retraits</p>
+                      <Switch checked={appStatus?.exchangeEnabled || false} onCheckedChange={handleToggleExchange} className="scale-110" />
                     </div>
-                    <Switch checked={appStatus?.exchangeEnabled || false} onCheckedChange={handleToggleExchange} className="scale-110" />
                   </div>
-                </div>
-
-                <div className="space-y-6 p-6 bg-background/50 rounded-3xl border border-primary/5">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <MessageSquareText className="h-4 w-4 opacity-40" />
-                      <p className="font-black text-sm uppercase tracking-widest">Message de Maintenance</p>
-                    </div>
+                  <div className="space-y-2 px-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">Message de Maintenance</Label>
                     <Textarea 
-                      placeholder="Entrez le message à afficher aux esprits..." 
+                      placeholder="Message affiché lors de la maintenance..." 
                       className="min-h-[80px] rounded-2xl bg-background/50 border-primary/10"
                       value={maintenanceMessageInput}
                       onChange={(e) => setMaintenanceMessageInput(e.target.value)}
                     />
                   </div>
+                </div>
 
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Target className="h-4 w-4 opacity-40" />
-                      <p className="font-black text-sm uppercase tracking-widest">Objectif Communautaire (Cible)</p>
+                {/* Section Annonces */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 pl-2">
+                    <Megaphone className="h-4 w-4 opacity-40" />
+                    <h3 className="text-[10px] font-black uppercase tracking-widest opacity-40">Voix de l'Oracle</h3>
+                  </div>
+                  <div className="space-y-2 px-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">Annonce Globale</Label>
+                    <Input 
+                      placeholder="Message diffusé à tous les esprits (laisser vide pour masquer)..." 
+                      className="h-12 rounded-xl bg-background/50 border-primary/10 font-bold"
+                      value={globalAnnouncementInput}
+                      onChange={(e) => setGlobalAnnouncementInput(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Section Économie */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 pl-2">
+                    <Percent className="h-4 w-4 opacity-40" />
+                    <h3 className="text-[10px] font-black uppercase tracking-widest opacity-40">Lois Économiques</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2 p-4 bg-background/50 rounded-2xl border border-primary/5">
+                      <Label className="text-[9px] font-black uppercase opacity-40">Taux (1 PTS = X FCFA)</Label>
+                      <Input type="number" step="0.1" value={conversionRateInput} onChange={e => setConversionRateInput(e.target.value)} className="h-10 rounded-lg bg-background font-bold text-center" />
                     </div>
+                    <div className="space-y-2 p-4 bg-background/50 rounded-2xl border border-primary/5">
+                      <Label className="text-[9px] font-black uppercase opacity-40">Taxe Transfert (%)</Label>
+                      <Input type="number" value={transferFeeInput} onChange={e => setTransferFeeInput(e.target.value)} className="h-10 rounded-lg bg-background font-bold text-center" />
+                    </div>
+                    <div className="space-y-2 p-4 bg-background/50 rounded-2xl border border-primary/5">
+                      <Label className="text-[9px] font-black uppercase opacity-40">Frais Retrait (%)</Label>
+                      <Input type="number" value={exchangeFeeInput} onChange={e => setExchangeFeeInput(e.target.value)} className="h-10 rounded-lg bg-background font-bold text-center" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section Limites & Objectifs */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 pl-2">
+                    <ArrowRightLeft className="h-4 w-4 opacity-40" />
+                    <h3 className="text-[10px] font-black uppercase tracking-widest opacity-40">Flux & Limites Quotidiens</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2 p-4 bg-background/50 rounded-2xl border border-primary/5">
+                      <Label className="text-[9px] font-black uppercase opacity-40">Limite Standard (PTS)</Label>
+                      <Input type="number" value={defaultLimitInput} onChange={e => setDefaultLimitInput(e.target.value)} className="h-10 rounded-lg bg-background font-bold text-center" />
+                    </div>
+                    <div className="space-y-2 p-4 bg-background/50 rounded-2xl border border-primary/5">
+                      <Label className="text-[9px] font-black uppercase opacity-40">Limite Sceau de Confiance (PTS)</Label>
+                      <Input type="number" value={trustedLimitInput} onChange={e => setTrustedLimitInput(e.target.value)} className="h-10 rounded-lg bg-background font-bold text-center" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 p-6 bg-background/50 rounded-3xl border border-primary/5">
+                    <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">Objectif Communautaire (Cible)</Label>
                     <div className="flex gap-3">
                       <Input 
                         type="number"
@@ -765,16 +831,16 @@ export default function AdminPage() {
                       </Button>
                     </div>
                   </div>
-
-                  <Button 
-                    onClick={handleUpdateConfig} 
-                    disabled={isSavingMessage}
-                    className="w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest gap-2 shadow-xl shadow-primary/10"
-                  >
-                    {isSavingMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    Enregistrer les Paramètres
-                  </Button>
                 </div>
+
+                <Button 
+                  onClick={handleUpdateConfig} 
+                  disabled={isSavingConfig}
+                  className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-[0.2em] gap-3 shadow-2xl shadow-primary/20"
+                >
+                  {isSavingConfig ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                  Énoncer les Nouvelles Lois
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>

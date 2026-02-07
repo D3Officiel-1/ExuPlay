@@ -61,7 +61,10 @@ export default function ClassementPage() {
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const myProfileRef = useMemo(() => (db && user?.uid) ? doc(db, "users", user.uid) : null, [db, user?.uid]);
+  const appStatusRef = useMemo(() => (db ? doc(db, "appConfig", "status") : null), [db]);
+  
   const { data: myProfile } = useDoc(myProfileRef);
+  const { data: appStatus } = useDoc(appStatusRef);
 
   const topUsersQuery = useMemo(() => {
     if (!db) return null;
@@ -91,7 +94,7 @@ export default function ClassementPage() {
     if (isSelectionMode) {
       if (u.duelProtected) {
         haptic.error();
-        toast({ variant: "destructive", title: "Sceau de Paix", description: `@{u.username} refuse les duels.` });
+        toast({ variant: "destructive", title: "Sceau de Paix", description: `${u.username} refuse les duels.` });
         return;
       }
       haptic.light();
@@ -125,9 +128,14 @@ export default function ClassementPage() {
       return;
     }
 
-    const fees = mode === 'transfer' ? Math.floor(bet * 0.1) : 0;
+    // Utilisation des frais et limites dynamiques
+    const transferFeePercent = appStatus?.transferFeePercent ?? 10;
+    const fees = mode === 'transfer' ? Math.floor(bet * (transferFeePercent / 100)) : 0;
     const totalCost = mode === 'transfer' ? (bet + fees) : (bet * battleParty.length);
-    const dailyLimit = myProfile?.trustBadge ? 2500 : 500;
+    
+    const dailyLimit = myProfile?.trustBadge 
+      ? (appStatus?.dailyTransferLimitTrusted ?? 2500) 
+      : (appStatus?.dailyTransferLimitDefault ?? 500);
 
     if (bet > dailyLimit) {
       haptic.error();
@@ -158,7 +166,6 @@ export default function ClassementPage() {
         });
         toast({ title: "Transmission réussie" });
       } else {
-        // Double vérification si quelqu'un a activé le sceau entre-temps
         const protectedParticipant = battleParty.find(p => p.duelProtected);
         if (protectedParticipant) {
           toast({ variant: "destructive", title: "Dissonance", description: "Un des participants est désormais sous le Sceau de Paix." });
@@ -249,7 +256,6 @@ export default function ClassementPage() {
           )}
         </div>
 
-        {/* Podium Section */}
         {podium.length > 0 && (
           <div className="grid grid-cols-3 items-end gap-2 px-2 pt-8 pb-4 relative">
             <div className="absolute inset-0 bg-primary/5 blur-[100px] rounded-full -z-10" />
@@ -327,7 +333,7 @@ export default function ClassementPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="font-black text-sm truncate uppercase tracking-tight">@{u.username}</p>
-                        {!isSelected && <Shield className={cn("h-2.5 w-2.5", title.color)} />}
+                        {!isSelected && <Shield className={cn("h-2 w-2", title.color)} />}
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Zap className={cn("h-3 w-3 text-primary", isSelected && "text-primary-foreground")} />
@@ -348,7 +354,6 @@ export default function ClassementPage() {
         </div>
       </main>
 
-      {/* Floating Action for Selection Mode */}
       <AnimatePresence>
         {isSelectionMode && battleParty.length > 0 && (
           <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }} className="fixed bottom-24 left-0 right-0 z-50 px-6 max-w-lg mx-auto">
@@ -359,7 +364,6 @@ export default function ClassementPage() {
         )}
       </AnimatePresence>
 
-      {/* Oracle Vision Dialog */}
       <Dialog open={!!selectedUserForVision} onOpenChange={(open) => !open && setSelectedUserForVision(null)}>
         <DialogContent className="max-w-[90vw] sm:max-w-md bg-transparent border-none p-0 overflow-hidden shadow-none ring-0 [&>button]:hidden">
           {selectedUserForVision && (
@@ -375,7 +379,7 @@ export default function ClassementPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-5 bg-primary/5 rounded-[2rem] text-center space-y-1"><p className="text-[9px] font-black uppercase tracking-widest opacity-40">Lumière</p><p className="font-black text-lg">{selectedUserForVision.totalPoints?.toLocaleString()} PTS</p></div>
-                  <div className="p-5 bg-primary/5 rounded-[2rem] text-center space-y-1"><p className="text-[9px] font-black uppercase tracking-widest opacity-40">Valeur</p><p className="font-black text-lg text-primary">{(selectedUserForVision.totalPoints * 0.5).toLocaleString()} FCFA</p></div>
+                  <div className="p-5 bg-primary/5 rounded-[2rem] text-center space-y-1"><p className="text-[9px] font-black uppercase tracking-widest opacity-40">Valeur</p><p className="font-black text-lg text-primary">{(selectedUserForVision.totalPoints * (appStatus?.pointConversionRate ?? 0.5)).toLocaleString()} FCFA</p></div>
                 </div>
                 <Button onClick={() => setSelectedUserForVision(null)} className="w-full h-16 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-primary/20">Fermer</Button>
               </div>
@@ -384,7 +388,6 @@ export default function ClassementPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Interaction Dialog */}
       <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
         <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-3xl border-white/5 rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
           <div className="p-8 space-y-8">
@@ -448,8 +451,8 @@ export default function ClassementPage() {
                   <div className="space-y-3">
                     {mode === 'transfer' && (
                       <div className="flex items-center justify-between p-4 bg-orange-500/5 rounded-2xl border border-orange-500/10">
-                        <span className="text-[10px] font-black uppercase opacity-60">Taxe (10%)</span>
-                        <span className="text-xs font-black text-orange-600">+{Math.floor((parseInt(amount) || 0) * 0.1)} PTS</span>
+                        <span className="text-[10px] font-black uppercase opacity-60">Taxe ({appStatus?.transferFeePercent ?? 10}%)</span>
+                        <span className="text-xs font-black text-orange-600">+{Math.floor((parseInt(amount) || 0) * ((appStatus?.transferFeePercent ?? 10) / 100))} PTS</span>
                       </div>
                     )}
                     {mode === 'duel' && battleParty.length > 1 && (

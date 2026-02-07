@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
-import { Trophy, X, Bell, AlertTriangle, Shield, EyeOff } from "lucide-react";
+import { Trophy, X, Bell, AlertTriangle, Shield, EyeOff, Megaphone } from "lucide-react";
 import { useUser, useFirestore, useDoc } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useRouter, usePathname } from "next/navigation";
@@ -26,7 +26,11 @@ export function Header() {
     return doc(db, "users", user.uid);
   }, [db, user?.uid]);
 
+  const appStatusRef = useMemo(() => (db ? doc(db, "appConfig", "status") : null), [db]);
+
   const { data: profile } = useDoc(userDocRef);
+  const { data: appStatus } = useDoc(appStatusRef);
+  
   const totalPoints = profile?.totalPoints || 0;
   const currentTitle = useMemo(() => getHonorTitle(totalPoints), [totalPoints]);
 
@@ -54,138 +58,158 @@ export function Header() {
         delay: 0.1
       }}
       className={cn(
-        "fixed top-0 left-0 right-0 z-40 h-20",
-        "flex items-center px-6 md:px-10",
-        "bg-background/10 backdrop-blur-3xl",
-        "after:absolute after:bottom-0 after:left-[25%] after:right-[25%] after:h-[1px] after:bg-gradient-to-r after:from-transparent after:via-primary/5 after:to-transparent"
+        "fixed top-0 left-0 right-0 z-40",
+        "flex flex-col",
+        "bg-background/10 backdrop-blur-3xl"
       )}
     >
-      <div className="max-w-screen-2xl mx-auto w-full relative h-full flex items-center">
-        <AnimatePresence mode="wait">
-          {activeToast ? (
-            <motion.div
-              key={`toast-${activeToast.id}`}
-              initial={{ opacity: 0, y: 15, filter: "blur(10px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              exit={{ opacity: 0, y: -15, filter: "blur(10px)" }}
-              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className={cn(
-                "w-full flex items-center justify-between gap-4 z-[60] px-2",
-                activeToast.variant === 'destructive' ? "text-destructive" : "text-foreground"
-              )}
-            >
-              <div className="flex items-center gap-3 pl-2">
-                <div className={cn(
-                  "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
-                  activeToast.variant === 'destructive' ? "bg-destructive/20" : "bg-primary/10"
-                )}>
-                  {activeToast.variant === 'destructive' ? (
-                    <AlertTriangle className="h-4 w-4" />
-                  ) : (
-                    <Bell className="h-4 w-4 text-primary" />
-                  )}
-                </div>
-                <div className="flex flex-col">
-                  {activeToast.title && (
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] leading-none mb-0.5">
-                      {activeToast.title}
-                    </span>
-                  )}
-                  {activeToast.description && (
-                    <span className="text-[9px] font-medium opacity-60 line-clamp-1 leading-tight">
-                      {activeToast.description}
-                    </span>
-                  )}
-                </div>
-              </div>
+      {/* Annonce Globale */}
+      <AnimatePresence>
+        {appStatus?.globalAnnouncement && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="w-full bg-primary overflow-hidden"
+          >
+            <div className="px-6 py-2 flex items-center justify-center gap-2">
+              <Megaphone className="h-3 w-3 text-primary-foreground animate-bounce" />
+              <p className="text-[9px] font-black text-primary-foreground uppercase tracking-widest text-center truncate">
+                {appStatus.globalAnnouncement}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-              <div className="flex items-center gap-2">
-                {activeToast.action}
-                <button 
-                  onClick={() => dismiss(activeToast.id)}
-                  className="h-8 w-8 rounded-full bg-primary/5 flex items-center justify-center hover:bg-primary/10 transition-colors"
-                >
-                  <X className="h-4 w-4 opacity-40" />
-                </button>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="header-content"
-              initial={{ opacity: 0, filter: "blur(10px)" }}
-              animate={{ opacity: 1, filter: "blur(0px)" }}
-              exit={{ opacity: 0, filter: "blur(10px)" }}
-              transition={{ duration: 0.4 }}
-              className="w-full h-full flex items-center relative"
-            >
-              <motion.div 
-                style={isProfilePage ? { 
-                  opacity: defaultOpacity, 
-                  y: defaultY, 
-                  scale: defaultScale 
-                } : {}}
-                className="w-full flex items-center justify-between"
+      <div className="h-20 px-6 md:px-10 flex items-center relative">
+        <div className="max-w-screen-2xl mx-auto w-full relative h-full flex items-center">
+          <AnimatePresence mode="wait">
+            {activeToast ? (
+              <motion.div
+                key={`toast-${activeToast.id}`}
+                initial={{ opacity: 0, y: 15, filter: "blur(10px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                exit={{ opacity: 0, y: -15, filter: "blur(10px)" }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                className={cn(
+                  "w-full flex items-center justify-between gap-4 z-[60] px-2",
+                  activeToast.variant === 'destructive' ? "text-destructive" : "text-foreground"
+                )}
               >
-                <div 
-                  className="cursor-pointer"
-                  onClick={() => router.push("/home")}
-                >
-                  <Logo layout="horizontal" className="scale-100 origin-left" />
+                <div className="flex items-center gap-3 pl-2">
+                  <div className={cn(
+                    "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
+                    activeToast.variant === 'destructive' ? "bg-destructive/20" : "bg-primary/10"
+                  )}>
+                    {activeToast.variant === 'destructive' ? (
+                      <AlertTriangle className="h-4 w-4" />
+                    ) : (
+                      <Bell className="h-4 w-4 text-primary" />
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    {activeToast.title && (
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] leading-none mb-0.5">
+                        {activeToast.title}
+                      </span>
+                    )}
+                    {activeToast.description && (
+                      <span className="text-[9px] font-medium opacity-60 line-clamp-1 leading-tight">
+                        {activeToast.description}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                <button 
-                  onClick={() => router.push("/echange")}
-                  className="flex items-center gap-3 px-4 py-2 bg-card/40 backdrop-blur-3xl rounded-2xl border border-primary/5 shadow-lg group hover:border-primary/20 hover:bg-primary/5 transition-all duration-300"
-                >
-                  <div className="relative">
-                    <Trophy className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
-                    <motion.div 
-                      animate={{ opacity: [0, 1, 0], scale: [1, 1.4, 1] }}
-                      transition={{ duration: 2.5, repeat: Infinity }}
-                      className="absolute inset-0 bg-primary/20 rounded-full blur-sm"
-                    />
-                  </div>
-                  
-                  {hidePoints ? (
-                    <motion.div 
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="flex items-center justify-center w-12"
-                    >
-                      <EyeOff className="h-3.5 w-3.5 opacity-20 animate-pulse" />
-                    </motion.div>
-                  ) : (
-                    <span className="text-xs font-black tracking-tight">{totalPoints.toLocaleString()} PTS</span>
-                  )}
-                </button>
+                <div className="flex items-center gap-2">
+                  {activeToast.action}
+                  <button 
+                    onClick={() => dismiss(activeToast.id)}
+                    className="h-8 w-8 rounded-full bg-primary/5 flex items-center justify-center hover:bg-primary/10 transition-colors"
+                  >
+                    <X className="h-4 w-4 opacity-40" />
+                  </button>
+                </div>
               </motion.div>
-
-              {isProfilePage && (
+            ) : (
+              <motion.div
+                key="header-content"
+                initial={{ opacity: 0, filter: "blur(10px)" }}
+                animate={{ opacity: 1, filter: "blur(0px)" }}
+                exit={{ opacity: 0, filter: "blur(10px)" }}
+                transition={{ duration: 0.4 }}
+                className="w-full h-full flex items-center relative"
+              >
                 <motion.div 
-                  style={{ 
-                    opacity: profileOpacity, 
-                    y: profileY, 
-                    scale: profileScale
-                  }}
-                  className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                  style={isProfilePage ? { 
+                    opacity: defaultOpacity, 
+                    y: defaultY, 
+                    scale: defaultScale 
+                  } : {}}
+                  className="w-full flex items-center justify-between"
                 >
-                  <div className="flex items-center gap-3 bg-card/60 backdrop-blur-3xl px-5 py-2 rounded-2xl border border-primary/5 shadow-2xl pointer-events-auto">
-                    <ProfileAvatar imageUrl={profile?.profileImage} points={totalPoints} size="sm" />
-                    <div className="flex flex-col">
-                      <span className="text-sm font-black tracking-tight">@{profile?.username || "Esprit"}</span>
-                      <div className="flex items-center gap-1">
-                        <Shield className={cn("h-2 w-2", currentTitle.color)} />
-                        <span className={cn("text-[7px] font-black uppercase tracking-[0.2em] opacity-60", currentTitle.color)}>
-                          {currentTitle.name}
-                        </span>
+                  <div 
+                    className="cursor-pointer"
+                    onClick={() => router.push("/home")}
+                  >
+                    <Logo layout="horizontal" className="scale-100 origin-left" />
+                  </div>
+
+                  <button 
+                    onClick={() => router.push("/echange")}
+                    className="flex items-center gap-3 px-4 py-2 bg-card/40 backdrop-blur-3xl rounded-2xl border border-primary/5 shadow-lg group hover:border-primary/20 hover:bg-primary/5 transition-all duration-300"
+                  >
+                    <div className="relative">
+                      <Trophy className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
+                      <motion.div 
+                        animate={{ opacity: [0, 1, 0], scale: [1, 1.4, 1] }}
+                        transition={{ duration: 2.5, repeat: Infinity }}
+                        className="absolute inset-0 bg-primary/20 rounded-full blur-sm"
+                      />
+                    </div>
+                    
+                    {hidePoints ? (
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="flex items-center justify-center w-12"
+                      >
+                        <EyeOff className="h-3.5 w-3.5 opacity-20 animate-pulse" />
+                      </motion.div>
+                    ) : (
+                      <span className="text-xs font-black tracking-tight">{totalPoints.toLocaleString()} PTS</span>
+                    )}
+                  </button>
+                </motion.div>
+
+                {isProfilePage && (
+                  <motion.div 
+                    style={{ 
+                      opacity: profileOpacity, 
+                      y: profileY, 
+                      scale: profileScale
+                    }}
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                  >
+                    <div className="flex items-center gap-3 bg-card/60 backdrop-blur-3xl px-5 py-2 rounded-2xl border border-primary/5 shadow-2xl pointer-events-auto">
+                      <ProfileAvatar imageUrl={profile?.profileImage} points={totalPoints} size="sm" />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-black tracking-tight">@{profile?.username || "Esprit"}</span>
+                        <div className="flex items-center gap-1">
+                          <Shield className={cn("h-2 w-2", currentTitle.color)} />
+                          <span className={cn("text-[7px] font-black uppercase tracking-[0.2em] opacity-60", currentTitle.color)}>
+                            {currentTitle.name}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+                  </motion.div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
       <motion.div
