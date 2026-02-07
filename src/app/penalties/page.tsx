@@ -150,17 +150,17 @@ export default function PenaltiesPage() {
     setPlayerChoice(direction);
     haptic.medium();
 
-    // Logique Oracle : 25% de chances de bloquer (Omniscience), 75% de chances de feindre l'erreur
+    // Logique Oracle : 40% de chances de bloquer (Omniscience), 60% de chances de feindre l'erreur (Générosité)
     const roll = Math.random();
     let keeperDir: Direction;
     let scored: boolean;
 
-    if (roll < 0.25) {
-      // L'Oracle utilise son omniscience et bloque (25%)
+    if (roll < 0.40) {
+      // L'Oracle utilise son omniscience et bloque (40%)
       keeperDir = direction;
       scored = false;
     } else {
-      // L'Oracle feint l'erreur pour laisser passer la Lumière (75%)
+      // L'Oracle feint l'erreur pour laisser passer la Lumière (60%)
       const otherDirections = DIRECTIONS.filter(d => d !== direction);
       keeperDir = otherDirections[Math.floor(Math.random() * otherDirections.length)];
       scored = true;
@@ -188,7 +188,7 @@ export default function PenaltiesPage() {
             origin: { y: 0.6 },
             colors: ['#ffffff', '#000000', '#ffd700']
           });
-          // Créditer les points en cas de succès
+          // Créditer les points en cas de succès (x2 la mise)
           await updateDoc(userDocRef, {
             totalPoints: increment(selectedBet * 2),
             updatedAt: serverTimestamp()
