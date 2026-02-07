@@ -14,7 +14,6 @@ import {
   updateDoc,
   setDoc,
   increment,
-  limit
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -37,7 +36,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter
 } from "@/components/ui/dialog";
 import { 
@@ -60,8 +58,6 @@ import {
   Sparkles,
   ShieldCheck,
   Zap,
-  MessageSquareText,
-  DollarSign,
   ArrowUpRight,
   CheckCircle2,
   Circle,
@@ -70,7 +66,6 @@ import {
   Calendar,
   Smartphone,
   Shield,
-  Target,
   RefreshCw,
   Database,
   Banknote,
@@ -83,8 +78,6 @@ import {
   Lock,
   ArrowRightLeft,
   Crown,
-  Minus,
-  AlertTriangle,
   X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -93,7 +86,6 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 import { generateQuiz } from "@/ai/flows/generate-quiz-flow";
 import { haptic } from "@/lib/haptics";
 import { 
-  Tooltip, 
   ResponsiveContainer,
   AreaChart,
   Area,
@@ -681,11 +673,9 @@ export default function AdminPage() {
                   </div>
                 </div>
                 <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button onClick={() => haptic.light()} className="h-10 px-4 rounded-2xl font-black text-xs uppercase tracking-widest gap-2">
-                      <Plus className="h-4 w-4" /> Nouveau défi
-                    </Button>
-                  </DialogTrigger>
+                  <Button onClick={() => { haptic.light(); setIsAddDialogOpen(true); }} className="h-10 px-4 rounded-2xl font-black text-xs uppercase tracking-widest gap-2">
+                    <Plus className="h-4 w-4" /> Nouveau défi
+                  </Button>
                   <DialogContent className="sm:max-w-[600px] bg-card/95 backdrop-blur-2xl rounded-[2.5rem] p-8 border-none">
                     <DialogHeader>
                       <div className="flex justify-between items-start">
@@ -886,16 +876,6 @@ export default function AdminPage() {
                         </button>
                       )}
                     </div>
-                    {globalAnnouncementInput && (
-                      <div className="mt-4 p-4 bg-primary rounded-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
-                        <div className="flex items-center gap-2">
-                          <Megaphone className="h-3 w-3 text-primary-foreground" />
-                          <p className="text-[9px] font-black text-primary-foreground uppercase tracking-widest truncate">
-                            Aperçu : {globalAnnouncementInput}
-                          </p>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
 
