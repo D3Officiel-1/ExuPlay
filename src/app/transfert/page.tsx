@@ -32,7 +32,6 @@ import {
   ShieldAlert,
   Sparkles,
   X,
-  RefreshCw,
   AlertCircle,
   Swords,
   Ghost,
@@ -160,18 +159,6 @@ export default function TransfertPage() {
     }
   };
 
-  const handlePickRandomRecipient = async () => {
-    setIsProcessing(true); haptic.medium(); setIsFabOpen(false);
-    try {
-      const q = query(collection(db, "users"), orderBy("totalPoints", "asc"), limit(15));
-      const snap = await getDocs(q); const others = snap.docs.filter(d => d.id !== firebaseUser?.uid);
-      if (others.length > 0) {
-        const randomDoc = others[Math.floor(Math.random() * Math.min(others.length, 10))];
-        setRecipient({ id: randomDoc.id, ...randomDoc.data() }); setMode('transfer'); setIsAnonymous(true);
-      }
-    } finally { setIsProcessing(false); }
-  };
-
   const handleAction = async () => {
     if (!transferAmount || transferAmount <= 0 || !firebaseUser?.uid || !recipient?.id) return;
     if (transferAmount > DAILY_LIMIT) { toast({ variant: "destructive", title: "Limite dépassée" }); return; }
@@ -246,7 +233,6 @@ export default function TransfertPage() {
                       {isFabOpen && (
                         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="flex flex-col items-end gap-3 mb-2">
                           <Button size="icon" onClick={toggleTorch} className={cn("h-14 w-14 rounded-2xl backdrop-blur-xl border border-white/20 shadow-2xl", isTorchOn ? "bg-white text-black" : "bg-white/10 text-white")}><Flashlight className="h-6 w-6" /></Button>
-                          <Button size="icon" onClick={handlePickRandomRecipient} disabled={isProcessing} className="h-14 w-14 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 text-white shadow-2xl">{isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : <RefreshCw className="h-6 w-6" />}</Button>
                         </motion.div>
                       )}
                     </AnimatePresence>
