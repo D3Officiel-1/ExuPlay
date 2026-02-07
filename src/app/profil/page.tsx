@@ -93,7 +93,6 @@ export default function ProfilPage() {
       setEditedUsername(profile.username);
     }
     if (profile?.phoneNumber) {
-      // Supposer que le format est +225XXXXXXXXXX
       setEditedPhone(profile.phoneNumber.replace("+225", ""));
     }
   }, [profile]);
@@ -254,15 +253,41 @@ export default function ProfilPage() {
 
         {ownedThemes.length > 0 && (
           <div className="space-y-5">
-            <div className="flex items-center gap-3 px-4"><Palette className="h-4 w-4 opacity-40" /><h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Sélecteur d'Aura</h2></div>
+            <div className="flex items-center gap-3 px-4">
+              <Palette className="h-4 w-4 opacity-40" />
+              <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Sélecteur d'Aura</h2>
+            </div>
             <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] overflow-hidden">
-              <CardContent className="p-6 flex gap-4 overflow-x-auto no-scrollbar items-center justify-center">
-                <button onClick={() => handleApplyTheme("default")} className={cn("h-16 w-16 rounded-[1.5rem] border-2 transition-all flex items-center justify-center", (profile?.activeTheme === "default" || !profile?.activeTheme) ? "border-primary bg-primary/10" : "border-transparent bg-background/50 opacity-40")}><Sparkles className="h-6 w-6" /></button>
-                {ownedThemes.map((tid: string) => (
-                  <button key={tid} onClick={() => handleApplyTheme(tid)} className={cn("h-16 w-16 rounded-[1.5rem] border-2 transition-all flex items-center justify-center", profile?.activeTheme === tid ? THEMES[tid]?.borderColor : "border-transparent opacity-40")}>
-                    <div className={cn("h-4 w-4 rounded-full", THEMES[tid]?.color.replace('text-', 'bg-'))} />
-                  </button>
-                ))}
+              <CardContent className="p-6 flex gap-6 overflow-x-auto no-scrollbar items-center justify-center">
+                <button 
+                  onClick={() => handleApplyTheme("default")} 
+                  className={cn(
+                    "h-16 w-16 shrink-0 rounded-[1.5rem] border-2 transition-all flex items-center justify-center", 
+                    (profile?.activeTheme === "default" || !profile?.activeTheme) 
+                      ? "border-primary bg-primary/10 shadow-xl scale-110" 
+                      : "border-transparent bg-background/50 opacity-40"
+                  )}
+                >
+                  <Sparkles className="h-6 w-6" />
+                </button>
+                {ownedThemes.map((tid: string) => {
+                  const theme = THEMES[tid];
+                  const isActive = profile?.activeTheme === tid;
+                  if (!theme) return null;
+                  
+                  return (
+                    <button 
+                      key={tid} 
+                      onClick={() => handleApplyTheme(tid)} 
+                      className={cn(
+                        "h-16 w-16 shrink-0 rounded-[1.5rem] border-2 transition-all flex items-center justify-center bg-card/80",
+                        isActive ? theme.borderColor + " scale-110" : "border-transparent opacity-60"
+                      )}
+                    >
+                      <div className={cn("h-6 w-6 rounded-full shadow-inner", theme.color.replace('text-', 'bg-'))} />
+                    </button>
+                  );
+                })}
               </CardContent>
             </Card>
           </div>

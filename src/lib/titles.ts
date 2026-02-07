@@ -75,29 +75,28 @@ export const THEMES: Record<string, VisualTheme> = {
     name: "Neutre",
     color: "text-primary",
     borderColor: "border-primary/20",
-    // Utilise la variable --primary injectée pour l'aura par défaut
     auraClass: "bg-primary/20 blur-2xl shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)]"
   },
   "theme_ruby": {
     id: "theme_ruby",
     name: "Rubis",
     color: "text-red-500",
-    borderColor: "border-red-500/50",
-    auraClass: "bg-red-500/20 blur-2xl shadow-[0_0_30px_rgba(239,68,68,0.3)]"
+    borderColor: "border-red-500/60 shadow-[0_0_15px_rgba(239,68,68,0.4)]",
+    auraClass: "bg-red-500/30 blur-2xl shadow-[0_0_30px_rgba(239,68,68,0.4)]"
   },
   "theme_obsidian": {
     id: "theme_obsidian",
     name: "Obsidienne",
     color: "text-zinc-100",
-    borderColor: "border-zinc-800 shadow-[0_0_15px_rgba(0,0,0,0.5)]",
-    auraClass: "bg-zinc-900/60 blur-2xl shadow-[0_0_40px_rgba(0,0,0,0.8)]"
+    borderColor: "border-zinc-800 shadow-[0_0_20px_rgba(0,0,0,0.8)]",
+    auraClass: "bg-zinc-900/80 blur-2xl shadow-[0_0_40px_rgba(0,0,0,0.9)]"
   },
   "theme_gold": {
     id: "theme_gold",
     name: "Or Pur",
-    color: "text-amber-500",
-    borderColor: "border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.4)]",
-    auraClass: "bg-amber-500/40 blur-3xl animate-pulse shadow-[0_0_60px_rgba(245,158,11,0.6)]"
+    color: "text-yellow-500",
+    borderColor: "border-yellow-500 border-4 shadow-[0_0_25px_rgba(234,179,8,0.6)]",
+    auraClass: "bg-yellow-500/60 blur-2xl animate-pulse shadow-[0_0_60px_rgba(234,179,8,0.7)]"
   }
 };
 
