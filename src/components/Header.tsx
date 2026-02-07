@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
@@ -23,7 +23,6 @@ export function Header() {
   const pathname = usePathname();
   const { toasts, dismiss } = useToast();
   
-  const [showPointsVision] = useState(false);
   const [showPointsVisionOverlay, setShowPointsVisionOverlay] = useState(false);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -58,6 +57,18 @@ export function Header() {
   const hidePoints = profile?.hidePointsInHeader === true;
 
   const hasAnnouncement = appStatus?.globalAnnouncement && appStatus.globalAnnouncement.trim() !== "";
+
+  // Oracle du Verrouillage de Scroll pour la Vision de Prospérité
+  useEffect(() => {
+    if (showPointsVisionOverlay) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showPointsVisionOverlay]);
 
   const handlePointsVisionStart = (e: React.MouseEvent | React.TouchEvent) => {
     if ('button' in e && e.button === 2) {
