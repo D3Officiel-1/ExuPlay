@@ -45,12 +45,19 @@ export function DuelInvitationListener() {
   const { data: duels } = useCollection(activeDuelsQuery);
   const activeDuel = duels?.[0];
 
+  const myStatus = useMemo(() => {
+    if (!activeDuel || !user) return null;
+    return activeDuel.participants[user.uid]?.status;
+  }, [activeDuel, user]);
+
   // Calcul de la visibilité réelle de l'overlay
+  // On reste visible tant que le duel est en attente globale (pending)
   const isVisible = useMemo(() => {
     if (!activeDuel || !user || pathname.includes(`/duels/${activeDuel.id}`)) return false;
-    const isChallenger = activeDuel.challengerId === user.uid;
-    const myStatus = activeDuel.participants[user.uid]?.status;
-    return myStatus === 'pending' || isChallenger;
+    
+    // L'invitation est visible tant que le duel n'est pas officiellement 'accepted' (tous ont répondu)
+    // ou 'active' (lancé par le challenger)
+    return activeDuel.status === 'pending';
   }, [activeDuel, user, pathname]);
 
   // Oracle du Verrouillage de Scroll
@@ -65,7 +72,7 @@ export function DuelInvitationListener() {
     };
   }, [isVisible]);
 
-  // Redirection automatique vers l'arène
+  // Redirection automatique vers l'arène dès que le duel est prêt ou actif
   useEffect(() => {
     if (activeDuel?.status === 'accepted' || activeDuel?.status === 'active') {
       if (!pathname.includes(`/duels/${activeDuel.id}`)) {
@@ -79,21 +86,32 @@ export function DuelInvitationListener() {
     setIsProcessing(true);
     haptic.medium();
     try {
+      // 1. Déduire la mise
       await updateDoc(doc(db, "users", user.uid), {
         totalPoints: increment(-activeDuel.wager),
         updatedAt: serverTimestamp()
       });
+
+      // 2. Mettre à jour mon statut
       await updateDoc(doc(db, "duels", activeDuel.id), {
         [`participants.${user.uid}.status`]: 'accepted'
       });
 
-      const allParticipants = Object.values(activeDuel.participants);
-      const allResponded = allParticipants.every((p: any) => p.status !== 'pending' || p.userId === user.uid);
+      // 3. Vérifier si tout le monde a répondu (en incluant mon acceptation actuelle)
+      const participantsData = { ...activeDuel.participants };
+      participantsData[user.uid].status = 'accepted';
+      
+      const allResponded = Object.values(participantsData).every((p: any) => p.status !== 'pending');
+      
       if (allResponded) {
-        await updateDoc(doc(db, "duels", activeDuel.id), { status: 'accepted' });
+        await updateDoc(doc(db, "duels", activeDuel.id), { 
+          status: 'accepted',
+          updatedAt: serverTimestamp()
+        });
       }
     } catch (e) {
       console.error(e);
+      toast({ variant: "destructive", title: "Dissonance lors de l'acceptation" });
     } finally {
       setIsProcessing(false);
     }
@@ -131,6 +149,7 @@ export function DuelInvitationListener() {
     setIsProcessing(true);
     haptic.light();
     try {
+      // Pour un refus, on dissout le duel et on rend les points à ceux qui avaient déjà accepté
       const acceptedUids = Object.entries(activeDuel.participants)
         .filter(([_, p]: [string, any]) => p.status === 'accepted')
         .map(([uid, _]) => uid);
@@ -249,6 +268,16 @@ export function DuelInvitationListener() {
                 {isProcessing ? <Loader2 className="animate-spin h-4 w-4" /> : <X className="h-4 w-4" />}
                 Annuler l'Invocation
               </Button>
+            </div>
+          ) : myStatus === 'accepted' ? (
+            <div className="space-y-6">
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-10 w-10 bg-primary/5 rounded-full flex items-center justify-center border border-primary/10">
+                  <Timer className="h-5 w-5 text-primary animate-spin" />
+                </div>
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Pacte scellé. Attente des autres...</p>
+              </div>
+              <p className="text-[9px] font-medium opacity-30 italic">"L'arène s'ouvrira dès que l'équilibre sera atteint."</p>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
