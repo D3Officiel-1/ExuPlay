@@ -7,14 +7,14 @@ import { useFirestore, useCollection, useUser, useDoc, useMemoFirebase } from "@
 import { 
   collection, 
   query, 
+  where, 
   orderBy, 
   limit, 
   doc, 
   updateDoc, 
   increment, 
   serverTimestamp, 
-  addDoc,
-  where
+  addDoc
 } from "firebase/firestore";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -289,42 +289,82 @@ export default function ClassementPage() {
     )}>
       <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
         {/* Header Dynamique */}
-        <div className="flex items-center justify-between">
-          <AnimatePresence mode="wait">
-            {isSelectionMode ? (
-              <motion.div 
-                key="arena-header"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="space-y-1"
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center justify-between">
+            <AnimatePresence mode="wait">
+              {isSelectionMode ? (
+                <motion.div 
+                  key="arena-header"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="space-y-1"
+                >
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary animate-pulse">Mode Recrutement</p>
+                  <h1 className="text-3xl font-black tracking-tight italic">Arène du Choc</h1>
+                </motion.div>
+              ) : (
+                <motion.div 
+                  key="classic-header"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="space-y-1"
+                >
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Hiérarchie</p>
+                  <h1 className="text-3xl font-black tracking-tight">Le Hall des Sages</h1>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            
+            {isSelectionMode && (
+              <Button 
+                variant="ghost" 
+                onClick={() => { haptic.light(); setIsSelectionMode(false); setBattleParty([]); }} 
+                className="h-10 rounded-xl bg-destructive/5 text-destructive text-[10px] font-black uppercase border border-destructive/10"
               >
-                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary animate-pulse">Mode Recrutement</p>
-                <h1 className="text-3xl font-black tracking-tight italic">Arène du Choc</h1>
-              </motion.div>
-            ) : (
+                Annuler
+              </Button>
+            )}
+          </div>
+
+          {/* Intégration de la Barre de Validation dans l'entête */}
+          <AnimatePresence>
+            {isSelectionMode && battleParty.length > 0 && (
               <motion.div 
-                key="classic-header"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="space-y-1"
+                initial={{ opacity: 0, y: -20 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                exit={{ opacity: 0, y: -20 }}
+                className="w-full"
               >
-                <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Hiérarchie</p>
-                <h1 className="text-3xl font-black tracking-tight">Le Hall des Sages</h1>
+                <Card className="border-none bg-card/40 backdrop-blur-3xl border border-primary/10 rounded-[2.5rem] p-3 flex items-center justify-between gap-4 shadow-[0_32px_128px_-16px_rgba(0,0,0,0.5)]">
+                  <div className="flex items-center gap-3 pl-3">
+                    <div className="flex -space-x-3">
+                      {battleParty.slice(0, 3).map((p) => (
+                        <ProfileAvatar key={p.id} imageUrl={p.profileImage} size="sm" className="ring-2 ring-background" />
+                      ))}
+                      {battleParty.length > 3 && (
+                        <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-[10px] font-black text-white ring-2 ring-background">
+                          +{battleParty.length - 3}
+                        </div>
+                      )}
+                    </div>
+                    <div className="hidden sm:block">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-primary">Choc Prêt</p>
+                      <p className="text-[8px] font-bold opacity-40 uppercase">{battleParty.length} Opposants</p>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    onClick={() => setSelectedUser(battleParty[0])} 
+                    className="h-14 rounded-[1.75rem] px-6 font-black text-xs uppercase tracking-widest gap-2 shadow-xl shadow-primary/20"
+                  >
+                    <Swords className="h-4 w-4" /> Invoquer
+                  </Button>
+                </Card>
               </motion.div>
             )}
           </AnimatePresence>
-          
-          {isSelectionMode && (
-            <Button 
-              variant="ghost" 
-              onClick={() => { haptic.light(); setIsSelectionMode(false); setBattleParty([]); }} 
-              className="h-10 rounded-xl bg-destructive/5 text-destructive text-[10px] font-black uppercase border border-destructive/10"
-            >
-              Annuler
-            </Button>
-          )}
         </div>
 
         {/* Barre de Flux Journalier & Recherche - Masquée en sélection pour épurer */}
@@ -531,45 +571,6 @@ export default function ClassementPage() {
           )}
         </div>
       </main>
-
-      {/* Barre de Validation de l'Arène */}
-      <AnimatePresence>
-        {isSelectionMode && battleParty.length > 0 && (
-          <motion.div 
-            initial={{ y: 100, opacity: 0 }} 
-            animate={{ y: 0, opacity: 1 }} 
-            exit={{ y: 100, opacity: 0 }} 
-            className="fixed bottom-24 left-0 right-0 z-50 px-6 max-w-lg mx-auto"
-          >
-            <div className="bg-card/80 backdrop-blur-3xl border border-primary/10 rounded-[2.5rem] p-3 shadow-[0_32px_128px_-16px_rgba(0,0,0,0.5)] flex flex-col gap-3">
-              <div className="flex items-center justify-between px-6 pt-2">
-                <div className="flex items-center gap-3">
-                  <div className="flex -space-x-3">
-                    {battleParty.slice(0, 3).map((p) => (
-                      <ProfileAvatar key={p.id} imageUrl={p.profileImage} size="sm" className="ring-2 ring-background" />
-                    ))}
-                    {battleParty.length > 3 && (
-                      <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-[10px] font-black text-white ring-2 ring-background">
-                        +{battleParty.length - 3}
-                      </div>
-                    )}
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest opacity-40">{battleParty.length} Opposants</span>
-                </div>
-                <div className="h-8 w-px bg-primary/5" />
-                <p className="text-[10px] font-black uppercase tracking-widest text-primary animate-pulse">Choc Prêt</p>
-              </div>
-              
-              <Button 
-                onClick={() => setSelectedUser(battleParty[0])} 
-                className="w-full h-16 rounded-[2rem] font-black text-sm uppercase tracking-widest gap-3 shadow-2xl shadow-primary/20"
-              >
-                <Swords className="h-5 w-5" /> Invoquer le Choc Collectif
-              </Button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Vision de l'Oracle - Dialog amélioré */}
       <Dialog open={!!selectedUserForVision} onOpenChange={(open) => !open && setSelectedUserForVision(null)}>
