@@ -177,7 +177,7 @@ export function LoginClient() {
         cameraAuthorized: false,
         createdAt: serverTimestamp(),
         totalPoints: 0,
-        // Paramètres de confidentialité et d'expérience par défaut (Voile désactivé)
+        // Paramètres de confidentialité et d'expérience désactivés par défaut
         rankingHidden: false,
         reducedMotion: false,
         hidePointsInHeader: false
@@ -335,7 +335,7 @@ export function LoginClient() {
                     <CardHeader className="p-6">
                       <div className="flex items-center gap-3 mb-2 text-primary">
                         <ShieldCheck className="h-5 w-5" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">Légalité</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest">L legality</span>
                       </div>
                       <CardTitle className="text-2xl">Conditions</CardTitle>
                     </CardHeader>

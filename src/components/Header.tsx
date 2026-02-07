@@ -42,6 +42,8 @@ export function Header() {
   const profileY = useTransform(scrollY, [60, 100], [20, 0]);
   const profileScale = useTransform(scrollY, [60, 100], [0.8, 1]);
 
+  const hidePoints = profile?.hidePointsInHeader === true;
+
   return (
     <motion.header 
       initial={{ y: -60, opacity: 0 }}
@@ -143,9 +145,15 @@ export function Header() {
                       className="absolute inset-0 bg-primary/20 rounded-full blur-sm"
                     />
                   </div>
-                  {/* Sceau d'Invisibilité : masquer les points si l'option est active */}
-                  {profile?.hidePointsInHeader ? (
-                    <EyeOff className="h-3 w-3 opacity-20" />
+                  
+                  {hidePoints ? (
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="flex items-center justify-center w-12"
+                    >
+                      <EyeOff className="h-3.5 w-3.5 opacity-20 animate-pulse" />
+                    </motion.div>
                   ) : (
                     <span className="text-xs font-black tracking-tight">{totalPoints.toLocaleString()} PTS</span>
                   )}
