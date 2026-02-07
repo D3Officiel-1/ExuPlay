@@ -67,7 +67,11 @@ import {
   Smartphone,
   Shield,
   Target,
-  RefreshCw
+  RefreshCw,
+  Database,
+  Banknote,
+  Activity,
+  Trophy
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -79,7 +83,9 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
-  XAxis
+  XAxis,
+  BarChart,
+  Bar
 } from 'recharts';
 import { AnimatePresence, motion } from "framer-motion";
 import { format } from "date-fns";
@@ -146,9 +152,33 @@ export default function AdminPage() {
     return query(collection(db, "transfers"), orderBy("timestamp", "desc"), limit(20));
   }, [db]);
 
+  const exchangesQuery = useMemo(() => {
+    if (!db) return null;
+    return query(collection(db, "exchanges"), orderBy("requestedAt", "desc"));
+  }, [db]);
+
   const { data: users, loading: usersLoading } = useCollection(usersQuery);
   const { data: quizzes, loading: quizzesLoading } = useCollection(quizzesQuery);
   const { data: recentTransfers } = useCollection(transfersQuery);
+  const { data: exchanges, loading: exchangesLoading } = useCollection(exchangesQuery);
+
+  // Calcul des métriques globales
+  const globalMetrics = useMemo(() => {
+    if (!users || !quizzes || !exchanges) return { totalUsers: 0, totalPoints: 0, totalQuizzes: 0, pendingExchanges: 0, totalExchangedFCFA: 0 };
+    
+    const totalUsers = users.length;
+    const totalQuizzes = quizzes.length;
+    const totalPoints = users.reduce((acc, u) => acc + (u.totalPoints || 0), 0);
+    const pendingExchanges = exchanges.filter(e => e.status === 'pending').length;
+    const totalExchangedFCFA = exchanges.filter(e => e.status === 'completed').reduce((acc, e) => acc + (e.amount || 0), 0);
+
+    return { totalUsers, totalPoints, totalQuizzes, pendingExchanges, totalExchangedFCFA };
+  }, [users, quizzes, exchanges]);
+
+  const topSpirits = useMemo(() => {
+    if (!users) return [];
+    return [...users].sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0)).slice(0, 5);
+  }, [users]);
 
   useEffect(() => {
     if (appStatus?.maintenanceMessage !== undefined) {
@@ -179,7 +209,8 @@ export default function AdminPage() {
   const chartData = useMemo(() => {
     if (!users) return [];
     const groups: Record<string, number> = {};
-    users.slice(0, 10).reverse().forEach(u => {
+    // Prendre les 30 derniers jours pour plus de granularité si possible
+    users.slice(0, 20).reverse().forEach(u => {
       const date = u.createdAt ? new Date(u.createdAt.toDate()).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : 'N/A';
       groups[date] = (groups[date] || 0) + 1;
     });
@@ -417,10 +448,34 @@ export default function AdminPage() {
           </TabsList>
 
           <TabsContent value="stats" className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+            {/* Cartes de métriques globales */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { label: "Esprits", value: globalMetrics.totalUsers, icon: Users, color: "text-blue-500" },
+                { label: "Lumière", value: globalMetrics.totalPoints.toLocaleString(), icon: Zap, color: "text-yellow-500" },
+                { label: "Savoir", value: globalMetrics.totalQuizzes, icon: Database, color: "text-purple-500" },
+                { label: "Retraits", value: globalMetrics.pendingExchanges, icon: Banknote, color: "text-orange-500" }
+              ].map((m, i) => (
+                <Card key={i} className="border-none bg-card/40 backdrop-blur-3xl rounded-[1.5rem] p-4 flex flex-col items-center justify-center text-center space-y-2">
+                  <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center bg-primary/5", m.color)}>
+                    <m.icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-[8px] font-black uppercase tracking-widest opacity-40">{m.label}</p>
+                    <p className="text-xl font-black tracking-tighter">{m.value}</p>
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              {/* Graphique de croissance */}
               <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2rem]">
                 <CardHeader className="p-6 pb-2">
-                  <CardTitle className="text-[10px] font-black uppercase tracking-widest opacity-40">Flux des Esprits</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-[10px] font-black uppercase tracking-widest opacity-40">Flux des Esprits</CardTitle>
+                    <Activity className="h-4 w-4 opacity-20" />
+                  </div>
                 </CardHeader>
                 <CardContent className="p-6 h-[200px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -442,9 +497,64 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
 
+              {/* Top Spirits (Nouvelle fonction) */}
               <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2rem]">
                 <CardHeader className="p-6 pb-2">
-                  <CardTitle className="text-[10px] font-black uppercase tracking-widest opacity-40">Échanges Récents</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-[10px] font-black uppercase tracking-widest opacity-40">Maîtres de la Lumière</CardTitle>
+                    <Trophy className="h-4 w-4 opacity-20 text-yellow-500" />
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6 pt-0 space-y-3">
+                  {topSpirits.map((u, i) => (
+                    <div key={u.id} className="flex items-center justify-between p-2.5 bg-background/40 rounded-xl border border-primary/5">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[9px] font-black opacity-20">#{i+1}</span>
+                        <div className="flex flex-col">
+                          <span className="text-xs font-black">@{u.username}</span>
+                          <span className="text-[8px] opacity-40 uppercase font-bold">{getHonorTitle(u.totalPoints).name}</span>
+                        </div>
+                      </div>
+                      <span className="text-xs font-black text-primary">{u.totalPoints?.toLocaleString()} PTS</span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              {/* Résonance Financière (Nouvelle fonction) */}
+              <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2rem]">
+                <CardHeader className="p-6 pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-[10px] font-black uppercase tracking-widest opacity-40">Résonance de Prospérité</CardTitle>
+                    <Banknote className="h-4 w-4 opacity-20 text-green-500" />
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6 pt-4 flex flex-col items-center justify-center space-y-4">
+                  <div className="text-center space-y-1">
+                    <p className="text-4xl font-black text-primary">{globalMetrics.totalExchangedFCFA.toLocaleString()} <span className="text-[10px] opacity-40">FCFA</span></p>
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-30">Matérialisés au total</p>
+                  </div>
+                  <div className="w-full h-px bg-primary/5" />
+                  <div className="grid grid-cols-2 gap-4 w-full">
+                    <div className="text-center">
+                      <p className="text-lg font-black text-orange-500">{globalMetrics.pendingExchanges}</p>
+                      <p className="text-[8px] font-black uppercase tracking-widest opacity-30">En attente</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-black text-blue-500">{(globalMetrics.totalPoints / (globalMetrics.totalUsers || 1)).toFixed(0)}</p>
+                      <p className="text-[8px] font-black uppercase tracking-widest opacity-30">Points/Esprit</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Échanges Récents (Flux global) */}
+              <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2rem]">
+                <CardHeader className="p-6 pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-[10px] font-black uppercase tracking-widest opacity-40">Flux des Transmissions</CardTitle>
+                    <Zap className="h-4 w-4 opacity-20" />
+                  </div>
                 </CardHeader>
                 <CardContent className="p-6 pt-0 space-y-3 overflow-y-auto max-h-[180px]">
                   {recentTransfers?.map(t => (
@@ -593,7 +703,7 @@ export default function AdminPage() {
                       placeholder="Entrez le message à afficher aux esprits..." 
                       className="min-h-[80px] rounded-2xl bg-background/50 border-primary/10"
                       value={maintenanceMessageInput}
-                      onChange={(e) => setMaintenanceMessageInput(e.target.value)}
+                      onChange={(e) => setMaintenanceMessageInput(target.value)}
                     />
                   </div>
 
