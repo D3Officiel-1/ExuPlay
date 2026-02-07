@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -8,7 +7,7 @@ import { doc } from "firebase/firestore";
 import { verifyPasskey } from "@/lib/passkey";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
-import { ShieldCheck, Loader2, Fingerprint, Sparkles } from "lucide-react";
+import { BadgeCheck, Loader2, Fingerprint, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 /**
@@ -168,7 +167,7 @@ export function BiometricLock() {
                         animate={{ scale: 1, rotate: 0 }}
                         transition={{ type: "spring", stiffness: 200, damping: 15 }}
                       >
-                        <ShieldCheck className="h-10 w-10 text-green-500" />
+                        <BadgeCheck className="h-10 w-10 text-green-500" />
                       </motion.div>
                     ) : (
                       <motion.div
@@ -177,7 +176,7 @@ export function BiometricLock() {
                         animate={{ scale: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
                       >
-                        <ShieldCheck className="h-10 w-10 text-primary" />
+                        <BadgeCheck className="h-10 w-10 text-primary" />
                       </motion.div>
                     )}
                   </AnimatePresence>

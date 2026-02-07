@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo } from "react";
@@ -20,7 +19,7 @@ import {
   Zap,
   Target,
   TrendingUp,
-  ShieldCheck
+  BadgeCheck
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -93,11 +92,11 @@ export default function ParrainagePage() {
 
         {/* trust seal progress section */}
         <Card className="border-none bg-primary text-primary-foreground shadow-2xl rounded-[2.5rem] overflow-hidden relative">
-          <div className="absolute top-0 right-0 p-6 opacity-10"><ShieldCheck className="h-20 w-20" /></div>
+          <div className="absolute top-0 right-0 p-6 opacity-10"><BadgeCheck className="h-20 w-20" /></div>
           <CardContent className="p-8 space-y-6 relative z-10">
             <div className="flex items-center gap-4">
               <div className="h-12 w-12 bg-primary-foreground/10 rounded-2xl flex items-center justify-center shadow-inner">
-                <ShieldCheck className={cn("h-6 w-6", stats.awakened >= 10 ? "text-green-400" : "opacity-40")} />
+                <BadgeCheck className={cn("h-6 w-6", stats.awakened >= 10 ? "text-green-400" : "opacity-40")} />
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-black tracking-tight">Sceau de Confiance</h3>

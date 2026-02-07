@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState, useRef } from "react";
@@ -33,7 +32,7 @@ import {
   Scale,
   Settings,
   Zap,
-  ShieldCheck,
+  BadgeCheck,
   EyeOff,
   Loader2,
   ZapOff,
@@ -163,7 +162,7 @@ export default function ParametresPage() {
           {/* Section Sécurité */}
           <motion.section variants={itemVariants} className="space-y-4">
             <div className="flex items-center gap-3 pl-2">
-              <ShieldCheck className="h-4 w-4 text-primary opacity-60" />
+              <BadgeCheck className="h-4 w-4 text-primary opacity-60" />
               <h2 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Protection</h2>
             </div>
             <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden">
@@ -174,7 +173,7 @@ export default function ParametresPage() {
                 >
                   <div className="flex items-center gap-4">
                     <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
-                      <ShieldCheck className="h-5 w-5 text-primary opacity-60" />
+                      <BadgeCheck className="h-5 w-5 text-primary opacity-60" />
                     </div>
                     <div>
                       <p className="text-sm font-bold">Verrouillage Biométrique</p>

@@ -13,7 +13,7 @@ import {
   Palette, 
   Loader2, 
   Check,
-  ShieldCheck,
+  BadgeCheck,
   Star,
   Flame,
   Moon,
@@ -40,7 +40,7 @@ const STORE_ITEMS = [
     name: "Sceau de Confiance",
     description: "Accréditation officielle de l'Oracle. Augmente vos limites de flux et marque votre identité d'un sceau d'authenticité.",
     price: 5000,
-    icon: ShieldCheck,
+    icon: BadgeCheck,
     color: "text-primary",
     bg: "bg-primary/10",
   },
@@ -76,7 +76,7 @@ const STORE_ITEMS = [
     name: "Sceau de Protection",
     description: "Annule la pénalité de points en cas d'erreur.",
     price: 150,
-    icon: ShieldCheck,
+    icon: BadgeCheck,
     color: "text-green-500",
     bg: "bg-green-500/10",
     field: "shieldCount"
@@ -273,7 +273,7 @@ export default function EchoppePage() {
               const isOwned = profile?.trustBadge === true;
               return (
                 <Card key={item.id} className={cn("border-none bg-primary text-primary-foreground shadow-2xl rounded-[2.5rem] overflow-hidden relative group transition-all", isOwned && "opacity-50 grayscale")}>
-                  <div className="absolute top-0 right-0 p-6 opacity-10"><ShieldCheck className="h-24 w-24" /></div>
+                  <div className="absolute top-0 right-0 p-6 opacity-10"><BadgeCheck className="h-24 w-24" /></div>
                   <CardContent className="p-8 flex items-center gap-6 relative z-10">
                     <div className="h-16 w-16 bg-primary-foreground/10 rounded-[1.5rem] flex items-center justify-center shrink-0 border border-white/10 shadow-inner">
                       <item.icon className="h-8 w-8" />

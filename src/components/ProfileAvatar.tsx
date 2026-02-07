@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { User as UserIcon, ShieldCheck } from "lucide-react";
+import { User as UserIcon, BadgeCheck } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { getHonorTitle, getVisualTheme } from "@/lib/titles";
@@ -138,7 +138,7 @@ export function ProfileAvatar({
             badgeSizes[size]
           )}
         >
-          <ShieldCheck className="h-[60%] w-[60%]" />
+          <BadgeCheck className="h-[60%] w-[60%]" />
           <motion.div 
             animate={{ opacity: [0, 1, 0] }}
             transition={{ duration: 2, repeat: Infinity }}

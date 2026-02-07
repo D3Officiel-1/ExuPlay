@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -9,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
-  ShieldCheck, 
+  BadgeCheck, 
   Fingerprint, 
   Trash2, 
   Loader2, 
@@ -119,7 +118,7 @@ export default function SecuritePage() {
         <div className="space-y-6">
           <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden relative">
             <div className={`absolute top-0 right-0 p-8 opacity-5 transition-transform duration-1000 ${profile?.biometricEnabled ? 'scale-125 rotate-12' : ''}`}>
-              <ShieldCheck className="h-32 w-32" />
+              <BadgeCheck className="h-32 w-32" />
             </div>
             
             <CardHeader className="pt-10 px-8 text-center space-y-4">

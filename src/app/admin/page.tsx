@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -56,7 +55,7 @@ import {
   Edit3,
   Search,
   Sparkles,
-  ShieldCheck,
+  BadgeCheck,
   Zap,
   ArrowUpRight,
   CheckCircle2,
@@ -1254,7 +1253,7 @@ export default function AdminPage() {
               {/* Commandement de l'Esprit */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 pl-2">
-                  <ShieldCheck className="h-4 w-4 opacity-40" />
+                  <BadgeCheck className="h-4 w-4 opacity-40" />
                   <h3 className="text-[10px] font-black uppercase tracking-widest opacity-40">Commandement</h3>
                 </div>
                 <Card className="border-none bg-primary/5 rounded-[2rem] overflow-hidden">
