@@ -7,7 +7,7 @@ import { doc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ChevronLeft, Zap, Loader2, Sparkles, User, Trophy } from "lucide-react";
+import { ChevronLeft, Zap, Loader2, Sparkles, User, Trophy, Shield } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,101 @@ const DIRECTIONS = [
 ] as const;
 
 type Direction = typeof DIRECTIONS[number];
+
+/**
+ * @fileOverview OracleKeeper - Un personnage de gardien ultra stylé
+ * utilisant des strates d'animation Framer Motion pour une immersion totale.
+ */
+function OracleKeeper({ 
+  gameState, 
+  keeperChoice, 
+  isScored 
+}: { 
+  gameState: string, 
+  keeperChoice: Direction | null, 
+  isScored: boolean | null 
+}) {
+  const isIdle = gameState === 'idle';
+  const isResult = gameState === 'result';
+
+  return (
+    <div className="relative w-24 h-24 flex items-center justify-center">
+      {/* Aura de puissance de l'Oracle */}
+      <motion.div 
+        animate={{ 
+          scale: isIdle ? [1, 1.1, 1] : 1.2,
+          opacity: isIdle ? [0.2, 0.4, 0.2] : 0.6,
+          rotate: isIdle ? 0 : 180
+        }}
+        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+        className={cn(
+          "absolute inset-0 rounded-full blur-2xl -z-10 transition-colors duration-500",
+          isResult && !isScored ? "bg-red-500/30" : "bg-primary/20"
+        )}
+      />
+
+      {/* Corps Principal (Plastron) */}
+      <motion.div 
+        className="relative z-20 flex flex-col items-center"
+        animate={isIdle ? { y: [0, -5, 0] } : {}}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+      >
+        {/* Tête avec Visière */}
+        <motion.div className="w-10 h-10 bg-card rounded-2xl border-2 border-primary/20 flex flex-col items-center justify-center shadow-xl overflow-hidden relative mb-1">
+          <div className="w-full h-2 bg-primary/5 absolute top-2" />
+          {/* Yeux Visière Lumineuse */}
+          <motion.div 
+            animate={{ 
+              opacity: isIdle ? [0.4, 1, 0.4] : 1,
+              backgroundColor: isResult && isScored ? "hsl(var(--destructive))" : isResult && !isScored ? "#22c55e" : "hsl(var(--primary))"
+            }}
+            transition={{ duration: 2, repeat: isIdle ? Infinity : 0 }}
+            className="w-6 h-1 rounded-full shadow-[0_0_10px_currentColor]"
+          />
+        </motion.div>
+
+        {/* Buste / Plastron */}
+        <div className="w-14 h-16 bg-card rounded-[1.5rem] border-2 border-primary/10 shadow-2xl relative overflow-hidden flex items-center justify-center">
+          <Shield className="h-6 w-6 opacity-10" />
+          <motion.div 
+            animate={{ x: ["-100%", "200%"] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent skew-x-12"
+          />
+        </div>
+      </motion.div>
+
+      {/* Gants Détachés du Vide (Mains) */}
+      <AnimatePresence>
+        {(!isResult || (isResult && !isScored)) && (
+          <>
+            {/* Gant Gauche */}
+            <motion.div 
+              className="absolute -left-8 top-10 z-30"
+              animate={isIdle ? { y: [0, 5, 0], x: [0, -2, 0] } : { scale: 1.2, x: -10, y: -5 }}
+              transition={{ duration: 3, repeat: isIdle ? Infinity : 0 }}
+            >
+              <div className="w-8 h-8 bg-card rounded-xl border-2 border-primary/20 shadow-lg flex items-center justify-center">
+                <Zap className="h-4 w-4 text-primary opacity-40" />
+              </div>
+            </motion.div>
+
+            {/* Gant Droit */}
+            <motion.div 
+              className="absolute -right-8 top-10 z-30"
+              animate={isIdle ? { y: [0, 5, 0], x: [0, 2, 0] } : { scale: 1.2, x: 10, y: -5 }}
+              transition={{ duration: 3, repeat: isIdle ? Infinity : 0, delay: 0.5 }}
+            >
+              <div className="w-8 h-8 bg-card rounded-xl border-2 border-primary/20 shadow-lg flex items-center justify-center">
+                <Zap className="h-4 w-4 text-primary opacity-40" />
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 export default function PenaltiesPage() {
   const { user } = useUser();
@@ -109,7 +204,6 @@ export default function PenaltiesPage() {
         "À gauche": -115, "Centre": 0, "À droite": 115,
         "En bas à gauche": -115, "En bas": 0, "En bas à droite": 115
       };
-      // Coordonnées Y abaissées de nouveau de 20px (de -365 à -345 etc)
       const yMap: Record<Direction, number> = {
         "En haut à gauche": -345, "En haut": -345, "En haut à droite": -345,
         "À gauche": -275, "Centre": -275, "À droite": -275,
@@ -135,7 +229,6 @@ export default function PenaltiesPage() {
         "À gauche": -105, "Centre": 0, "À droite": 105,
         "En bas à gauche": -105, "En bas": 0, "En bas à droite": 105
       };
-      // Coordonnées Y du gardien synchronisées (abaissées de 20px)
       const yMap: Record<Direction, number> = {
         "En haut à gauche": -15, "En haut": -15, "En haut à droite": -15,
         "À gauche": 50, "Centre": 40, "À droite": 50,
@@ -239,12 +332,11 @@ export default function PenaltiesPage() {
               custom={keeperChoice}
               className="absolute top-[22%] left-1/2 z-20 origin-bottom"
             >
-              <div className={cn(
-                "h-20 w-20 bg-card rounded-[2.5rem] flex items-center justify-center border-4 shadow-2xl transition-all duration-500",
-                gameState === 'result' && !isScored ? "border-red-500 bg-red-500/10 scale-110" : "border-primary/10"
-              )}>
-                <User className={cn("h-12 w-12", gameState === 'result' && !isScored ? "text-red-500" : "opacity-40")} />
-              </div>
+              <OracleKeeper 
+                gameState={gameState} 
+                keeperChoice={keeperChoice} 
+                isScored={isScored} 
+              />
             </motion.div>
 
             <div className="absolute bottom-[15%] left-1/2 -translate-x-1/2 z-30">
