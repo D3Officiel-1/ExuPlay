@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useUser, useFirestore, useCollection, useDoc } from "@/firebase";
 import { 
   collection, 
@@ -68,6 +68,7 @@ export default function ConversionsAdminPage() {
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -204,6 +205,36 @@ export default function ConversionsAdminPage() {
     setSelectedExchange(exchange);
   };
 
+  const handleCopyPhone = async (phoneNumber: string) => {
+    if (!phoneNumber) return;
+    const cleanPhone = phoneNumber.replace("+225", "");
+    try {
+      await navigator.clipboard.writeText(cleanPhone);
+      haptic.medium();
+      toast({ title: "Numéro capturé", description: `${cleanPhone} prêt pour transfert.` });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Dissonance", description: "Échec de la capture." });
+    }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, phoneNumber: string) => {
+    e.preventDefault();
+    handleCopyPhone(phoneNumber);
+  };
+
+  const handleLongPressStart = (phoneNumber: string) => {
+    longPressTimer.current = setTimeout(() => {
+      handleCopyPhone(phoneNumber);
+    }, 600);
+  };
+
+  const handleLongPressEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
   if (authLoading || profileLoading || profile?.role !== 'admin') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -320,7 +351,11 @@ export default function ConversionsAdminPage() {
                     <TableRow 
                       key={ex.id} 
                       onClick={() => handleRowClick(ex)}
-                      className="border-primary/5 hover:bg-primary/5 transition-colors cursor-pointer"
+                      onContextMenu={(e) => handleContextMenu(e, ex.phoneNumber)}
+                      onPointerDown={() => handleLongPressStart(ex.phoneNumber)}
+                      onPointerUp={handleLongPressEnd}
+                      onPointerLeave={handleLongPressEnd}
+                      className="border-primary/5 hover:bg-primary/5 transition-colors cursor-pointer select-none"
                     >
                       <TableCell className="px-6 md:px-8 py-6">
                         <div className="flex flex-col gap-1">
