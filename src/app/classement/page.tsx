@@ -489,8 +489,8 @@ export default function ClassementPage() {
       </Dialog>
 
       <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
-        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-3xl border-white/5 rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
-          <div className="p-8 space-y-8">
+        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-3xl border-white/5 rounded-[2.5rem] p-0 overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
+          <div className="p-8 space-y-8 overflow-y-auto flex-1 no-scrollbar">
             <DialogHeader>
               <div className="space-y-1 text-center">
                 <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Action de Flux</p>
