@@ -8,12 +8,10 @@ import {
   doc, 
   serverTimestamp,
   query,
-  orderBy,
-  setDoc,
+  orderBy, 
   addDoc,
   deleteDoc,
   updateDoc,
-  increment,
   limit
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
@@ -41,6 +39,13 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
   Users, 
   BarChart3, 
   Loader2, 
@@ -48,9 +53,7 @@ import {
   Settings2,
   Plus,
   Trash2,
-  Brain,
   Edit3,
-  User,
   Search,
   Sparkles,
   ShieldCheck,
@@ -60,7 +63,6 @@ import {
   ArrowUpRight,
   CheckCircle2,
   Circle,
-  X,
   Save,
   Wand2,
   Calendar,
@@ -71,7 +73,9 @@ import {
   Database,
   Banknote,
   Activity,
-  Trophy
+  Trophy,
+  Copy,
+  Filter
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -83,9 +87,7 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
-  XAxis,
-  BarChart,
-  Bar
+  XAxis
 } from 'recharts';
 import { AnimatePresence, motion } from "framer-motion";
 import { format } from "date-fns";
@@ -123,6 +125,7 @@ export default function AdminPage() {
 
   const [quizSearch, setQuizSearch] = useState("");
   const [userSearch, setUserSearch] = useState("");
+  const [pointsFilter, setPointsFilter] = useState("all");
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -162,7 +165,6 @@ export default function AdminPage() {
   const { data: recentTransfers } = useCollection(transfersQuery);
   const { data: exchanges, loading: exchangesLoading } = useCollection(exchangesQuery);
 
-  // Calcul des métriques globales
   const globalMetrics = useMemo(() => {
     if (!users || !quizzes || !exchanges) return { totalUsers: 0, totalPoints: 0, totalQuizzes: 0, pendingExchanges: 0, totalExchangedFCFA: 0 };
     
@@ -191,10 +193,21 @@ export default function AdminPage() {
 
   const filteredQuizzes = useMemo(() => {
     if (!quizzes) return [];
+    let result = quizzes;
+    
     const q = quizSearch.toLowerCase().trim();
-    if (!q) return quizzes;
-    return quizzes.filter(quiz => quiz.question.toLowerCase().includes(q));
-  }, [quizzes, quizSearch]);
+    if (q) {
+      result = result.filter(quiz => quiz.question.toLowerCase().includes(q));
+    }
+
+    if (pointsFilter !== "all") {
+      if (pointsFilter === "low") result = result.filter(quiz => quiz.points <= 3);
+      else if (pointsFilter === "med") result = result.filter(quiz => quiz.points > 3 && quiz.points <= 7);
+      else if (pointsFilter === "high") result = result.filter(quiz => quiz.points > 7);
+    }
+
+    return result;
+  }, [quizzes, quizSearch, pointsFilter]);
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
@@ -209,7 +222,6 @@ export default function AdminPage() {
   const chartData = useMemo(() => {
     if (!users) return [];
     const groups: Record<string, number> = {};
-    // Prendre les 30 derniers jours pour plus de granularité si possible
     users.slice(0, 20).reverse().forEach(u => {
       const date = u.createdAt ? new Date(u.createdAt.toDate()).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : 'N/A';
       groups[date] = (groups[date] || 0) + 1;
@@ -359,6 +371,25 @@ export default function AdminPage() {
     }
   };
 
+  const handleDuplicateQuiz = async (e: React.MouseEvent, q: any) => {
+    e.stopPropagation();
+    if (!db) return;
+    haptic.medium();
+    try {
+      await addDoc(collection(db, "quizzes"), {
+        question: `${q.question} (Copie)`,
+        options: [...q.options],
+        correctIndex: q.correctIndex,
+        points: q.points,
+        playedCount: 0,
+        createdAt: serverTimestamp()
+      });
+      toast({ title: "Défi dupliqué avec succès" });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Erreur de résonance" });
+    }
+  };
+
   const handleSelectQuiz = (q: any) => {
     haptic.light();
     setSelectedQuizForView(q);
@@ -448,7 +479,6 @@ export default function AdminPage() {
           </TabsList>
 
           <TabsContent value="stats" className="space-y-6">
-            {/* Cartes de métriques globales */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
                 { label: "Esprits", value: globalMetrics.totalUsers, icon: Users, color: "text-blue-500" },
@@ -469,7 +499,6 @@ export default function AdminPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              {/* Graphique de croissance */}
               <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2rem]">
                 <CardHeader className="p-6 pb-2">
                   <div className="flex items-center justify-between">
@@ -487,17 +516,12 @@ export default function AdminPage() {
                         </linearGradient>
                       </defs>
                       <XAxis dataKey="date" hide />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '1rem', border: '1px solid hsl(var(--primary)/0.1)' }}
-                        itemStyle={{ color: 'hsl(var(--primary))', fontWeight: 'bold' }}
-                      />
                       <Area type="monotone" dataKey="count" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorCount)" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
 
-              {/* Top Spirits (Nouvelle fonction) */}
               <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2rem]">
                 <CardHeader className="p-6 pb-2">
                   <div className="flex items-center justify-between">
@@ -520,61 +544,18 @@ export default function AdminPage() {
                   ))}
                 </CardContent>
               </Card>
-
-              {/* Résonance Financière (Nouvelle fonction) */}
-              <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2rem]">
-                <CardHeader className="p-6 pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-[10px] font-black uppercase tracking-widest opacity-40">Résonance de Prospérité</CardTitle>
-                    <Banknote className="h-4 w-4 opacity-20 text-green-500" />
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6 pt-4 flex flex-col items-center justify-center space-y-4">
-                  <div className="text-center space-y-1">
-                    <p className="text-4xl font-black text-primary">{globalMetrics.totalExchangedFCFA.toLocaleString()} <span className="text-[10px] opacity-40">FCFA</span></p>
-                    <p className="text-[9px] font-black uppercase tracking-widest opacity-30">Matérialisés au total</p>
-                  </div>
-                  <div className="w-full h-px bg-primary/5" />
-                  <div className="grid grid-cols-2 gap-4 w-full">
-                    <div className="text-center">
-                      <p className="text-lg font-black text-orange-500">{globalMetrics.pendingExchanges}</p>
-                      <p className="text-[8px] font-black uppercase tracking-widest opacity-30">En attente</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-lg font-black text-blue-500">{(globalMetrics.totalPoints / (globalMetrics.totalUsers || 1)).toFixed(0)}</p>
-                      <p className="text-[8px] font-black uppercase tracking-widest opacity-30">Points/Esprit</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Échanges Récents (Flux global) */}
-              <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2rem]">
-                <CardHeader className="p-6 pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-[10px] font-black uppercase tracking-widest opacity-40">Flux des Transmissions</CardTitle>
-                    <Zap className="h-4 w-4 opacity-20" />
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6 pt-0 space-y-3 overflow-y-auto max-h-[180px]">
-                  {recentTransfers?.map(t => (
-                    <div key={t.id} className="flex items-center justify-between p-2 bg-background/40 rounded-xl border border-primary/5">
-                      <div className="flex items-center gap-2">
-                        <Zap className="h-3 w-3 text-primary opacity-40" />
-                        <span className="text-[10px] font-bold truncate max-w-[80px]">@{t.fromName}</span>
-                      </div>
-                      <span className="text-[10px] font-black">+{t.amount} PTS</span>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
             </div>
           </TabsContent>
 
           <TabsContent value="quizzes" className="space-y-6 md:space-y-8">
-            <div className="flex flex-col gap-4 px-1">
+            <div className="flex flex-col gap-6 px-1">
               <div className="flex justify-between items-center">
-                <h3 className="text-xs font-black uppercase tracking-widest opacity-40">Base de Données</h3>
+                <div className="flex items-center gap-3">
+                  <h3 className="text-xs font-black uppercase tracking-widest opacity-40">Base de Données</h3>
+                  <div className="bg-primary/5 px-2 py-0.5 rounded-full border border-primary/5">
+                    <span className="text-[10px] font-black text-primary">{quizzes?.length || 0} DÉFIS</span>
+                  </div>
+                </div>
                 <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                   <DialogTrigger asChild>
                     <Button onClick={() => haptic.light()} className="h-10 px-4 rounded-2xl font-black text-xs uppercase tracking-widest gap-2">
@@ -627,36 +608,89 @@ export default function AdminPage() {
                   </DialogContent>
                 </Dialog>
               </div>
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-40" />
-                <Input placeholder="Rechercher une question..." className="pl-12 h-12 bg-card/20 border-none rounded-2xl" value={quizSearch} onChange={(e) => setQuizSearch(e.target.value)} />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-40" />
+                  <Input placeholder="Rechercher une question..." className="pl-12 h-12 bg-card/20 border-none rounded-2xl" value={quizSearch} onChange={(e) => setQuizSearch(e.target.value)} />
+                </div>
+                <div className="flex items-center gap-3">
+                  <Filter className="h-4 w-4 opacity-40 shrink-0" />
+                  <Select value={pointsFilter} onValueChange={setPointsFilter}>
+                    <SelectTrigger className="h-12 rounded-2xl bg-card/20 border-none px-6 font-bold">
+                      <SelectValue placeholder="Difficulté" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card/95 backdrop-blur-2xl rounded-2xl border-primary/5">
+                      <SelectItem value="all" className="font-bold">Toute intensité</SelectItem>
+                      <SelectItem value="low" className="font-bold text-blue-500">Faible (0-3 PTS)</SelectItem>
+                      <SelectItem value="med" className="font-bold text-yellow-500">Modérée (4-7 PTS)</SelectItem>
+                      <SelectItem value="high" className="font-bold text-red-500">Élevée (8-10 PTS)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
+
             <div className="space-y-4">
               {quizzesLoading ? <div className="flex justify-center p-16"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div> : (
                 <div className="grid gap-4">
-                  {filteredQuizzes.map(q => (
-                    <Card 
-                      key={q.id} 
-                      onClick={() => handleSelectQuiz(q)}
-                      className="border-none bg-card/20 backdrop-blur-3xl rounded-2xl group hover:bg-card/40 transition-all cursor-pointer"
-                    >
-                      <CardContent className="p-4 flex items-center justify-between gap-4">
-                        <div className="space-y-1 flex-1 overflow-hidden">
-                          <p className="text-sm font-black line-clamp-2">{q.question}</p>
-                          <p className="text-[10px] font-bold opacity-30 uppercase">{q.points} PTS • {q.playedCount || 0}/3 VUES</p>
-                        </div>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={(e) => { e.stopPropagation(); haptic.medium(); deleteDoc(doc(db, "quizzes", q.id)); }} 
-                          className="h-10 w-10 text-destructive rounded-xl"
+                  <AnimatePresence mode="popLayout">
+                    {filteredQuizzes.map(q => {
+                      const difficultyColor = q.points <= 3 ? "text-blue-500" : q.points <= 7 ? "text-yellow-500" : "text-red-500";
+                      return (
+                        <motion.div
+                          key={q.id}
+                          layout
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
                         >
-                          <Trash2 className="h-5 w-5" />
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
+                          <Card 
+                            onClick={() => handleSelectQuiz(q)}
+                            className="border-none bg-card/20 backdrop-blur-3xl rounded-2xl group hover:bg-card/40 transition-all cursor-pointer overflow-hidden relative"
+                          >
+                            <div className={cn("absolute left-0 top-0 bottom-0 w-1", difficultyColor.replace('text-', 'bg-'))} />
+                            <CardContent className="p-4 flex items-center justify-between gap-4">
+                              <div className="space-y-1 flex-1 overflow-hidden ml-2">
+                                <p className="text-sm font-black line-clamp-2">{q.question}</p>
+                                <div className="flex items-center gap-3">
+                                  <div className={cn("flex items-center gap-1 font-black text-[9px] uppercase", difficultyColor)}>
+                                    <Zap className="h-3 w-3" />
+                                    {q.points} PTS
+                                  </div>
+                                  <span className="text-[9px] font-bold opacity-30 uppercase">{q.playedCount || 0} RÉSONANCES</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={(e) => handleDuplicateQuiz(e, q)}
+                                  className="h-10 w-10 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl hover:bg-primary/5"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={(e) => { e.stopPropagation(); haptic.medium(); deleteDoc(doc(db, "quizzes", q.id)); }} 
+                                  className="h-10 w-10 text-destructive rounded-xl hover:bg-destructive/5"
+                                >
+                                  <Trash2 className="h-5 w-5" />
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                  {filteredQuizzes.length === 0 && (
+                    <div className="py-20 text-center opacity-20 space-y-4">
+                      <Search className="h-12 w-12 mx-auto" />
+                      <p className="text-xs font-black uppercase tracking-widest">Aucun défi ne résonne ici</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -703,7 +737,7 @@ export default function AdminPage() {
                       placeholder="Entrez le message à afficher aux esprits..." 
                       className="min-h-[80px] rounded-2xl bg-background/50 border-primary/10"
                       value={maintenanceMessageInput}
-                      onChange={(e) => setMaintenanceMessageInput(target.value)}
+                      onChange={(e) => setMaintenanceMessageInput(e.target.value)}
                     />
                   </div>
 
@@ -790,7 +824,6 @@ export default function AdminPage() {
         </Tabs>
       </main>
 
-      {/* Dialogue de consultation et modification du défi */}
       <Dialog open={!!selectedQuizForView} onOpenChange={(open) => !open && (setSelectedQuizForView(null), setIsEditingQuiz(false))}>
         <DialogContent className="sm:max-w-[600px] bg-card/95 backdrop-blur-2xl rounded-[2.5rem] p-8 max-h-[90vh] overflow-y-auto border-none">
           <DialogHeader>
@@ -831,11 +864,23 @@ export default function AdminPage() {
                   >
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">La Question</Label>
-                      <Textarea 
-                        className="min-h-[120px] rounded-2xl bg-primary/5 border-none text-lg font-bold p-6"
-                        value={editedQuiz?.question}
-                        onChange={e => setEditedQuiz({...editedQuiz, question: e.target.value})}
-                      />
+                      <div className="relative">
+                        <Textarea 
+                          className="min-h-[120px] rounded-2xl bg-primary/5 border-none text-lg font-bold p-6 pr-12"
+                          value={editedQuiz?.question}
+                          onChange={e => setEditedQuiz({...editedQuiz, question: e.target.value})}
+                        />
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleAiGenerate(true)} 
+                          disabled={isGenerating}
+                          className="absolute right-4 bottom-4 h-8 w-8 rounded-lg bg-background shadow-sm border border-primary/5"
+                        >
+                          <Wand2 className="h-4 w-4 text-primary" />
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="space-y-4">
@@ -923,18 +968,28 @@ export default function AdminPage() {
                         </div>
                       </div>
                       
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => {
-                          haptic.medium();
-                          deleteDoc(doc(db, "quizzes", selectedQuizForView.id));
-                          setSelectedQuizForView(null);
-                        }}
-                        className="h-12 w-12 rounded-2xl text-destructive hover:bg-destructive/5"
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={(e) => handleDuplicateQuiz(e, selectedQuizForView)}
+                          className="h-12 w-12 rounded-2xl hover:bg-primary/5"
+                        >
+                          <Copy className="h-5 w-5" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => {
+                            haptic.medium();
+                            deleteDoc(doc(db, "quizzes", selectedQuizForView.id));
+                            setSelectedQuizForView(null);
+                          }}
+                          className="h-12 w-12 rounded-2xl text-destructive hover:bg-destructive/5"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </Button>
+                      </div>
                     </div>
                   </motion.div>
                 )}
@@ -982,7 +1037,6 @@ export default function AdminPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialogue de consultation de l'esprit (Utilisateur) */}
       <Dialog open={!!selectedUserForView} onOpenChange={(open) => !open && setSelectedUserForView(null)}>
         <DialogContent className="sm:max-w-[500px] bg-card/95 backdrop-blur-2xl rounded-[2.5rem] p-8 max-h-[90vh] overflow-y-auto border-none">
           <DialogHeader>
