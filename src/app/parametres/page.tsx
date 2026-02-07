@@ -26,7 +26,6 @@ import {
   EyeOff,
   LogOut,
   Loader2,
-  Volume2,
   ZapOff,
   Eye
 } from "lucide-react";
@@ -157,23 +156,6 @@ export default function ParametresPage() {
             </div>
             <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden">
               <CardContent className="p-4 space-y-1">
-                {/* Sons */}
-                <div className="flex items-center justify-between p-3 rounded-2xl">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
-                      <Volume2 className="h-5 w-5 text-primary opacity-60" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold">Sons du Sanctuaire</p>
-                      <p className="text-[10px] opacity-40 font-medium">Effets audio d'ambiance</p>
-                    </div>
-                  </div>
-                  <Switch 
-                    checked={profile?.soundsEnabled ?? true} 
-                    onCheckedChange={(checked) => handleUpdateSetting('soundsEnabled', checked)} 
-                  />
-                </div>
-
                 {/* Animations (Eco mode) */}
                 <div className="flex items-center justify-between p-3 rounded-2xl">
                   <div className="flex items-center gap-4">
