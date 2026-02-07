@@ -54,24 +54,49 @@ function ColorInjector() {
   const { data: profile } = useDoc(userDocRef);
 
   const cssVariables = useMemo(() => {
-    if (!profile?.customColor || profile.customColor === 'default') return "";
+    let styles = "";
     
-    // Si c'est une couleur personnalisée (Hex)
-    try {
-      const hsl = hexToHsl(profile.customColor);
-      const contrast = getContrastColor(profile.customColor);
-      
-      return `
-        :root, .dark {
+    // Aura Primaire
+    if (profile?.customColor && profile.customColor !== 'default') {
+      try {
+        const hsl = hexToHsl(profile.customColor);
+        const contrast = getContrastColor(profile.customColor);
+        styles += `
           --primary: ${hsl.toString};
           --primary-foreground: ${contrast};
           --ring: ${hsl.toString};
-        }
-      `;
-    } catch (e) {
-      return "";
+        `;
+      } catch (e) {}
     }
-  }, [profile?.customColor]);
+
+    // Fond du Sanctuaire
+    if (profile?.customBgColor && profile.customBgColor !== 'default') {
+      try {
+        const hsl = hexToHsl(profile.customBgColor);
+        const contrast = getContrastColor(profile.customBgColor);
+        styles += `
+          --background: ${hsl.toString};
+          --foreground: ${contrast};
+          --card: ${hsl.toString};
+          --card-foreground: ${contrast};
+          --popover: ${hsl.toString};
+          --popover-foreground: ${contrast};
+          --muted: ${hsl.toString};
+          --muted-foreground: ${contrast};
+          --accent: ${hsl.toString};
+          --accent-foreground: ${contrast};
+        `;
+      } catch (e) {}
+    }
+
+    if (!styles) return "";
+    
+    return `
+      :root, .dark {
+        ${styles}
+      }
+    `;
+  }, [profile?.customColor, profile?.customBgColor]);
 
   if (!cssVariables) return null;
 

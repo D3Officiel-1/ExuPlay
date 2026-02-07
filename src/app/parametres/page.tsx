@@ -20,6 +20,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { 
+  Tabs, 
+  TabsContent, 
+  TabsList, 
+  TabsTrigger 
+} from "@/components/ui/tabs";
+import { 
   Moon, 
   Sun, 
   Monitor, 
@@ -38,7 +44,8 @@ import {
   Sparkles,
   Check,
   Pipette,
-  RotateCcw
+  RotateCcw,
+  Layout
 } from "lucide-react";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
@@ -55,11 +62,14 @@ export default function ParametresPage() {
   const router = useRouter();
   const { toast } = useToast();
   const colorInputRef = useRef<HTMLInputElement>(null);
+  const bgColorInputRef = useRef<HTMLInputElement>(null);
   
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isColorDialogOpen, setIsColorDialogOpen] = useState(false);
   const [isUpdatingColor, setIsUpdatingColor] = useState(false);
   const [pendingColor, setPendingColor] = useState<string | null>(null);
+  const [pendingBgColor, setPendingBgColor] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("aura");
   
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -92,17 +102,21 @@ export default function ParametresPage() {
     handleUpdateSetting('theme', newTheme);
   };
 
-  const handleColorSelect = async (hex: string) => {
+  const handleApplyColor = async (type: 'aura' | 'bg', hex: string) => {
     if (!userDocRef || isUpdatingColor) return;
     haptic.medium();
     setIsUpdatingColor(true);
+    
+    const field = type === 'aura' ? 'customColor' : 'customBgColor';
+    
     try {
       await updateDoc(userDocRef, {
-        customColor: hex,
+        [field]: hex,
         updatedAt: serverTimestamp()
       });
-      toast({ title: "Harmonie mise à jour", description: "L'aura a été infusée avec succès." });
-      setPendingColor(null);
+      toast({ title: "Harmonie mise à jour", description: "L'essence a été infusée avec succès." });
+      if (type === 'aura') setPendingColor(null);
+      else setPendingBgColor(null);
     } catch (e) {
       toast({ variant: "destructive", title: "Dissonance" });
     } finally {
@@ -140,7 +154,10 @@ export default function ParametresPage() {
   };
 
   const currentColor = profile?.customColor || 'default';
-  const displayColor = pendingColor || (currentColor === 'default' ? '#000000' : currentColor);
+  const currentBgColor = profile?.customBgColor || 'default';
+  
+  const displayAuraColor = pendingColor || (currentColor === 'default' ? '#000000' : currentColor);
+  const displayBgColor = pendingBgColor || (currentBgColor === 'default' ? '#ffffff' : currentBgColor);
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
@@ -195,7 +212,7 @@ export default function ParametresPage() {
             </div>
             <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden">
               <CardContent className="p-4 space-y-1">
-                {/* Harmonie de l'Aura */}
+                {/* Harmonie Visuelle */}
                 <div className="flex items-center justify-between p-3 rounded-2xl group hover:bg-primary/5 transition-colors cursor-pointer" onClick={() => { haptic.light(); setIsColorDialogOpen(true); }}>
                   <div className="flex items-center gap-4">
                     <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center relative overflow-hidden">
@@ -208,10 +225,8 @@ export default function ParametresPage() {
                       )}
                     </div>
                     <div>
-                      <p className="text-sm font-bold">Harmonie de l'Aura</p>
-                      <p className="text-[10px] opacity-40 font-medium">
-                        {currentColor === 'default' ? "Esthétique Puriste" : "Nuance Personnalisée"}
-                      </p>
+                      <p className="text-sm font-bold">Harmonie de l'Esprit</p>
+                      <p className="text-[10px] opacity-40 font-medium">Aura & Fond personnalisés</p>
                     </div>
                   </div>
                   <ChevronRight className="h-4 w-4 opacity-20 group-hover:opacity-60 transition-opacity" />
@@ -338,7 +353,7 @@ export default function ParametresPage() {
                     </div>
                     <div>
                       <p className="text-sm font-bold">Version de l'Éveil</p>
-                      <p className="text-[10px] opacity-40 font-medium tracking-widest uppercase">2.3.0 - Quantum Flux</p>
+                      <p className="text-[10px] opacity-40 font-medium tracking-widest uppercase">2.4.0 - Chroma Flux</p>
                     </div>
                   </div>
                 </div>
@@ -367,94 +382,122 @@ export default function ParametresPage() {
         </motion.div>
       </main>
 
-      {/* Dialogue de sélection de couleur LIBRE */}
+      {/* Dialogue de sélection de couleur avec Onglets */}
       <Dialog open={isColorDialogOpen} onOpenChange={setIsColorDialogOpen}>
         <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-3xl border-white/5 rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
-          <div className="p-8 space-y-10">
+          <div className="p-8 space-y-8">
             <DialogHeader>
               <div className="space-y-1 text-center">
-                <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Personnalisation</p>
-                <DialogTitle className="text-2xl font-black tracking-tight italic">Harmonie de l'Aura</DialogTitle>
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Harmonisation</p>
+                <DialogTitle className="text-2xl font-black tracking-tight italic">Nuances de l'Esprit</DialogTitle>
               </div>
             </DialogHeader>
 
-            <div className="space-y-8 flex flex-col items-center">
-              {/* Cristal de prévisualisation */}
-              <div className="relative">
-                <motion.div 
-                  animate={{ 
-                    scale: [1, 1.1, 1],
-                    rotate: [0, 5, -5, 0]
-                  }}
-                  transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-                  className="h-32 w-32 rounded-[3rem] shadow-2xl border-4 border-white/10 flex items-center justify-center relative overflow-hidden"
-                  style={{ backgroundColor: displayColor }}
-                >
-                  <Sparkles className="h-12 w-12 text-white mix-blend-difference opacity-40" />
-                  <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent pointer-events-none" />
-                </motion.div>
-                <motion.div 
-                  animate={{ opacity: [0.2, 0.5, 0.2], scale: [1, 1.3, 1] }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                  className="absolute inset-0 blur-3xl -z-10 rounded-full"
-                  style={{ backgroundColor: displayColor }}
-                />
-              </div>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid grid-cols-2 bg-primary/5 p-1 h-12 rounded-xl mb-8">
+                <TabsTrigger value="aura" className="rounded-lg font-black text-[10px] uppercase tracking-widest gap-2">
+                  <Zap className="h-3 w-3" /> Aura Primaire
+                </TabsTrigger>
+                <TabsTrigger value="bg" className="rounded-lg font-black text-[10px] uppercase tracking-widest gap-2">
+                  <Layout className="h-3 w-3" /> Fond Principal
+                </TabsTrigger>
+              </TabsList>
 
-              {/* Sélecteur de couleur */}
-              <div className="w-full space-y-6">
-                <div className="grid grid-cols-6 gap-3">
-                  {PRESET_COLORS.map((color) => (
+              <div className="space-y-8 flex flex-col items-center">
+                {/* Cristal de prévisualisation dynamique */}
+                <div className="relative">
+                  <motion.div 
+                    animate={{ 
+                      scale: [1, 1.1, 1],
+                      rotate: [0, 5, -5, 0]
+                    }}
+                    transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                    className="h-32 w-32 rounded-[3rem] shadow-2xl border-4 border-white/10 flex items-center justify-center relative overflow-hidden"
+                    style={{ backgroundColor: activeTab === 'aura' ? displayAuraColor : displayBgColor }}
+                  >
+                    <Sparkles className="h-12 w-12 text-white mix-blend-difference opacity-40" />
+                    <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent pointer-events-none" />
+                  </motion.div>
+                  <motion.div 
+                    animate={{ opacity: [0.2, 0.5, 0.2], scale: [1, 1.3, 1] }}
+                    transition={{ duration: 3, repeat: Infinity }}
+                    className="absolute inset-0 blur-3xl -z-10 rounded-full"
+                    style={{ backgroundColor: activeTab === 'aura' ? displayAuraColor : displayBgColor }}
+                  />
+                </div>
+
+                <TabsContent value="aura" className="w-full m-0 space-y-6">
+                  <div className="grid grid-cols-6 gap-3">
+                    {PRESET_COLORS.map((color) => (
+                      <button
+                        key={color.id}
+                        onClick={() => { haptic.light(); setPendingColor(color.hex); }}
+                        className={cn(
+                          "h-8 w-8 rounded-full border-2 transition-all",
+                          displayAuraColor === color.hex ? "border-primary scale-125 shadow-lg" : "border-transparent opacity-60 hover:opacity-100"
+                        )}
+                        style={{ backgroundColor: color.hex }}
+                      />
+                    ))}
                     <button
-                      key={color.id}
-                      onClick={() => { haptic.light(); setPendingColor(color.hex); }}
-                      className={cn(
-                        "h-8 w-8 rounded-full border-2 transition-all",
-                        displayColor === color.hex ? "border-primary scale-125 shadow-lg" : "border-transparent opacity-60 hover:opacity-100"
-                      )}
-                      style={{ backgroundColor: color.hex }}
-                    />
-                  ))}
-                  <button
-                    onClick={() => colorInputRef.current?.click()}
-                    className="h-8 w-8 rounded-full bg-primary/5 border-2 border-dashed border-primary/20 flex items-center justify-center hover:bg-primary/10 transition-colors"
-                  >
-                    <Pipette className="h-4 w-4 opacity-40" />
-                  </button>
-                </div>
+                      onClick={() => colorInputRef.current?.click()}
+                      className="h-8 w-8 rounded-full bg-primary/5 border-2 border-dashed border-primary/20 flex items-center justify-center hover:bg-primary/10"
+                    >
+                      <Pipette className="h-4 w-4 opacity-40" />
+                    </button>
+                  </div>
+                  <input type="color" ref={colorInputRef} value={displayAuraColor} onChange={(e) => setPendingColor(e.target.value)} className="sr-only" />
+                  
+                  <div className="flex gap-3">
+                    <Button variant="outline" onClick={() => handleApplyColor('aura', 'default')} disabled={currentColor === 'default' || isUpdatingColor} className="flex-1 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2">
+                      <RotateCcw className="h-4 w-4" /> Reset
+                    </Button>
+                    <Button onClick={() => handleApplyColor('aura', displayAuraColor)} disabled={isUpdatingColor || displayAuraColor === currentColor} className="flex-[2] h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2 shadow-xl">
+                      {isUpdatingColor ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                      Appliquer Aura
+                    </Button>
+                  </div>
+                </TabsContent>
 
-                <input 
-                  type="color" 
-                  ref={colorInputRef}
-                  value={displayColor}
-                  onChange={(e) => setPendingColor(e.target.value)}
-                  className="sr-only"
-                />
-
-                <div className="flex gap-3">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => handleColorSelect('default')}
-                    disabled={currentColor === 'default' || isUpdatingColor}
-                    className="flex-1 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2"
-                  >
-                    <RotateCcw className="h-4 w-4" /> Puriste
-                  </Button>
-                  <Button 
-                    onClick={() => handleColorSelect(displayColor)}
-                    disabled={isUpdatingColor || displayColor === currentColor}
-                    className="flex-[2] h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2 shadow-xl"
-                  >
-                    {isUpdatingColor ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                    Infuser l'Aura
-                  </Button>
-                </div>
+                <TabsContent value="bg" className="w-full m-0 space-y-6">
+                  <div className="grid grid-cols-6 gap-3">
+                    {/* Presets pour le fond (plus neutres) */}
+                    {['#ffffff', '#f8fafc', '#f1f5f9', '#0f172a', '#020617', '#000000'].map((hex) => (
+                      <button
+                        key={hex}
+                        onClick={() => { haptic.light(); setPendingBgColor(hex); }}
+                        className={cn(
+                          "h-8 w-8 rounded-full border-2 transition-all",
+                          displayBgColor === hex ? "border-primary scale-125 shadow-lg" : "border-primary/5 hover:opacity-100"
+                        )}
+                        style={{ backgroundColor: hex }}
+                      />
+                    ))}
+                    <button
+                      onClick={() => bgColorInputRef.current?.click()}
+                      className="h-8 w-8 rounded-full bg-primary/5 border-2 border-dashed border-primary/20 flex items-center justify-center hover:bg-primary/10"
+                    >
+                      <Pipette className="h-4 w-4 opacity-40" />
+                    </button>
+                  </div>
+                  <input type="color" ref={bgColorInputRef} value={displayBgColor} onChange={(e) => setPendingBgColor(e.target.value)} className="sr-only" />
+                  
+                  <div className="flex gap-3">
+                    <Button variant="outline" onClick={() => handleApplyColor('bg', 'default')} disabled={currentBgColor === 'default' || isUpdatingColor} className="flex-1 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2">
+                      <RotateCcw className="h-4 w-4" /> Reset
+                    </Button>
+                    <Button onClick={() => handleApplyColor('bg', displayBgColor)} disabled={isUpdatingColor || displayBgColor === currentBgColor} className="flex-[2] h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2 shadow-xl">
+                      {isUpdatingColor ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                      Appliquer Fond
+                    </Button>
+                  </div>
+                </TabsContent>
               </div>
-            </div>
+            </Tabs>
 
             <div className="p-6 bg-primary/5 rounded-[2rem] border border-primary/5">
               <p className="text-[10px] leading-relaxed font-medium opacity-40 text-center italic">
-                "Choisissez une vibration qui résonne avec votre esprit intérieur."
+                "Harmonisez votre espace pour qu'il résonne avec votre quête de Lumière."
               </p>
             </div>
 
