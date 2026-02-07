@@ -272,8 +272,7 @@ export default function PenaltiesPage() {
       case "En haut": return "top-0 left-1/3 w-[33.33%]";
       case "En haut à droite": return "top-0 right-0";
       case "À gauche": return "top-1/3 left-0 h-[33.33%]";
-      // Ajustement : Légèrement à gauche (left 36% -> 34%) et en bas (top 17.5% -> 20%)
-      case "Centre": return "top-[20%] left-[34%] w-[28%] h-[50%] z-[70]";
+      case "Centre": return "top-1/3 left-1/3 z-[70]";
       case "À droite": return "top-1/3 right-0 h-[33.33%]";
       case "En bas à gauche": return "bottom-0 left-0";
       case "En bas": return "bottom-0 left-1/3 w-[33.33%]";
