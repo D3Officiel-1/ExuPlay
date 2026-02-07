@@ -28,48 +28,60 @@ import { hexToHsl, hexToRgb, getContrastColor } from "@/lib/colors";
 /**
  * @fileOverview Oracle de la Symbiose Système.
  * Synchronise la couleur de la barre d'état et de navigation du système avec le fond de l'app.
- * Gère l'immersion totale sur Android (Status & Nav bar) et iOS.
+ * Écoute en temps réel les changements de thème, de profil et de navigation.
  */
 function SystemBarSync() {
   const { resolvedTheme } = useTheme();
   const { user } = useUser();
   const db = useFirestore();
+  const pathname = usePathname();
+  
   const userDocRef = useMemo(() => (db && user?.uid) ? doc(db, "users", user.uid) : null, [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
 
   useEffect(() => {
-    // Déterminer la couleur de fond actuelle du Sanctuaire
-    let bgColor = "#ffffff"; // Défaut clair
-    
-    if (profile?.customBgColor && profile.customBgColor !== 'default') {
-      bgColor = profile.customBgColor;
-    } else {
-      bgColor = resolvedTheme === 'dark' ? "#000000" : "#ffffff";
-    }
+    const applySync = () => {
+      // On récupère la couleur de fond réelle appliquée au body
+      // Cela permet de supporter les changements via thèmes, profils ou styles injectés
+      const computedBg = window.getComputedStyle(document.body).backgroundColor;
+      
+      // 1. Mise à jour du Theme Color (Barre de statut & Barre de navigation Android)
+      let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+      if (!metaThemeColor) {
+        metaThemeColor = document.createElement('meta');
+        metaThemeColor.setAttribute('name', 'theme-color');
+        document.head.appendChild(metaThemeColor);
+      }
+      metaThemeColor.setAttribute('content', computedBg);
 
-    // 1. Mise à jour du Theme Color (Barre de statut haute & Barre de navigation basse Android)
-    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    if (!metaThemeColor) {
-      metaThemeColor = document.createElement('meta');
-      metaThemeColor.setAttribute('name', 'theme-color');
-      document.head.appendChild(metaThemeColor);
-    }
-    metaThemeColor.setAttribute('content', bgColor);
+      // 2. Spécificités iOS pour la barre d'état
+      let metaApple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+      if (!metaApple) {
+        metaApple = document.createElement('meta');
+        metaApple.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
+        document.head.appendChild(metaApple);
+      }
+      metaApple.setAttribute('content', 'default');
+    };
 
-    // 2. Spécificités iOS pour la barre d'état (Status Bar)
-    let metaApple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-    if (!metaApple) {
-      metaApple = document.createElement('meta');
-      metaApple.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
-      document.head.appendChild(metaApple);
-    }
-    // 'default' permet à Safari d'utiliser la couleur définie dans theme-color ou de s'adapter au thème
-    metaApple.setAttribute('content', 'default');
+    // Exécution immédiate lors du montage ou changement de dépendances
+    applySync();
 
-    // 3. Force la couleur de fond du body pour aider les navigateurs à intégrer les bordures système
-    document.body.style.backgroundColor = bgColor;
+    // Observer pour détecter les changements de style/classe sur le body en temps réel
+    const observer = new MutationObserver(applySync);
+    observer.observe(document.body, { 
+      attributes: true, 
+      attributeFilter: ['style', 'class'] 
+    });
 
-  }, [resolvedTheme, profile?.customBgColor]);
+    // Sécurité supplémentaire pour les transitions de page et l'injection de styles
+    const timer = setTimeout(applySync, 200);
+
+    return () => {
+      observer.disconnect();
+      clearTimeout(timer);
+    };
+  }, [resolvedTheme, pathname, profile?.customBgColor]);
 
   return null;
 }

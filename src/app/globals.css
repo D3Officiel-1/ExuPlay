@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -56,7 +57,7 @@
   }
   body {
     @apply bg-background text-foreground transition-colors duration-300 select-none;
-    overscroll-behavior-y: none;
+    overscroll-behavior: none;
     touch-action: pan-x pan-y; /* Empêche le zoom par pincement et double-tap */
     -webkit-touch-callout: none; /* Désactive le menu contextuel iOS sur appui long */
   }
