@@ -170,11 +170,34 @@ export default function ClassementPage() {
       return;
     }
 
+    // Filtrage automatique des participants insolvables pour le duel
+    let finalParticipants = [...battleParty];
+    if (mode === 'duel') {
+      finalParticipants = battleParty.filter(p => (p.totalPoints || 0) >= bet);
+      
+      if (finalParticipants.length === 0) {
+        haptic.error();
+        toast({ 
+          variant: "destructive", 
+          title: "Dissonance de Lumière", 
+          description: "Aucun participant sélectionné n'a assez de points pour ce pari." 
+        });
+        return;
+      }
+
+      if (finalParticipants.length < battleParty.length) {
+        toast({ 
+          title: "Esprits Filtrés", 
+          description: `${battleParty.length - finalParticipants.length} esprit(s) n'ont pas assez de points et ont été retirés.` 
+        });
+      }
+    }
+
     const transferFeePercent = appStatus?.transferFeePercent ?? 10;
     const fees = mode === 'transfer' ? Math.floor(bet * (transferFeePercent / 100)) : 0;
-    const totalCost = mode === 'transfer' ? (bet + fees) : (bet * battleParty.length);
+    const totalCost = mode === 'transfer' ? (bet + fees) : (bet * finalParticipants.length);
     
-    if (bet > remainingLimit) {
+    if (bet > remainingLimit && mode === 'transfer') {
       haptic.error();
       toast({ 
         variant: "destructive", 
@@ -197,7 +220,7 @@ export default function ClassementPage() {
       const senderRef = doc(db, "users", user.uid);
 
       if (mode === 'transfer') {
-        const receiver = battleParty[0];
+        const receiver = finalParticipants[0];
         const receiverRef = doc(db, "users", receiver.id);
         await updateDoc(senderRef, { totalPoints: increment(-totalCost), updatedAt: serverTimestamp() });
         await updateDoc(receiverRef, { totalPoints: increment(bet), updatedAt: serverTimestamp() });
@@ -207,14 +230,14 @@ export default function ClassementPage() {
         });
         toast({ title: "Transmission réussie" });
       } else {
-        const protectedParticipant = battleParty.find(p => p.duelProtected);
+        const protectedParticipant = finalParticipants.find(p => p.duelProtected);
         if (protectedParticipant) {
           toast({ variant: "destructive", title: "Dissonance", description: "Un des participants est désormais sous le Sceau de Paix." });
           setIsProcessing(false);
           return;
         }
 
-        await updateDoc(senderRef, { totalPoints: increment(-(bet * battleParty.length)), updatedAt: serverTimestamp() });
+        await updateDoc(senderRef, { totalPoints: increment(-(bet * finalParticipants.length)), updatedAt: serverTimestamp() });
         
         const participants: Record<string, any> = {
           [user.uid]: {
@@ -224,7 +247,7 @@ export default function ClassementPage() {
           }
         };
 
-        battleParty.forEach(p => {
+        finalParticipants.forEach(p => {
           participants[p.id] = {
             name: p.username || "Anonyme",
             photo: p.profileImage || "",
@@ -236,14 +259,14 @@ export default function ClassementPage() {
           challengerId: user.uid,
           challengerName: myProfile?.username || "Anonyme",
           challengerPhoto: myProfile?.profileImage || "",
-          participantIds: [user.uid, ...battleParty.map(p => p.id)],
+          participantIds: [user.uid, ...finalParticipants.map(p => p.id)],
           participants,
           wager: bet,
           status: 'pending',
           createdAt: serverTimestamp(),
           round: 1
         });
-        toast({ title: "Choc des Esprits lancé !", description: `Attente des ${battleParty.length} opposants.` });
+        toast({ title: "Choc des Esprits lancé !", description: `Attente des ${finalParticipants.length} opposants.` });
       }
       setSelectedUser(null);
       setBattleParty([]);
@@ -708,7 +731,7 @@ export default function ClassementPage() {
 
                 <Button 
                   onClick={handleAction} 
-                  disabled={isProcessing || !amount || parseInt(amount) <= 0 || parseInt(amount) > remainingLimit} 
+                  disabled={isProcessing || !amount || parseInt(amount) <= 0 || (mode === 'transfer' && parseInt(amount) > remainingLimit)} 
                   className="w-full h-16 rounded-2xl font-black text-sm uppercase gap-3 shadow-xl shadow-primary/20"
                 >
                   {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : mode === 'transfer' ? "Transmettre la Lumière" : "Lancer le Choc"}

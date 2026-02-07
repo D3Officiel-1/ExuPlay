@@ -198,8 +198,19 @@ export default function TransfertPage() {
   const handleAction = async () => {
     if (!transferAmount || transferAmount <= 0 || !firebaseUser?.uid || !recipient?.id) return;
     
+    // Vérification de la solvabilité de l'opposant pour le duel
+    if (mode === 'duel' && (recipient.totalPoints || 0) < transferAmount) {
+      haptic.error();
+      toast({ 
+        variant: "destructive", 
+        title: "Lumière Insuffisante", 
+        description: `@${recipient.username} n'a pas assez de points pour ce pari.` 
+      });
+      return;
+    }
+
     // Vérification de la limite de flux cumulée
-    if (transferAmount > remainingLimit) { 
+    if (transferAmount > remainingLimit && mode === 'transfer') { 
       haptic.error();
       toast({ 
         variant: "destructive", 
@@ -424,4 +435,3 @@ export default function TransfertPage() {
     </div>
   );
 }
-    
