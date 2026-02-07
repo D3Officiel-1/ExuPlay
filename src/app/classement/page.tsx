@@ -34,7 +34,8 @@ import {
   Users,
   Search,
   TrendingUp,
-  Info
+  Info,
+  CheckCircle2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
@@ -71,7 +72,6 @@ export default function ClassementPage() {
   const { data: myProfile } = useDoc(myProfileRef);
   const { data: appStatus } = useDoc(appStatusRef);
 
-  // --- LOGIQUE DES LIMITES QUOTIDIENNES ---
   const today = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -100,7 +100,6 @@ export default function ClassementPage() {
 
   const remainingLimit = Math.max(0, dailyLimit - sentToday);
   const fluxProgress = Math.min(100, (sentToday / dailyLimit) * 100);
-  // -----------------------------------------
 
   const topUsersQuery = useMemo(() => {
     if (!db) return null;
@@ -284,53 +283,92 @@ export default function ClassementPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col pb-32">
+    <div className={cn(
+      "min-h-screen bg-background flex flex-col pb-32 transition-colors duration-1000",
+      isSelectionMode && "bg-primary/[0.03]"
+    )}>
       <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
+        {/* Header Dynamique */}
         <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Hiérarchie</p>
-            <h1 className="text-3xl font-black tracking-tight">Le Hall des Sages</h1>
-          </div>
+          <AnimatePresence mode="wait">
+            {isSelectionMode ? (
+              <motion.div 
+                key="arena-header"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="space-y-1"
+              >
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary animate-pulse">Mode Recrutement</p>
+                <h1 className="text-3xl font-black tracking-tight italic">Arène du Choc</h1>
+              </motion.div>
+            ) : (
+              <motion.div 
+                key="classic-header"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="space-y-1"
+              >
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Hiérarchie</p>
+                <h1 className="text-3xl font-black tracking-tight">Le Hall des Sages</h1>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
           {isSelectionMode && (
-            <Button variant="ghost" onClick={() => { haptic.light(); setIsSelectionMode(false); setBattleParty([]); }} className="h-10 rounded-xl bg-destructive/5 text-destructive text-[10px] font-black uppercase">
+            <Button 
+              variant="ghost" 
+              onClick={() => { haptic.light(); setIsSelectionMode(false); setBattleParty([]); }} 
+              className="h-10 rounded-xl bg-destructive/5 text-destructive text-[10px] font-black uppercase border border-destructive/10"
+            >
               Annuler
             </Button>
           )}
         </div>
 
-        {/* Barre de Flux Journalier & Recherche */}
-        <div className="space-y-6">
-          <Card className="border-none bg-primary/5 rounded-[2.5rem] p-6 space-y-4 shadow-inner">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-primary opacity-40" />
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Crédit de Flux Restant</span>
+        {/* Barre de Flux Journalier & Recherche - Masquée en sélection pour épurer */}
+        <AnimatePresence>
+          {!isSelectionMode && (
+            <motion.div 
+              initial={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0, overflow: "hidden", marginBottom: 0 }}
+              className="space-y-6"
+            >
+              <Card className="border-none bg-primary/5 rounded-[2.5rem] p-6 space-y-4 shadow-inner">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-primary opacity-40" />
+                    <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Crédit de Flux Restant</span>
+                  </div>
+                  <span className="text-xs font-black">{remainingLimit.toLocaleString()} PTS</span>
+                </div>
+                <div className="h-2 bg-background/50 rounded-full overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${100 - fluxProgress}%` }}
+                    className="h-full bg-primary shadow-[0_0_10px_rgba(var(--primary-rgb),0.3)]"
+                  />
+                </div>
+                <p className="text-[8px] font-bold opacity-30 uppercase text-center tracking-widest">
+                  Limite : {dailyLimit} PTS • Utilisé : {sentToday} PTS
+                </p>
+              </Card>
+
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-30" />
+                <Input 
+                  placeholder="Chercher un esprit..." 
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-14 pl-12 rounded-2xl bg-card/40 border-none shadow-lg focus-visible:ring-1 focus-visible:ring-primary/20"
+                />
               </div>
-              <span className="text-xs font-black">{remainingLimit.toLocaleString()} PTS</span>
-            </div>
-            <div className="h-2 bg-background/50 rounded-full overflow-hidden">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${100 - fluxProgress}%` }}
-                className="h-full bg-primary shadow-[0_0_10px_rgba(var(--primary-rgb),0.3)]"
-              />
-            </div>
-            <p className="text-[8px] font-bold opacity-30 uppercase text-center tracking-widest">
-              Limite : {dailyLimit} PTS • Utilisé : {sentToday} PTS
-            </p>
-          </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-30" />
-            <Input 
-              placeholder="Chercher un esprit..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-14 pl-12 rounded-2xl bg-card/40 border-none shadow-lg focus-visible:ring-1 focus-visible:ring-primary/20"
-            />
-          </div>
-        </div>
-
+        {/* Podium - Adapté pour la sélection */}
         {podium.length > 0 && (
           <div className="grid grid-cols-3 items-end gap-2 px-2 pt-8 pb-4 relative">
             <div className="absolute inset-0 bg-primary/5 blur-[100px] rounded-full -z-10" />
@@ -340,17 +378,21 @@ export default function ClassementPage() {
               if (!u) return null;
               const rank = displayIdx + 1;
               const isSelected = battleParty.find(p => p.id === u.id);
+              const isProtected = u.duelProtected && isSelectionMode;
 
               return (
                 <motion.div 
                   key={u.id}
                   initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  animate={{ 
+                    opacity: isProtected ? 0.3 : 1, 
+                    y: 0,
+                    scale: isSelected ? 1.1 : 1
+                  }}
                   className={cn(
                     "flex flex-col items-center gap-3 cursor-pointer select-none transition-all",
                     rank === 1 && "-mt-8",
-                    isSelected && "scale-110",
-                    u.duelProtected && isSelectionMode && "opacity-20 grayscale"
+                    isProtected && "grayscale cursor-not-allowed"
                   )}
                   onClick={() => handleUserClick(u)}
                   onContextMenu={(e) => handleContextMenu(e, u)}
@@ -359,7 +401,29 @@ export default function ClassementPage() {
                   onPointerLeave={handleLongPressEnd}
                 >
                   <div className="relative">
-                    <ProfileAvatar imageUrl={u.profileImage} points={u.totalPoints} size={rank === 1 ? "lg" : "md"} className={cn(isSelected && "ring-4 ring-primary ring-offset-4 ring-offset-background")} />
+                    <ProfileAvatar 
+                      imageUrl={u.profileImage} 
+                      points={u.totalPoints} 
+                      size={rank === 1 ? "lg" : "md"} 
+                      className={cn(
+                        "transition-all duration-500",
+                        isSelected && "ring-4 ring-primary ring-offset-4 ring-offset-background scale-110 shadow-[0_0_30px_rgba(var(--primary-rgb),0.4)]"
+                      )} 
+                    />
+                    
+                    <AnimatePresence>
+                      {isSelected && (
+                        <motion.div 
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          exit={{ scale: 0 }}
+                          className="absolute -top-2 -right-2 bg-primary text-primary-foreground h-6 w-6 rounded-full flex items-center justify-center border-2 border-background shadow-xl z-20"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
                     <div className={cn(
                       "absolute -top-3 flex items-center justify-center rounded-full border-2 border-background shadow-lg",
                       rank === 1 ? "-right-2 bg-yellow-500 text-black h-8 w-8" : rank === 2 ? "-right-2 bg-gray-400 text-white h-6 w-6" : "-left-2 bg-orange-400 text-white h-6 w-6"
@@ -377,30 +441,50 @@ export default function ClassementPage() {
           </div>
         )}
 
+        {/* Liste des Esprits - Adaptée pour la sélection */}
         <div className="space-y-4">
           {rest.map((u, idx) => {
             const isMe = u.id === user?.uid;
             const isSelected = battleParty.find(p => p.id === u.id);
             const rank = idx + 4;
             const title = getHonorTitle(u.totalPoints || 0);
+            const isProtected = u.duelProtected && isSelectionMode;
 
             return (
               <motion.div 
                 key={u.id} 
                 initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
+                animate={{ 
+                  opacity: isProtected ? 0.3 : 1, 
+                  x: 0,
+                  scale: isSelected ? 1.02 : 1
+                }}
                 onClick={() => handleUserClick(u)}
                 onContextMenu={(e) => handleContextMenu(e, u)}
                 onPointerDown={() => handleLongPressStart(u)}
                 onPointerUp={handleLongPressEnd}
                 onPointerLeave={handleLongPressEnd}
-                className={cn("select-none", u.duelProtected && isSelectionMode && "opacity-20 grayscale pointer-events-none")}
+                className={cn(
+                  "select-none transition-all duration-500",
+                  isProtected && "grayscale pointer-events-none"
+                )}
               >
                 <Card className={cn(
-                  "border-none backdrop-blur-3xl transition-all duration-500 overflow-hidden rounded-[2.2rem] cursor-pointer shadow-lg",
-                  isSelected ? "bg-primary text-primary-foreground shadow-2xl scale-[1.02]" : isMe ? "bg-primary/5 opacity-60" : "bg-card/40 hover:bg-card/60"
+                  "border-none backdrop-blur-3xl transition-all duration-500 overflow-hidden rounded-[2.2rem] cursor-pointer shadow-lg relative",
+                  isSelected 
+                    ? "bg-primary text-primary-foreground shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)] ring-2 ring-primary/20" 
+                    : isMe 
+                      ? "bg-primary/5 opacity-60" 
+                      : "bg-card/40 hover:bg-card/60 border border-transparent hover:border-primary/5"
                 )}>
-                  <CardContent className="p-4 flex items-center gap-4">
+                  {isSelected && (
+                    <motion.div 
+                      layoutId={`glow-${u.id}`}
+                      className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent pointer-events-none"
+                    />
+                  )}
+                  
+                  <CardContent className="p-4 flex items-center gap-4 relative z-10">
                     <div className="flex flex-col items-center justify-center w-10 shrink-0">
                       <span className={cn("text-xs font-black opacity-30", isSelected && "opacity-60")}>#{rank}</span>
                     </div>
@@ -408,16 +492,25 @@ export default function ClassementPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="font-black text-sm truncate uppercase tracking-tight">@{u.username}</p>
-                        <Shield className={cn("h-2.5 w-2.5", title.color)} />
+                        {!isSelected && <Shield className={cn("h-2.5 w-2.5", title.color)} />}
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <Zap className={cn("h-3 w-3 text-primary", isSelected && "text-primary-foreground")} />
+                        <Zap className={cn("h-3 w-3", isSelected ? "text-primary-foreground animate-pulse" : "text-primary")} />
                         <p className={cn("text-[10px] font-bold uppercase opacity-40", isSelected && "opacity-80")}>{u.totalPoints?.toLocaleString()} PTS</p>
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1">
-                      <span className={cn("text-[8px] font-black uppercase tracking-widest", title.color)}>{title.name}</span>
-                      {isSelected && <Check className="h-4 w-4 text-primary-foreground" />}
+                      <span className={cn(
+                        "text-[8px] font-black uppercase tracking-widest", 
+                        isSelected ? "text-primary-foreground/60" : title.color
+                      )}>
+                        {title.name}
+                      </span>
+                      {isSelected && (
+                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                          <CheckCircle2 className="h-5 w-5 text-primary-foreground" />
+                        </motion.div>
+                      )}
                       {u.duelProtected && !isSelectionMode && (
                         <div className="h-6 w-6 bg-primary/5 rounded-full flex items-center justify-center">
                           <Swords className="h-3 w-3 opacity-20" />
@@ -439,12 +532,41 @@ export default function ClassementPage() {
         </div>
       </main>
 
+      {/* Barre de Validation de l'Arène */}
       <AnimatePresence>
         {isSelectionMode && battleParty.length > 0 && (
-          <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }} className="fixed bottom-24 left-0 right-0 z-50 px-6 max-w-lg mx-auto">
-            <Button onClick={() => setSelectedUser(battleParty[0])} className="w-full h-16 rounded-[2rem] font-black text-sm uppercase tracking-widest gap-3 shadow-2xl">
-              <Swords className="h-5 w-5" /> Lancer le Choc ({battleParty.length + 1} esprits)
-            </Button>
+          <motion.div 
+            initial={{ y: 100, opacity: 0 }} 
+            animate={{ y: 0, opacity: 1 }} 
+            exit={{ y: 100, opacity: 0 }} 
+            className="fixed bottom-24 left-0 right-0 z-50 px-6 max-w-lg mx-auto"
+          >
+            <div className="bg-card/80 backdrop-blur-3xl border border-primary/10 rounded-[2.5rem] p-3 shadow-[0_32px_128px_-16px_rgba(0,0,0,0.5)] flex flex-col gap-3">
+              <div className="flex items-center justify-between px-6 pt-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex -space-x-3">
+                    {battleParty.slice(0, 3).map((p) => (
+                      <ProfileAvatar key={p.id} imageUrl={p.profileImage} size="sm" className="ring-2 ring-background" />
+                    ))}
+                    {battleParty.length > 3 && (
+                      <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-[10px] font-black text-white ring-2 ring-background">
+                        +{battleParty.length - 3}
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest opacity-40">{battleParty.length} Opposants</span>
+                </div>
+                <div className="h-8 w-px bg-primary/5" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-primary animate-pulse">Choc Prêt</p>
+              </div>
+              
+              <Button 
+                onClick={() => setSelectedUser(battleParty[0])} 
+                className="w-full h-16 rounded-[2rem] font-black text-sm uppercase tracking-widest gap-3 shadow-2xl shadow-primary/20"
+              >
+                <Swords className="h-5 w-5" /> Invoquer le Choc Collectif
+              </Button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -488,6 +610,7 @@ export default function ClassementPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Carte d'Action de Flux - Adaptative */}
       <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
         <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-3xl border-white/5 rounded-[2.5rem] p-0 overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
           <div className="p-8 space-y-8 overflow-y-auto flex-1 no-scrollbar">
