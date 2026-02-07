@@ -262,7 +262,7 @@ export default function ProfilPage() {
                 <button 
                   onClick={() => handleApplyTheme("default")} 
                   className={cn(
-                    "h-16 w-16 shrink-0 rounded-[1.5rem] border-2 transition-all flex items-center justify-center relative", 
+                    "h-16 w-16 shrink-0 rounded-[1.5rem] border-[3px] transition-all flex items-center justify-center relative", 
                     (profile?.activeTheme === "default" || !profile?.activeTheme) 
                       ? "border-primary bg-primary/10 shadow-xl scale-110" 
                       : "border-primary/5 bg-background/50 opacity-40"
@@ -280,7 +280,7 @@ export default function ProfilPage() {
                       key={tid} 
                       onClick={() => handleApplyTheme(tid)} 
                       className={cn(
-                        "h-16 w-16 shrink-0 rounded-[1.5rem] border-2 transition-all flex items-center justify-center relative",
+                        "h-16 w-16 shrink-0 rounded-[1.5rem] border-[3px] transition-all flex items-center justify-center relative",
                         isActive ? theme.borderColor + " scale-110 shadow-xl bg-background" : "border-primary/5 bg-card opacity-60"
                       )}
                     >

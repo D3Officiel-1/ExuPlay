@@ -103,7 +103,7 @@ export function ProfileAvatar({
       
       {/* Conteneur Physique de l'Avatar */}
       <div className={cn(
-        "relative overflow-hidden flex items-center justify-center border-2 transition-all duration-700 bg-card shadow-2xl z-10",
+        "relative overflow-hidden flex items-center justify-center border-[3px] transition-all duration-700 bg-card shadow-2xl z-10",
         sizeClasses[size],
         visualTheme.borderColor
       )}>

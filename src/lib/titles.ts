@@ -74,28 +74,28 @@ export const THEMES: Record<string, VisualTheme> = {
     id: "default",
     name: "Neutre",
     color: "text-primary",
-    borderColor: "border-primary/20",
-    auraClass: "bg-primary/30"
+    borderColor: "border-primary",
+    auraClass: "bg-primary/40"
   },
   "theme_ruby": {
     id: "theme_ruby",
     name: "Rubis",
     color: "text-red-500",
-    borderColor: "border-red-500 ring-2 ring-red-500/20",
-    auraClass: "bg-red-600/60 shadow-[0_0_50px_rgba(220,38,38,0.6)]"
+    borderColor: "border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]",
+    auraClass: "bg-red-500/60 shadow-[0_0_50px_rgba(239,68,68,0.6)]"
   },
   "theme_obsidian": {
     id: "theme_obsidian",
     name: "Obsidienne",
     color: "text-zinc-100",
-    borderColor: "border-zinc-200 ring-4 ring-black/80 shadow-2xl",
-    auraClass: "bg-white/10 shadow-[0_0_60px_rgba(255,255,255,0.2)]"
+    borderColor: "border-white shadow-[0_0_20px_rgba(255,255,255,0.3)]",
+    auraClass: "bg-white/20 shadow-[0_0_60px_rgba(255,255,255,0.2)]"
   },
   "theme_gold": {
     id: "theme_gold",
     name: "Or Pur",
     color: "text-yellow-400",
-    borderColor: "border-yellow-400 border-[3px] ring-4 ring-yellow-500/40 shadow-[0_0_40px_rgba(234,179,8,0.6)]",
+    borderColor: "border-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.5)]",
     auraClass: "bg-yellow-400/90 shadow-[0_0_100px_rgba(234,179,8,0.9)]"
   }
 };
