@@ -38,7 +38,11 @@ import {
   Settings,
   Palette,
   Sparkles,
-  Gift
+  Gift,
+  Smartphone,
+  Mars,
+  Venus,
+  User
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
@@ -198,6 +202,32 @@ export default function ProfilPage() {
             </Card>
           </div>
         )}
+
+        <div className="space-y-5">
+          <div className="flex items-center gap-3 px-4">
+            <User className="h-4 w-4 opacity-40" />
+            <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Identité de l'Esprit</h2>
+          </div>
+          <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-center justify-between px-2">
+                <div className="flex items-center gap-3 opacity-40">
+                  <Smartphone className="h-4 w-4" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Liaison Wave</span>
+                </div>
+                <span className="text-sm font-bold">{profile?.phoneNumber || "Non lié"}</span>
+              </div>
+              <div className="h-px bg-primary/5 w-full" />
+              <div className="flex items-center justify-between px-2">
+                <div className="flex items-center gap-3 opacity-40">
+                  {profile?.gender === 'masculin' ? <Mars className="h-4 w-4" /> : <Venus className="h-4 w-4" />}
+                  <span className="text-[10px] font-black uppercase tracking-widest">Nature</span>
+                </div>
+                <span className="text-sm font-bold uppercase">{profile?.gender === 'masculin' ? 'Homme' : 'Femme'}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         <div className="space-y-5">
           <div className="flex items-center gap-3 px-4">
