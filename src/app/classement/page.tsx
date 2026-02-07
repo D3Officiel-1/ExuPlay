@@ -28,7 +28,7 @@ import {
   X, 
   Check, 
   User as UserIcon,
-  ShieldCheck,
+  BadgeCheck,
   AlertCircle,
   Plus,
   Users,
@@ -161,6 +161,18 @@ export default function ClassementPage() {
     setSelectedUser(null);
   };
 
+  const copyPhoneNumber = (u: any) => {
+    if (u.phoneNumber) {
+      const cleanNumber = u.phoneNumber.replace("+225", "");
+      navigator.clipboard.writeText(cleanNumber).then(() => {
+        toast({ 
+          title: "Lien établi", 
+          description: `Numéro de @${u.username} copié.` 
+        });
+      });
+    }
+  };
+
   const handleAction = async () => {
     if (battleParty.length === 0 || !amount || isProcessing || !user?.uid || !db) return;
     
@@ -282,6 +294,7 @@ export default function ClassementPage() {
     if (u.id === user?.uid) return;
     e.preventDefault();
     haptic.medium();
+    copyPhoneNumber(u);
     setSelectedUserForVision(u);
   };
 
@@ -289,6 +302,7 @@ export default function ClassementPage() {
     if (u.id === user?.uid) return;
     longPressTimer.current = setTimeout(() => {
       haptic.medium();
+      copyPhoneNumber(u);
       setSelectedUserForVision(u);
     }, 600);
   };
