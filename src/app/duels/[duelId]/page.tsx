@@ -175,6 +175,26 @@ export default function DuelArenaPage() {
     }
   }, [duel, db, duelRef]);
 
+  // Oracle de la Dualité Simple : Filtrer pour n'afficher que 2 options (la juste + 1 fausse)
+  const duelOptions = useMemo(() => {
+    if (!quiz || !quiz.options) return [];
+    
+    const correctOption = { 
+      text: quiz.options[quiz.correctIndex], 
+      originalIndex: quiz.correctIndex 
+    };
+    
+    const wrongOptions = quiz.options
+      .map((text: string, i: number) => ({ text, originalIndex: i }))
+      .filter((o: any) => o.originalIndex !== quiz.correctIndex);
+    
+    // On pioche une seule option fausse au hasard pour le duel
+    const randomWrong = wrongOptions[Math.floor(Math.random() * wrongOptions.length)];
+    
+    // On retourne le duo mélangé
+    return [correctOption, randomWrong].sort(() => Math.random() - 0.5);
+  }, [quiz]);
+
   if (duelLoading || !duel) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -276,19 +296,20 @@ export default function DuelArenaPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-              {quiz?.options.map((opt: string, idx: number) => (
+              {duelOptions.map((opt: any, idx: number) => (
                 <Button 
                   key={idx} 
                   disabled={answered} 
-                  onClick={() => handleAnswer(idx)} 
+                  onClick={() => handleAnswer(opt.originalIndex)} 
                   className={cn(
-                    "h-20 rounded-[2.5rem] font-bold text-lg border-2 shadow-xl transition-all duration-300", 
+                    "h-24 rounded-[2.5rem] font-black text-xl border-2 shadow-xl transition-all duration-300", 
+                    "text-black dark:text-white",
                     !answered ? "bg-card border-primary/5 hover:bg-primary/5" : 
-                    idx === quiz.correctIndex ? "bg-green-500 border-green-600 text-white" : 
+                    opt.originalIndex === quiz.correctIndex ? "bg-green-500 border-green-600 text-white" : 
                     "opacity-40 grayscale"
                   )}
                 >
-                  {opt}
+                  {opt.text}
                 </Button>
               ))}
             </div>
