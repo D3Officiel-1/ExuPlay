@@ -1,3 +1,4 @@
+
 "use client";
 
 import "./globals.css";
@@ -23,6 +24,51 @@ import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
 import { cn } from "@/lib/utils";
 import { hexToHsl, hexToRgb, getContrastColor } from "@/lib/colors";
+
+/**
+ * @fileOverview Oracle de la Symbiose Système.
+ * Synchronise la couleur de la barre d'état et de navigation du système avec le fond de l'app.
+ */
+function SystemBarSync() {
+  const { resolvedTheme } = useTheme();
+  const { user } = useUser();
+  const db = useFirestore();
+  const userDocRef = useMemo(() => (db && user?.uid) ? doc(db, "users", user.uid) : null, [db, user?.uid]);
+  const { data: profile } = useDoc(userDocRef);
+
+  useEffect(() => {
+    // Déterminer la couleur de fond actuelle
+    let bgColor = "#ffffff"; // Défaut clair
+    
+    if (profile?.customBgColor && profile.customBgColor !== 'default') {
+      bgColor = profile.customBgColor;
+    } else {
+      bgColor = resolvedTheme === 'dark' ? "#000000" : "#ffffff";
+    }
+
+    // Mise à jour de la meta tag theme-color (Chrome Android, Safari iOS)
+    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (!metaThemeColor) {
+      metaThemeColor = document.createElement('meta');
+      metaThemeColor.setAttribute('name', 'theme-color');
+      document.head.appendChild(metaThemeColor);
+    }
+    metaThemeColor.setAttribute('content', bgColor);
+
+    // Spécificités iOS pour la barre d'état
+    let metaApple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (!metaApple) {
+      metaApple = document.createElement('meta');
+      metaApple.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
+      document.head.appendChild(metaApple);
+    }
+    // 'default' permet à Safari d'utiliser la couleur définie dans theme-color
+    metaApple.setAttribute('content', 'default');
+
+  }, [resolvedTheme, profile?.customBgColor]);
+
+  return null;
+}
 
 function ThemeSync() {
   const { user } = useUser();
@@ -267,6 +313,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
         </AnimatePresence>
         <ThemeSync />
         <ColorInjector />
+        <SystemBarSync />
         <BiometricLock />
         <SuccessfulExchangeOverlay />
         <IncomingTransferOverlay />
