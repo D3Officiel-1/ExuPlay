@@ -55,7 +55,6 @@ export default function PenaltiesPage() {
     setPlayerChoice(direction);
     haptic.medium();
 
-    // L'Oracle décide de sa direction simultanément
     const keeperDir = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
     const scored = direction !== keeperDir;
     
@@ -64,13 +63,11 @@ export default function PenaltiesPage() {
     setGameState('shooting');
 
     try {
-      // Déduction de la mise
       await updateDoc(userDocRef, {
         totalPoints: increment(-selectedBet),
         updatedAt: serverTimestamp()
       });
 
-      // L'animation dure 800ms pour une tension maximale
       setTimeout(async () => {
         setGameState('result');
         if (scored) {
@@ -104,7 +101,6 @@ export default function PenaltiesPage() {
     setIsScored(null);
   };
 
-  // Coordonnées ultra-précises alignées sur la grille visuelle du but
   const ballVariants = {
     idle: { y: 0, x: 0, scale: 1, filter: "blur(0px)", rotate: 0 },
     shooting: (direction: Direction) => {
@@ -113,10 +109,11 @@ export default function PenaltiesPage() {
         "À gauche": -115, "Centre": 0, "À droite": 115,
         "En bas à gauche": -115, "En bas": 0, "En bas à droite": 115
       };
+      // Coordonnées Y abaissées de 20px par rapport à la version précédente
       const yMap: Record<Direction, number> = {
-        "En haut à gauche": -385, "En haut": -385, "En haut à droite": -385,
-        "À gauche": -315, "Centre": -315, "À droite": -315,
-        "En bas à gauche": -245, "En bas": -245, "En bas à droite": -245
+        "En haut à gauche": -365, "En haut": -365, "En haut à droite": -365,
+        "À gauche": -295, "Centre": -295, "À droite": -295,
+        "En bas à gauche": -225, "En bas": -225, "En bas à droite": -225
       };
       return {
         y: yMap[direction],
@@ -138,13 +135,12 @@ export default function PenaltiesPage() {
         "À gauche": -105, "Centre": 0, "À droite": 105,
         "En bas à gauche": -105, "En bas": 0, "En bas à droite": 105
       };
+      // Coordonnées Y synchronisées avec le nouvel impact du ballon
       const yMap: Record<Direction, number> = {
-        "En haut à gauche": -55, "En haut": -55, "En haut à droite": -55,
-        "À gauche": 10, "Centre": 0, "À droite": 10,
-        "En bas au centre": 75, "En bas": 75, "En bas à droite": 75,
-        "En bas à gauche": 75 // Ajustement pour couvrir toutes les directions
+        "En haut à gauche": -35, "En haut": -35, "En haut à droite": -35,
+        "À gauche": 30, "Centre": 20, "À droite": 30,
+        "En bas à gauche": 95, "En bas": 95, "En bas à droite": 95
       };
-      // Forcer le yMap pour les manquants
       const finalY = yMap[direction as keyof typeof yMap] || 0;
 
       const rotateMap: Record<Direction, number> = {
@@ -167,7 +163,7 @@ export default function PenaltiesPage() {
       case "En haut": return "top-0 left-1/3 w-[33.33%]";
       case "En haut à droite": return "top-0 right-0";
       case "À gauche": return "top-1/3 left-0 h-[33.33%]";
-      case "Centre": return "top-[17.5%] left-[36%] w-[28%] h-[50%] z-[70]"; // Superposition prioritaire sur le gardien
+      case "Centre": return "top-[17.5%] left-[36%] w-[28%] h-[50%] z-[70]";
       case "À droite": return "top-1/3 right-0 h-[33.33%]";
       case "En bas à gauche": return "bottom-0 left-0";
       case "En bas": return "bottom-0 left-1/3 w-[33.33%]";
@@ -209,16 +205,13 @@ export default function PenaltiesPage() {
           )}
 
           <div className="relative w-full aspect-[4/5] rounded-[3.5rem] bg-gradient-to-b from-primary/5 to-background border border-primary/5 shadow-2xl overflow-hidden perspective-[1200px]">
-            {/* Terrain & Perspective */}
             <div className="absolute inset-0 z-0">
               <div className="absolute top-[25%] left-0 right-0 h-[1px] bg-primary/10" />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_100%,rgba(var(--primary-rgb),0.05),transparent_70%)]" />
-              {/* Lignes de fuite */}
               <div className="absolute top-[25%] left-1/2 -translate-x-1/2 w-full h-full opacity-5 pointer-events-none" 
                    style={{ background: 'repeating-linear-gradient(90deg, transparent, transparent 40px, hsl(var(--primary)) 41px)' }} />
             </div>
 
-            {/* La Cage de But - Prioritaire au premier plan (z-[60]) lors de la visée */}
             <div className={cn(
               "absolute top-[15%] left-1/2 -translate-x-1/2 w-72 h-40 border-x-4 border-t-4 border-primary/20 rounded-t-xl transition-all duration-300",
               gameState === 'idle' ? "z-[60]" : "z-10"
@@ -226,7 +219,6 @@ export default function PenaltiesPage() {
               <div className="absolute inset-0 bg-primary/[0.02] backdrop-blur-[1px]" />
               <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(hsl(var(--primary)) 1px, transparent 1px)', backgroundSize: '12px 12px' }} />
               
-              {/* Zones de tir invisibles intégrées à la structure */}
               {gameState === 'idle' && DIRECTIONS.map((dir) => (
                 <button
                   key={dir}
@@ -241,7 +233,6 @@ export default function PenaltiesPage() {
               ))}
             </div>
 
-            {/* Le Gardien - Placé en arrière-plan du but (z-20) */}
             <motion.div 
               variants={keeperVariants} 
               animate={gameState === 'shooting' || gameState === 'result' ? "shooting" : "idle"} 
@@ -256,7 +247,6 @@ export default function PenaltiesPage() {
               </div>
             </motion.div>
 
-            {/* Le Point de Penalty & Le Ballon */}
             <div className="absolute bottom-[15%] left-1/2 -translate-x-1/2 z-30">
               <div className="w-6 h-6 bg-primary/10 rounded-full blur-[2px] mb-[-12px] mx-auto" />
               <motion.div 
@@ -276,7 +266,6 @@ export default function PenaltiesPage() {
               </motion.div>
             </div>
 
-            {/* Feedback Visuel de Résultat */}
             <AnimatePresence>
               {gameState === 'result' && (
                 <motion.div 
@@ -315,7 +304,7 @@ export default function PenaltiesPage() {
             ) : (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/5 flex items-start gap-4">
                 <Sparkles className="h-5 w-5 text-primary opacity-40 shrink-0 mt-1" />
-                <p className="text-[11px] leading-relaxed font-medium opacity-40 italic">
+                <p className="text-[11px] font-medium opacity-40 italic">
                   "L'Inconnu réside dans les recoins. Touchez les zones invisibles du filet pour déclencher votre tir simultanément au plongeon de l'Oracle."
                 </p>
               </motion.div>
