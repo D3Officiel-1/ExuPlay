@@ -14,29 +14,17 @@ export async function generateMetadata({
   const username = params.u as string;
 
   if (ref) {
-    // Image supprimée de l'URL pour une pureté technique
-    const ogImageUrl = `/api/og/referral?u=${encodeURIComponent(username || 'Esprit')}&c=${ref}`;
-    
     return {
       title: `Rejoins l'Éveil d'Exu Play`,
       description: `L'esprit @${username || 'un ami'} t'invite à découvrir l'art de la pensée. Utilise son code : ${ref}`,
       openGraph: {
         title: `Invitation d'Éveil d'Exu Play`,
         description: `Rejoins @${username || 'un ami'} et explore les frontières de la pensée Ivoirienne.`,
-        images: [
-          {
-            url: ogImageUrl,
-            width: 1200,
-            height: 630,
-            alt: `Invitation de parrainage de @${username || 'un ami'}`,
-          },
-        ],
       },
       twitter: {
-        card: 'summary_large_image',
+        card: 'summary',
         title: `Invitation d'Éveil d'Exu Play`,
         description: `Rejoins @${username || 'un ami'} et explore les frontières de la pensée Ivoirienne.`,
-        images: [ogImageUrl],
       },
     };
   }
