@@ -95,13 +95,50 @@ export default function DuelArenaPage() {
 
   // 3. Chronomètre sacré
   useEffect(() => {
-    if (duel?.status === 'active' && !answered && timeLeft > 0 && quiz) {
+    if (duel?.status === 'active' && !answered && timeLeft > 0 && quiz && !isResetting) {
       const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
       return () => clearInterval(timer);
-    } else if (timeLeft === 0 && !answered && duel?.status === 'active' && quiz) { 
+    } else if (timeLeft === 0 && !answered && duel?.status === 'active' && quiz && !isResetting) { 
       handleAnswer(-1); 
     }
-  }, [duel?.status, answered, timeLeft, quiz]);
+  }, [duel?.status, answered, timeLeft, quiz, isResetting]);
+
+  // 4. Détection du match nul synchronisé
+  useEffect(() => {
+    if (duel?.status === 'active' && 
+        duel.challengerResult?.answered && 
+        duel.opponentResult?.answered && 
+        !duel.challengerResult?.correct && 
+        !duel.opponentResult?.correct &&
+        !isResetting) {
+      
+      setIsResetting(true);
+      setResetCountdown(3);
+      haptic.medium();
+      
+      const countdownInterval = setInterval(() => {
+        setResetCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(countdownInterval);
+            if (isChallenger) {
+              // Seul le challenger effectue la mise à jour pour éviter les race conditions
+              updateDoc(duelRef!, { 
+                challengerResult: null, 
+                opponentResult: null, 
+                quizId: null, 
+                round: increment(1),
+                updatedAt: serverTimestamp()
+              });
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(countdownInterval);
+    }
+  }, [duel, isResetting, isChallenger, duelRef]);
 
   const handleAnswer = async (idx: number) => {
     if (!duel || !user || !db || answered || isResetting) return;
@@ -121,50 +158,15 @@ export default function DuelArenaPage() {
     const otherResult = isChallenger ? duel.opponentResult : duel.challengerResult;
     let updatePayload: any = isChallenger ? { challengerResult: result } : { opponentResult: result };
 
-    // Si l'autre a déjà répondu, on vérifie la fin du round
-    if (otherResult?.answered) {
-      if (isCorrect || otherResult.correct) { 
-        // Au moins un a juste, le duel se finit
-        updatePayload.status = 'finished'; 
-      } else {
-        // Double échec : on recommence une manche avec compte à rebours
-        setIsResetting(true); 
-        setResetCountdown(3);
-        
-        // Timer local pour l'affichage du compte à rebours
-        const countdownInterval = setInterval(() => {
-          setResetCountdown(prev => {
-            if (prev <= 1) {
-              clearInterval(countdownInterval);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-
-        toast({ title: "Double Échec", description: "Les deux esprits ont failli. Nouvelle manche imminente..." });
-        
-        setTimeout(async () => {
-          // Seul le challenger effectue la mise à jour pour éviter les race conditions
-          if (isChallenger) {
-            await updateDoc(duelRef!, { 
-              challengerResult: null, 
-              opponentResult: null, 
-              quizId: null, 
-              status: 'active', 
-              round: increment(1),
-              updatedAt: serverTimestamp()
-            });
-          }
-        }, 3500); 
-        return;
-      }
+    // Si l'autre a déjà répondu et qu'au moins un a juste, on finit
+    if (otherResult?.answered && (isCorrect || otherResult.correct)) {
+      updatePayload.status = 'finished'; 
     }
     
     await updateDoc(duelRef!, updatePayload);
   };
 
-  // 4. Arbitrage final
+  // 5. Arbitrage final
   useEffect(() => {
     if (duel?.status === 'finished' && duel.challengerResult && duel.opponentResult && !duel.winnerId && db && duelRef) {
       const determineWinner = async () => {
