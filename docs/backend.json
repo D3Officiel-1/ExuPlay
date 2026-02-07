@@ -49,7 +49,10 @@
         "cameraAuthorized": { "type": "boolean" },
         "biometricEnabled": { "type": "boolean", "default": false },
         "passkeyId": { "type": "string", "description": "ID de la clé biométrique enregistrée" },
-        "trustBadge": { "type": "boolean", "description": "Si l'utilisateur possède le Sceau de Confiance", "default": false }
+        "trustBadge": { "type": "boolean", "description": "Si l'utilisateur possède le Sceau de Confiance", "default": false },
+        "rankingHidden": { "type": "boolean", "description": "Si l'utilisateur est masqué du classement public", "default": false },
+        "reducedMotion": { "type": "boolean", "description": "Si les animations sont réduites pour cet utilisateur", "default": false },
+        "hidePointsInHeader": { "type": "boolean", "description": "Si les points sont masqués dans l'entête", "default": false }
       },
       "required": ["username", "phoneNumber", "acceptedTerms", "gender", "referralCode", "role"]
     },

@@ -176,7 +176,11 @@ export function LoginClient() {
         role: "user",
         cameraAuthorized: false,
         createdAt: serverTimestamp(),
-        totalPoints: 0
+        totalPoints: 0,
+        // Paramètres de confidentialité et d'expérience par défaut (Voile désactivé)
+        rankingHidden: false,
+        reducedMotion: false,
+        hidePointsInHeader: false
       });
 
       toast({ title: "Bienvenue", description: "Votre compte est prêt." });

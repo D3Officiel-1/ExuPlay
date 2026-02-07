@@ -72,11 +72,16 @@ export default function ClassementPage() {
 
   const { podium, rest } = useMemo(() => {
     if (!allUsers) return { podium: [], rest: [] };
+    
+    // Logique du Voile de l'Esprit : on filtre ceux qui veulent être masqués,
+    // SAUF si c'est l'utilisateur actuel lui-même.
+    const visibleUsers = allUsers.filter(u => !u.rankingHidden || u.id === user?.uid);
+    
     return {
-      podium: allUsers.slice(0, 3),
-      rest: allUsers.slice(3)
+      podium: visibleUsers.slice(0, 3),
+      rest: visibleUsers.slice(3)
     };
-  }, [allUsers]);
+  }, [allUsers, user?.uid]);
 
   const handleUserClick = (u: any) => {
     if (u.id === user?.uid) {
@@ -150,7 +155,6 @@ export default function ClassementPage() {
         });
         toast({ title: "Transmission réussie" });
       } else {
-        // Logique Duel Multi-joueurs
         await updateDoc(senderRef, { totalPoints: increment(-(bet * battleParty.length)), updatedAt: serverTimestamp() });
         
         const participants: Record<string, any> = {
@@ -215,6 +219,10 @@ export default function ClassementPage() {
     }
   };
 
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin opacity-20" /></div>;
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
       <main className="flex-1 p-6 pt-24 space-y-10 max-w-lg mx-auto w-full">
@@ -236,8 +244,11 @@ export default function ClassementPage() {
             <div className="absolute inset-0 bg-primary/5 blur-[100px] rounded-full -z-10" />
             
             {podium.map((u, idx) => {
-              const rank = [2, 1, 3][idx];
-              const userInPodium = podium[idx === 0 ? 1 : idx === 1 ? 0 : 2];
+              const rankMap = [2, 1, 3];
+              const rank = rankMap[idx];
+              // Podium index: Left(2nd), Center(1st), Right(3rd)
+              const displayOrder = [1, 0, 2]; // 0 is 1st, 1 is 2nd, 2 is 3rd
+              const userInPodium = podium[displayOrder[idx]];
               if (!userInPodium) return null;
               const isSelected = battleParty.find(p => p.id === userInPodium.id);
 

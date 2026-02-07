@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useMemo } from "react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
-import { Trophy, X, Bell, AlertTriangle, Shield } from "lucide-react";
+import { Trophy, X, Bell, AlertTriangle, Shield, EyeOff } from "lucide-react";
 import { useUser, useFirestore, useDoc } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useRouter, usePathname } from "next/navigation";
@@ -142,7 +143,12 @@ export function Header() {
                       className="absolute inset-0 bg-primary/20 rounded-full blur-sm"
                     />
                   </div>
-                  <span className="text-xs font-black tracking-tight">{totalPoints.toLocaleString()} PTS</span>
+                  {/* Sceau d'Invisibilité : masquer les points si l'option est active */}
+                  {profile?.hidePointsInHeader ? (
+                    <EyeOff className="h-3 w-3 opacity-20" />
+                  ) : (
+                    <span className="text-xs font-black tracking-tight">{totalPoints.toLocaleString()} PTS</span>
+                  )}
                 </button>
               </motion.div>
 
