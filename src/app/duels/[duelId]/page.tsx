@@ -38,6 +38,7 @@ export default function DuelArenaPage() {
   const [startTime, setStartTime] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState(15);
   const [isResetting, setIsResetting] = useState(false);
+  const [resetCountdown, setResetCountdown] = useState(3);
 
   const duelRef = useMemo(() => db ? doc(db, "duels", duelId) : null, [db, duelId]);
   const { data: duel, loading: duelLoading } = useDoc(duelRef);
@@ -85,6 +86,7 @@ export default function DuelArenaPage() {
           setTimeLeft(15); 
           setStartTime(Date.now()); 
           setIsResetting(false); 
+          setResetCountdown(3);
         }
       } catch (e) {}
     };
@@ -125,19 +127,36 @@ export default function DuelArenaPage() {
         // Au moins un a juste, le duel se finit
         updatePayload.status = 'finished'; 
       } else {
-        // Double échec : on recommence une manche
+        // Double échec : on recommence une manche avec compte à rebours
         setIsResetting(true); 
-        toast({ title: "Double Échec", description: "Les deux esprits ont failli. Nouvelle manche..." });
-        setTimeout(async () => {
-          await updateDoc(duelRef!, { 
-            challengerResult: null, 
-            opponentResult: null, 
-            quizId: null, 
-            status: 'active', 
-            round: increment(1),
-            updatedAt: serverTimestamp()
+        setResetCountdown(3);
+        
+        // Timer local pour l'affichage du compte à rebours
+        const countdownInterval = setInterval(() => {
+          setResetCountdown(prev => {
+            if (prev <= 1) {
+              clearInterval(countdownInterval);
+              return 0;
+            }
+            return prev - 1;
           });
-        }, 3000); 
+        }, 1000);
+
+        toast({ title: "Double Échec", description: "Les deux esprits ont failli. Nouvelle manche imminente..." });
+        
+        setTimeout(async () => {
+          // Seul le challenger effectue la mise à jour pour éviter les race conditions
+          if (isChallenger) {
+            await updateDoc(duelRef!, { 
+              challengerResult: null, 
+              opponentResult: null, 
+              quizId: null, 
+              status: 'active', 
+              round: increment(1),
+              updatedAt: serverTimestamp()
+            });
+          }
+        }, 3500); 
         return;
       }
     }
@@ -264,15 +283,23 @@ export default function DuelArenaPage() {
             className="flex-1 flex flex-col items-center justify-center text-center space-y-8"
           >
             <div className="relative">
-              <RefreshCw className="h-16 w-16 animate-spin opacity-10" />
-              <Swords className="absolute inset-0 m-auto h-8 w-8 opacity-40" />
+              {isResetting ? (
+                <div className="h-24 w-24 rounded-full border-4 border-primary/10 flex items-center justify-center">
+                  <span className="text-5xl font-black tabular-nums">{resetCountdown}</span>
+                </div>
+              ) : (
+                <>
+                  <RefreshCw className="h-16 w-16 animate-spin opacity-10" />
+                  <Swords className="absolute inset-0 m-auto h-8 w-8 opacity-40" />
+                </>
+              )}
             </div>
             <div className="space-y-2">
               <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-40">
                 {isResetting ? "Équilibre Rompu" : "Oracle en Consultation"}
               </p>
               <p className="text-sm font-medium opacity-60 max-w-[200px]">
-                {isResetting ? "Préparation d'un nouveau défi pour vous départager..." : "L'Arène se matérialise..."}
+                {isResetting ? "Concentrez-vous. Nouveau défi dans quelques instants..." : "L'Arène se matérialise..."}
               </p>
             </div>
           </motion.div>
@@ -303,8 +330,8 @@ export default function DuelArenaPage() {
                   onClick={() => handleAnswer(opt.originalIndex)} 
                   className={cn(
                     "h-24 rounded-[2.5rem] font-black text-xl border-2 shadow-xl transition-all duration-300", 
-                    "text-black dark:text-white",
-                    !answered ? "bg-card border-primary/5 hover:bg-primary/5" : 
+                    "text-black dark:text-white bg-card border-primary/5",
+                    !answered ? "hover:bg-primary/5" : 
                     opt.originalIndex === quiz.correctIndex ? "bg-green-500 border-green-600 text-white" : 
                     "opacity-40 grayscale"
                   )}
