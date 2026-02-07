@@ -265,7 +265,7 @@ export default function ProfilPage() {
                     "h-16 w-16 shrink-0 rounded-[1.5rem] border-2 transition-all flex items-center justify-center", 
                     (profile?.activeTheme === "default" || !profile?.activeTheme) 
                       ? "border-primary bg-primary/10 shadow-xl scale-110" 
-                      : "border-transparent bg-background/50 opacity-40"
+                      : "border-primary/5 bg-background/50 opacity-40"
                   )}
                 >
                   <Sparkles className="h-6 w-6" />
@@ -280,11 +280,12 @@ export default function ProfilPage() {
                       key={tid} 
                       onClick={() => handleApplyTheme(tid)} 
                       className={cn(
-                        "h-16 w-16 shrink-0 rounded-[1.5rem] border-2 transition-all flex items-center justify-center bg-card/80",
-                        isActive ? theme.borderColor + " scale-110" : "border-transparent opacity-60"
+                        "h-16 w-16 shrink-0 rounded-[1.5rem] border-2 transition-all flex items-center justify-center relative overflow-hidden",
+                        isActive ? theme.borderColor + " scale-110 shadow-xl bg-background" : "border-primary/5 bg-card opacity-60"
                       )}
                     >
-                      <div className={cn("h-6 w-6 rounded-full shadow-inner", theme.color.replace('text-', 'bg-'))} />
+                      <div className={cn("h-8 w-8 rounded-full shadow-inner", theme.color.replace('text-', 'bg-'))} />
+                      {isActive && <div className="absolute inset-0 bg-primary/[0.03] pointer-events-none" />}
                     </button>
                   );
                 })}

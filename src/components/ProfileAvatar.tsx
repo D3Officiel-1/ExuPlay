@@ -1,4 +1,3 @@
-
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -56,11 +55,11 @@ export function ProfileAvatar({
         <motion.div 
           key={activeTheme}
           initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 1.1 }}
+          animate={{ opacity: 1, scale: 1.1 }}
+          exit={{ opacity: 0, scale: 1.2 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
           className={cn(
-            "absolute inset-[-20%] rounded-full z-0 pointer-events-none",
+            "absolute inset-[-25%] rounded-full z-0 pointer-events-none",
             visualTheme.auraClass
           )} 
         />
@@ -86,7 +85,7 @@ export function ProfileAvatar({
           <motion.div 
             animate={{ x: ["-100%", "200%"] }}
             transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12 pointer-events-none"
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12 pointer-events-none"
           />
         )}
       </div>
