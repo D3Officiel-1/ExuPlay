@@ -23,7 +23,6 @@ import {
   Settings,
   Zap,
   ShieldCheck,
-  Vibrate,
   EyeOff,
   LogOut,
   Loader2,
@@ -158,23 +157,6 @@ export default function ParametresPage() {
             </div>
             <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden">
               <CardContent className="p-4 space-y-1">
-                {/* Haptiques */}
-                <div className="flex items-center justify-between p-3 rounded-2xl">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
-                      <Vibrate className="h-5 w-5 text-primary opacity-60" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold">Échos Haptiques</p>
-                      <p className="text-[10px] opacity-40 font-medium">Vibrations d'interaction</p>
-                    </div>
-                  </div>
-                  <Switch 
-                    checked={profile?.hapticEnabled ?? true} 
-                    onCheckedChange={(checked) => handleUpdateSetting('hapticEnabled', checked)} 
-                  />
-                </div>
-
                 {/* Sons */}
                 <div className="flex items-center justify-between p-3 rounded-2xl">
                   <div className="flex items-center gap-4">
