@@ -153,12 +153,12 @@ export function DuelInvitationListener() {
         initial={{ opacity: 0 }} 
         animate={{ opacity: 1 }} 
         exit={{ opacity: 0 }} 
-        className="fixed inset-0 z-[10000] bg-background/95 backdrop-blur-3xl flex flex-col items-center justify-center p-8 text-center overflow-hidden"
+        className="fixed inset-0 z-[10000] bg-background/95 backdrop-blur-3xl flex flex-col items-center justify-center p-6 text-center overflow-hidden"
       >
         <motion.div 
           initial={{ scale: 0.8, y: 40, opacity: 0 }} 
           animate={{ scale: 1, y: 0, opacity: 1 }} 
-          className="w-full max-w-sm space-y-10"
+          className="w-full max-w-sm space-y-10 overflow-y-auto max-h-[92vh] no-scrollbar py-6"
         >
           <div className="space-y-6">
             <div className="relative mx-auto w-24 h-24">
