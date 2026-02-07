@@ -17,6 +17,7 @@ import {
   where
 } from "firebase/firestore";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { 
   Trophy, 
   Loader2, 
@@ -30,7 +31,10 @@ import {
   ShieldCheck,
   AlertCircle,
   Plus,
-  Users
+  Users,
+  Search,
+  TrendingUp,
+  Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
@@ -42,7 +46,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { haptic } from "@/lib/haptics";
@@ -52,6 +55,7 @@ export default function ClassementPage() {
   const { user } = useUser();
   const { toast } = useToast();
 
+  const [search, setSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [selectedUserForVision, setSelectedUserForVision] = useState<any>(null);
   const [amount, setAmount] = useState("");
@@ -95,6 +99,7 @@ export default function ClassementPage() {
     : (appStatus?.dailyTransferLimitDefault ?? 500);
 
   const remainingLimit = Math.max(0, dailyLimit - sentToday);
+  const fluxProgress = Math.min(100, (sentToday / dailyLimit) * 100);
   // -----------------------------------------
 
   const topUsersQuery = useMemo(() => {
@@ -104,16 +109,23 @@ export default function ClassementPage() {
 
   const { data: allUsers, loading } = useCollection(topUsersQuery);
 
+  const filteredUsers = useMemo(() => {
+    if (!allUsers) return [];
+    const visible = allUsers.filter(u => !u.rankingHidden || u.id === user?.uid);
+    if (!search.trim()) return visible;
+    const q = search.toLowerCase().trim();
+    return visible.filter(u => 
+      u.username?.toLowerCase().includes(q) || 
+      u.phoneNumber?.includes(q)
+    );
+  }, [allUsers, search, user?.uid]);
+
   const { podium, rest } = useMemo(() => {
-    if (!allUsers) return { podium: [], rest: [] };
-    
-    const visibleUsers = allUsers.filter(u => !u.rankingHidden || u.id === user?.uid);
-    
     return {
-      podium: visibleUsers.slice(0, 3),
-      rest: visibleUsers.slice(3)
+      podium: filteredUsers.slice(0, 3),
+      rest: filteredUsers.slice(3)
     };
-  }, [allUsers, user?.uid]);
+  }, [filteredUsers]);
 
   const handleUserClick = (u: any) => {
     if (u.id === user?.uid) {
@@ -163,7 +175,6 @@ export default function ClassementPage() {
     const fees = mode === 'transfer' ? Math.floor(bet * (transferFeePercent / 100)) : 0;
     const totalCost = mode === 'transfer' ? (bet + fees) : (bet * battleParty.length);
     
-    // Vérification de la limite économique cumulative
     if (bet > remainingLimit) {
       haptic.error();
       toast({ 
@@ -274,7 +285,7 @@ export default function ClassementPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
-      <main className="flex-1 p-6 pt-24 space-y-10 max-w-lg mx-auto w-full">
+      <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Hiérarchie</p>
@@ -285,6 +296,39 @@ export default function ClassementPage() {
               Annuler
             </Button>
           )}
+        </div>
+
+        {/* Barre de Flux Journalier & Recherche */}
+        <div className="space-y-6">
+          <Card className="border-none bg-primary/5 rounded-[2.5rem] p-6 space-y-4 shadow-inner">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary opacity-40" />
+                <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Crédit de Flux Restant</span>
+              </div>
+              <span className="text-xs font-black">{remainingLimit.toLocaleString()} PTS</span>
+            </div>
+            <div className="h-2 bg-background/50 rounded-full overflow-hidden">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${100 - fluxProgress}%` }}
+                className="h-full bg-primary shadow-[0_0_10px_rgba(var(--primary-rgb),0.3)]"
+              />
+            </div>
+            <p className="text-[8px] font-bold opacity-30 uppercase text-center tracking-widest">
+              Limite : {dailyLimit} PTS • Utilisé : {sentToday} PTS
+            </p>
+          </Card>
+
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-30" />
+            <Input 
+              placeholder="Chercher un esprit..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-14 pl-12 rounded-2xl bg-card/40 border-none shadow-lg focus-visible:ring-1 focus-visible:ring-primary/20"
+            />
+          </div>
         </div>
 
         {podium.length > 0 && (
@@ -325,7 +369,7 @@ export default function ClassementPage() {
                   </div>
                   <div className="text-center">
                     <p className="text-[9px] font-black uppercase truncate w-24">@{u.username}</p>
-                    <p className="text-[10px] font-bold opacity-40">{u.totalPoints} PTS</p>
+                    <p className="text-[10px] font-bold opacity-40">{u.totalPoints?.toLocaleString()} PTS</p>
                   </div>
                 </motion.div>
               );
@@ -353,8 +397,8 @@ export default function ClassementPage() {
                 className={cn("select-none", u.duelProtected && isSelectionMode && "opacity-20 grayscale pointer-events-none")}
               >
                 <Card className={cn(
-                  "border-none backdrop-blur-3xl transition-all duration-500 overflow-hidden rounded-[2rem] cursor-pointer",
-                  isSelected ? "bg-primary text-primary-foreground shadow-2xl scale-[1.02]" : isMe ? "bg-primary/5 opacity-60" : "bg-card/40 shadow-lg hover:bg-card/60"
+                  "border-none backdrop-blur-3xl transition-all duration-500 overflow-hidden rounded-[2.2rem] cursor-pointer shadow-lg",
+                  isSelected ? "bg-primary text-primary-foreground shadow-2xl scale-[1.02]" : isMe ? "bg-primary/5 opacity-60" : "bg-card/40 hover:bg-card/60"
                 )}>
                   <CardContent className="p-4 flex items-center gap-4">
                     <div className="flex flex-col items-center justify-center w-10 shrink-0">
@@ -364,24 +408,34 @@ export default function ClassementPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="font-black text-sm truncate uppercase tracking-tight">@{u.username}</p>
-                        {!isSelected && <Shield className={cn("h-2 w-2", title.color)} />}
+                        <Shield className={cn("h-2.5 w-2.5", title.color)} />
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Zap className={cn("h-3 w-3 text-primary", isSelected && "text-primary-foreground")} />
                         <p className={cn("text-[10px] font-bold uppercase opacity-40", isSelected && "opacity-80")}>{u.totalPoints?.toLocaleString()} PTS</p>
                       </div>
                     </div>
-                    {isSelected && <Check className="h-5 w-5 text-primary-foreground" />}
-                    {u.duelProtected && !isSelectionMode && (
-                      <div className="h-8 w-8 bg-primary/5 rounded-full flex items-center justify-center">
-                        <Swords className="h-3.5 w-3.5 opacity-20" />
-                      </div>
-                    )}
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={cn("text-[8px] font-black uppercase tracking-widest", title.color)}>{title.name}</span>
+                      {isSelected && <Check className="h-4 w-4 text-primary-foreground" />}
+                      {u.duelProtected && !isSelectionMode && (
+                        <div className="h-6 w-6 bg-primary/5 rounded-full flex items-center justify-center">
+                          <Swords className="h-3 w-3 opacity-20" />
+                        </div>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               </motion.div>
             );
           })}
+          
+          {filteredUsers.length === 0 && !loading && (
+            <div className="py-20 text-center space-y-4 opacity-20">
+              <Search className="h-12 w-12 mx-auto" />
+              <p className="text-xs font-black uppercase tracking-widest">Aucun esprit ne résonne ici</p>
+            </div>
+          )}
         </div>
       </main>
 
@@ -395,6 +449,7 @@ export default function ClassementPage() {
         )}
       </AnimatePresence>
 
+      {/* Vision de l'Oracle - Dialog amélioré */}
       <Dialog open={!!selectedUserForVision} onOpenChange={(open) => !open && setSelectedUserForVision(null)}>
         <DialogContent className="max-w-[90vw] sm:max-w-md bg-transparent border-none p-0 overflow-hidden shadow-none ring-0 [&>button]:hidden">
           {selectedUserForVision && (
@@ -402,17 +457,31 @@ export default function ClassementPage() {
               <div className="relative flex-1 w-full overflow-hidden">
                 {selectedUserForVision.profileImage ? <img src={selectedUserForVision.profileImage} alt="" className="absolute inset-0 w-full h-full object-cover" /> : <div className="absolute inset-0 flex items-center justify-center bg-primary/5"><UserIcon className="h-32 w-32 text-primary opacity-10" /></div>}
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+                <div className="absolute top-8 left-8">
+                  <div className={cn("px-4 py-1.5 rounded-full border-2 backdrop-blur-md", getHonorTitle(selectedUserForVision.totalPoints || 0).bgClass, getHonorTitle(selectedUserForVision.totalPoints || 0).borderColor)}>
+                    <span className={cn("text-[9px] font-black uppercase tracking-widest", getHonorTitle(selectedUserForVision.totalPoints || 0).color)}>
+                      {getHonorTitle(selectedUserForVision.totalPoints || 0).name}
+                    </span>
+                  </div>
+                </div>
               </div>
               <div className="p-10 space-y-8 relative z-10 bg-background/60 backdrop-blur-3xl border-t border-white/5">
                 <div className="text-center space-y-2">
                   <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-40">Oracle de la Vision</p>
                   <h2 className="text-4xl font-black italic tracking-tighter uppercase">@{selectedUserForVision.username}</h2>
+                  <p className="text-[9px] font-medium opacity-40 italic">"{getHonorTitle(selectedUserForVision.totalPoints || 0).description}"</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-5 bg-primary/5 rounded-[2rem] text-center space-y-1"><p className="text-[9px] font-black uppercase tracking-widest opacity-40">Lumière</p><p className="font-black text-lg">{selectedUserForVision.totalPoints?.toLocaleString()} PTS</p></div>
-                  <div className="p-5 bg-primary/5 rounded-[2rem] text-center space-y-1"><p className="text-[9px] font-black uppercase tracking-widest opacity-40">Valeur</p><p className="font-black text-lg text-primary">{(selectedUserForVision.totalPoints * (appStatus?.pointConversionRate ?? 0.5)).toLocaleString()} FCFA</p></div>
+                  <div className="p-5 bg-primary/5 rounded-[2rem] text-center space-y-1">
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Lumière</p>
+                    <p className="font-black text-xl">{selectedUserForVision.totalPoints?.toLocaleString()} PTS</p>
+                  </div>
+                  <div className="p-5 bg-primary/5 rounded-[2rem] text-center space-y-1">
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Valeur Terrestre</p>
+                    <p className="font-black text-xl text-primary">{(selectedUserForVision.totalPoints * (appStatus?.pointConversionRate ?? 0.5)).toLocaleString()} FCFA</p>
+                  </div>
                 </div>
-                <Button onClick={() => setSelectedUserForVision(null)} className="w-full h-16 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-primary/20">Fermer</Button>
+                <Button onClick={() => setSelectedUserForVision(null)} className="w-full h-16 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-primary/20">Fermer la Vision</Button>
               </div>
             </motion.div>
           )}
@@ -423,9 +492,9 @@ export default function ClassementPage() {
         <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-3xl border-white/5 rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
           <div className="p-8 space-y-8">
             <DialogHeader>
-              <div className="space-y-1">
+              <div className="space-y-1 text-center">
                 <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Action de Flux</p>
-                <DialogTitle className="text-2xl font-black tracking-tight">{mode === 'duel' ? "Le Choc des Esprits" : "Transmission"}</DialogTitle>
+                <DialogTitle className="text-2xl font-black tracking-tight italic">{mode === 'duel' ? "Le Choc des Esprits" : "Transmission de Lumière"}</DialogTitle>
               </div>
             </DialogHeader>
 
@@ -441,8 +510,8 @@ export default function ClassementPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-black text-sm truncate">{battleParty.length > 1 ? `${battleParty.length} Adversaires` : `@${selectedUser.username}`}</p>
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">{mode === 'duel' ? "Préparation au choc" : "Destinataire"}</p>
+                    <p className="font-black text-sm truncate uppercase">{battleParty.length > 1 ? `${battleParty.length} Adversaires` : `@${selectedUser.username}`}</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-40">{mode === 'duel' ? "Préparation au choc" : "Cible du don"}</p>
                   </div>
                 </div>
 
@@ -460,7 +529,7 @@ export default function ClassementPage() {
 
                   {selectedUser.duelProtected && (
                     <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex items-center gap-3">
-                      <Swords className="h-4 w-4 opacity-20" />
+                      <ShieldCheck className="h-4 w-4 text-primary opacity-40" />
                       <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Cet esprit est protégé par le Sceau de Paix.</p>
                     </div>
                   )}
@@ -474,28 +543,35 @@ export default function ClassementPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between items-end px-2">
                       <Label className="text-[10px] font-black uppercase opacity-40">Mise de Lumière</Label>
-                      <span className="text-[9px] font-black uppercase opacity-20">Reste: {remainingLimit} PTS</span>
+                      <span className="text-[9px] font-black uppercase opacity-20">Crédit : {remainingLimit} PTS</span>
                     </div>
                     <div className="relative">
                       <Zap className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-20" />
-                      <Input type="number" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-16 text-3xl font-black text-center pl-12 rounded-2xl bg-primary/5 border-none" autoFocus />
+                      <Input 
+                        type="number" 
+                        placeholder="0" 
+                        value={amount} 
+                        onChange={(e) => setAmount(e.target.value)} 
+                        className="h-16 text-3xl font-black text-center pl-12 rounded-2xl bg-primary/5 border-none shadow-inner" 
+                        autoFocus 
+                      />
                     </div>
                   </div>
 
                   <div className="space-y-3">
                     {mode === 'transfer' && (
                       <div className="flex items-center justify-between p-4 bg-orange-500/5 rounded-2xl border border-orange-500/10">
-                        <span className="text-[10px] font-black uppercase opacity-60">Taxe ({appStatus?.transferFeePercent ?? 10}%)</span>
+                        <span className="text-[10px] font-black uppercase opacity-60">Taxe de flux ({appStatus?.transferFeePercent ?? 10}%)</span>
                         <span className="text-xs font-black text-orange-600">+{Math.floor((parseInt(amount) || 0) * ((appStatus?.transferFeePercent ?? 10) / 100))} PTS</span>
                       </div>
                     )}
                     
                     <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 space-y-2">
                       <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest opacity-40">
-                        <span>Flux journalier utilisé</span>
+                        <span>Flux utilisé ce jour</span>
                         <span>{sentToday + (parseInt(amount) || 0)} / {dailyLimit} PTS</span>
                       </div>
-                      <div className="h-1 bg-primary/5 rounded-full overflow-hidden">
+                      <div className="h-1.5 bg-background/50 rounded-full overflow-hidden">
                         <motion.div 
                           initial={{ width: 0 }}
                           animate={{ width: `${Math.min(100, ((sentToday + (parseInt(amount) || 0)) / dailyLimit) * 100)}%` }}
@@ -511,7 +587,7 @@ export default function ClassementPage() {
                   disabled={isProcessing || !amount || parseInt(amount) <= 0 || parseInt(amount) > remainingLimit} 
                   className="w-full h-16 rounded-2xl font-black text-sm uppercase gap-3 shadow-xl shadow-primary/20"
                 >
-                  {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : mode === 'transfer' ? "Transmettre" : "Lancer le Choc"}
+                  {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : mode === 'transfer' ? "Transmettre la Lumière" : "Lancer le Choc"}
                 </Button>
               </div>
             )}
@@ -521,4 +597,3 @@ export default function ClassementPage() {
     </div>
   );
 }
-    
