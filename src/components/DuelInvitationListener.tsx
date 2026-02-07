@@ -119,19 +119,27 @@ export function DuelInvitationListener() {
           <div className="space-y-6">
             <div className="relative mx-auto w-24 h-24">
               <div className="relative h-full w-full bg-card/40 backdrop-blur-2xl border border-primary/10 rounded-[2.5rem] flex items-center justify-center shadow-2xl overflow-hidden">
-                {activeDuel.challengerPhoto ? (
+                {isChallenger ? (
+                  <Swords className="h-10 w-10 text-primary opacity-40 animate-pulse" />
+                ) : activeDuel.challengerPhoto ? (
                   <Image src={activeDuel.challengerPhoto} alt="" fill className="object-cover" />
                 ) : (
                   <User className="h-10 w-10 text-primary opacity-20" />
                 )}
               </div>
-              <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground h-8 w-8 rounded-xl flex items-center justify-center border-2 border-background shadow-lg">
-                <Swords className="h-4 w-4" />
-              </div>
+              {!isChallenger && (
+                <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground h-8 w-8 rounded-xl flex items-center justify-center border-2 border-background shadow-lg">
+                  <Swords className="h-4 w-4" />
+                </div>
+              )}
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Le Choc des Esprits</p>
-              <h2 className="text-2xl font-black italic">@{activeDuel.challengerName} vous défie</h2>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">
+                {isChallenger ? "Processus d'Invocation" : "Le Choc des Esprits"}
+              </p>
+              <h2 className="text-2xl font-black italic">
+                {isChallenger ? "Appel de la Cohorte" : `@${activeDuel.challengerName} vous défie`}
+              </h2>
             </div>
           </div>
 
