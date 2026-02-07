@@ -150,16 +150,28 @@ export default function PenaltiesPage() {
     setPlayerChoice(direction);
     haptic.medium();
 
-    // L'Oracle sait déjà où l'utilisateur va tirer
-    const keeperDir = direction; 
-    const scored = false; // Toujours un arrêt
+    // Logique Oracle : 25% de chances de bloquer (Omniscience), 75% de chances de feindre l'erreur
+    const roll = Math.random();
+    let keeperDir: Direction;
+    let scored: boolean;
+
+    if (roll < 0.25) {
+      // L'Oracle utilise son omniscience et bloque (25%)
+      keeperDir = direction;
+      scored = false;
+    } else {
+      // L'Oracle feint l'erreur pour laisser passer la Lumière (75%)
+      const otherDirections = DIRECTIONS.filter(d => d !== direction);
+      keeperDir = otherDirections[Math.floor(Math.random() * otherDirections.length)];
+      scored = true;
+    }
     
     setKeeperChoice(keeperDir);
     setIsScored(scored);
     setGameState('shooting');
 
     try {
-      // Déduction de la mise
+      // Déduction immédiate de la mise
       await updateDoc(userDocRef, {
         totalPoints: increment(-selectedBet),
         updatedAt: serverTimestamp()
@@ -167,8 +179,23 @@ export default function PenaltiesPage() {
 
       setTimeout(async () => {
         setGameState('result');
-        // Comme scored est toujours false, on ne donne jamais de points
-        haptic.error();
+        
+        if (scored) {
+          haptic.success();
+          confetti({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#ffffff', '#000000', '#ffd700']
+          });
+          // Créditer les points en cas de succès
+          await updateDoc(userDocRef, {
+            totalPoints: increment(selectedBet * 2),
+            updatedAt: serverTimestamp()
+          });
+        } else {
+          haptic.error();
+        }
         setLoading(false);
       }, 800);
     } catch (e) {
@@ -386,7 +413,7 @@ export default function PenaltiesPage() {
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/5 flex items-start gap-4">
                 <Sparkles className="h-5 w-5 text-primary opacity-40 shrink-0 mt-1" />
                 <p className="text-[11px] font-medium opacity-40 italic">
-                  "L'Inconnu réside dans les recoins. Touchez les zones invisibles du filet pour déclencher votre tir simultanément au plongeon de l'Oracle."
+                  "L'Oracle observe vos intentions. Saurez-vous déceler l'instant où il choisit de ne pas regarder ?"
                 </p>
               </motion.div>
             )}
