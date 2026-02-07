@@ -109,11 +109,11 @@ export default function PenaltiesPage() {
         "À gauche": -115, "Centre": 0, "À droite": 115,
         "En bas à gauche": -115, "En bas": 0, "En bas à droite": 115
       };
-      // Coordonnées Y abaissées de 20px par rapport à la version précédente
+      // Coordonnées Y abaissées de nouveau de 20px (de -365 à -345 etc)
       const yMap: Record<Direction, number> = {
-        "En haut à gauche": -365, "En haut": -365, "En haut à droite": -365,
-        "À gauche": -295, "Centre": -295, "À droite": -295,
-        "En bas à gauche": -225, "En bas": -225, "En bas à droite": -225
+        "En haut à gauche": -345, "En haut": -345, "En haut à droite": -345,
+        "À gauche": -275, "Centre": -275, "À droite": -275,
+        "En bas à gauche": -205, "En bas": -205, "En bas à droite": -205
       };
       return {
         y: yMap[direction],
@@ -135,11 +135,11 @@ export default function PenaltiesPage() {
         "À gauche": -105, "Centre": 0, "À droite": 105,
         "En bas à gauche": -105, "En bas": 0, "En bas à droite": 105
       };
-      // Coordonnées Y synchronisées avec le nouvel impact du ballon
+      // Coordonnées Y du gardien synchronisées (abaissées de 20px)
       const yMap: Record<Direction, number> = {
-        "En haut à gauche": -35, "En haut": -35, "En haut à droite": -35,
-        "À gauche": 30, "Centre": 20, "À droite": 30,
-        "En bas à gauche": 95, "En bas": 95, "En bas à droite": 95
+        "En haut à gauche": -15, "En haut": -15, "En haut à droite": -15,
+        "À gauche": 50, "Centre": 40, "À droite": 50,
+        "En bas à gauche": 115, "En bas": 115, "En bas à droite": 115
       };
       const finalY = yMap[direction as keyof typeof yMap] || 0;
 
