@@ -3,7 +3,7 @@
 
 import { useMemo, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useFirestore, useCollection, useUser, useDoc } from "@/firebase";
+import { useFirestore, useCollection, useUser, useDoc, useMemoFirebase } from "@/firebase";
 import { 
   collection, 
   query, 
@@ -13,7 +13,8 @@ import {
   updateDoc, 
   increment, 
   serverTimestamp, 
-  addDoc 
+  addDoc,
+  where
 } from "firebase/firestore";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
@@ -65,6 +66,36 @@ export default function ClassementPage() {
   
   const { data: myProfile } = useDoc(myProfileRef);
   const { data: appStatus } = useDoc(appStatusRef);
+
+  // --- LOGIQUE DES LIMITES QUOTIDIENNES ---
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString();
+  }, []);
+
+  const todayTransfersQuery = useMemoFirebase(() => {
+    if (!db || !user?.uid) return null;
+    return query(
+      collection(db, "transfers"),
+      where("fromId", "==", user.uid),
+      where("timestamp", ">=", today)
+    );
+  }, [db, user?.uid, today]);
+
+  const { data: todayTransfers } = useCollection(todayTransfersQuery);
+
+  const sentToday = useMemo(() => {
+    if (!todayTransfers) return 0;
+    return todayTransfers.reduce((acc, t) => acc + (t.amount || 0), 0);
+  }, [todayTransfers]);
+
+  const dailyLimit = myProfile?.trustBadge 
+    ? (appStatus?.dailyTransferLimitTrusted ?? 2500) 
+    : (appStatus?.dailyTransferLimitDefault ?? 500);
+
+  const remainingLimit = Math.max(0, dailyLimit - sentToday);
+  // -----------------------------------------
 
   const topUsersQuery = useMemo(() => {
     if (!db) return null;
@@ -128,18 +159,18 @@ export default function ClassementPage() {
       return;
     }
 
-    // Utilisation des frais et limites dynamiques
     const transferFeePercent = appStatus?.transferFeePercent ?? 10;
     const fees = mode === 'transfer' ? Math.floor(bet * (transferFeePercent / 100)) : 0;
     const totalCost = mode === 'transfer' ? (bet + fees) : (bet * battleParty.length);
     
-    const dailyLimit = myProfile?.trustBadge 
-      ? (appStatus?.dailyTransferLimitTrusted ?? 2500) 
-      : (appStatus?.dailyTransferLimitDefault ?? 500);
-
-    if (bet > dailyLimit) {
+    // Vérification de la limite économique cumulative
+    if (bet > remainingLimit) {
       haptic.error();
-      toast({ variant: "destructive", title: "Limite dépassée", description: `Votre limite est de ${dailyLimit} PTS.` });
+      toast({ 
+        variant: "destructive", 
+        title: "Limite atteinte", 
+        description: `Il ne vous reste que ${remainingLimit} PTS de flux aujourd'hui.` 
+      });
       return;
     }
 
@@ -441,7 +472,10 @@ export default function ClassementPage() {
                   )}
 
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase opacity-40 ml-2">Mise de Lumière (par esprit)</Label>
+                    <div className="flex justify-between items-end px-2">
+                      <Label className="text-[10px] font-black uppercase opacity-40">Mise de Lumière</Label>
+                      <span className="text-[9px] font-black uppercase opacity-20">Reste: {remainingLimit} PTS</span>
+                    </div>
                     <div className="relative">
                       <Zap className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-20" />
                       <Input type="number" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-16 text-3xl font-black text-center pl-12 rounded-2xl bg-primary/5 border-none" autoFocus />
@@ -455,16 +489,28 @@ export default function ClassementPage() {
                         <span className="text-xs font-black text-orange-600">+{Math.floor((parseInt(amount) || 0) * ((appStatus?.transferFeePercent ?? 10) / 100))} PTS</span>
                       </div>
                     )}
-                    {mode === 'duel' && battleParty.length > 1 && (
-                      <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/10">
-                        <span className="text-[10px] font-black uppercase opacity-60">Coût Total (Mise x {battleParty.length})</span>
-                        <span className="text-xs font-black">{(parseInt(amount) || 0) * battleParty.length} PTS</span>
+                    
+                    <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 space-y-2">
+                      <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest opacity-40">
+                        <span>Flux journalier utilisé</span>
+                        <span>{sentToday + (parseInt(amount) || 0)} / {dailyLimit} PTS</span>
                       </div>
-                    )}
+                      <div className="h-1 bg-primary/5 rounded-full overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.min(100, ((sentToday + (parseInt(amount) || 0)) / dailyLimit) * 100)}%` }}
+                          className={cn("h-full transition-colors", (sentToday + (parseInt(amount) || 0)) > dailyLimit ? "bg-red-500" : "bg-primary")}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <Button onClick={handleAction} disabled={isProcessing || !amount || parseInt(amount) <= 0} className="w-full h-16 rounded-2xl font-black text-sm uppercase gap-3 shadow-xl shadow-primary/20">
+                <Button 
+                  onClick={handleAction} 
+                  disabled={isProcessing || !amount || parseInt(amount) <= 0 || parseInt(amount) > remainingLimit} 
+                  className="w-full h-16 rounded-2xl font-black text-sm uppercase gap-3 shadow-xl shadow-primary/20"
+                >
                   {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : mode === 'transfer' ? "Transmettre" : "Lancer le Choc"}
                 </Button>
               </div>
@@ -475,3 +521,4 @@ export default function ClassementPage() {
     </div>
   );
 }
+    

@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useUser, useFirestore, useDoc } from "@/firebase";
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
 import { 
   doc, 
   getDoc, 
@@ -12,9 +12,7 @@ import {
   serverTimestamp, 
   query, 
   collection, 
-  orderBy, 
-  limit, 
-  getDocs,
+  where,
   addDoc
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
@@ -29,16 +27,15 @@ import {
   CheckCircle2, 
   Scan,
   User,
-  ArrowRight,
   ShieldAlert,
   Sparkles,
-  X,
   AlertCircle,
   Swords,
   Ghost,
   QrCode,
   Flashlight,
-  Percent
+  Percent,
+  TrendingUp
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
@@ -72,15 +69,40 @@ export default function TransfertPage() {
   const { data: profile, loading: profileLoading } = useDoc(userDocRef);
   const { data: appStatus, loading: configLoading } = useDoc(appStatusRef);
 
-  // Lois Économiques Dynamiques
+  // --- LOGIQUE DES LIMITES QUOTIDIENNES ---
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString();
+  }, []);
+
+  const todayTransfersQuery = useMemoFirebase(() => {
+    if (!db || !firebaseUser?.uid) return null;
+    return query(
+      collection(db, "transfers"),
+      where("fromId", "==", firebaseUser.uid),
+      where("timestamp", ">=", today)
+    );
+  }, [db, firebaseUser?.uid, today]);
+
+  const { data: todayTransfers } = useCollection(todayTransfersQuery);
+
+  const sentToday = useMemo(() => {
+    if (!todayTransfers) return 0;
+    return todayTransfers.reduce((acc, t) => acc + (t.amount || 0), 0);
+  }, [todayTransfers]);
+
+  const dailyLimit = profile?.trustBadge 
+    ? (appStatus?.dailyTransferLimitTrusted ?? 2500) 
+    : (appStatus?.dailyTransferLimitDefault ?? 500);
+
+  const remainingLimit = Math.max(0, dailyLimit - sentToday);
+  // -----------------------------------------
+
   const transferAmount = parseInt(amount) || 0;
   const transferFeePercent = appStatus?.transferFeePercent ?? 10;
   const fees = mode === 'transfer' ? Math.floor(transferAmount * (transferFeePercent / 100)) : 0;
   const totalCost = transferAmount + fees;
-  
-  const dailyLimit = profile?.trustBadge 
-    ? (appStatus?.dailyTransferLimitTrusted ?? 2500) 
-    : (appStatus?.dailyTransferLimitDefault ?? 500);
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
@@ -176,13 +198,13 @@ export default function TransfertPage() {
   const handleAction = async () => {
     if (!transferAmount || transferAmount <= 0 || !firebaseUser?.uid || !recipient?.id) return;
     
-    // Vérification de la limite économique
-    if (transferAmount > dailyLimit) { 
+    // Vérification de la limite de flux cumulée
+    if (transferAmount > remainingLimit) { 
       haptic.error();
       toast({ 
         variant: "destructive", 
-        title: "Loi transgressée", 
-        description: `Votre limite actuelle est de ${dailyLimit} PTS.` 
+        title: "Plafond atteint", 
+        description: `Il ne vous reste que ${remainingLimit} PTS de flux aujourd'hui.` 
       }); 
       return; 
     }
@@ -358,9 +380,25 @@ export default function TransfertPage() {
                       <Button onClick={handleAction} disabled={isProcessing || !amount || transferAmount <= 0} className="w-full h-16 rounded-2xl font-black text-sm uppercase shadow-xl">
                         {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : mode === 'duel' ? "Lancer le Duel" : "Confirmer"}
                       </Button>
-                      <p className="text-[8px] font-bold text-center opacity-20 uppercase tracking-widest">
-                        Limite quotidienne: {dailyLimit} PTS
-                      </p>
+                      
+                      <div className="w-full p-4 bg-primary/5 rounded-xl border border-primary/5 space-y-2">
+                        <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest opacity-40">
+                          <span>Flux Journalier</span>
+                          <span>{sentToday + transferAmount} / {dailyLimit} PTS</span>
+                        </div>
+                        <div className="h-1 bg-primary/5 rounded-full overflow-hidden">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.min(100, ((sentToday + transferAmount) / dailyLimit) * 100)}%` }}
+                            className={cn("h-full transition-colors", (sentToday + transferAmount) > dailyLimit ? "bg-red-500" : "bg-primary")}
+                          />
+                        </div>
+                        <p className="text-[7px] text-center font-bold opacity-30 uppercase">
+                          {remainingLimit >= transferAmount 
+                            ? `Il vous reste ${remainingLimit} points de flux aujourd'hui.` 
+                            : "Capacité de flux quotidienne insuffisante."}
+                        </p>
+                      </div>
                     </CardFooter>
                   </Card>
                 </motion.div>
