@@ -62,12 +62,16 @@ export default function ProfilPage() {
   
   const [localProfileImage, setLocalProfileImage] = useState<string | null>(null);
   const [isFullImageOpen, setIsFullImageOpen] = useState(false);
+  
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedUsername, setEditedUsername] = useState("");
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'available' | 'taken' | 'invalid'>('idle');
   const [isSavingName, setIsSavingName] = useState(false);
-  const [isChangingTheme, setIsChangingTheme] = useState(false);
+
+  const [isEditingPhone, setIsEditingPhone] = useState(false);
+  const [editedPhone, setEditedPhone] = useState("");
+  const [isSavingPhone, setIsSavingPhone] = useState(false);
 
   const { scrollY } = useScroll();
   const mainProfileOpacity = useTransform(scrollY, [0, 180], [1, 0]);
@@ -85,6 +89,16 @@ export default function ProfilPage() {
   const currentTitle = useMemo(() => getHonorTitle(profile?.totalPoints || 0), [profile?.totalPoints]);
 
   useEffect(() => {
+    if (profile?.username) {
+      setEditedUsername(profile.username);
+    }
+    if (profile?.phoneNumber) {
+      // Supposer que le format est +225XXXXXXXXXX
+      setEditedPhone(profile.phoneNumber.replace("+225", ""));
+    }
+  }, [profile]);
+
+  useEffect(() => {
     if (!isEditingName || editedUsername.length < 3 || editedUsername === profile?.username) { setUsernameStatus('idle'); return; }
     const checkUsername = async () => {
       setCheckingUsername(true);
@@ -97,11 +111,17 @@ export default function ProfilPage() {
     return () => clearTimeout(timeoutId);
   }, [editedUsername, db, isEditingName, profile?.username]);
 
+  const isValidPhone = (num: string) => {
+    if (num.length !== 10) return false;
+    const validPrefixes = ["01", "05", "07"];
+    return validPrefixes.some(prefix => num.startsWith(prefix));
+  };
+
   const handleApplyTheme = async (themeId: string) => {
     if (!userDocRef || profile?.activeTheme === themeId) return;
-    haptic.medium(); setIsChangingTheme(true);
+    haptic.medium();
     try { await updateDoc(userDocRef, { activeTheme: themeId, updatedAt: serverTimestamp() }); }
-    finally { setIsChangingTheme(false); }
+    catch (e) {}
   };
 
   const handleCopyCode = async () => {
@@ -126,6 +146,25 @@ export default function ProfilPage() {
         if (userDocRef) updateDoc(userDocRef, { profileImage: base64String, updatedAt: serverTimestamp() });
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const savePhoneNumber = async () => {
+    if (!userDocRef || isSavingPhone || !isValidPhone(editedPhone)) return;
+    setIsSavingPhone(true);
+    haptic.medium();
+    try {
+      const fullPhone = `+225${editedPhone}`;
+      await updateDoc(userDocRef, {
+        phoneNumber: fullPhone,
+        updatedAt: serverTimestamp()
+      });
+      setIsEditingPhone(false);
+      toast({ title: "Liaison mise à jour" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Erreur lors de la mise à jour" });
+    } finally {
+      setIsSavingPhone(false);
     }
   };
 
@@ -167,18 +206,44 @@ export default function ProfilPage() {
           <div className="space-y-3 flex flex-col items-center">
             <AnimatePresence mode="wait">
               {!isEditingName ? (
-                <motion.div key="display-name" className="group flex items-center gap-3 cursor-pointer" onClick={() => setIsEditingName(true)}>
+                <motion.div key="display-name" className="group flex items-center gap-3 cursor-pointer" onClick={() => { setIsEditingName(true); haptic.light(); }}>
                   <h1 className="text-3xl font-black tracking-tight uppercase italic">@{profile?.username || "Anonyme"}</h1>
                   <Edit2 className="h-4 w-4 opacity-40" />
                 </motion.div>
               ) : (
-                <div className="flex flex-col items-center gap-3 w-full">
-                  <Input value={editedUsername} onChange={(e) => setEditedUsername(e.target.value.toLowerCase())} className="h-14 text-center text-xl font-black rounded-2xl bg-primary/5" autoFocus maxLength={15} />
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="ghost" onClick={() => setIsEditingName(false)}>Annuler</Button>
-                    <Button size="sm" className="px-6" onClick={async () => { if (usernameStatus === 'available' && userDocRef) { setIsSavingName(true); await updateDoc(userDocRef, { username: editedUsername.trim(), updatedAt: serverTimestamp() }); setIsEditingName(false); setIsSavingName(false); } }} disabled={usernameStatus !== 'available' || isSavingName}>Enregistrer</Button>
+                <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-3 w-full">
+                  <div className="relative w-full max-w-[240px]">
+                    <Input 
+                      value={editedUsername} 
+                      onChange={(e) => setEditedUsername(e.target.value.toLowerCase().replace(/\s/g, ''))} 
+                      className="h-14 text-center text-xl font-black rounded-2xl bg-primary/5" 
+                      autoFocus 
+                      maxLength={15} 
+                    />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                      {checkingUsername && <Loader2 className="h-4 w-4 animate-spin opacity-40" />}
+                    </div>
                   </div>
-                </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => setIsEditingName(false)} className="rounded-xl">Annuler</Button>
+                    <Button 
+                      size="sm" 
+                      className="px-6 rounded-xl" 
+                      onClick={async () => { 
+                        if (usernameStatus === 'available' && userDocRef) { 
+                          setIsSavingName(true); 
+                          await updateDoc(userDocRef, { username: editedUsername.trim(), updatedAt: serverTimestamp() }); 
+                          setIsEditingName(false); 
+                          setIsSavingName(false); 
+                          toast({ title: "Identité mise à jour" });
+                        } 
+                      }} 
+                      disabled={usernameStatus !== 'available' || isSavingName}
+                    >
+                      {isSavingName ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enregistrer"}
+                    </Button>
+                  </div>
+                </motion.div>
               )}
             </AnimatePresence>
             <div className={cn("px-5 py-2 rounded-full border-2 shadow-lg", currentTitle.bgClass, currentTitle.borderColor)}>
@@ -210,12 +275,58 @@ export default function ProfilPage() {
           </div>
           <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden">
             <CardContent className="p-6 space-y-4">
-              <div className="flex items-center justify-between px-2">
+              <div className="flex items-center justify-between px-2 min-h-[40px]">
                 <div className="flex items-center gap-3 opacity-40">
                   <Smartphone className="h-4 w-4" />
                   <span className="text-[10px] font-black uppercase tracking-widest">Liaison Wave</span>
                 </div>
-                <span className="text-sm font-bold">{profile?.phoneNumber || "Non lié"}</span>
+                <AnimatePresence mode="wait">
+                  {!isEditingPhone ? (
+                    <motion.div 
+                      key="phone-display"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="flex items-center gap-2 cursor-pointer group"
+                      onClick={() => { setIsEditingPhone(true); haptic.light(); }}
+                    >
+                      <span className="text-sm font-bold">{profile?.phoneNumber || "Non lié"}</span>
+                      <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-40 transition-opacity" />
+                    </motion.div>
+                  ) : (
+                    <motion.div 
+                      key="phone-input"
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="flex items-center gap-2"
+                    >
+                      <div className="flex items-center gap-1.5 bg-primary/5 rounded-xl px-3 py-1.5 border border-primary/5">
+                        <span className="text-[10px] font-black opacity-40">+225</span>
+                        <input 
+                          value={editedPhone} 
+                          onChange={(e) => setEditedPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                          className="bg-transparent border-none outline-none text-sm font-bold w-24 p-0"
+                          placeholder="07..."
+                          autoFocus
+                        />
+                      </div>
+                      <div className="flex gap-1">
+                        <button 
+                          onClick={() => setIsEditingPhone(false)}
+                          className="h-8 w-8 rounded-full flex items-center justify-center bg-destructive/10 text-destructive"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                        <button 
+                          onClick={savePhoneNumber}
+                          disabled={!isValidPhone(editedPhone) || isSavingPhone}
+                          className="h-8 w-8 rounded-full flex items-center justify-center bg-primary text-primary-foreground disabled:opacity-20"
+                        >
+                          {isSavingPhone ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
               <div className="h-px bg-primary/5 w-full" />
               <div className="flex items-center justify-between px-2">
