@@ -22,35 +22,21 @@ export async function GET(req: NextRequest) {
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: '#000',
-            backgroundImage: 'radial-gradient(circle at 50% 50%, #111 0%, #000 100%)',
             color: '#fff',
             fontFamily: 'sans-serif',
             padding: '40px',
           }}
         >
-          {/* Background pattern */}
+          {/* Background overlay instead of filter */}
           <div
             style={{
               position: 'absolute',
-              top: '-10%',
-              left: '-10%',
-              width: '40%',
-              height: '40%',
-              background: 'rgba(255, 255, 255, 0.05)',
-              filter: 'blur(100px)',
-              borderRadius: '50%',
-            }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '-10%',
-              right: '-10%',
-              width: '40%',
-              height: '40%',
-              background: 'rgba(255, 255, 255, 0.05)',
-              filter: 'blur(100px)',
-              borderRadius: '50%',
+              top: '0',
+              left: '0',
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              backgroundColor: '#111',
             }}
           />
 
@@ -65,7 +51,6 @@ export async function GET(req: NextRequest) {
               padding: '60px',
               width: '90%',
               maxWidth: '800px',
-              boxShadow: '0 30px 60px rgba(0,0,0,0.5)',
             }}
           >
             {/* Logo */}
@@ -75,16 +60,16 @@ export async function GET(req: NextRequest) {
               </svg>
             </div>
 
-            {/* Profile Section - Image supprimée pour une esthétique épurée */}
+            {/* Profile Section */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '30px' }}>
-              <div style={{ fontSize: '48px', fontWeight: '900', letterSpacing: '-0.05em' }}>@{username}</div>
-              <div style={{ fontSize: '14px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.4em', opacity: 0.4, marginTop: '12px' }}>
+              <div style={{ display: 'flex', fontSize: '48px', fontWeight: '900', letterSpacing: '-0.05em' }}>@{username}</div>
+              <div style={{ display: 'flex', fontSize: '14px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.4em', opacity: 0.4, marginTop: '12px' }}>
                 MAÎTRE DE L'ÉVEIL
               </div>
             </div>
 
             {/* Invitation Text */}
-            <div style={{ fontSize: '24px', textAlign: 'center', opacity: 0.6, marginBottom: '40px', maxWidth: '500px', fontWeight: '500', lineHeight: 1.4 }}>
+            <div style={{ display: 'flex', fontSize: '24px', textAlign: 'center', opacity: 0.6, marginBottom: '40px', maxWidth: '500px', fontWeight: '500', lineHeight: 1.4 }}>
               "Je t'invite à rejoindre le cercle d'Exu Play pour explorer les frontières de la pensée."
             </div>
 
@@ -100,14 +85,14 @@ export async function GET(req: NextRequest) {
                 borderRadius: '30px',
               }}
             >
-              <div style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '4px' }}>
+              <div style={{ display: 'flex', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '4px' }}>
                 Code d'Invitation
               </div>
-              <div style={{ fontSize: '36px', fontWeight: '900', letterSpacing: '0.1em' }}>{code}</div>
+              <div style={{ display: 'flex', fontSize: '36px', fontWeight: '900', letterSpacing: '0.1em' }}>{code}</div>
             </div>
           </div>
 
-          <div style={{ position: 'absolute', bottom: '40px', fontSize: '12px', fontWeight: '900', letterSpacing: '0.3em', opacity: 0.2 }}>
+          <div style={{ position: 'absolute', bottom: '40px', display: 'flex', fontSize: '12px', fontWeight: '900', letterSpacing: '0.3em', opacity: 0.2 }}>
             EXU PLAY • L'ART DE LA PENSÉE
           </div>
         </div>
