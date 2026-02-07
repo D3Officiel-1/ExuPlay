@@ -7,7 +7,6 @@ import { useTheme } from "next-themes";
 import { useUser, useFirestore, useDoc } from "@/firebase";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { getAuth, signOut } from "firebase/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -36,7 +35,6 @@ import {
   Zap,
   ShieldCheck,
   EyeOff,
-  LogOut,
   Loader2,
   ZapOff,
   Eye,
@@ -58,13 +56,11 @@ export default function ParametresPage() {
   const { theme, setTheme } = useTheme();
   const { user } = useUser();
   const db = useFirestore();
-  const auth = getAuth();
   const router = useRouter();
   const { toast } = useToast();
   const colorInputRef = useRef<HTMLInputElement>(null);
   const bgColorInputRef = useRef<HTMLInputElement>(null);
   
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isColorDialogOpen, setIsColorDialogOpen] = useState(false);
   const [isUpdatingColor, setIsUpdatingColor] = useState(false);
   const [pendingColor, setPendingColor] = useState<string | null>(null);
@@ -121,20 +117,6 @@ export default function ParametresPage() {
       toast({ variant: "destructive", title: "Dissonance" });
     } finally {
       setIsUpdatingColor(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    haptic.medium();
-    setIsLoggingOut(true);
-    try {
-      await signOut(auth);
-      sessionStorage.clear();
-      router.push("/login");
-    } catch (error) {
-      toast({ variant: "destructive", title: "Erreur", description: "L'âme refuse de quitter le sanctuaire." });
-    } finally {
-      setIsLoggingOut(false);
     }
   };
 
@@ -356,25 +338,6 @@ export default function ParametresPage() {
                       <p className="text-[10px] opacity-40 font-medium tracking-widest uppercase">2.4.0 - Chroma Flux</p>
                     </div>
                   </div>
-                </div>
-
-                <div className="px-2 pb-2">
-                  <Button 
-                    variant="ghost" 
-                    onClick={handleLogout}
-                    disabled={isLoggingOut}
-                    className="w-full h-14 rounded-2xl flex items-center justify-between px-4 hover:bg-destructive/10 hover:text-destructive transition-all group"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 bg-destructive/10 rounded-xl flex items-center justify-center group-hover:bg-destructive/20">
-                        {isLoggingOut ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5 text-destructive" />}
-                      </div>
-                      <div className="text-left">
-                        <p className="text-sm font-bold">Quitter le Sanctuaire</p>
-                        <p className="text-[10px] opacity-40 font-medium uppercase tracking-widest">Fermer la session</p>
-                      </div>
-                    </div>
-                  </Button>
                 </div>
               </CardContent>
             </Card>
