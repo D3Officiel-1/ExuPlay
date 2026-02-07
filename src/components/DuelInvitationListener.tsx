@@ -17,10 +17,11 @@ import {
 } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Swords, X, Check, Zap, Sparkles, Loader2, User, Timer, ShieldAlert, Users } from "lucide-react";
+import { Swords, X, Check, Zap, Sparkles, Loader2, User, Timer, ShieldAlert, Users, Clock } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 export function DuelInvitationListener() {
   const { user } = useUser();
@@ -104,43 +105,106 @@ export function DuelInvitationListener() {
 
   return (
     <AnimatePresence>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[10000] bg-background/95 backdrop-blur-3xl flex flex-col items-center justify-center p-8 text-center overflow-hidden">
-        <motion.div initial={{ scale: 0.8, y: 40, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} className="w-full max-w-sm space-y-12">
+      <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        exit={{ opacity: 0 }} 
+        className="fixed inset-0 z-[10000] bg-background/95 backdrop-blur-3xl flex flex-col items-center justify-center p-8 text-center overflow-hidden"
+      >
+        <motion.div 
+          initial={{ scale: 0.8, y: 40, opacity: 0 }} 
+          animate={{ scale: 1, y: 0, opacity: 1 }} 
+          className="w-full max-w-sm space-y-10"
+        >
           <div className="space-y-6">
-            <div className="relative mx-auto w-32 h-32">
-              <div className="relative h-full w-full bg-card/40 backdrop-blur-2xl border border-primary/10 rounded-[3rem] flex items-center justify-center shadow-2xl overflow-hidden">
-                {activeDuel.challengerPhoto ? <Image src={activeDuel.challengerPhoto} alt="" fill className="object-cover" /> : <User className="h-14 w-14 text-primary opacity-20" />}
+            <div className="relative mx-auto w-24 h-24">
+              <div className="relative h-full w-full bg-card/40 backdrop-blur-2xl border border-primary/10 rounded-[2.5rem] flex items-center justify-center shadow-2xl overflow-hidden">
+                {activeDuel.challengerPhoto ? (
+                  <Image src={activeDuel.challengerPhoto} alt="" fill className="object-cover" />
+                ) : (
+                  <User className="h-10 w-10 text-primary opacity-20" />
+                )}
+              </div>
+              <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground h-8 w-8 rounded-xl flex items-center justify-center border-2 border-background shadow-lg">
+                <Swords className="h-4 w-4" />
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1">
               <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Le Choc des Esprits</p>
-              <h2 className="text-3xl font-black italic">@{activeDuel.challengerName} vous défie</h2>
-              <p className="text-[10px] font-bold opacity-30 uppercase tracking-widest flex items-center justify-center gap-2">
-                <Users className="h-3 w-3" /> {activeDuel.participantIds.length - 1} opposants requis
-              </p>
+              <h2 className="text-2xl font-black italic">@{activeDuel.challengerName} vous défie</h2>
             </div>
           </div>
 
-          <div className="p-10 bg-primary/5 rounded-[3.5rem] border border-primary/10 shadow-inner">
-            <div className="flex items-baseline justify-center gap-2">
-              <span className="text-6xl font-black tabular-nums">{activeDuel.wager}</span>
-              <span className="text-xs font-black uppercase tracking-widest opacity-30">PTS</span>
+          {/* Liste des Participants et leurs statuts */}
+          <div className="space-y-4">
+            <p className="text-[8px] font-black uppercase tracking-[0.3em] opacity-30">Cohorte du Combat</p>
+            <div className="grid grid-cols-4 gap-3 bg-primary/5 p-4 rounded-[2.5rem] border border-primary/5">
+              {Object.entries(activeDuel.participants).map(([uid, p]: [string, any]) => (
+                <div key={uid} className="flex flex-col items-center gap-2">
+                  <div className="relative h-12 w-12 rounded-2xl overflow-hidden border border-primary/10 bg-background shadow-inner">
+                    {p.photo ? (
+                      <Image src={p.photo} alt="" fill className="object-cover" />
+                    ) : (
+                      <User className="h-6 w-6 m-auto opacity-10" />
+                    )}
+                    <div className={cn(
+                      "absolute inset-0 flex items-center justify-center transition-colors duration-500",
+                      p.status === 'accepted' ? "bg-green-500/20" : p.status === 'rejected' ? "bg-red-500/20" : "bg-background/40"
+                    )}>
+                      {p.status === 'accepted' && <Check className="h-4 w-4 text-green-500" />}
+                      {p.status === 'rejected' && <X className="h-4 w-4 text-red-500" />}
+                      {p.status === 'pending' && <Clock className="h-4 w-4 text-orange-500 animate-pulse" />}
+                    </div>
+                  </div>
+                  <span className="text-[7px] font-black uppercase opacity-40 truncate w-full text-center">
+                    @{p.name}
+                  </span>
+                </div>
+              ))}
             </div>
+          </div>
+
+          <div className="p-8 bg-primary/5 rounded-[3rem] border border-primary/10 shadow-inner">
+            <div className="flex items-baseline justify-center gap-2">
+              <span className="text-5xl font-black tabular-nums">{activeDuel.wager}</span>
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-30">PTS</span>
+            </div>
+            <p className="text-[8px] font-bold opacity-30 uppercase mt-2 tracking-widest">Mise par esprit</p>
           </div>
 
           {isChallenger ? (
             <div className="space-y-6">
-              <div className="flex items-center justify-center gap-3 opacity-40">
-                <Timer className="h-4 w-4 animate-spin" />
-                <p className="text-[10px] font-black uppercase tracking-widest">Attente de la sentence des autres...</p>
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-10 w-10 bg-primary/5 rounded-full flex items-center justify-center border border-primary/10">
+                  <Timer className="h-5 w-5 text-primary animate-spin" />
+                </div>
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Attente de la sentence des autres...</p>
               </div>
+              <Button 
+                variant="ghost" 
+                onClick={handleDecline} 
+                className="text-[10px] font-black uppercase tracking-widest opacity-30 hover:opacity-100"
+              >
+                Annuler l'Invocation
+              </Button>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              <Button onClick={handleAccept} disabled={isProcessing} className="w-full h-20 rounded-[2rem] font-black text-sm uppercase gap-4 shadow-2xl">
-                {isProcessing ? <Loader2 className="animate-spin h-6 w-6" /> : <Check className="h-6 w-6" />} Accepter le Défie
+              <Button 
+                onClick={handleAccept} 
+                disabled={isProcessing} 
+                className="w-full h-20 rounded-[2.2rem] font-black text-sm uppercase gap-4 shadow-2xl"
+              >
+                {isProcessing ? <Loader2 className="animate-spin h-6 w-6" /> : <Check className="h-6 w-6" />} 
+                Accepter le Choc
               </Button>
-              <button onClick={handleDecline} disabled={isProcessing} className="w-full h-14 rounded-2xl font-black text-[10px] uppercase opacity-40">Refuser</button>
+              <button 
+                onClick={handleDecline} 
+                disabled={isProcessing} 
+                className="w-full h-14 rounded-2xl font-black text-[10px] uppercase opacity-40 hover:opacity-100 transition-opacity"
+              >
+                Refuser l'Appel
+              </button>
             </div>
           )}
         </motion.div>
