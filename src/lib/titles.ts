@@ -88,16 +88,16 @@ export const THEMES: Record<string, VisualTheme> = {
   "theme_obsidian": {
     id: "theme_obsidian",
     name: "Obsidienne",
-    color: "text-gray-900 dark:text-gray-100",
-    borderColor: "border-white/20 dark:border-white/40",
-    auraClass: "bg-gray-900/40 dark:bg-gray-100/10 blur-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)]"
+    color: "text-zinc-100",
+    borderColor: "border-zinc-800 shadow-[0_0_15px_rgba(0,0,0,0.5)]",
+    auraClass: "bg-zinc-900/60 blur-2xl shadow-[0_0_40px_rgba(0,0,0,0.8)]"
   },
   "theme_gold": {
     id: "theme_gold",
     name: "Or Pur",
-    color: "text-yellow-600",
-    borderColor: "border-yellow-500/70",
-    auraClass: "bg-yellow-500/30 blur-3xl animate-pulse shadow-[0_0_50px_rgba(234,179,8,0.4)]"
+    color: "text-amber-500",
+    borderColor: "border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.4)]",
+    auraClass: "bg-amber-500/40 blur-3xl animate-pulse shadow-[0_0_60px_rgba(245,158,11,0.6)]"
   }
 };
 

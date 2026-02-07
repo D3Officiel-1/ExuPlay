@@ -58,6 +58,17 @@ export function hexToHsl(hex: string): { h: number; s: number; l: number; hslVal
 }
 
 /**
+ * Convertit un Hexadécimal en chaîne RGB (r, g, b) pour les fonctions rgba() du CSS.
+ */
+export function hexToRgb(hex: string): string {
+  hex = hex.replace(/^#/, '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  return `${r}, ${g}, ${b}`;
+}
+
+/**
  * Détermine la couleur de contraste (noir ou blanc) basée sur la luminance d'une couleur hex.
  * Retourne une valeur HSL compatible avec Tailwind.
  */

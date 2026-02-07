@@ -22,7 +22,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
 import { cn } from "@/lib/utils";
-import { hexToHsl, getContrastColor } from "@/lib/colors";
+import { hexToHsl, hexToRgb, getContrastColor } from "@/lib/colors";
 
 function ThemeSync() {
   const { user } = useUser();
@@ -59,9 +59,11 @@ function ColorInjector() {
     if (profile?.customColor && profile.customColor !== 'default') {
       try {
         const hsl = hexToHsl(profile.customColor);
+        const rgb = hexToRgb(profile.customColor);
         const contrast = getContrastColor(profile.customColor);
         styles += `
           --primary: ${hsl.hslValue};
+          --primary-rgb: ${rgb};
           --primary-foreground: ${contrast};
           --ring: ${hsl.hslValue};
           --accent: ${hsl.hslValue};
