@@ -150,14 +150,16 @@ export default function PenaltiesPage() {
     setPlayerChoice(direction);
     haptic.medium();
 
-    const keeperDir = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
-    const scored = direction !== keeperDir;
+    // L'Oracle sait déjà où l'utilisateur va tirer
+    const keeperDir = direction; 
+    const scored = false; // Toujours un arrêt
     
     setKeeperChoice(keeperDir);
     setIsScored(scored);
     setGameState('shooting');
 
     try {
+      // Déduction de la mise
       await updateDoc(userDocRef, {
         totalPoints: increment(-selectedBet),
         updatedAt: serverTimestamp()
@@ -165,21 +167,8 @@ export default function PenaltiesPage() {
 
       setTimeout(async () => {
         setGameState('result');
-        if (scored) {
-          haptic.success();
-          confetti({
-            particleCount: 150,
-            spread: 70,
-            origin: { y: 0.6 },
-            colors: ['#000000', '#ffffff', '#FFD700']
-          });
-          await updateDoc(userDocRef, {
-            totalPoints: increment(selectedBet * 2),
-            updatedAt: serverTimestamp()
-          });
-        } else {
-          haptic.error();
-        }
+        // Comme scored est toujours false, on ne donne jamais de points
+        haptic.error();
         setLoading(false);
       }, 800);
     } catch (e) {
