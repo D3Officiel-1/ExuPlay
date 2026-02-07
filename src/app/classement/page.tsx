@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFirestore, useCollection, useUser, useDoc } from "@/firebase";
 import { 
@@ -50,9 +50,11 @@ export default function ClassementPage() {
   const { toast } = useToast();
 
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedUserForVision, setSelectedUserForVision] = useState<any>(null);
   const [amount, setAmount] = useState("");
   const [mode, setMode] = useState<'transfer' | 'duel'>('transfer');
   const [isProcessing, setIsProcessing] = useState(false);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const myProfileRef = useMemo(() => (db && user?.uid) ? doc(db, "users", user.uid) : null, [db, user?.uid]);
   const { data: myProfile } = useDoc(myProfileRef);
@@ -82,6 +84,28 @@ export default function ClassementPage() {
     setSelectedUser(u);
     setAmount("");
     setMode('transfer');
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, u: any) => {
+    if (u.id === user?.uid) return;
+    e.preventDefault();
+    haptic.medium();
+    setSelectedUserForVision(u);
+  };
+
+  const handleLongPressStart = (u: any) => {
+    if (u.id === user?.uid) return;
+    longPressTimer.current = setTimeout(() => {
+      haptic.medium();
+      setSelectedUserForVision(u);
+    }, 600);
+  };
+
+  const handleLongPressEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
   };
 
   const handleAction = async () => {
@@ -197,8 +221,12 @@ export default function ClassementPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="flex flex-col items-center gap-3 cursor-pointer"
+                className="flex flex-col items-center gap-3 cursor-pointer select-none"
                 onClick={() => handleUserClick(podium[1])}
+                onContextMenu={(e) => handleContextMenu(e, podium[1])}
+                onPointerDown={() => handleLongPressStart(podium[1])}
+                onPointerUp={handleLongPressEnd}
+                onPointerLeave={handleLongPressEnd}
               >
                 <div className="relative">
                   <ProfileAvatar imageUrl={podium[1].profileImage} points={podium[1].totalPoints} activeTheme={podium[1].activeTheme} size="md" />
@@ -219,8 +247,12 @@ export default function ClassementPage() {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ type: "spring", damping: 12 }}
-                className="flex flex-col items-center gap-4 -mt-8 cursor-pointer"
+                className="flex flex-col items-center gap-4 -mt-8 cursor-pointer select-none"
                 onClick={() => handleUserClick(podium[0])}
+                onContextMenu={(e) => handleContextMenu(e, podium[0])}
+                onPointerDown={() => handleLongPressStart(podium[0])}
+                onPointerUp={handleLongPressEnd}
+                onPointerLeave={handleLongPressEnd}
               >
                 <div className="relative">
                   <ProfileAvatar imageUrl={podium[0].profileImage} points={podium[0].totalPoints} activeTheme={podium[0].activeTheme} size="lg" className="z-10" />
@@ -244,8 +276,12 @@ export default function ClassementPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="flex flex-col items-center gap-3 cursor-pointer"
+                className="flex flex-col items-center gap-3 cursor-pointer select-none"
                 onClick={() => handleUserClick(podium[2])}
+                onContextMenu={(e) => handleContextMenu(e, podium[2])}
+                onPointerDown={() => handleLongPressStart(podium[2])}
+                onPointerUp={handleLongPressEnd}
+                onPointerLeave={handleLongPressEnd}
               >
                 <div className="relative">
                   <ProfileAvatar imageUrl={podium[2].profileImage} points={podium[2].totalPoints} activeTheme={podium[2].activeTheme} size="md" />
@@ -274,7 +310,16 @@ export default function ClassementPage() {
             const title = getHonorTitle(u.totalPoints || 0);
 
             return (
-              <motion.div key={u.id} variants={itemVariants} onClick={() => handleUserClick(u)}>
+              <motion.div 
+                key={u.id} 
+                variants={itemVariants} 
+                onClick={() => handleUserClick(u)}
+                onContextMenu={(e) => handleContextMenu(e, u)}
+                onPointerDown={() => handleLongPressStart(u)}
+                onPointerUp={handleLongPressEnd}
+                onPointerLeave={handleLongPressEnd}
+                className="select-none"
+              >
                 <Card className={cn(
                   "border-none backdrop-blur-3xl transition-all duration-500 overflow-hidden rounded-[2rem] cursor-pointer",
                   isMe ? "bg-primary text-primary-foreground shadow-2xl scale-[1.02]" : "bg-card/40 shadow-lg hover:bg-card/60"
@@ -310,6 +355,60 @@ export default function ClassementPage() {
           })}
         </motion.div>
       </main>
+
+      {/* Vision Dialog (Oracle de la Vision Profonde) */}
+      <Dialog open={!!selectedUserForVision} onOpenChange={(open) => !open && setSelectedUserForVision(null)}>
+        <DialogContent className="max-w-[90vw] sm:max-w-md bg-transparent border-none p-0 overflow-hidden shadow-none ring-0 focus:outline-none [&>button]:hidden">
+          {selectedUserForVision && (
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, filter: "blur(20px)" }}
+              animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
+              exit={{ scale: 0.9, opacity: 0, filter: "blur(20px)" }}
+              className="relative w-full aspect-[4/5] bg-card/40 backdrop-blur-3xl rounded-[3rem] border border-white/10 shadow-2xl overflow-hidden flex flex-col"
+            >
+              <div className="relative flex-1 w-full overflow-hidden">
+                {selectedUserForVision.profileImage ? (
+                  <img 
+                    src={selectedUserForVision.profileImage} 
+                    alt="" 
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center bg-primary/5">
+                    <UserIcon className="h-32 w-32 text-primary opacity-10" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+              </div>
+
+              <div className="p-10 space-y-8 relative z-10 bg-background/60 backdrop-blur-3xl border-t border-white/5">
+                <div className="text-center space-y-2">
+                  <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-40">Oracle de la Vision</p>
+                  <h2 className="text-4xl font-black italic tracking-tighter uppercase">@{selectedUserForVision.username}</h2>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-5 bg-primary/5 rounded-[2rem] border border-primary/5 text-center space-y-1">
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Lumière accumulée</p>
+                    <p className="font-black text-lg">{selectedUserForVision.totalPoints?.toLocaleString()} <span className="text-[10px] opacity-30">PTS</span></p>
+                  </div>
+                  <div className="p-5 bg-primary/5 rounded-[2rem] border border-primary/5 text-center space-y-1">
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Valeur Terrestre</p>
+                    <p className="font-black text-lg text-primary">{(selectedUserForVision.totalPoints * 0.5).toLocaleString()} <span className="text-[10px] opacity-30">FCFA</span></p>
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={() => setSelectedUserForVision(null)}
+                  className="w-full h-16 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-primary/20"
+                >
+                  Fermer la Vision
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Interaction Dialog */}
       <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
