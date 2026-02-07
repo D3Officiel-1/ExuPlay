@@ -27,8 +27,10 @@ import {
   Vibrate,
   EyeOff,
   LogOut,
-  ShieldAlert,
-  Loader2
+  Loader2,
+  Volume2,
+  ZapOff,
+  Eye
 } from "lucide-react";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
@@ -149,7 +151,7 @@ export default function ParametresPage() {
             </Card>
           </motion.section>
 
-          {/* Section Immersion */}
+          {/* Section Expérience */}
           <motion.section variants={itemVariants} className="space-y-4">
             <div className="flex items-center gap-3 pl-2">
               <Zap className="h-4 w-4 text-primary opacity-60" />
@@ -191,6 +193,40 @@ export default function ParametresPage() {
                   />
                 </div>
 
+                {/* Sons */}
+                <div className="flex items-center justify-between p-3 rounded-2xl">
+                  <div className="flex items-center gap-4">
+                    <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
+                      <Volume2 className="h-5 w-5 text-primary opacity-60" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">Sons du Sanctuaire</p>
+                      <p className="text-[10px] opacity-40 font-medium">Effets audio d'ambiance</p>
+                    </div>
+                  </div>
+                  <Switch 
+                    checked={profile?.soundsEnabled ?? true} 
+                    onCheckedChange={(checked) => handleUpdateSetting('soundsEnabled', checked)} 
+                  />
+                </div>
+
+                {/* Animations (Eco mode) */}
+                <div className="flex items-center justify-between p-3 rounded-2xl">
+                  <div className="flex items-center gap-4">
+                    <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
+                      <ZapOff className="h-5 w-5 text-primary opacity-60" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">Mode Éco-Éther</p>
+                      <p className="text-[10px] opacity-40 font-medium">Réduire les animations</p>
+                    </div>
+                  </div>
+                  <Switch 
+                    checked={profile?.reducedMotion ?? false} 
+                    onCheckedChange={(checked) => handleUpdateSetting('reducedMotion', checked)} 
+                  />
+                </div>
+
                 {/* Thème */}
                 <div className="pt-4 border-t border-primary/5 mt-2">
                   <p className="text-[10px] font-black uppercase tracking-widest opacity-30 mb-4 px-2">Ambiance visuelle</p>
@@ -228,7 +264,7 @@ export default function ParametresPage() {
               <h2 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Discrétion</h2>
             </div>
             <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden">
-              <CardContent className="p-4">
+              <CardContent className="p-4 space-y-1">
                 <div className="flex items-center justify-between p-3 rounded-2xl">
                   <div className="flex items-center gap-4">
                     <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
@@ -242,6 +278,22 @@ export default function ParametresPage() {
                   <Switch 
                     checked={profile?.rankingHidden ?? false} 
                     onCheckedChange={(checked) => handleUpdateSetting('rankingHidden', checked)} 
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-2xl">
+                  <div className="flex items-center gap-4">
+                    <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
+                      <Eye className="h-5 w-5 text-primary opacity-60" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">Sceau d'Invisibilité</p>
+                      <p className="text-[10px] opacity-40 font-medium">Masquer les points dans l'entête</p>
+                    </div>
+                  </div>
+                  <Switch 
+                    checked={profile?.hidePointsInHeader ?? false} 
+                    onCheckedChange={(checked) => handleUpdateSetting('hidePointsInHeader', checked)} 
                   />
                 </div>
               </CardContent>
@@ -279,7 +331,7 @@ export default function ParametresPage() {
                     </div>
                     <div>
                       <p className="text-sm font-bold">Version de l'Éveil</p>
-                      <p className="text-[10px] opacity-40 font-medium tracking-widest uppercase">2.2.0 - Core Intelligence</p>
+                      <p className="text-[10px] opacity-40 font-medium tracking-widest uppercase">2.3.0 - Quantum Flux</p>
                     </div>
                   </div>
                 </div>
