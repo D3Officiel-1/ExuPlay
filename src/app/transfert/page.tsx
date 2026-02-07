@@ -36,8 +36,7 @@ import {
   Swords,
   Ghost,
   QrCode,
-  Flashlight,
-  Plus
+  Flashlight
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
@@ -63,7 +62,6 @@ export default function TransfertPage() {
   
   const [cachedQr, setCachedQr] = useState<string | null>(null);
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
-  const [isFabOpen, setIsFabOpen] = useState(false);
   const [isTorchOn, setIsTorchOn] = useState(false);
 
   const userDocRef = useMemo(() => (db && firebaseUser?.uid) ? doc(db, "users", firebaseUser.uid) : null, [db, firebaseUser?.uid]);
@@ -122,10 +120,10 @@ export default function TransfertPage() {
         try {
           await stopScanner(); if (!isMounted) return;
           const scanner = new Html5Qrcode("reader"); html5QrCodeRef.current = scanner;
-          const screenRatio = window.innerWidth / window.innerHeight;
           await scanner.start({ facingMode: "environment" }, { 
-            fps: 30, qrbox: (w, h) => ({ width: w, height: h }), aspectRatio: screenRatio,
-            videoConstraints: { aspectRatio: screenRatio, facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }
+            fps: 30, qrbox: (w, h) => ({ width: w * 0.8, height: h * 0.8 }),
+            aspectRatio: 1.0,
+            videoConstraints: { facingMode: "environment" }
           }, (text) => { if (isMounted) onScanSuccess(text); }, () => {});
           if (isMounted) setHasCameraPermission(true);
         } catch (e: any) { if (isMounted && (e?.name === "NotAllowedError")) setHasCameraPermission(false); }
@@ -193,7 +191,7 @@ export default function TransfertPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col overflow-hidden">
-      <main className={cn("flex-1 mx-auto w-full relative h-full", activeTab !== 'scan' && "max-w-lg")}>
+      <main className="flex-1 mx-auto w-full relative h-full max-w-lg">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
           <div className="fixed top-6 left-0 right-0 z-[100] px-6 max-w-lg mx-auto">
             <TabsList className="w-full bg-card/20 backdrop-blur-3xl border border-primary/10 p-1 h-14 rounded-2xl grid grid-cols-2 shadow-2xl">
@@ -202,48 +200,55 @@ export default function TransfertPage() {
             </TabsList>
           </div>
 
-          <div className="flex-1 w-full relative">
+          <div className="flex-1 w-full relative pt-24 pb-32">
             <AnimatePresence mode="wait">
               {validationStatus !== 'idle' ? (
-                <motion.div key="validation-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.1, filter: "blur(40px)" }} className="fixed inset-0 z-[200] bg-background flex flex-col items-center justify-center overflow-hidden">
+                <motion.div key="validation-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.1, filter: "blur(40px)" }} className="absolute inset-0 z-[200] bg-background flex flex-col items-center justify-center overflow-hidden">
                   <motion.div initial={{ scale: 0.5 }} animate={{ scale: 1 }} className="h-32 w-32 rounded-[3rem] bg-card border-2 shadow-2xl flex items-center justify-center overflow-hidden relative">
                     {validationStatus === 'error' ? <AlertCircle className="h-12 w-12 text-red-500" /> : recipient?.profileImage ? <img src={recipient.profileImage} alt="" className="w-full h-full object-cover" /> : <Sparkles className="h-12 w-12 text-primary opacity-20" />}
                   </motion.div>
                   <h2 className="mt-8 text-2xl font-black">{validationStatus === 'error' ? "Dissonance" : `@${recipient?.username}`}</h2>
                 </motion.div>
               ) : activeTab === "generate" ? (
-                <motion.div key="generate" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="min-h-screen flex flex-col items-center justify-center px-8 text-center space-y-10">
+                <motion.div key="generate" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col items-center justify-center px-8 text-center space-y-10">
                   <div className="space-y-2"><p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Oracle du Sceau</p><h2 className="text-3xl font-black italic">Identité Sacrée</h2></div>
-                  <div className="relative bg-white rounded-[3.5rem] p-10 shadow-2xl border-4 border-primary/5 flex items-center justify-center overflow-hidden">
+                  <div className="relative w-64 h-64 bg-white rounded-[3.5rem] p-8 shadow-2xl border-4 border-primary/5 flex items-center justify-center overflow-hidden">
                     {cachedQr ? <img src={cachedQr} alt="Sceau" className="w-full h-full object-contain" /> : <Loader2 className="h-12 w-12 animate-spin opacity-20" />}
                   </div>
                   <Button variant="ghost" onClick={() => router.push("/profil")} className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Retour</Button>
                 </motion.div>
               ) : !recipient && !isSuccess ? (
-                <motion.div key="selection" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 w-full h-full">
-                  <div id="reader" className="fixed inset-0 w-full h-full bg-black z-0" />
-                  {!hasCameraPermission && hasCameraPermission !== null && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-background/90 z-50 text-center">
-                      <ShieldAlert className="h-12 w-12 text-destructive mb-4" /><h2 className="text-xl font-black">Permission Requise</h2>
-                      <Button variant="outline" onClick={() => window.location.reload()} className="mt-6 rounded-xl font-black text-[10px] uppercase">Réessayer</Button>
-                    </div>
-                  )}
-                  <div className="absolute bottom-10 right-6 z-[100] flex flex-col items-end gap-4">
-                    <AnimatePresence>
-                      {isFabOpen && (
-                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="flex flex-col items-end gap-3 mb-2">
-                          <Button size="icon" onClick={toggleTorch} className={cn("h-14 w-14 rounded-2xl backdrop-blur-xl border border-white/20 shadow-2xl", isTorchOn ? "bg-white text-black" : "bg-white/10 text-white")}><Flashlight className="h-6 w-6" /></Button>
-                        </motion.div>
+                <motion.div key="selection" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center h-full px-6 space-y-8">
+                  <div className="relative w-full aspect-square rounded-[3.5rem] overflow-hidden bg-black border-2 border-primary/10 shadow-2xl group">
+                    <div id="reader" className="w-full h-full" />
+                    {!hasCameraPermission && hasCameraPermission !== null && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-background/90 z-50 text-center">
+                        <ShieldAlert className="h-12 w-12 text-destructive mb-4" /><h2 className="text-xl font-black">Permission Requise</h2>
+                        <Button variant="outline" onClick={() => window.location.reload()} className="mt-6 rounded-xl font-black text-[10px] uppercase">Réessayer</Button>
+                      </div>
+                    )}
+                    <motion.div animate={{ opacity: [0.2, 0.5, 0.2] }} transition={{ duration: 2, repeat: Infinity }} className="absolute inset-8 border-2 border-primary/20 border-dashed rounded-[2.5rem] pointer-events-none" />
+                  </div>
+
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 text-center px-10">
+                    Alignez le Sceau de l'esprit à scanner dans le cadre
+                  </p>
+
+                  <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100]">
+                    <Button 
+                      size="icon" 
+                      onClick={toggleTorch} 
+                      className={cn(
+                        "h-16 w-16 rounded-[2rem] shadow-2xl transition-all", 
+                        isTorchOn ? "bg-primary text-primary-foreground" : "bg-card/40 backdrop-blur-xl text-primary border border-primary/10"
                       )}
-                    </AnimatePresence>
-                    <Button onClick={() => { haptic.medium(); setIsFabOpen(!isFabOpen); }} className={cn("h-16 w-16 rounded-[2rem] shadow-2xl transition-all", isFabOpen ? "bg-white text-black rotate-45" : "bg-primary")}>
-                      <Plus className="h-8 w-8" />
+                    >
+                      <Flashlight className="h-8 w-8" />
                     </Button>
                   </div>
-                  <div className="absolute bottom-10 left-6 z-[50]"><Button variant="ghost" onClick={() => router.push("/profil")} className="text-[10px] font-black uppercase opacity-60 text-white"><X className="h-4 w-4 mr-2" /> Annuler</Button></div>
                 </motion.div>
               ) : recipient && !isSuccess ? (
-                <motion.div key="amount" initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} className="min-h-screen flex flex-col items-center justify-center px-6">
+                <motion.div key="amount" initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col items-center justify-center px-6">
                   <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] overflow-hidden w-full">
                     <CardHeader className="text-center pt-10 pb-4">
                       <div className="mx-auto w-20 h-20 bg-primary/5 rounded-3xl flex items-center justify-center mb-4 overflow-hidden relative">
@@ -262,7 +267,11 @@ export default function TransfertPage() {
                       </div>
                       {mode === 'transfer' && (
                         <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/5">
-                          <Ghost className={cn("h-5 w-5", isAnonymous ? "text-primary" : "opacity-20")} /><Switch checked={isAnonymous} onCheckedChange={setIsAnonymous} />
+                          <div className="flex items-center gap-3">
+                            <Ghost className={cn("h-5 w-5", isAnonymous ? "text-primary" : "opacity-20")} />
+                            <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Mode Anonyme</span>
+                          </div>
+                          <Switch checked={isAnonymous} onCheckedChange={setIsAnonymous} />
                         </div>
                       )}
                     </CardContent>
@@ -274,17 +283,24 @@ export default function TransfertPage() {
                   </Card>
                 </motion.div>
               ) : (
-                <motion.div key="success" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="min-h-screen flex flex-col items-center justify-center text-center space-y-8">
-                  <CheckCircle2 className="h-24 w-24 text-green-500 mx-auto" />
-                  <h2 className="text-3xl font-black">Transmission Réussie</h2>
-                  <Button variant="outline" onClick={() => router.push("/profil")} className="h-14 px-8 rounded-2xl font-black text-[10px] uppercase">Retour</Button>
+                <motion.div key="success" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="h-full flex flex-col items-center justify-center text-center space-y-8 px-6">
+                  <div className="h-32 w-32 bg-green-500/10 rounded-[3rem] flex items-center justify-center mb-4">
+                    <CheckCircle2 className="h-16 w-16 text-green-500" />
+                  </div>
+                  <h2 className="text-3xl font-black italic">Transmission Réussie</h2>
+                  <Button variant="outline" onClick={() => router.push("/profil")} className="h-14 w-full rounded-2xl font-black text-[10px] uppercase tracking-[0.2em]">Retour au Sanctuaire</Button>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
         </Tabs>
       </main>
-      <style jsx global>{` #reader { border: none !important; background: black !important; height: 100vh !important; width: 100vw !important; position: fixed !important; inset: 0 !important; } #reader video { object-fit: cover !important; width: 100vw !important; height: 100vh !important; } #reader__scan_region { border: none !important; } #reader__dashboard, #reader__status_span, #reader__header_message { display: none !important; } `}</style>
+      <style jsx global>{` 
+        #reader { border: none !important; background: black !important; width: 100% !important; height: 100% !important; } 
+        #reader video { object-fit: cover !important; width: 100% !important; height: 100% !important; } 
+        #reader__scan_region { border: none !important; } 
+        #reader__dashboard, #reader__status_span, #reader__header_message { display: none !important; } 
+      `}</style>
     </div>
   );
 }
