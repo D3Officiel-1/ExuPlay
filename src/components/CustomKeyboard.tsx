@@ -26,6 +26,7 @@ type KeyboardLayout = "alpha" | "numeric" | "emoji";
 /**
  * @fileOverview KeyboardEmoji - Composant de rendu individuel pour le clavier.
  * Gère la cascade : Animé -> Statique -> Texte.
+ * Enveloppé dans un bouton fixe aspect-square.
  */
 function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, onClick: (char: string) => void }) {
   const [stage, setStage] = useState<'animated' | 'static' | 'text'>('animated');
@@ -39,15 +40,15 @@ function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, on
     <button
       onPointerDown={(e) => e.preventDefault()}
       onClick={() => { haptic.light(); onClick(emoji); }}
-      className="flex items-center justify-center aspect-square rounded-xl bg-primary/[0.03] border border-primary/5 hover:bg-primary/10 hover:border-primary/10 transition-all p-1 group overflow-hidden relative"
+      className="flex items-center justify-center aspect-square w-full rounded-xl bg-primary/[0.03] border border-primary/5 hover:bg-primary/10 hover:border-primary/10 transition-all p-1.5 group overflow-hidden relative shadow-sm active:scale-90"
     >
       {stage === 'text' ? (
-        <span className="text-lg">{emoji}</span>
+        <span className="text-xl">{emoji}</span>
       ) : (
         <img 
           src={getUrl()} 
           alt={emoji} 
-          className="w-full h-full object-contain transition-transform group-hover:scale-110 relative z-10" 
+          className="w-[85%] h-[85%] object-contain transition-transform group-hover:scale-110 relative z-10" 
           loading="lazy"
           onError={() => {
             if (stage === 'animated') setStage('static');
@@ -55,6 +56,8 @@ function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, on
           }}
         />
       )}
+      {/* Reflet éthéré interne */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
     </button>
   );
 }
@@ -69,7 +72,7 @@ export function CustomKeyboard() {
   const backspaceIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const backspaceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Bibliothèque des essences classées par catégories
+  // Bibliothèque des essences classées par catégories sacrées
   const categories = useMemo(() => [
     { id: "people", icon: Smile, items: parseEmojiString(RAW_EMOJI_PEOPLE) },
     { id: "nature", icon: Dog, items: parseEmojiString(RAW_NATURE) },
