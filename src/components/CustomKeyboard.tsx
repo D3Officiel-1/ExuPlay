@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Delete, ArrowUp, Check, ChevronDown, Smile, Dog, Pizza, 
+  Delete, ArrowUp, Check, Smile, Dog, Pizza, 
   Plane, Heart, Gamepad2, LayoutGrid, Flag, Sparkles, Wand2,
   Search, X
 } from "lucide-react";
@@ -40,10 +40,10 @@ function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, on
     <button
       onPointerDown={(e) => e.preventDefault()}
       onClick={() => { haptic.light(); onClick(emoji); }}
-      className="flex items-center justify-center aspect-square w-full bg-primary/[0.02] border-t border-b border-primary/10 hover:bg-primary/5 transition-all p-1 group overflow-hidden relative active:scale-90"
+      className="flex items-center justify-center aspect-square w-full bg-primary/[0.02] border border-primary/5 hover:bg-primary/10 transition-all p-1 group overflow-hidden relative active:scale-90 rounded-xl"
     >
       {stage === 'text' ? (
-        <span className="text-xl">{emoji}</span>
+        <span className="text-2xl">{emoji}</span>
       ) : (
         <img 
           src={getUrl()} 
@@ -71,7 +71,6 @@ export function CustomKeyboard() {
   const [keyboardHeight, setKeyboardHeight] = useState(BASE_HEIGHT);
   const [isResizing, setIsResizing] = useState(false);
   
-  // États de recherche d'emojis (Transmutation)
   const [isEmojiSearchActive, setIsEmojiSearchActive] = useState(false);
   const [emojiSearchQuery, setEmojiSearchQuery] = useState("");
   
@@ -101,7 +100,7 @@ export function CustomKeyboard() {
     
     return allEmojis.filter(emoji => 
       emoji.keywords.some(kw => kw.includes(query)) ||
-      emoji.char === query
+      emoji.char.includes(query)
     ).slice(0, 40);
   }, [emojiSearchQuery, allEmojis]);
 
@@ -130,6 +129,8 @@ export function CustomKeyboard() {
     const value = activeInput.value;
     
     const newValue = value.substring(0, start) + text + value.substring(end);
+    
+    // Correction cruciale : Utiliser la longueur réelle de la chaîne insérée pour placer le curseur
     const newCursorPos = start + text.length;
 
     const prototype = activeInput instanceof HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
@@ -137,7 +138,7 @@ export function CustomKeyboard() {
     if (nativeSetter) nativeSetter.call(activeInput, newValue);
     else activeInput.value = newValue;
 
-    // Forcer le focus et le positionnement du curseur APRES l'emoji pour éviter la scission
+    // Assurer que le curseur est placé APRES l'emoji sans le scinder
     setTimeout(() => {
       activeInput.focus();
       activeInput.setSelectionRange(newCursorPos, newCursorPos);
@@ -238,7 +239,7 @@ export function CustomKeyboard() {
       let newValue = value;
       let newSelectionStart = start;
       if (start === end && start > 0) {
-        // Utilisation de Intl.Segmenter pour une suppression atomique des emojis complexes
+        // Utilisation de Intl.Segmenter pour une suppression atomique et propre des emojis
         if (typeof Intl !== 'undefined' && (Intl as any).Segmenter) {
           try {
             const segmenter = new (Intl as any).Segmenter('fr', { granularity: 'grapheme' });
@@ -278,6 +279,8 @@ export function CustomKeyboard() {
       setLayout("alpha");
     } else if (key === "emoji-switch") {
       setLayout("emoji");
+    } else if (key === "space") {
+      insertText(" ");
     } else {
       const char = (isShift && layout === "alpha") ? key.toUpperCase() : key;
       insertText(char);
@@ -301,6 +304,7 @@ export function CustomKeyboard() {
 
   const handleResizeStart = (e: React.PointerEvent) => {
     e.preventDefault();
+    if (isEmojiSearchActive) return;
     setIsResizing(true);
     resizeStartY.current = e.clientY;
     resizeStartHeight.current = keyboardHeight;
@@ -373,10 +377,10 @@ export function CustomKeyboard() {
               {isEmojiSearchActive ? (
                 <motion.div
                   key="results-crystal"
-                  initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.9 }}
-                  className="w-full max-w-md bg-card/80 backdrop-blur-3xl rounded-2xl border border-primary/10 shadow-2xl p-2 flex gap-2 overflow-x-auto no-scrollbar pointer-events-auto h-16 items-center"
+                  initial={{ opacity: 0, y: 10, scale: 0.9, filter: "blur(10px)" }}
+                  animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, y: 10, scale: 0.9, filter: "blur(10px)" }}
+                  className="w-full max-w-md bg-card/80 backdrop-blur-3xl rounded-2xl border border-primary/10 shadow-2xl p-2 flex gap-3 overflow-x-auto no-scrollbar pointer-events-auto h-16 items-center"
                 >
                   {filteredEmojis.length > 0 ? (
                     filteredEmojis.map((emoji, i) => (
@@ -384,7 +388,7 @@ export function CustomKeyboard() {
                         key={i}
                         onPointerDown={(e) => e.preventDefault()}
                         onClick={() => { haptic.light(); insertText(emoji.char); }}
-                        className="h-12 w-12 flex-shrink-0 flex items-center justify-center bg-primary/5 rounded-xl text-2xl active:scale-90 transition-transform"
+                        className="h-12 w-12 flex-shrink-0 flex items-center justify-center bg-primary/5 rounded-xl text-2xl active:scale-90 transition-all hover:bg-primary/10"
                       >
                         <KeyboardEmoji emoji={emoji.char} hex={emoji.hex} onClick={(char) => insertText(char)} />
                       </button>
@@ -523,7 +527,7 @@ export function CustomKeyboard() {
                           ))}
                         </div>
                         
-                        <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-8 gap-0 p-1 border-t border-primary/5">
+                        <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-6 gap-2 p-2 border-t border-primary/5 bg-primary/[0.01] rounded-2xl">
                           {categories[emojiCategory].items.map((emoji, idx) => (
                             <KeyboardEmoji key={idx} emoji={emoji.char} hex={emoji.hex} onClick={(char) => insertText(char)} />
                           ))}
@@ -533,22 +537,22 @@ export function CustomKeyboard() {
                           <button 
                             onPointerDown={(e) => e.preventDefault()} 
                             onClick={() => { haptic.medium(); setLayout("alpha"); }} 
-                            className="flex-[2] bg-primary/10 text-primary font-black text-[10px] uppercase rounded-2xl border border-primary/5"
+                            className="flex-[2] bg-primary/10 text-primary font-black text-[10px] uppercase rounded-2xl border border-primary/5 shadow-sm active:scale-95 transition-transform"
                           >
                             abc
                           </button>
                           <button 
                             onPointerDown={(e) => e.preventDefault()} 
                             onClick={startEmojiSearch} 
-                            className="flex-[4] bg-card/40 border border-primary/10 text-primary/40 rounded-2xl flex items-center justify-center shadow-inner active:scale-95 transition-transform"
+                            className="flex-[4] bg-card/40 border border-primary/10 text-primary/40 rounded-2xl flex items-center justify-center shadow-inner active:scale-95 transition-all group hover:bg-primary/5"
                           >
-                            <Search className="h-5 w-5" />
+                            <Search className="h-5 w-5 group-hover:scale-110 transition-transform" />
                           </button>
                           <button 
                             onPointerDown={(e) => { e.preventDefault(); startBackspace(); }} 
                             onPointerUp={stopBackspace} 
                             onPointerLeave={stopBackspace} 
-                            className="flex-[2] bg-primary/5 text-primary/60 rounded-2xl flex items-center justify-center border border-primary/5"
+                            className="flex-[2] bg-primary/5 text-primary/60 rounded-2xl flex items-center justify-center border border-primary/5 shadow-sm active:scale-95 transition-transform"
                           >
                             <Delete className="h-4 w-4" />
                           </button>
