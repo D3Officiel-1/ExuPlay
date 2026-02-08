@@ -26,6 +26,7 @@ import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
 import { cn } from "@/lib/utils";
 import { hexToHsl, hexToRgb, getContrastColor } from "@/lib/colors";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 /**
  * @fileOverview Oracle de la Symbiose Système.
@@ -194,6 +195,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const db = useFirestore();
   const pathname = usePathname();
   const router = useRouter();
+  const isMobile = useIsMobile();
 
   const appConfigRef = useMemo(() => db ? doc(db, "appConfig", "status") : null, [db]);
   const userDocRef = useMemo(() => (db && user?.uid) ? doc(db, "users", user.uid) : null, [db, user?.uid]);
@@ -207,23 +209,31 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('contextmenu', handleContextMenu);
   }, []);
 
-  // Force l'inputmode='none' sur tous les inputs pour empêcher le clavier système
+  // Force l'inputmode='none' sur tous les inputs pour empêcher le clavier système (UNIQUEMENT SUR MOBILE)
   useEffect(() => {
-    const disableSystemKeyboard = () => {
+    const syncKeyboardMode = () => {
       const inputs = document.querySelectorAll('input, textarea');
       inputs.forEach(input => {
-        if (input.getAttribute('inputmode') !== 'none') {
-          input.setAttribute('inputmode', 'none');
+        if (isMobile) {
+          // Sur mobile, on bloque le clavier système au profit du clavier personnalisé
+          if (input.getAttribute('inputmode') !== 'none') {
+            input.setAttribute('inputmode', 'none');
+          }
+        } else {
+          // Sur ordinateur, on laisse le clavier système s'afficher normalement
+          if (input.getAttribute('inputmode') === 'none') {
+            input.removeAttribute('inputmode');
+          }
         }
       });
     };
     
-    const observer = new MutationObserver(disableSystemKeyboard);
+    const observer = new MutationObserver(syncKeyboardMode);
     observer.observe(document.body, { childList: true, subtree: true });
-    disableSystemKeyboard();
+    syncKeyboardMode();
     
     return () => observer.disconnect();
-  }, []);
+  }, [isMobile]);
 
   useEffect(() => {
     if (isAuthLoading) return;
@@ -281,7 +291,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
         <DuelInvitationListener />
         <CommunityFluxPulsar />
         <RewardQuickView />
-        <CustomKeyboard />
+        {isMobile && <CustomKeyboard />}
         {showNav && <Header />}
         <PageTransition>{children}</PageTransition>
         {showBottomNav && <BottomNav />}
