@@ -12,7 +12,7 @@ export const SACRED_DICTIONARY = [
   "parrainage", "profil", "classement", "défi", "quiz", "points", "transfert", "échange",
   "boutique", "paramètres", "sécurité", "wave", "numéro", "téléphone", "biométrie",
   
-  // Mots courants français (Expansion)
+  // Mots courants français
   "abandonner", "accepter", "accompagner", "acheter", "adorer", "agir", "aider", "aimer",
   "ajouter", "aller", "amener", "amuser", "annoncer", "apercevoir", "apparaître", "appeler",
   "apporter", "apprendre", "approuver", "arrêter", "arriver", "asseoir", "assurer", "attendre",
@@ -43,7 +43,7 @@ export const SACRED_DICTIONARY = [
   "par", "paraître", "parce", "parcourir", "parfois", "parler", "parti", "particulier", "partir",
   "partout", "pas", "passer", "pauvre", "payer", "pays", "pendant", "penser", "perdre", "père",
   "permettre", "personne", "petit", "peu", "peur", "peut-être", "photo", "phrase", "pied", "pierre",
-  "place", "plaisir", "plan", "plus", "plusieurs", "plutôt", "point", "point", "porte", "porter",
+  "place", "plaisir", "plan", "plus", "plusieurs", "plutôt", "point", "porte", "porter",
   "poser", "possible", "pour", "pourquoi", "pousser", "pouvoir", "premier", "prendre", "préparer",
   "près", "présent", "présenter", "presque", "prêt", "prier", "prix", "problème", "prochain",
   "produire", "profiter", "promettre", "proposer", "propre", "puis", "puisque", "quand", "quant",
