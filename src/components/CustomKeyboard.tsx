@@ -26,7 +26,7 @@ import { getSmartSuggestions } from "@/lib/spell-checker";
 
 type KeyboardLayout = "alpha" | "numeric" | "emoji";
 
-const BASE_HEIGHT = 320;
+const BASE_HEIGHT = 280;
 
 function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, onClick: (char: string) => void }) {
   const [stage, setStage] = useState<'animated' | 'static' | 'text'>('animated');
@@ -270,10 +270,7 @@ export function CustomKeyboard() {
 
   const handleResizeStart = (e: React.PointerEvent) => {
     e.preventDefault();
-    if (isEmojiSearchActive) {
-      // Un simple clic sur la barre de recherche ferme/ouvre
-      return;
-    }
+    if (isEmojiSearchActive) return;
     setIsResizing(true);
     resizeStartY.current = e.clientY;
     resizeStartHeight.current = keyboardHeight;
@@ -285,7 +282,6 @@ export function CustomKeyboard() {
       if (!isResizing) return;
       const deltaY = e.clientY - resizeStartY.current;
       const maxAllowedHeight = window.innerHeight - 100;
-      // On calcule la nouvelle hauteur en temps réel pour un suivi parfait du doigt
       const newHeight = Math.max(BASE_HEIGHT, Math.min(maxAllowedHeight, resizeStartHeight.current - deltaY));
       setKeyboardHeight(newHeight);
     };
@@ -321,7 +317,6 @@ export function CustomKeyboard() {
     ["abc", "emoji-switch", "space", "enter"]
   ];
 
-  // La hauteur actuelle dépend du mode et du redimensionnement
   const currentHeight = (layout === "emoji" && !isEmojiSearchActive) ? keyboardHeight : BASE_HEIGHT;
 
   return (
@@ -334,7 +329,6 @@ export function CustomKeyboard() {
           transition={{ type: "spring", damping: 35, stiffness: 200 }}
           className="fixed bottom-0 left-0 right-0 z-[10002] px-2 pb-safe-area-inset-bottom pointer-events-none flex flex-col items-center"
         >
-          {/* CRISTAL DE RÉSULTATS (WhatsApp style) - Remplace la poignée en mode recherche */}
           <AnimatePresence>
             {isEmojiSearchActive && (
               <motion.div
@@ -359,7 +353,6 @@ export function CustomKeyboard() {
             )}
           </AnimatePresence>
 
-          {/* POIGNÉE DE LÉVITATION DYNAMIQUE */}
           {!isEmojiSearchActive && layout === "emoji" && (
             <motion.div 
               onPointerDown={handleResizeStart}
@@ -373,16 +366,13 @@ export function CustomKeyboard() {
             </motion.div>
           )}
 
-          {/* RÉCEPTACLE SACRÉ */}
           <div 
             style={{ 
               height: `${currentHeight}px`,
-              // On retire les transitions CSS sur la hauteur pendant le redimensionnement pour une fluidité spectaculaire
               transition: isResizing ? 'none' : 'height 0.5s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.3s'
             }}
             className="w-full max-w-md bg-card/60 backdrop-blur-[55px] border-t border-x border-primary/5 rounded-t-[3rem] p-4 shadow-[0_-20px_100px_-20px_rgba(0,0,0,0.5)] pointer-events-auto overflow-hidden flex flex-col"
           >
-            {/* BARRE DE PRÉCOGNITION / SUGGESTIONS (Uniquement Alpha/Numeric) */}
             {layout !== "emoji" && !isEmojiSearchActive && (
               <div className="h-14 mb-2 flex items-center justify-center gap-3 overflow-hidden px-4 shrink-0 border-b border-primary/5">
                 <AnimatePresence mode="popLayout">
@@ -420,7 +410,6 @@ export function CustomKeyboard() {
                     className="flex flex-col h-full overflow-hidden"
                   >
                     {isEmojiSearchActive ? (
-                      /* INTERFACE DE QUÊTE (MODE RECHERCHE) */
                       <div className="flex flex-col h-full gap-4">
                         <div className="h-14 flex items-center gap-4 px-6 bg-primary/5 rounded-[2rem] border border-primary/10 shrink-0">
                           <Search className="h-5 w-5 text-primary opacity-40" />
@@ -459,7 +448,6 @@ export function CustomKeyboard() {
                         </div>
                       </div>
                     ) : (
-                      /* VOÛTE DES ESSENCES (MODE EXPLORATION) */
                       <div className="flex flex-col h-full">
                         <div className="grid grid-cols-8 gap-1.5 p-1.5 mb-4 bg-primary/5 rounded-[2rem] border border-primary/5 shrink-0 relative">
                           <LayoutGroup id="emoji-nav">
@@ -492,7 +480,6 @@ export function CustomKeyboard() {
                           ))}
                         </div>
 
-                        {/* COMMANDES FIXES INFÉRIEURES */}
                         <div className="flex gap-3 mt-4 h-16 shrink-0 border-t border-primary/5 pt-3">
                           <motion.button 
                             whileTap={{ scale: 0.95 }}
@@ -525,7 +512,6 @@ export function CustomKeyboard() {
                     )}
                   </motion.div>
                 ) : (
-                  /* DIMENSIONS ALPHA & NUMÉRIQUE */
                   <motion.div 
                     key={layout}
                     initial={{ opacity: 0, scale: 0.95, filter: "blur(15px)" }}
