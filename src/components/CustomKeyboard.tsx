@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Delete, ArrowUp, Check, ChevronDown, Smile, Dog, Pizza, Bike, Plane, Lightbulb, Heart, Flag, Sparkles } from "lucide-react";
 import { haptic } from "@/lib/haptics";
@@ -9,8 +9,9 @@ import { cn } from "@/lib/utils";
 import { EmojiOracle } from "@/components/EmojiOracle";
 
 /**
- * @fileOverview Oracle du Clavier 3D Animé v5.5.
- * Une interface de saisie révolutionnaire avec emojis 3D animés et barre de résonance.
+ * @fileOverview Oracle du Clavier 3D Animé v6.0.
+ * Une interface de saisie révolutionnaire avec emojis 3D animés, barre de résonance 
+ * et disposition AZERTY purifiée.
  */
 
 type KeyboardLayout = "alpha" | "numeric" | "emoji";
@@ -23,9 +24,9 @@ const EMOJI_CATEGORIES = [
       { char: "😊", hex: "1f60a" }, { char: "😂", hex: "1f602" }, { char: "🥰", hex: "1f970" }, 
       { char: "😍", hex: "1f60d" }, { char: "🤩", hex: "1f929" }, { char: "😎", hex: "1f60e" }, 
       { char: "🤔", hex: "1f914" }, { char: "🧐", hex: "1f9d0" }, { char: "🥳", hex: "1f973" },
-      { char: "😇", hex: "1f607" }, { char: "🤠", hex: "1f920" }, { char: "🤡", hex: "1f921" },
-      { char: "👻", hex: "1f47b" }, { char: "👽", hex: "1f47d" }, { char: "👾", hex: "1f47e" },
-      { char: "🤖", hex: "1f916" }, { char: "😈", hex: "1f608" }, { char: "👹", hex: "1f479" }
+      { char: "😇", hex: "1f607" }, { char: "🤠", hex: "1f920" }, { char: "👻", hex: "1f47b" },
+      { char: "👽", hex: "1f47d" }, { char: "👾", hex: "1f47e" }, { char: "🤖", hex: "1f916" },
+      { char: "😈", hex: "1f608" }, { char: "👹", hex: "1f479" }, { char: "✨", hex: "2728" }
     ]
   },
   { 
@@ -214,7 +215,7 @@ export function CustomKeyboard() {
   const NUMERIC_KEYS = [
     ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
     ["@", "#", "&", "_", "-", "(", ")", "/", ":", ";"],
-    ["shift", "+", "*", "\"", "'", "!", "?", "=", "backspace"],
+    ["shift", "+", "*", "\"", "!", "?", "=", "backspace"],
     ["abc", "emoji-switch", "space", "enter"]
   ];
 
@@ -295,15 +296,12 @@ export function CustomKeyboard() {
                         onClick={() => handleKeyPress(emoji.char)}
                         className="flex items-center justify-center aspect-square rounded-[1.5rem] bg-primary/5 hover:bg-primary/10 transition-all p-2 group"
                       >
-                        <picture className="w-full h-full">
-                          <source srcSet={getEmojiUrl(emoji.hex)} type="image/gif" />
-                          <img 
-                            src={getEmojiUrl(emoji.hex)} 
-                            alt={emoji.char} 
-                            className="w-full h-full object-contain filter drop-shadow-md group-hover:scale-110 transition-transform"
-                            loading="lazy"
-                          />
-                        </picture>
+                        <img 
+                          src={getEmojiUrl(emoji.hex)} 
+                          alt={emoji.char} 
+                          className="w-full h-full object-contain filter drop-shadow-md group-hover:scale-110 transition-transform"
+                          loading="lazy"
+                        />
                       </motion.button>
                     ))}
                   </div>
@@ -311,7 +309,7 @@ export function CustomKeyboard() {
                   <div className="flex gap-2 mt-4 h-12">
                     <button
                       onPointerDown={(e) => e.preventDefault()}
-                      onClick={() => setLayout("alpha")}
+                      onClick={() => { haptic.medium(); setLayout("alpha"); }}
                       className="flex-[2] bg-primary/10 text-primary font-black text-[10px] uppercase tracking-widest rounded-xl shadow-inner"
                     >
                       abc

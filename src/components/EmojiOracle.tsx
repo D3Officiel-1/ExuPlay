@@ -11,11 +11,13 @@ interface EmojiOracleProps {
 }
 
 /**
- * @fileOverview EmojiOracle - Le Sceau de Transmutation.
- * Détecte les emojis unicode et les remplace par leurs versions 3D animées (Noto Emoji).
+ * @fileOverview EmojiOracle - Le Sceau de Transmutation v2.0.
+ * Détecte les emojis unicode (y compris les séquences complexes) 
+ * et les remplace par leurs versions 3D animées (Noto Emoji).
  */
 export function EmojiOracle({ text, className, emojiClassName }: EmojiOracleProps) {
-  const emojiRegex = /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/g;
+  // Regex robuste pour capturer les emojis simples et les séquences complexes (ZWJ, teint de peau, etc.)
+  const emojiRegex = /(\p{Emoji_Presentation}|\p{Emoji}\uFE0F|\p{Emoji_Modifier_Base}\p{Emoji_Modifier}?|[\u2600-\u27BF]\uFE0F?|[\uD83C-\uD83E][\uDC00-\uDFFF](?:\u200D[\uD83C-\uD83E][\uDC00-\uDFFF])*)/gu;
 
   const nodes = useMemo(() => {
     if (!text) return [];
@@ -24,7 +26,7 @@ export function EmojiOracle({ text, className, emojiClassName }: EmojiOracleProp
     let lastIndex = 0;
     let match;
 
-    // Réinitialiser le regex pour éviter les problèmes de stateful regex
+    // Réinitialiser le regex
     emojiRegex.lastIndex = 0;
 
     while ((match = emojiRegex.exec(text)) !== null) {
@@ -34,10 +36,12 @@ export function EmojiOracle({ text, className, emojiClassName }: EmojiOracleProp
       }
       
       const emoji = match[0];
+      
       // Conversion unicode vers hex pour le CDN Noto
+      // On filtre fe0f (variant selector) qui cause souvent des 404 sur les versions animées
       const hex = Array.from(emoji)
         .map(c => c.codePointAt(0)?.toString(16))
-        .filter(Boolean)
+        .filter(h => h && h !== 'fe0f')
         .join('-');
 
       parts.push(
@@ -51,11 +55,15 @@ export function EmojiOracle({ text, className, emojiClassName }: EmojiOracleProp
           )}
           loading="lazy"
           onError={(e) => {
-            // Fallback vers l'emoji texte si l'animation 3D n'existe pas pour cette variante
-            (e.target as HTMLImageElement).style.display = 'none';
-            const span = document.createElement('span');
-            span.innerText = emoji;
-            (e.target as HTMLImageElement).parentNode?.insertBefore(span, e.target as HTMLImageElement);
+            // Fallback vers l'emoji texte si l'animation 3D n'existe pas
+            const target = e.target as HTMLImageElement;
+            const parent = target.parentNode;
+            if (parent) {
+              const span = document.createElement('span');
+              span.innerText = emoji;
+              parent.insertBefore(span, target);
+              target.style.display = 'none';
+            }
           }}
         />
       );
