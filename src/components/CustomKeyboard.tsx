@@ -411,7 +411,7 @@ export function CustomKeyboard() {
                   ))
                 ) : (
                   <div className="w-full text-center py-2 opacity-30 text-[10px] font-black uppercase tracking-[0.4em] flex items-center justify-center gap-2">
-                    <Sparkles className="h-4 w-4" />
+                    <Search className="h-4 w-4" />
                     {emojiSearchQuery ? "Essence introuvable" : "Cherchez l'Inconnu"}
                   </div>
                 )}
@@ -592,9 +592,10 @@ export function CustomKeyboard() {
                     className="flex flex-col gap-2 h-full justify-end pb-2"
                   >
                     {(layout === "alpha" ? ALPHA_KEYS : NUMERIC_KEYS).map((row, i) => (
-                      <div key={i} className="flex justify-center gap-1.5 h-[18%]">
+                      <div key={i} className="flex justify-center gap-1.5 h-[18%] relative">
                         {row.map((key) => {
                           const isSpecial = ["shift", "backspace", "enter", "?123", "abc", "space", "emoji-switch"].includes(key);
+                          const isOtherInSpaceRow = isSpaceDragging && key !== "space" && row.includes("space");
                           
                           if (key === "space") {
                             return (
@@ -605,7 +606,7 @@ export function CustomKeyboard() {
                                 className={cn(
                                   "relative flex items-center justify-center rounded-2xl font-black transition-all select-none shadow-sm border",
                                   "bg-primary/5 border-primary/5 text-primary/60 overflow-hidden",
-                                  isSpaceDragging ? "absolute inset-x-0 h-14 z-50 bg-primary/10 border-primary/20 shadow-2xl" : "flex-[4]"
+                                  isSpaceDragging ? "absolute inset-x-0 h-full z-50 bg-primary/10 border-primary/20 shadow-2xl" : "flex-[4]"
                                 )}
                               >
                                 <AnimatePresence mode="wait">
@@ -641,13 +642,26 @@ export function CustomKeyboard() {
                             <motion.button
                               key={key}
                               whileTap={{ scale: 0.92 }}
-                              onPointerDown={(e) => { e.preventDefault(); if (key === "backspace") startBackspace(); else handleKeyPress(key); }}
+                              initial={false}
+                              animate={{ 
+                                opacity: isOtherInSpaceRow ? 0 : 1,
+                                scale: isOtherInSpaceRow ? 0.8 : 1,
+                                filter: isOtherInSpaceRow ? "blur(8px)" : "blur(0px)"
+                              }}
+                              transition={{ duration: 0.3, ease: "easeInOut" }}
+                              onPointerDown={(e) => { 
+                                if (isOtherInSpaceRow) return;
+                                e.preventDefault(); 
+                                if (key === "backspace") startBackspace(); 
+                                else handleKeyPress(key); 
+                              }}
                               onPointerUp={() => { if (key === "backspace") stopBackspace(); }}
                               className={cn(
                                 "relative flex items-center justify-center rounded-2xl font-black transition-all select-none shadow-sm border",
                                 isSpecial ? "bg-primary/5 border-primary/5 text-primary/60 text-[10px] uppercase tracking-widest px-3" : "bg-card/40 border border-primary/5 text-xl flex-1",
                                 key === "enter" && "flex-[2] bg-primary text-primary-foreground shadow-xl border-none",
-                                key === "shift" && isShift && "bg-primary text-primary-foreground shadow-[0_0_25px_rgba(var(--primary-rgb),0.4)] border-none"
+                                key === "shift" && isShift && "bg-primary text-primary-foreground shadow-[0_0_25px_rgba(var(--primary-rgb),0.4)] border-none",
+                                isOtherInSpaceRow && "pointer-events-none"
                               )}
                             >
                               {key === "shift" ? (
