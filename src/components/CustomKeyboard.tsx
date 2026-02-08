@@ -297,7 +297,7 @@ export function CustomKeyboard() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
-                  className="flex flex-col gap-2 h-full justify-center"
+                  className="flex flex-col gap-2 h-full justify-end pb-2"
                 >
                   {(layout === "alpha" ? ALPHA_KEYS : NUMERIC_KEYS).map((row, i) => (
                     <div key={i} className="flex justify-center gap-1.5 h-12">
