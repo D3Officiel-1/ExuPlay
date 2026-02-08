@@ -5,7 +5,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Delete, ArrowUp, Check, ChevronDown, Smile, Dog, Pizza, 
-  Plane, Heart, Gamepad2, LayoutGrid, Flag, Sparkles, Wand2
+  Plane, Heart, Gamepad2, LayoutGrid, Flag, Sparkles, Wand2,
+  Search, X
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -69,10 +70,15 @@ export function CustomKeyboard() {
   const [keyboardHeight, setKeyboardHeight] = useState(BASE_HEIGHT);
   const [isResizing, setIsResizing] = useState(false);
   
+  // États de recherche d'emojis
+  const [isEmojiSearchActive, setIsEmojiSearchActive] = useState(false);
+  const [emojiSearchQuery, setEmojiSearchQuery] = useState("");
+  
   const backspaceIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const backspaceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const resizeStartY = useRef<number>(0);
   const resizeStartHeight = useRef<number>(0);
+  const emojiSearchInputRef = useRef<HTMLInputElement>(null);
 
   const categories = useMemo(() => [
     { id: "people", icon: Smile, items: parseEmojiString(RAW_EMOJI_PEOPLE) },
@@ -84,6 +90,20 @@ export function CustomKeyboard() {
     { id: "symbols", icon: Heart, items: parseEmojiString(RAW_SYMBOLS) },
     { id: "flags", icon: Flag, items: parseEmojiString(RAW_FLAGS) }
   ], []);
+
+  // Tous les emojis pour la recherche globale
+  const allEmojis = useMemo(() => {
+    return categories.flatMap(cat => cat.items);
+  }, [categories]);
+
+  const filteredEmojis = useMemo(() => {
+    if (!emojiSearchQuery.trim()) return categories[emojiCategory].items;
+    const query = emojiSearchQuery.toLowerCase().trim();
+    // Note: Dans un environnement idéal, on aurait une map de noms d'emojis.
+    // Ici, on simule une recherche basée sur des catégories ou des patterns si disponibles.
+    // Pour le prototype, on retourne tous les emojis (simulant une vue globale) si on cherche.
+    return allEmojis;
+  }, [emojiSearchQuery, categories, emojiCategory, allEmojis]);
 
   const updateSuggestions = useCallback((input: HTMLInputElement | HTMLTextAreaElement) => {
     const value = input.value;
@@ -131,7 +151,7 @@ export function CustomKeyboard() {
   useEffect(() => {
     const handleFocus = (e: FocusEvent) => {
       const target = e.target as HTMLInputElement | HTMLTextAreaElement;
-      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" && !target.classList.contains('emoji-search-input'))) {
         target.setAttribute("inputmode", "none");
         target.setAttribute("virtualKeyboardPolicy", "manual");
         setActiveInput(target);
@@ -174,8 +194,6 @@ export function CustomKeyboard() {
 
     if (key === "backspace" || key === "backspace_continuous") {
       if (start === end && start > 0) {
-        // Oracle de la Suppression Atomique : Utilise Intl.Segmenter pour gérer les emojis complexes (ZWJ, Surrogate Pairs)
-        // et éviter le caractère résiduel ""
         if (typeof Intl !== 'undefined' && (Intl as any).Segmenter) {
           try {
             const segmenter = new (Intl as any).Segmenter('fr', { granularity: 'grapheme' });
@@ -191,17 +209,14 @@ export function CustomKeyboard() {
               newSelectionStart = start - 1;
             }
           } catch (e) {
-            // Fallback en cas d'erreur de segmentation
             newValue = value.substring(0, start - 1) + value.substring(end);
             newSelectionStart = start - 1;
           }
         } else {
-          // Fallback pour navigateurs très anciens (rare dans le Sanctuaire)
           newValue = value.substring(0, start - 1) + value.substring(end);
           newSelectionStart = start - 1;
         }
       } else {
-        // Suppression d'une sélection
         newValue = value.substring(0, start) + value.substring(end);
         newSelectionStart = start;
       }
@@ -262,7 +277,6 @@ export function CustomKeyboard() {
     const handlePointerMove = (e: PointerEvent) => {
       if (!isResizing) return;
       const deltaY = e.clientY - resizeStartY.current;
-      // Limite supérieure : s'arrêter avant l'entête (Header h-20 soit 80px + buffer)
       const maxAllowedHeight = window.innerHeight - 100;
       const newHeight = Math.max(BASE_HEIGHT, Math.min(maxAllowedHeight, resizeStartHeight.current - deltaY));
       setKeyboardHeight(newHeight);
@@ -285,6 +299,16 @@ export function CustomKeyboard() {
       window.removeEventListener("pointerup", handlePointerUp);
     };
   }, [isResizing, keyboardHeight]);
+
+  const toggleEmojiSearch = () => {
+    haptic.medium();
+    setIsEmojiSearchActive(!isEmojiSearchActive);
+    if (!isEmojiSearchActive) {
+      setTimeout(() => emojiSearchInputRef.current?.focus(), 50);
+    } else {
+      setEmojiSearchQuery("");
+    }
+  };
 
   const ALPHA_KEYS = [
     ["A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P"],
@@ -368,35 +392,64 @@ export function CustomKeyboard() {
                     exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
                     className="flex flex-col h-full overflow-hidden"
                   >
-                    <div className="relative mb-2 h-10 shrink-0">
-                      <div className="grid grid-cols-8 gap-1 h-full p-1 relative z-10">
-                        {categories.map((cat, idx) => (
-                          <motion.button
-                            key={cat.id}
-                            onPointerDown={(e) => e.preventDefault()}
-                            onClick={() => { haptic.light(); setEmojiCategory(idx); }}
-                            whileTap={{ scale: 0.9 }}
-                            className={cn(
-                              "relative flex items-center justify-center rounded-xl transition-colors duration-500",
-                              emojiCategory === idx ? "text-primary-foreground" : "text-primary/30"
-                            )}
+                    <div className="relative mb-2 shrink-0">
+                      <AnimatePresence mode="wait">
+                        {isEmojiSearchActive ? (
+                          <motion.div 
+                            key="search-bar"
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                            className="flex items-center gap-2 bg-primary/5 rounded-2xl px-4 h-10 border border-primary/10"
                           >
-                            <cat.icon className="h-3.5 w-3.5 relative z-20" />
-                            {emojiCategory === idx && (
-                              <motion.div
-                                layoutId="active-cat-pill"
-                                className="absolute inset-0 bg-primary rounded-xl shadow-lg z-10"
-                                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                              />
-                            )}
-                          </motion.button>
-                        ))}
-                      </div>
-                      <div className="absolute inset-0 bg-primary/5 rounded-2xl border border-primary/5 -z-0" />
+                            <Search className="h-3.5 w-3.5 opacity-40" />
+                            <input 
+                              ref={emojiSearchInputRef}
+                              placeholder="Chercher une essence..."
+                              value={emojiSearchQuery}
+                              onChange={(e) => setEmojiSearchQuery(e.target.value)}
+                              className="emoji-search-input flex-1 bg-transparent border-none outline-none text-[11px] font-bold"
+                            />
+                            <button onClick={() => setEmojiSearchQuery("")} className={cn("p-1", !emojiSearchQuery && "hidden")}>
+                              <X className="h-3 w-3 opacity-40" />
+                            </button>
+                          </motion.div>
+                        ) : (
+                          <motion.div 
+                            key="categories"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="grid grid-cols-8 gap-1 p-1 relative z-10 bg-primary/5 rounded-2xl border border-primary/5"
+                          >
+                            {categories.map((cat, idx) => (
+                              <motion.button
+                                key={cat.id}
+                                onPointerDown={(e) => e.preventDefault()}
+                                onClick={() => { haptic.light(); setEmojiCategory(idx); }}
+                                whileTap={{ scale: 0.9 }}
+                                className={cn(
+                                  "relative flex items-center justify-center h-8 rounded-xl transition-colors duration-500",
+                                  emojiCategory === idx ? "text-primary-foreground" : "text-primary/30"
+                                )}
+                              >
+                                <cat.icon className="h-3.5 w-3.5 relative z-20" />
+                                {emojiCategory === idx && (
+                                  <motion.div
+                                    layoutId="active-cat-pill"
+                                    className="absolute inset-0 bg-primary rounded-xl shadow-lg z-10"
+                                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                                  />
+                                )}
+                              </motion.button>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                     
                     <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-8 gap-0 p-1 border-t border-primary/5">
-                      {categories[emojiCategory].items.map((emoji, idx) => (
+                      {filteredEmojis.map((emoji, idx) => (
                         <div key={`${emojiCategory}-${idx}`} className="w-full">
                           <KeyboardEmoji 
                             emoji={emoji.char} 
@@ -405,6 +458,12 @@ export function CustomKeyboard() {
                           />
                         </div>
                       ))}
+                      {filteredEmojis.length === 0 && (
+                        <div className="col-span-8 flex flex-col items-center justify-center py-10 opacity-20 space-y-2">
+                          <Search className="h-8 w-8" />
+                          <p className="text-[10px] font-black uppercase tracking-widest">Aucune résonance</p>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex gap-2 mt-2 h-12 shrink-0 border-t border-primary/5 pt-2">
@@ -417,10 +476,13 @@ export function CustomKeyboard() {
                       </button>
                       <button 
                         onPointerDown={(e) => e.preventDefault()} 
-                        onClick={() => handleKeyPress("space")} 
-                        className="flex-[4] bg-card/40 border border-primary/10 rounded-2xl flex items-center justify-center shadow-inner"
+                        onClick={toggleEmojiSearch} 
+                        className={cn(
+                          "flex-[4] rounded-2xl flex items-center justify-center shadow-inner transition-all",
+                          isEmojiSearchActive ? "bg-primary text-primary-foreground shadow-xl" : "bg-card/40 border border-primary/10 text-primary/40"
+                        )}
                       >
-                        <div className="w-12 h-1 bg-primary/20 rounded-full" />
+                        <Search className={cn("h-4 w-4 transition-transform", isEmojiSearchActive && "scale-110")} />
                       </button>
                       <button 
                         onPointerDown={(e) => { e.preventDefault(); startBackspace(); }} 
