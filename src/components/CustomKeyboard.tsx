@@ -120,7 +120,7 @@ export function CustomKeyboard() {
     ["A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P"],
     ["Q", "S", "D", "F", "G", "H", "J", "K", "L", "M"],
     ["shift", "W", "X", "C", "V", "B", "N", "'", "backspace"],
-    ["123", ",", "space", "enter"]
+    ["?123", ",", "space", "enter"]
   ];
 
   const NUMERIC_KEYS = [
@@ -157,7 +157,7 @@ export function CustomKeyboard() {
               {rows.map((row, i) => (
                 <div key={i} className="flex justify-center gap-1.5 h-12">
                   {row.map((key) => {
-                    const isSpecial = ["shift", "backspace", "enter", "123", "abc", "space"].includes(key);
+                    const isSpecial = ["shift", "backspace", "enter", "?123", "abc", "space", ","].includes(key);
                     
                     return (
                       <motion.button
@@ -166,7 +166,7 @@ export function CustomKeyboard() {
                         whileTap={{ scale: 0.92, backgroundColor: "rgba(var(--primary-rgb), 0.1)" }}
                         onPointerDown={(e) => e.preventDefault()} // Empêche la perte de focus du champ de texte
                         onClick={() => handleKeyPress(
-                          key === "123" || key === "abc" ? "layout-switch" : key
+                          key === "?123" || key === "abc" ? "layout-switch" : key
                         )}
                         className={cn(
                           "relative flex items-center justify-center rounded-xl font-bold transition-colors select-none",
@@ -181,8 +181,9 @@ export function CustomKeyboard() {
                         {key === "backspace" && <Delete className="h-5 w-5" />}
                         {key === "enter" && <Check className="h-5 w-5" />}
                         {key === "space" && <div className="w-12 h-1 bg-current opacity-20 rounded-full" />}
-                        {key === "123" && <span className="text-[10px] font-black tracking-tight uppercase">123</span>}
+                        {key === "?123" && <span className="text-[10px] font-black tracking-tight uppercase">?123</span>}
                         {key === "abc" && <span className="text-[10px] font-black tracking-tight uppercase">abc</span>}
+                        {key === "," && <span className="text-lg">,</span>}
                         {!isSpecial && (isShift ? key.toUpperCase() : key.toLowerCase())}
                       </motion.button>
                     );
