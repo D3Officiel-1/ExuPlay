@@ -32,7 +32,7 @@ export function CustomKeyboard() {
         setActiveInput(target);
         setIsVisible(true);
         
-        // Déterminer le layout
+        // Déterminer le layout initial selon le type d'input
         if (target.type === "tel" || target.type === "number" || target.getAttribute("data-layout") === "numeric") {
           setLayout("numeric");
         } else {
@@ -46,7 +46,6 @@ export function CustomKeyboard() {
       setTimeout(() => {
         const active = document.activeElement;
         if (!active || (active.tagName !== "INPUT" && active.tagName !== "TEXTAREA")) {
-          // On ne ferme pas si on est en train de cliquer sur le clavier (géré par onPointerDown)
           setIsVisible(false);
         }
       }, 150);
@@ -110,10 +109,7 @@ export function CustomKeyboard() {
       activeInput.value = newValue;
     }
 
-    // Repositionner le curseur de saisie
     activeInput.setSelectionRange(newSelectionStart, newSelectionStart);
-
-    // Déclencher les événements système
     activeInput.dispatchEvent(new Event("input", { bubbles: true }));
     activeInput.dispatchEvent(new Event("change", { bubbles: true }));
   }, [activeInput, isShift, layout]);
@@ -126,11 +122,12 @@ export function CustomKeyboard() {
     ["?123", ",", "emoji", "space", ".", "enter"]
   ];
 
+  // Carte des Symboles et Chiffres harmonisée en hauteur avec le mode alpha
   const NUMERIC_KEYS = [
-    ["1", "2", "3"],
-    ["4", "5", "6"],
-    ["7", "8", "9"],
-    ["abc", "0", "backspace", "enter"]
+    ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+    ["@", "#", "&", "_", "-", "(", ")", "/", ":", ";"],
+    ["+", "*", "\"", "'", "!", "?", "=", "%", "backspace"],
+    ["abc", ",", "emoji", "space", ".", "enter"]
   ];
 
   const rows = layout === "alpha" ? ALPHA_KEYS : NUMERIC_KEYS;
@@ -167,7 +164,7 @@ export function CustomKeyboard() {
                         key={key}
                         tabIndex={-1}
                         whileTap={{ scale: 0.92, backgroundColor: "rgba(var(--primary-rgb), 0.1)" }}
-                        onPointerDown={(e) => e.preventDefault()} // Empêche la perte de focus du champ de texte
+                        onPointerDown={(e) => e.preventDefault()}
                         onClick={() => handleKeyPress(
                           key === "?123" || key === "abc" ? "layout-switch" : key
                         )}
@@ -189,7 +186,7 @@ export function CustomKeyboard() {
                         {key === "abc" && <span className="text-[10px] font-black tracking-tight uppercase">abc</span>}
                         {key === "," && <span className="text-lg">,</span>}
                         {key === "." && <span className="text-lg">.</span>}
-                        {!isSpecial && (isShift ? key.toUpperCase() : key.toLowerCase())}
+                        {!isSpecial && (layout === "alpha" && isShift ? key.toUpperCase() : key)}
                       </motion.button>
                     );
                   })}
