@@ -218,11 +218,16 @@ export default function ProfilPage() {
                 </motion.div>
               ) : (
                 <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-3 w-full">
-                  <div className="relative w-full max-w-[240px]">
-                    <Input 
+                  <div className="relative w-full max-w-[240px] h-14">
+                    {/* Calque visuel animé derrière l'input */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-xl font-black">
+                      <EmojiOracle text={editedUsername} />
+                    </div>
+                    {/* Input réel transparent */}
+                    <input 
                       value={editedUsername} 
                       onChange={(e) => setEditedUsername(e.target.value.toLowerCase().replace(/[\s.,]/g, ''))} 
-                      className="h-14 text-center text-xl font-black rounded-2xl bg-primary/5" 
+                      className="absolute inset-0 w-full h-full text-center text-xl font-black rounded-2xl bg-primary/5 border-none outline-none text-transparent caret-foreground" 
                       autoFocus 
                       maxLength={15} 
                     />
@@ -231,9 +236,8 @@ export default function ProfilPage() {
                     </div>
                   </div>
                   <div className="flex flex-col items-center gap-2">
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Aperçu : @<EmojiOracle text={editedUsername} /></p>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => setIsEditingName(false)} className="rounded-xl">Annuler</Button>
+                      <button onClick={() => setIsEditingName(false)} className="px-4 py-2 text-[10px] font-black uppercase opacity-40">Annuler</button>
                       <Button 
                         size="sm" 
                         className="px-6 rounded-xl" 

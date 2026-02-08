@@ -28,6 +28,7 @@ import { Loader2, User as UserIcon, ShieldCheck, XCircle, CheckCircle, Users, Gi
 import placeholderImages from "@/app/lib/placeholder-images.json";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
+import { EmojiOracle } from "@/components/EmojiOracle";
 
 const generateReferralCode = () => {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -237,16 +238,21 @@ export function LoginClient() {
                         <span className="text-[10px] font-bold uppercase tracking-widest">Identité</span>
                       </div>
                       <CardTitle className="text-2xl">Votre nom de plume</CardTitle>
-                      <CardDescription>Choisissez un pseudonyme unique (sans point ni virgule).</CardDescription>
+                      <CardDescription>Choisissez un pseudonyme unique.</CardDescription>
                     </CardHeader>
                     <CardContent className="p-6">
                       <div className="space-y-4">
-                        <div className="relative">
+                        <div className="relative h-14 w-full">
+                          {/* Calque visuel animé derrière l'input */}
+                          <div className="absolute inset-0 flex items-center px-5 pointer-events-none text-base font-medium">
+                            <EmojiOracle text={formData.username} />
+                          </div>
+                          {/* Input réel transparent */}
                           <input 
                             placeholder="ex: aristote" 
                             value={formData.username}
                             onChange={(e) => setFormData({...formData, username: e.target.value.replace(/[\s.,]/g, '').toLowerCase()})}
-                            className="flex h-14 w-full rounded-md border border-input bg-background/50 px-5 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="absolute inset-0 w-full h-full rounded-md border border-input bg-transparent px-5 py-2 text-base font-medium ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-transparent caret-foreground"
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2">
                             {checkingUsername ? <Loader2 className="h-5 w-5 animate-spin" /> : (
@@ -439,7 +445,7 @@ export function LoginClient() {
                     </CardHeader>
                     <CardContent className="p-6">
                       <div className="space-y-4 p-6 bg-muted/30 rounded-2xl border border-primary/5">
-                        <div className="flex flex-col"><span className="text-[10px] font-black uppercase opacity-40">Pseudonyme</span><span className="text-xl font-bold">@{formData.username}</span></div>
+                        <div className="flex flex-col"><span className="text-[10px] font-black uppercase opacity-40">Pseudonyme</span><span className="text-xl font-bold">@<EmojiOracle text={formData.username} /></span></div>
                         <div className="flex flex-col"><span className="text-[10px] font-black uppercase opacity-40">Liaison Wave</span><span className="text-xl font-bold">{formData.countryCode} {formData.phoneNumber}</span></div>
                         {hasReferral && referralStatus === 'valid' && (
                           <div className="flex flex-col p-3 bg-green-500/5 rounded-xl border border-green-500/10">
