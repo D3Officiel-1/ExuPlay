@@ -95,20 +95,21 @@ export function CustomKeyboard() {
       }
     };
 
-    const handleBlur = () => {
+    const handleFocusOut = (e: FocusEvent) => {
+      // Small delay to check if the new focus is another input
       setTimeout(() => {
         const active = document.activeElement;
-        if (!active || (active.tagName !== "INPUT" || active.tagName !== "TEXTAREA")) {
+        if (!active || (active.tagName !== "INPUT" && active.tagName !== "TEXTAREA")) {
           setIsVisible(false);
         }
-      }, 150);
+      }, 100);
     };
 
     document.addEventListener("focusin", handleFocus);
-    document.addEventListener("focusout", handleBlur);
+    document.addEventListener("focusout", handleFocusOut);
     return () => {
       document.removeEventListener("focusin", handleFocus);
-      document.removeEventListener("focusout", handleBlur);
+      document.removeEventListener("focusout", handleFocusOut);
     };
   }, []);
 
@@ -218,9 +219,9 @@ export function CustomKeyboard() {
                   exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
                   className="flex flex-col h-full"
                 >
-                  {/* Barre de Catégories Ultra Moderne avec Framer Motion */}
-                  <div className="relative mb-4 px-1">
-                    <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-2 relative z-10">
+                  {/* Barre de Catégories Ultra-Fine en 8 Colonnes Fixes */}
+                  <div className="relative mb-3 px-1">
+                    <div className="grid grid-cols-8 gap-1 relative z-10 p-1">
                       {categories.map((cat, idx) => (
                         <motion.button
                           key={cat.id}
@@ -229,23 +230,23 @@ export function CustomKeyboard() {
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           className={cn(
-                            "relative flex items-center justify-center min-w-[48px] h-12 rounded-2xl transition-colors duration-500",
+                            "relative flex items-center justify-center h-10 rounded-xl transition-colors duration-500",
                             emojiCategory === idx ? "text-primary-foreground" : "text-primary/30"
                           )}
                         >
-                          <cat.icon className="h-5 w-5 relative z-20" />
+                          <cat.icon className="h-4 w-4 relative z-20" />
                           
                           {emojiCategory === idx && (
                             <motion.div
                               layoutId="active-cat-pill"
-                              className="absolute inset-0 bg-primary rounded-2xl shadow-xl z-10"
+                              className="absolute inset-0 bg-primary rounded-xl shadow-lg z-10"
                               transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                             />
                           )}
                         </motion.button>
                       ))}
                     </div>
-                    <div className="absolute inset-0 bg-primary/5 rounded-[1.5rem] border border-primary/5 -z-0" />
+                    <div className="absolute inset-0 bg-primary/5 rounded-2xl border border-primary/5 -z-0" />
                   </div>
                   
                   {/* Grille Octogonale Fixe d'Emojis 3D */}
@@ -261,7 +262,7 @@ export function CustomKeyboard() {
                     ))}
                   </div>
 
-                  <div className="flex gap-2 mt-4 h-12">
+                  <div className="flex gap-2 mt-3 h-12">
                     <button 
                       onPointerDown={(e) => e.preventDefault()} 
                       onClick={() => { haptic.medium(); setLayout("alpha"); }} 
@@ -274,7 +275,7 @@ export function CustomKeyboard() {
                       onClick={() => handleKeyPress("space")} 
                       className="flex-[4] bg-card/40 border border-primary/10 rounded-2xl flex items-center justify-center shadow-inner"
                     >
-                      <div className="w-16 h-1.5 bg-primary/20 rounded-full" />
+                      <div className="w-16 h-1 bg-primary/20 rounded-full" />
                     </button>
                     <button 
                       onPointerDown={(e) => { e.preventDefault(); startBackspace(); }} 
