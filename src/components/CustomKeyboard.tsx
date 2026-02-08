@@ -120,7 +120,7 @@ export function CustomKeyboard() {
     ["A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P"],
     ["Q", "S", "D", "F", "G", "H", "J", "K", "L"],
     ["shift", "W", "X", "C", "V", "B", "N", "'", "M", "backspace"],
-    ["123", "space", "enter"]
+    ["123", ",", "space", "enter"]
   ];
 
   const NUMERIC_KEYS = [
