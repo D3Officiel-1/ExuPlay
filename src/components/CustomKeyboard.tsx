@@ -125,8 +125,7 @@ export function CustomKeyboard() {
     ["1", "2", "3"],
     ["4", "5", "6"],
     ["7", "8", "9"],
-    ["ABC", "0", "backspace"],
-    ["enter"]
+    ["ABC", "0", "backspace", "enter"]
   ];
 
   const rows = layout === "alpha" ? ALPHA_KEYS : NUMERIC_KEYS;
