@@ -5,8 +5,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Delete, ArrowUp, Check, ChevronDown, Smile, Dog, Pizza, 
-  Bike, Plane, Lightbulb, Heart, Flag, Sparkles, User, Footprints,
-  Gamepad2, Music2, Coffee, Ghost, Sun, Car, MapPin, LayoutGrid
+  Plane, Heart, Gamepad2, LayoutGrid
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -25,8 +24,7 @@ type KeyboardLayout = "alpha" | "numeric" | "emoji";
 
 /**
  * @fileOverview KeyboardEmoji - Composant de rendu individuel pour le clavier.
- * Gère la cascade : Animé -> Statique -> Texte.
- * Bouton fixe carré avec bordures haut/bas égales pour une structure cristalline.
+ * Gère la cascade : Animé (GIF) -> Statique (WebP) -> Texte (Unicode).
  */
 function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, onClick: (char: string) => void }) {
   const [stage, setStage] = useState<'animated' | 'static' | 'text'>('animated');
@@ -77,7 +75,7 @@ export function CustomKeyboard() {
     { id: "food", icon: Pizza, items: parseEmojiString(RAW_FOOD) },
     { id: "activities", icon: Gamepad2, items: parseEmojiString(RAW_ACTIVITIES) },
     { id: "places", icon: Plane, items: parseEmojiString(RAW_PLACES) },
-    { id: "objects", icon: Lightbulb, items: parseEmojiString(RAW_OBJECTS) },
+    { id: "objects", icon: LayoutGrid, items: parseEmojiString(RAW_OBJECTS) },
     { id: "symbols", icon: Heart, items: parseEmojiString(RAW_SYMBOLS) }
   ], []);
 
@@ -244,7 +242,6 @@ export function CustomKeyboard() {
                         </motion.button>
                       ))}
                     </div>
-                    {/* Fond de la barre */}
                     <div className="absolute inset-0 bg-primary/5 rounded-[1.5rem] border border-primary/5 -z-0" />
                   </div>
                   
@@ -323,7 +320,7 @@ export function CustomKeyboard() {
                                 {isShift && <motion.div initial={{ width: 0 }} animate={{ width: 12 }} className="h-0.5 bg-current rounded-full" />}
                               </div>
                             ) : key === "backspace" ? <Delete className="h-5 w-5" /> : key === "enter" ? <Check className="h-5 w-5" /> : key === "emoji-switch" ? (
-                              <div className="relative"><Smile className="h-5 w-5" /><motion.div animate={{ opacity: [0, 1, 0] }} transition={{ duration: 2, repeat: Infinity }} className="absolute -top-1 -right-1"><Sparkles className="h-2 w-2 text-primary" /></motion.div></div>
+                              <Smile className="h-5 w-5" />
                             ) : key === "space" ? <div className="w-16 h-1 bg-current opacity-20 rounded-full" /> : (layout === "alpha" && isShift ? key.toUpperCase() : key)}
                           </motion.button>
                         );
