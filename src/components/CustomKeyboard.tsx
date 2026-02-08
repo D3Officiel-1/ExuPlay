@@ -174,9 +174,34 @@ export function CustomKeyboard() {
 
     if (key === "backspace" || key === "backspace_continuous") {
       if (start === end && start > 0) {
-        newValue = value.substring(0, start - 1) + value.substring(end);
-        newSelectionStart = start - 1;
+        // Oracle de la Suppression Atomique : Utilise Intl.Segmenter pour gérer les emojis complexes (ZWJ, Surrogate Pairs)
+        // et éviter le caractère résiduel ""
+        if (typeof Intl !== 'undefined' && (Intl as any).Segmenter) {
+          try {
+            const segmenter = new (Intl as any).Segmenter('fr', { granularity: 'grapheme' });
+            const segments = Array.from(segmenter.segment(value.substring(0, start)));
+            const lastSegment = (segments[segments.length - 1] as any);
+            
+            if (lastSegment) {
+              const segmentLength = lastSegment.segment.length;
+              newValue = value.substring(0, start - segmentLength) + value.substring(end);
+              newSelectionStart = start - segmentLength;
+            } else {
+              newValue = value.substring(0, start - 1) + value.substring(end);
+              newSelectionStart = start - 1;
+            }
+          } catch (e) {
+            // Fallback en cas d'erreur de segmentation
+            newValue = value.substring(0, start - 1) + value.substring(end);
+            newSelectionStart = start - 1;
+          }
+        } else {
+          // Fallback pour navigateurs très anciens (rare dans le Sanctuaire)
+          newValue = value.substring(0, start - 1) + value.substring(end);
+          newSelectionStart = start - 1;
+        }
       } else {
+        // Suppression d'une sélection
         newValue = value.substring(0, start) + value.substring(end);
         newSelectionStart = start;
       }
@@ -225,7 +250,6 @@ export function CustomKeyboard() {
     }, 500);
   }, [handleKeyPress, stopBackspace]);
 
-  // LOGIQUE DE REDIMENSIONNEMENT
   const handleResizeStart = (e: React.PointerEvent) => {
     e.preventDefault();
     setIsResizing(true);
@@ -238,7 +262,7 @@ export function CustomKeyboard() {
     const handlePointerMove = (e: PointerEvent) => {
       if (!isResizing) return;
       const deltaY = e.clientY - resizeStartY.current;
-      // Limite supérieure : ne jamais dépasser l'entête (Header est h-20 soit 80px)
+      // Limite supérieure : s'arrêter avant l'entête (Header h-20 soit 80px + buffer)
       const maxAllowedHeight = window.innerHeight - 100;
       const newHeight = Math.max(BASE_HEIGHT, Math.min(maxAllowedHeight, resizeStartHeight.current - deltaY));
       setKeyboardHeight(newHeight);
@@ -260,7 +284,7 @@ export function CustomKeyboard() {
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
     };
-  }, [isResizing]);
+  }, [isResizing, keyboardHeight]);
 
   const ALPHA_KEYS = [
     ["A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P"],
@@ -286,7 +310,6 @@ export function CustomKeyboard() {
           transition={{ type: "spring", damping: 30, stiffness: 250 }}
           className="fixed bottom-0 left-0 right-0 z-[10002] px-2 pb-safe-area-inset-bottom pointer-events-none"
         >
-          {/* Poignée de Redimensionnement / Fermeture - Uniquement sur Emoji */}
           <div className="flex flex-col items-center mb-1 h-8">
             <AnimatePresence>
               {layout === "emoji" && (
@@ -308,8 +331,6 @@ export function CustomKeyboard() {
             style={{ height: `${layout === "emoji" ? keyboardHeight : BASE_HEIGHT}px` }}
             className="max-w-md mx-auto bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden flex flex-col transition-all duration-300 ease-out"
           >
-            
-            {/* Barre de Suggestions - Masquée pour les Emojis */}
             {layout !== "emoji" && (
               <div className="h-14 mb-1 flex items-center justify-center gap-3 overflow-hidden px-2 shrink-0 border-b border-primary/5">
                 <AnimatePresence mode="popLayout">
@@ -347,7 +368,6 @@ export function CustomKeyboard() {
                     exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
                     className="flex flex-col h-full overflow-hidden"
                   >
-                    {/* Barre de Catégories */}
                     <div className="relative mb-2 h-10 shrink-0">
                       <div className="grid grid-cols-8 gap-1 h-full p-1 relative z-10">
                         {categories.map((cat, idx) => (
@@ -375,7 +395,6 @@ export function CustomKeyboard() {
                       <div className="absolute inset-0 bg-primary/5 rounded-2xl border border-primary/5 -z-0" />
                     </div>
                     
-                    {/* Grille Scrollable des Emojis */}
                     <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-8 gap-0 p-1 border-t border-primary/5">
                       {categories[emojiCategory].items.map((emoji, idx) => (
                         <div key={`${emojiCategory}-${idx}`} className="w-full">
@@ -388,7 +407,6 @@ export function CustomKeyboard() {
                       ))}
                     </div>
 
-                    {/* Contrôles Fixes au Bas de la Carte Emoji */}
                     <div className="flex gap-2 mt-2 h-12 shrink-0 border-t border-primary/5 pt-2">
                       <button 
                         onPointerDown={(e) => e.preventDefault()} 
