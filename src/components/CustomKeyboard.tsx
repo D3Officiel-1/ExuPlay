@@ -19,7 +19,8 @@ import {
   RAW_PLACES,
   RAW_OBJECTS, 
   RAW_SYMBOLS,
-  RAW_FLAGS
+  RAW_FLAGS,
+  type EmojiIdentity
 } from "@/lib/emoji-library";
 import { getSmartSuggestions } from "@/lib/spell-checker";
 
@@ -95,9 +96,14 @@ export function CustomKeyboard() {
   }, [categories]);
 
   const filteredEmojis = useMemo(() => {
-    if (!emojiSearchQuery.trim()) return [];
-    // Recherche par pattern simple (on simule car nous n'avons pas les noms complets ici)
-    return allEmojis.slice(0, 50).filter(() => Math.random() > 0.5); 
+    const query = emojiSearchQuery.toLowerCase().trim();
+    if (!query) return [];
+    
+    // On cherche dans les mots-clés pré-définis
+    return allEmojis.filter(emoji => 
+      emoji.keywords.some(kw => kw.includes(query)) ||
+      emoji.char === query
+    ).slice(0, 40);
   }, [emojiSearchQuery, allEmojis]);
 
   const updateSuggestions = useCallback((input: HTMLInputElement | HTMLTextAreaElement) => {
@@ -125,6 +131,8 @@ export function CustomKeyboard() {
     const value = activeInput.value;
     
     const newValue = value.substring(0, start) + text + value.substring(end);
+    
+    // Calcul de la position réelle du curseur en tenant compte des paires de substitution
     const newCursorPos = start + text.length;
 
     const prototype = activeInput instanceof HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
@@ -132,12 +140,14 @@ export function CustomKeyboard() {
     if (nativeSetter) nativeSetter.call(activeInput, newValue);
     else activeInput.value = newValue;
 
-    activeInput.setSelectionRange(newCursorPos, newCursorPos);
-    activeInput.dispatchEvent(new Event("input", { bubbles: true }));
-    activeInput.dispatchEvent(new Event("change", { bubbles: true }));
-    
-    updateSuggestions(activeInput);
-    activeInput.focus();
+    // Forcer le focus et le positionnement du curseur APRES l'emoji
+    setTimeout(() => {
+      activeInput.focus();
+      activeInput.setSelectionRange(newCursorPos, newCursorPos);
+      activeInput.dispatchEvent(new Event("input", { bubbles: true }));
+      activeInput.dispatchEvent(new Event("change", { bubbles: true }));
+      updateSuggestions(activeInput);
+    }, 0);
   }, [activeInput, updateSuggestions]);
 
   const applySuggestion = (suggestion: string) => {
@@ -375,13 +385,13 @@ export function CustomKeyboard() {
                         onClick={() => { haptic.light(); insertText(emoji.char); }}
                         className="h-12 w-12 flex-shrink-0 flex items-center justify-center bg-primary/5 rounded-xl text-2xl active:scale-90 transition-transform"
                       >
-                        {emoji.char}
+                        <KeyboardEmoji emoji={emoji.char} hex={emoji.hex} onClick={(char) => insertText(char)} />
                       </button>
                     ))
                   ) : (
                     <div className="w-full text-center py-2 opacity-30 text-[9px] font-black uppercase tracking-[0.3em] flex items-center justify-center gap-2">
                       <Sparkles className="h-3 w-3" />
-                      Cherchez une essence...
+                      {emojiSearchQuery ? "Aucune essence trouvée" : "Cherchez une essence..."}
                     </div>
                   )}
                 </motion.div>
@@ -444,7 +454,7 @@ export function CustomKeyboard() {
                   >
                     {isEmojiSearchActive ? (
                       <div className="flex flex-col h-full gap-2">
-                        <div className="h-12 flex items-center gap-3 px-2 bg-primary/5 rounded-2xl border border-primary/10">
+                        <div className="h-12 flex items-center gap-3 px-4 bg-primary/5 rounded-2xl border border-primary/10 shrink-0">
                           <Search className="h-4 w-4 opacity-40" />
                           <div className="flex-1 text-sm font-black italic truncate">
                             {emojiSearchQuery || "Recherche..."}
