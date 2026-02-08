@@ -26,7 +26,7 @@ type KeyboardLayout = "alpha" | "numeric" | "emoji";
 /**
  * @fileOverview KeyboardEmoji - Composant de rendu individuel pour le clavier.
  * Gère la cascade : Animé -> Statique -> Texte.
- * Enveloppé dans un bouton fixe carré avec des bordures haut/bas égales.
+ * Bouton carré avec bordures haut/bas égales.
  */
 function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, onClick: (char: string) => void }) {
   const [stage, setStage] = useState<'animated' | 'static' | 'text'>('animated');
@@ -56,7 +56,6 @@ function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, on
           }}
         />
       )}
-      {/* Reflet éthéré interne */}
       <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
     </button>
   );
@@ -72,7 +71,6 @@ export function CustomKeyboard() {
   const backspaceIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const backspaceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Bibliothèque des essences classées par catégories sacrées
   const categories = useMemo(() => [
     { id: "people", icon: Smile, items: parseEmojiString(RAW_EMOJI_PEOPLE) },
     { id: "nature", icon: Dog, items: parseEmojiString(RAW_NATURE) },
@@ -234,16 +232,20 @@ export function CustomKeyboard() {
                       </button>
                     ))}
                   </div>
-                  <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-8 gap-2 p-1">
+                  
+                  {/* Flux Horizontal d'Emojis */}
+                  <div className="flex-1 overflow-x-auto no-scrollbar flex flex-row items-center gap-3 p-1">
                     {categories[emojiCategory].items.map((emoji, idx) => (
-                      <KeyboardEmoji 
-                        key={`${emojiCategory}-${idx}`} 
-                        emoji={emoji.char} 
-                        hex={emoji.hex} 
-                        onClick={(char) => handleKeyPress(char)} 
-                      />
+                      <div key={`${emojiCategory}-${idx}`} className="shrink-0 w-14 h-14">
+                        <KeyboardEmoji 
+                          emoji={emoji.char} 
+                          hex={emoji.hex} 
+                          onClick={(char) => handleKeyPress(char)} 
+                        />
+                      </div>
                     ))}
                   </div>
+
                   <div className="flex gap-2 mt-4 h-12">
                     <button onPointerDown={(e) => e.preventDefault()} onClick={() => setLayout("alpha")} className="flex-[2] bg-primary/10 text-primary font-black text-[10px] uppercase rounded-xl">abc</button>
                     <button onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress("space")} className="flex-[4] bg-card/40 border border-primary/5 rounded-xl flex items-center justify-center"><div className="w-16 h-1.5 bg-primary/20 rounded-full" /></button>
@@ -303,3 +305,4 @@ export function CustomKeyboard() {
     </AnimatePresence>
   );
 }
+    
