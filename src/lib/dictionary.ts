@@ -1,5 +1,5 @@
 /**
- * @fileOverview Lexique de l'Éveil v2.0.
+ * @fileOverview Lexique de l'Éveil v3.0.
  * Bibliothèque exhaustive de mots pour le moteur de suggestions et d'orthographe.
  */
 
@@ -12,7 +12,7 @@ export const SACRED_DICTIONARY = [
   "parrainage", "profil", "classement", "défi", "quiz", "points", "transfert", "échange",
   "boutique", "paramètres", "sécurité", "wave", "numéro", "téléphone", "biométrie",
   
-  // Mots courants français
+  // Mots courants français (Alpha)
   "abandonner", "accepter", "accompagner", "acheter", "adorer", "agir", "aider", "aimer",
   "ajouter", "aller", "amener", "amuser", "annoncer", "apercevoir", "apparaître", "appeler",
   "apporter", "apprendre", "approuver", "arrêter", "arriver", "asseoir", "assurer", "attendre",

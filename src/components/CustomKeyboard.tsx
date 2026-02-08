@@ -20,12 +20,10 @@ import {
   RAW_FLAGS
 } from "@/lib/emoji-library";
 import { getSmartSuggestions } from "@/lib/spell-checker";
+import { Command } from "cmdk";
 
 type KeyboardLayout = "alpha" | "numeric" | "emoji";
 
-/**
- * @fileOverview KeyboardEmoji - Composant de rendu individuel pour le clavier.
- */
 function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, onClick: (char: string) => void }) {
   const [stage, setStage] = useState<'animated' | 'static' | 'text'>('animated');
 
@@ -81,14 +79,9 @@ export function CustomKeyboard() {
     { id: "flags", icon: Flag, items: parseEmojiString(RAW_FLAGS) }
   ], []);
 
-  /**
-   * Analyse le texte pour extraire le mot sous le curseur et générer suggestions/corrections.
-   */
   const updateSuggestions = useCallback((input: HTMLInputElement | HTMLTextAreaElement) => {
     const value = input.value;
     const selectionEnd = input.selectionStart || 0;
-    
-    // On extrait le mot juste avant le curseur
     const textBefore = value.substring(0, selectionEnd);
     const words = textBefore.split(/\s/);
     const currentWord = words[words.length - 1];
@@ -108,10 +101,8 @@ export function CustomKeyboard() {
 
     const value = activeInput.value;
     const start = activeInput.selectionStart || 0;
-    
     const textBefore = value.substring(0, start);
     const words = textBefore.split(/\s/);
-    // On remplace le fragment incomplet ou erroné
     words.pop();
     
     const prefix = words.join(" ");
@@ -137,10 +128,8 @@ export function CustomKeyboard() {
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
         target.setAttribute("inputmode", "none");
         target.setAttribute("virtualKeyboardPolicy", "manual");
-        
         setActiveInput(target);
         setIsVisible(true);
-        
         if (target.type === "tel" || target.type === "number" || target.getAttribute("data-layout") === "numeric") {
           setLayout("numeric");
         } else {
@@ -150,7 +139,7 @@ export function CustomKeyboard() {
       }
     };
 
-    const handleFocusOut = (e: FocusEvent) => {
+    const handleFocusOut = () => {
       setTimeout(() => {
         const active = document.activeElement;
         if (!active || (active.tagName !== "INPUT" && active.tagName !== "TEXTAREA")) {
@@ -212,7 +201,6 @@ export function CustomKeyboard() {
     activeInput.setSelectionRange(newSelectionStart, newSelectionStart);
     activeInput.dispatchEvent(new Event("input", { bubbles: true }));
     activeInput.dispatchEvent(new Event("change", { bubbles: true }));
-    
     updateSuggestions(activeInput);
   }, [activeInput, isShift, layout, updateSuggestions]);
 
@@ -252,7 +240,7 @@ export function CustomKeyboard() {
           initial={{ y: "100%", opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: "100%", opacity: 0 }}
-          transition={{ type: "spring", damping: 25, stiffness: 200 }}
+          transition={{ type: "spring", damping: 30, stiffness: 250 }}
           className="fixed bottom-0 left-0 right-0 z-[10002] px-2 pb-safe-area-inset-bottom pointer-events-none"
         >
           <div className="flex flex-col items-center mb-2">
@@ -265,10 +253,10 @@ export function CustomKeyboard() {
             </button>
           </div>
 
-          <div className="max-w-md mx-auto bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden h-[340px] flex flex-col">
+          <div className="max-w-md mx-auto bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden h-[360px] flex flex-col">
             
-            {/* Barre de Suggestions & Orthographe */}
-            <div className="h-10 mb-2 flex items-center justify-center gap-2 overflow-hidden px-2 shrink-0">
+            {/* Barre de Suggestions (Concept cmdk & Algolia) */}
+            <div className="h-12 mb-2 flex items-center justify-center gap-2 overflow-hidden px-2 shrink-0 border-b border-primary/5">
               <AnimatePresence mode="popLayout">
                 {suggestions.map((suggestion) => (
                   <motion.button
@@ -278,18 +266,14 @@ export function CustomKeyboard() {
                     exit={{ opacity: 0, y: -10, scale: 0.9 }}
                     onPointerDown={(e) => e.preventDefault()}
                     onClick={() => applySuggestion(suggestion)}
-                    className="px-4 py-1.5 rounded-full bg-primary/5 border border-primary/10 text-[11px] font-black uppercase tracking-wider text-primary shadow-sm hover:bg-primary/10 transition-colors flex items-center gap-2"
+                    className="px-4 py-2 rounded-full bg-primary/5 border border-primary/10 text-[11px] font-black uppercase tracking-wider text-primary shadow-sm hover:bg-primary/10 transition-colors flex items-center gap-2"
                   >
                     <Wand2 className="h-3 w-3 opacity-40" />
                     {suggestion}
                   </motion.button>
                 ))}
                 {suggestions.length === 0 && (
-                  <motion.div 
-                    initial={{ opacity: 0 }} 
-                    animate={{ opacity: 0.1 }} 
-                    className="flex items-center gap-2"
-                  >
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.1 }} className="flex items-center gap-2">
                     <Sparkles className="h-3 w-3" />
                     <span className="text-[8px] font-black uppercase tracking-[0.3em]">Lumière Prédictive</span>
                   </motion.div>
@@ -307,22 +291,21 @@ export function CustomKeyboard() {
                     exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
                     className="flex flex-col h-full"
                   >
-                    <div className="relative mb-3 px-1">
-                      <div className="grid grid-cols-8 gap-1 relative z-10 p-1">
+                    {/* Barre de Catégories Ultra-Fine (8 Colonnes Fixes) */}
+                    <div className="relative mb-3 h-12 shrink-0">
+                      <div className="grid grid-cols-8 gap-1 h-full p-1 relative z-10">
                         {categories.map((cat, idx) => (
                           <motion.button
                             key={cat.id}
                             onPointerDown={(e) => e.preventDefault()}
                             onClick={() => { haptic.light(); setEmojiCategory(idx); }}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
+                            whileTap={{ scale: 0.9 }}
                             className={cn(
-                              "relative flex items-center justify-center h-10 rounded-xl transition-colors duration-500",
+                              "relative flex items-center justify-center rounded-xl transition-colors duration-500",
                               emojiCategory === idx ? "text-primary-foreground" : "text-primary/30"
                             )}
                           >
                             <cat.icon className="h-4 w-4 relative z-20" />
-                            
                             {emojiCategory === idx && (
                               <motion.div
                                 layoutId="active-cat-pill"
@@ -336,7 +319,7 @@ export function CustomKeyboard() {
                       <div className="absolute inset-0 bg-primary/5 rounded-2xl border border-primary/5 -z-0" />
                     </div>
                     
-                    <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-8 gap-0 p-1">
+                    <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-8 gap-0 p-1 border-t border-primary/5">
                       {categories[emojiCategory].items.map((emoji, idx) => (
                         <div key={`${emojiCategory}-${idx}`} className="w-full">
                           <KeyboardEmoji 
@@ -348,7 +331,7 @@ export function CustomKeyboard() {
                       ))}
                     </div>
 
-                    <div className="flex gap-2 mt-3 h-12">
+                    <div className="flex gap-2 mt-3 h-14 shrink-0">
                       <button 
                         onPointerDown={(e) => e.preventDefault()} 
                         onClick={() => { haptic.medium(); setLayout("alpha"); }} 

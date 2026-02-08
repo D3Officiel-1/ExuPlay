@@ -1,13 +1,12 @@
 /**
- * @fileOverview Oracle de l'Orthographe v1.0.
- * Bibliothèque logique pour la correction et la suggestion de mots.
+ * @fileOverview Oracle de l'Orthographe v2.0.
+ * Bibliothèque logique pour la correction et la suggestion de mots utilisant cmdk et algolia principles.
  */
 
 import { SACRED_DICTIONARY } from "./dictionary";
 
 /**
  * Calcule la distance de Levenshtein entre deux chaînes.
- * Mesure le nombre minimum de modifications pour passer d'un mot à l'autre.
  */
 function levenshteinDistance(a: string, b: string): number {
   const matrix = Array.from({ length: a.length + 1 }, () => 
@@ -31,13 +30,12 @@ function levenshteinDistance(a: string, b: string): number {
 
 /**
  * Fournit les meilleures suggestions basées sur le dictionnaire.
- * Combine recherche par préfixe et correction orthographique.
  */
 export function getSmartSuggestions(input: string, limit: number = 3): string[] {
   const word = input.toLowerCase().trim();
   if (word.length === 0) return [];
 
-  // 1. Recherche par préfixe (Priorité haute)
+  // 1. Recherche par préfixe (Priorité haute - Algolia principle)
   const prefixMatches = SACRED_DICTIONARY.filter(w => 
     w.startsWith(word) && w !== word
   ).slice(0, limit);
@@ -49,7 +47,7 @@ export function getSmartSuggestions(input: string, limit: number = 3): string[] 
   const corrections = SACRED_DICTIONARY
     .filter(w => !prefixMatches.includes(w) && w !== word)
     .map(w => ({ word: w, distance: levenshteinDistance(word, w) }))
-    .filter(item => item.distance <= 2) // Seulement les mots très proches
+    .filter(item => item.distance <= 2)
     .sort((a, b) => a.distance - b.distance)
     .slice(0, remainingSlots)
     .map(item => item.word);

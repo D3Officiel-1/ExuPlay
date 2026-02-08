@@ -28,10 +28,6 @@ import { cn } from "@/lib/utils";
 import { hexToHsl, hexToRgb, getContrastColor } from "@/lib/colors";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-/**
- * @fileOverview Oracle de la Symbiose Système.
- * Synchronise la couleur de la barre d'état et de navigation du système avec le fond de l'app.
- */
 function SystemBarSync() {
   const { resolvedTheme } = useTheme();
   const { user } = useUser();
@@ -201,7 +197,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const userDocRef = useMemo(() => (db && user?.uid) ? doc(db, "users", user.uid) : null, [db, user?.uid]);
 
   const { data: profile } = useDoc(userDocRef);
-  const { data: appStatus } = useDoc(appConfigRef);
+  const { data: appStatus } = useDoc(appStatusRef);
 
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => e.preventDefault();
@@ -217,27 +213,22 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     const enforceKeyboardShield = () => {
       const inputs = document.querySelectorAll('input, textarea');
       inputs.forEach(el => {
-        // Bloquer l'invocation du clavier virtuel natif
         if (el.getAttribute('inputmode') !== 'none') {
           el.setAttribute('inputmode', 'none');
         }
-        // Politique Chromium pour les claviers virtuels
         if (el.getAttribute('virtualKeyboardPolicy') !== 'manual') {
           el.setAttribute('virtualKeyboardPolicy', 'manual');
         }
-        // Empêcher l'autofocus système de déclencher le clavier
         if (el.getAttribute('autocomplete') !== 'off') {
           el.setAttribute('autocomplete', 'off');
         }
       });
     };
 
-    // Scan initial et monitoring des injections DOM
     enforceKeyboardShield();
     const observer = new MutationObserver(enforceKeyboardShield);
     observer.observe(document.body, { childList: true, subtree: true });
 
-    // Sécurité lors du focus explicite
     const handleFocusIn = (e: FocusEvent) => {
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
@@ -246,10 +237,8 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
       }
     };
 
-    // Sécurité lors du retour dans l'application (changement d'onglet ou d'app)
     const handleWindowFocus = () => {
       enforceKeyboardShield();
-      // Si un élément est déjà focus, on s'assure que le clavier système est masqué
       if (document.activeElement instanceof HTMLElement && 
          (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
         document.activeElement.blur();
