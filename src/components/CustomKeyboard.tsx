@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Delete, ArrowUp, Check, ChevronDown } from "lucide-react";
+import { Delete, ArrowUp, Check, ChevronDown, Smile } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
@@ -88,6 +88,9 @@ export function CustomKeyboard() {
     } else if (key === "layout-switch") {
       setLayout(layout === "alpha" ? "numeric" : "alpha");
       return;
+    } else if (key === "emoji") {
+      newValue = value.substring(0, start) + "😊" + value.substring(end);
+      newSelectionStart = start + 2;
     } else if (key === "space") {
       newValue = value.substring(0, start) + " " + value.substring(end);
       newSelectionStart = start + 1;
@@ -120,7 +123,7 @@ export function CustomKeyboard() {
     ["A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P"],
     ["Q", "S", "D", "F", "G", "H", "J", "K", "L", "M"],
     ["shift", "W", "X", "C", "V", "B", "N", "'", "backspace"],
-    ["?123", ",", "space", "enter"]
+    ["?123", ",", "emoji", "space", ".", "enter"]
   ];
 
   const NUMERIC_KEYS = [
@@ -157,7 +160,7 @@ export function CustomKeyboard() {
               {rows.map((row, i) => (
                 <div key={i} className="flex justify-center gap-1.5 h-12">
                   {row.map((key) => {
-                    const isSpecial = ["shift", "backspace", "enter", "?123", "abc", "space", ","].includes(key);
+                    const isSpecial = ["shift", "backspace", "enter", "?123", "abc", "space", ",", "emoji", "."].includes(key);
                     
                     return (
                       <motion.button
@@ -180,10 +183,12 @@ export function CustomKeyboard() {
                         {key === "shift" && <ArrowUp className={cn("h-5 w-5", isShift ? "fill-current" : "")} />}
                         {key === "backspace" && <Delete className="h-5 w-5" />}
                         {key === "enter" && <Check className="h-5 w-5" />}
+                        {key === "emoji" && <Smile className="h-5 w-5" />}
                         {key === "space" && <div className="w-12 h-1 bg-current opacity-20 rounded-full" />}
                         {key === "?123" && <span className="text-[10px] font-black tracking-tight uppercase">?123</span>}
                         {key === "abc" && <span className="text-[10px] font-black tracking-tight uppercase">abc</span>}
                         {key === "," && <span className="text-lg">,</span>}
+                        {key === "." && <span className="text-lg">.</span>}
                         {!isSpecial && (isShift ? key.toUpperCase() : key.toLowerCase())}
                       </motion.button>
                     );
