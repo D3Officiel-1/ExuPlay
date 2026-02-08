@@ -387,23 +387,14 @@ export function CustomKeyboard() {
           className="fixed bottom-0 left-0 right-0 z-[10002] px-2 pb-safe-area-inset-bottom pointer-events-none flex flex-col items-center"
         >
           <AnimatePresence>
-            {(isEmojiSearchActive || isSpaceDragging) && (
+            {isEmojiSearchActive && (
               <motion.div
                 initial={{ opacity: 0, y: 20, scale: 0.9, filter: "blur(10px)" }}
                 animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
                 exit={{ opacity: 0, y: 20, scale: 0.9, filter: "blur(10px)" }}
                 className="w-full max-w-md bg-card/80 backdrop-blur-3xl rounded-3xl border border-primary/10 shadow-2xl p-2.5 mb-2 flex gap-3 overflow-x-auto no-scrollbar pointer-events-auto h-20 items-center"
               >
-                {isSpaceDragging ? (
-                  <div className="w-full text-center flex flex-col items-center justify-center gap-1">
-                    <div className="flex items-center gap-4 text-primary">
-                      <ChevronLeft className="h-5 w-5 animate-pulse" />
-                      <span className="text-[10px] font-black uppercase tracking-[0.4em]">Sceau de Navigation</span>
-                      <ChevronRight className="h-5 w-5 animate-pulse" />
-                    </div>
-                    <p className="text-[8px] font-bold opacity-30 uppercase tracking-widest">Glissez pour déplacer le curseur</p>
-                  </div>
-                ) : filteredEmojis.length > 0 ? (
+                {filteredEmojis.length > 0 ? (
                   filteredEmojis.map((emoji, i) => (
                     <div key={i} className="h-14 w-14 shrink-0">
                       <KeyboardEmoji emoji={emoji.char} hex={emoji.hex} onClick={(char) => insertText(char)} />
