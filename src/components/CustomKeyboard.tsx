@@ -24,6 +24,8 @@ import { getSmartSuggestions } from "@/lib/spell-checker";
 
 type KeyboardLayout = "alpha" | "numeric" | "emoji";
 
+const BASE_HEIGHT = 320;
+
 function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, onClick: (char: string) => void }) {
   const [stage, setStage] = useState<'animated' | 'static' | 'text'>('animated');
 
@@ -64,7 +66,7 @@ export function CustomKeyboard() {
   const [isVisible, setIsVisible] = useState(false);
   const [emojiCategory, setEmojiCategory] = useState(0);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [keyboardHeight, setKeyboardHeight] = useState(320);
+  const [keyboardHeight, setKeyboardHeight] = useState(BASE_HEIGHT);
   const [isResizing, setIsResizing] = useState(false);
   
   const backspaceIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -236,7 +238,9 @@ export function CustomKeyboard() {
     const handlePointerMove = (e: PointerEvent) => {
       if (!isResizing) return;
       const deltaY = e.clientY - resizeStartY.current;
-      const newHeight = Math.max(250, Math.min(600, resizeStartHeight.current - deltaY));
+      // Limite supérieure : ne jamais dépasser l'entête (Header est h-20 soit 80px)
+      const maxAllowedHeight = window.innerHeight - 100;
+      const newHeight = Math.max(BASE_HEIGHT, Math.min(maxAllowedHeight, resizeStartHeight.current - deltaY));
       setKeyboardHeight(newHeight);
     };
 
@@ -301,7 +305,7 @@ export function CustomKeyboard() {
           </div>
 
           <div 
-            style={{ height: `${keyboardHeight}px` }}
+            style={{ height: `${layout === "emoji" ? keyboardHeight : BASE_HEIGHT}px` }}
             className="max-w-md mx-auto bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden flex flex-col transition-all duration-300 ease-out"
           >
             
