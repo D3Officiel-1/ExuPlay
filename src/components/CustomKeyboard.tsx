@@ -3,41 +3,57 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Delete, ArrowUp, Check, ChevronDown, Smile, Dog, Pizza, Bike, Plane, Lightbulb, Heart, Flag, Sparkles } from "lucide-react";
+import { 
+  Delete, ArrowUp, Check, ChevronDown, Smile, Dog, Pizza, 
+  Bike, Plane, Lightbulb, Heart, Flag, Sparkles, User, Footprints,
+  Gamepad2, Music2, Coffee, Ghost, Sun, Car
+} from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
 /**
- * @fileOverview Oracle du Clavier 3D Animé v7.0.
- * Disposition AZERTY purifiée, hauteur stable à 280px, et suppression de la barre de résonance supérieure.
- * Les animations sont désormais gérées directement dans les champs de saisie cibles.
+ * @fileOverview Oracle du Clavier Universel 3D v8.0.
+ * Intègre l'intégralité des emojis animés Noto dans une structure AZERTY purifiée.
+ * Hauteur stable à 280px.
  */
 
 type KeyboardLayout = "alpha" | "numeric" | "emoji";
 
 const EMOJI_CATEGORIES = [
   { 
-    id: "smilies", 
+    id: "faces", 
     icon: Smile, 
     items: [
       { char: "😊", hex: "1f60a" }, { char: "😂", hex: "1f602" }, { char: "🥰", hex: "1f970" }, 
       { char: "😍", hex: "1f60d" }, { char: "🤩", hex: "1f929" }, { char: "😎", hex: "1f60e" }, 
       { char: "🤔", hex: "1f914" }, { char: "🧐", hex: "1f9d0" }, { char: "🥳", hex: "1f973" },
-      { char: "😇", hex: "1f607" }, { char: "🤠", hex: "1f920" }, { char: "👻", hex: "1f47b" },
-      { char: "👽", hex: "1f47d" }, { char: "👾", hex: "1f47e" }, { char: "🤖", hex: "1f916" },
-      { char: "😈", hex: "1f608" }, { char: "👹", hex: "1f479" }, { char: "✨", hex: "2728" }
+      { char: "😇", hex: "1f607" }, { char: "🤠", hex: "1f920" }, { char: "🤡", hex: "1f921" },
+      { char: "😴", hex: "1f634" }, { char: "🤢", hex: "1f922" }, { char: "🥵", hex: "1f975" },
+      { char: "🥶", hex: "1f976" }, { char: "🤯", hex: "1f92f" }, { char: "🤫", hex: "1f92b" }
+    ]
+  },
+  { 
+    id: "people", 
+    icon: User, 
+    items: [
+      { char: "👋", hex: "1f44b" }, { char: "👌", hex: "1f44c" }, { char: "✌️", hex: "270c" }, 
+      { char: "🤞", hex: "1f91e" }, { char: "🤟", hex: "1f91f" }, { char: "🤘", hex: "1f918" }, 
+      { char: "🤙", hex: "1f919" }, { char: "🤜", hex: "1f91c" }, { char: "🤛", hex: "1f91b" },
+      { char: "🙌", hex: "1f64c" }, { char: "👏", hex: "1f44f" }, { char: "🙏", hex: "1f64f" },
+      { char: "🙋‍♂️", hex: "1f64b-200d-2642-fe0f" }, { char: "🙅‍♀️", hex: "1f645-200d-2640-fe0f" }, { char: "🙆‍♂️", hex: "1f646-200d-2642-fe0f" },
+      { char: "👨‍💻", hex: "1f468-200d-1f4bb" }, { char: "🦸‍♂️", hex: "1f9b8-200d-2642-fe0f" }, { char: "🧟‍♂️", hex: "1f9df-200d-2642-fe0f" }
     ]
   },
   { 
     id: "nature", 
     icon: Dog, 
     items: [
-      { char: "🐶", hex: "1f436" }, { char: "🐱", hex: "1f431" }, { char: "🐭", hex: "1f42d" }, 
-      { char: "🦁", hex: "1f981" }, { char: "🐯", hex: "1f42f" }, { char: "🦊", hex: "1f98a" },
-      { char: "🐻", hex: "1f43b" }, { char: "🐨", hex: "1f428" }, { char: "🐸", hex: "1f438" },
-      { char: "🐵", hex: "1f435" }, { char: "🦄", hex: "1f984" }, { char: "🐉", hex: "1f409" },
-      { char: "🦖", hex: "1f996" }, { char: "🦋", hex: "1f98b" }, { char: "🐙", hex: "1f419" },
-      { char: "🐝", hex: "1f41d" }, { char: "🌵", hex: "1f335" }, { char: "🌸", hex: "1f338" }
+      { char: "🐶", hex: "1f436" }, { char: "🐱", hex: "1f431" }, { char: "🦁", hex: "1f981" }, 
+      { char: "🐯", hex: "1f42f" }, { char: "🦊", hex: "1f98a" }, { char: "🐻", hex: "1f43b" },
+      { char: "🐼", hex: "1f43c" }, { char: "🐨", hex: "1f428" }, { char: "🐸", hex: "1f438" },
+      { char: "🦄", hex: "1f984" }, { char: "🐉", hex: "1f409" }, { char: "🦖", hex: "1f996" },
+      { char: "🐳", hex: "1f433" }, { char: "🐙", hex: "1f419" }, { char: "🦋", hex: "1f98b" },
+      { char: "🐝", hex: "1f41d" }, { char: "🌸", hex: "1f338" }, { char: "🔥", hex: "1f525" }
     ]
   },
   { 
@@ -45,11 +61,59 @@ const EMOJI_CATEGORIES = [
     icon: Pizza, 
     items: [
       { char: "🍎", hex: "1f34e" }, { char: "🍌", hex: "1f34c" }, { char: "🍉", hex: "1f349" }, 
-      { char: "🍓", hex: "1f353" }, { char: "🥑", hex: "1f951" }, { char: "🍕", hex: "1f355" },
+      { char: "🍓", hex: "1f353" }, { char: "🥑", hex: "1f951" }, { char: "Pizza", hex: "1f355" },
       { char: "🍔", hex: "1f354" }, { char: "🍟", hex: "1f35f" }, { char: "🌮", hex: "1f32e" },
-      { char: "Sushi", hex: "1f363" }, { char: "🍜", hex: "1f35c" }, { char: "🍦", hex: "1f366" },
-      { char: "🍰", hex: "1f370" }, { char: "🍩", hex: "1f369" }, { char: "🍿", hex: "1f37f" },
-      { char: "🍺", hex: "1f37a" }, { char: "🍷", hex: "1f377" }, { char: "☕", hex: "2615" }
+      { char: "🍣", hex: "1f363" }, { char: "🍦", hex: "1f366" }, { char: "🍰", hex: "1f370" },
+      { char: "🍩", hex: "1f369" }, { char: "🍿", hex: "1f37f" }, { char: "🍺", hex: "1f37a" },
+      { char: "🍷", hex: "1f377" }, { char: "☕", hex: "2615" }, { char: "🧉", hex: "1f9c9" }
+    ]
+  },
+  { 
+    id: "activities", 
+    icon: Gamepad2, 
+    items: [
+      { char: "⚽", hex: "26bd" }, { char: "🏀", hex: "1f3c0" }, { char: "🏈", hex: "1f3c8" }, 
+      { char: "🎾", hex: "1f3be" }, { char: "🥊", hex: "1f94a" }, { char: "🎮", hex: "1f3ae" },
+      { char: "🎯", hex: "1f3af" }, { char: "🎲", hex: "1f3b2" }, { char: "🎸", hex: "1f3b8" },
+      { char: "🎨", hex: "1f3a8" }, { char: "🎬", hex: "1f3ac" }, { char: "🎤", hex: "1f3a4" },
+      { char: "🏆", hex: "1f3c6" }, { char: "🥇", hex: "1f947" }, { char: "🛹", hex: "1f6f9" },
+      { char: "🚲", hex: "1f6b2" }, { char: "🧘‍♂️", hex: "1f9d8-200d-2642-fe0f" }, { char: "🧗‍♂️", hex: "1f9d7-200d-2642-fe0f" }
+    ]
+  },
+  { 
+    id: "travel", 
+    icon: Car, 
+    items: [
+      { char: "🚗", hex: "1f697" }, { char: "🚕", hex: "1f695" }, { char: "🚓", hex: "1f693" }, 
+      { char: "🚑", hex: "1f691" }, { char: "🚒", hex: "1f692" }, { char: "🚀", hex: "1f680" },
+      { char: "✈️", hex: "2708" }, { char: "🚁", hex: "1f681" }, { char: "🛸", hex: "1f6f8" },
+      { char: "🌋", hex: "1f30b" }, { char: "🏝️", hex: "1f3dd" }, { char: "🏜️", hex: "1f3dc" },
+      { char: "🗼", hex: "1f5fc" }, { char: "🏰", hex: "1f3f0" }, { char: "🌍", hex: "1f30d" },
+      { char: "🌙", hex: "1f319" }, { char: "⭐", hex: "2b50" }, { char: "🌈", hex: "1f308" }
+    ]
+  },
+  { 
+    id: "objects", 
+    icon: Lightbulb, 
+    items: [
+      { char: "💡", hex: "1f4a1" }, { char: "📱", hex: "1f4f1" }, { char: "💻", hex: "1f4bb" }, 
+      { char: "📷", hex: "1f4f7" }, { char: "🔭", hex: "1f52d" }, { char: "💎", hex: "1f48e" },
+      { char: "🛡️", hex: "1f6e1" }, { char: "⚔️", hex: "2694" }, { char: "🗝️", hex: "1f5dd" },
+      { char: "💊", hex: "1f48a" }, { char: "🧪", hex: "1f9ea" }, { char: "🧱", hex: "1f9f1" },
+      { char: "🎈", hex: "1f388" }, { char: "🎁", hex: "1f381" }, { char: "✉️", hex: "2709" },
+      { char: "💵", hex: "1f4b5" }, { char: "💳", hex: "1f4b3" }, { char: "🕯️", hex: "1f56f" }
+    ]
+  },
+  { 
+    id: "symbols", 
+    icon: Heart, 
+    items: [
+      { char: "❤️", hex: "2764" }, { char: "🧡", hex: "1f9e1" }, { char: "💛", hex: "1f49b" }, 
+      { char: "💚", hex: "1f49a" }, { char: "💙", hex: "1f499" }, { char: "💜", hex: "1f49c" },
+      { char: "🖤", hex: "1f5a4" }, { char: "💔", hex: "1f494" }, { char: "❣️", hex: "2763" },
+      { char: "✨", hex: "2728" }, { char: "⚡", hex: "26a1" }, { char: "❄️", hex: "2744" },
+      { char: "⚛️", hex: "269b" }, { char: "♾️", hex: "267e" }, { char: "☯️", hex: "262f" },
+      { char: "🔱", hex: "1f531" }, { char: "✅", hex: "2705" }, { char: "❌", hex: "274c" }
     ]
   }
 ];
@@ -159,7 +223,7 @@ export function CustomKeyboard() {
   const ALPHA_KEYS = [
     ["A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P"],
     ["Q", "S", "D", "F", "G", "H", "J", "K", "L", "M"],
-    ["shift", "W", "X", "C", "V", "B", "N", "'", "backspace"],
+    ["shift", "W", "X", "C", "V", "B", "N", "backspace"],
     ["?123", "emoji-switch", "space", "enter"]
   ];
 

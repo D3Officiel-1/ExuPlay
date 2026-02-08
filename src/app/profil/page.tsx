@@ -220,7 +220,7 @@ export default function ProfilPage() {
                 <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-3 w-full">
                   <div className="relative w-full max-w-[240px] h-14">
                     {/* Calque visuel animé derrière l'input */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-xl font-black">
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-xl font-black italic">
                       <EmojiOracle text={editedUsername} />
                     </div>
                     {/* Input réel transparent */}
