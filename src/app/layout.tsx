@@ -1,4 +1,3 @@
-
 "use client";
 
 import "./globals.css";
@@ -12,6 +11,7 @@ import { motion, AnimatePresence, MotionConfig } from "framer-motion";
 import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
 import { BiometricLock } from "@/components/BiometricLock";
 import { SuccessfulExchangeOverlay } from "@/components/SuccessfulExchangeOverlay";
+import { AdminPendingExchangeOverlay } from "@/components/AdminPendingExchangeOverlay";
 import { DuelInvitationListener } from "@/components/DuelInvitationListener";
 import { IncomingTransferOverlay } from "@/components/IncomingTransferOverlay";
 import { RewardQuickView } from "@/components/RewardQuickView";
@@ -332,6 +332,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
         <SystemBarSync />
         <BiometricLock />
         <SuccessfulExchangeOverlay />
+        <AdminPendingExchangeOverlay />
         <IncomingTransferOverlay />
         <DuelInvitationListener />
         <CommunityFluxPulsar />
