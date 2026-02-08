@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Delete, ArrowUp, Check, Hash, Languages, ChevronDown } from "lucide-react";
+import { Delete, ArrowUp, Check, ChevronDown } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
@@ -180,8 +180,8 @@ export function CustomKeyboard() {
                         {key === "backspace" && <Delete className="h-5 w-5" />}
                         {key === "enter" && <Check className="h-5 w-5" />}
                         {key === "space" && <div className="w-12 h-1 bg-current opacity-20 rounded-full" />}
-                        {key === "123" && <Hash className="h-4 w-4" />}
-                        {key === "ABC" && <Languages className="h-4 w-4" />}
+                        {key === "123" && <span className="text-[10px] font-black tracking-tight">123</span>}
+                        {key === "ABC" && <span className="text-[10px] font-black tracking-tight">abc</span>}
                         {!isSpecial && (isShift ? key.toUpperCase() : key.toLowerCase())}
                       </motion.button>
                     );
