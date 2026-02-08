@@ -25,6 +25,7 @@ type KeyboardLayout = "alpha" | "numeric" | "emoji";
 /**
  * @fileOverview KeyboardEmoji - Composant de rendu individuel pour le clavier.
  * Gère la cascade : Animé (GIF) -> Statique (WebP) -> Texte (Unicode).
+ * Enveloppé dans un bouton fixe carré avec bordures symétriques.
  */
 function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, onClick: (char: string) => void }) {
   const [stage, setStage] = useState<'animated' | 'static' | 'text'>('animated');
@@ -38,7 +39,7 @@ function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, on
     <button
       onPointerDown={(e) => e.preventDefault()}
       onClick={() => { haptic.light(); onClick(emoji); }}
-      className="flex items-center justify-center aspect-square w-full rounded-xl bg-primary/[0.02] border-t border-b border-primary/10 hover:bg-primary/5 transition-all p-1 group overflow-hidden relative active:scale-90"
+      className="flex items-center justify-center aspect-square w-full bg-primary/[0.02] border-t border-b border-primary/10 hover:bg-primary/5 transition-all p-1 group overflow-hidden relative active:scale-90"
     >
       {stage === 'text' ? (
         <span className="text-xl">{emoji}</span>
@@ -215,7 +216,7 @@ export function CustomKeyboard() {
                   exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
                   className="flex flex-col h-full"
                 >
-                  {/* Barre de Catégories Ultra Moderne */}
+                  {/* Barre de Catégories Ultra Moderne avec Framer Motion */}
                   <div className="relative mb-4 px-1">
                     <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-2 relative z-10">
                       {categories.map((cat, idx) => (
@@ -245,8 +246,8 @@ export function CustomKeyboard() {
                     <div className="absolute inset-0 bg-primary/5 rounded-[1.5rem] border border-primary/5 -z-0" />
                   </div>
                   
-                  {/* Grille Octogonale Fixe d'Emojis */}
-                  <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-8 gap-1.5 p-1">
+                  {/* Grille Octogonale Fixe d'Emojis 3D */}
+                  <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-8 gap-0 p-1">
                     {categories[emojiCategory].items.map((emoji, idx) => (
                       <div key={`${emojiCategory}-${idx}`} className="w-full">
                         <KeyboardEmoji 
