@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState } from "react";
@@ -13,156 +14,129 @@ import {
   Palette, 
   Loader2, 
   Check,
-  ShieldCheck,
+  BadgeCheck,
   Star,
   Flame,
   Moon,
   Sun,
   Package,
-  Gift,
+  Boxes,
   Dices,
   Clock,
   TrendingUp,
-  Boxes,
-  ShieldAlert,
-  Medal
+  Medal,
+  ChevronRight,
+  ArrowUpRight
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
 const STORE_ITEMS = [
-  // --- PRESTIGE & ACCRÉDITATION ---
+  // --- PRESTIGE ---
   {
     id: "verified_badge",
     type: "upgrade",
     category: "prestige",
     name: "Sceau de Confiance",
-    description: "Accréditation officielle de l'Oracle. Augmente vos limites de flux et marque votre identité d'un sceau d'authenticité.",
+    description: "Accréditation officielle de l'Oracle. Augmente vos limites de flux et certifie votre essence.",
     price: 5000,
-    icon: ShieldCheck,
+    icon: BadgeCheck,
     color: "text-primary",
     bg: "bg-primary/10",
+    gradient: "from-primary/20 via-primary/5 to-transparent"
   },
-  // --- OUTILS INDIVIDUELS ---
+  // --- OUTILS ---
   {
     id: "hint",
     type: "consumable",
     category: "tools",
-    name: "Indice de Perception",
+    name: "Perception",
     description: "Dissipe l'illusion. Supprime 2 mauvaises réponses.",
     price: 50,
     icon: Eye,
     color: "text-blue-500",
     bg: "bg-blue-500/10",
-    field: "hintCount"
+    field: "hintCount",
+    gradient: "from-blue-500/20 via-transparent to-transparent"
   },
   {
     id: "time_boost",
     type: "consumable",
     category: "tools",
-    name: "Sablier d'Éternité",
-    description: "Le temps est relatif. Ajoute 15 secondes.",
+    name: "Éternité",
+    description: "Le temps est relatif. Ajoute 15 secondes au défi.",
     price: 100,
     icon: Clock,
     color: "text-orange-500",
     bg: "bg-orange-500/10",
-    field: "timeBoostCount"
+    field: "timeBoostCount",
+    gradient: "from-orange-500/20 via-transparent to-transparent"
   },
   {
     id: "shield",
     type: "consumable",
     category: "tools",
-    name: "Sceau de Protection",
+    name: "Sceau de Paix",
     description: "Annule la pénalité de points en cas d'erreur.",
     price: 150,
-    icon: ShieldCheck,
+    icon: BadgeCheck,
     color: "text-green-500",
     bg: "bg-green-500/10",
-    field: "shieldCount"
+    field: "shieldCount",
+    gradient: "from-green-500/20 via-transparent to-transparent"
   },
   {
     id: "multiplier",
     type: "consumable",
     category: "tools",
-    name: "Prisme de Lumière",
+    name: "Prisme",
     description: "Double les points gagnés pour le défi actuel.",
     price: 200,
     icon: Star,
     color: "text-yellow-500",
     bg: "bg-yellow-500/10",
-    field: "multiplierCount"
+    field: "multiplierCount",
+    gradient: "from-yellow-500/20 via-transparent to-transparent"
   },
-  // --- PACTES (BUNDLES) ---
+  // --- PACKS ---
   {
     id: "bundle_initiation",
     type: "bundle",
     category: "packs",
-    name: "Pacte d'Initiation",
+    name: "Pacte d'Éveil",
     description: "Contient 2 exemplaires de chaque outil d'éveil.",
     price: 800,
     icon: Package,
     color: "text-purple-500",
     bg: "bg-purple-500/10",
-    fields: { hintCount: 2, timeBoostCount: 2, shieldCount: 2, multiplierCount: 2 }
-  },
-  {
-    id: "bundle_master",
-    type: "bundle",
-    category: "packs",
-    name: "Pacte du Maître",
-    description: "Contient 5 exemplaires de chaque outil d'éveil.",
-    price: 1800,
-    icon: Boxes,
-    color: "text-primary",
-    bg: "bg-primary/5",
-    fields: { hintCount: 5, timeBoostCount: 5, shieldCount: 5, multiplierCount: 5 }
-  },
-  // --- MYSTÈRE ---
-  {
-    id: "mystery_box",
-    type: "mystery",
-    category: "mystery",
-    name: "L'Urne de l'Inconnu",
-    description: "Un outil aléatoire octroyé par l'Oracle.",
-    price: 120,
-    icon: Dices,
-    color: "text-indigo-500",
-    bg: "bg-indigo-500/10"
+    fields: { hintCount: 2, timeBoostCount: 2, shieldCount: 2, multiplierCount: 2 },
+    gradient: "from-purple-500/20 via-transparent to-transparent"
   },
   // --- THÈMES ---
   {
     id: "theme_ruby",
     type: "theme",
     category: "themes",
-    name: "Sceau de Rubis",
+    name: "Aura de Rubis",
     description: "L'éclat de la force et de la volonté ardente.",
     price: 1500,
     icon: Flame,
     color: "text-red-500",
-    bg: "bg-red-500/10"
+    bg: "bg-red-500/10",
+    gradient: "from-red-500/20 via-transparent to-transparent"
   },
   {
     id: "theme_obsidian",
     type: "theme",
     category: "themes",
-    name: "Sceau d'Obsidienne",
+    name: "Aura d'Obsidienne",
     description: "La maîtrise absolue de l'ombre et du vide.",
     price: 3000,
     icon: Moon,
-    color: "text-gray-900 dark:text-gray-100",
-    bg: "bg-gray-900/10 dark:bg-gray-100/10"
-  },
-  {
-    id: "theme_gold",
-    type: "theme",
-    category: "themes",
-    name: "Sceau d'Or Pur",
-    description: "La distinction suprême des Maîtres.",
-    price: 5000,
-    icon: Sun,
-    color: "text-yellow-600",
-    bg: "bg-yellow-600/10"
+    color: "text-zinc-100",
+    bg: "bg-zinc-100/10",
+    gradient: "from-white/10 via-transparent to-transparent"
   }
 ];
 
@@ -192,7 +166,6 @@ export default function EchoppePage() {
       return;
     }
 
-    // Checks for upgrades or themes already owned
     if (item.id === 'verified_badge' && profile.trustBadge) {
       toast({ title: "Sceau déjà manifesté" });
       return;
@@ -219,20 +192,13 @@ export default function EchoppePage() {
         Object.entries(item.fields!).forEach(([f, val]) => {
           updatePayload[f] = increment(val as number);
         });
-      } else if (item.type === 'mystery') {
-        const tools = STORE_ITEMS.filter(i => i.type === 'consumable');
-        const randomTool = tools[Math.floor(Math.random() * tools.length)];
-        updatePayload[(randomTool as any).field] = increment(1);
-        toast({ title: "Destinée scellée", description: `Vous avez reçu : ${randomTool.name}` });
       } else if (item.type === 'theme') {
         updatePayload.ownedThemes = arrayUnion(item.id);
       }
 
       await updateDoc(userDocRef, updatePayload);
       haptic.success();
-      if (item.type !== 'mystery') {
-        toast({ title: "Acquisition réussie", description: `${item.name} lié à votre essence.` });
-      }
+      toast({ title: "Acquisition réussie", description: `${item.name} lié à votre essence.` });
     } catch (error) {
       toast({ variant: "destructive", title: "Dissonance" });
     } finally {
@@ -248,176 +214,212 @@ export default function EchoppePage() {
     );
   }
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0, scale: 0.95 },
+    visible: { y: 0, opacity: 1, scale: 1, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } }
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
-      <main className="flex-1 p-6 pt-24 space-y-10 max-w-lg mx-auto w-full">
+      <main className="flex-1 p-6 pt-24 space-y-12 max-w-lg mx-auto w-full">
+        {/* Header Dynamique */}
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Arsenal</p>
-            <h1 className="text-3xl font-black tracking-tight">L'Échoppe</h1>
+            <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-40">Arsenal</p>
+            <h1 className="text-4xl font-black tracking-tighter italic">Le Sanctuaire</h1>
           </div>
-          <div className="bg-primary/5 px-4 py-2 rounded-2xl border border-primary/5 flex items-center gap-2 shadow-sm">
-            <Zap className="h-3 w-3 text-primary" />
-            <span className="text-sm font-black">{profile?.totalPoints?.toLocaleString()}</span>
-          </div>
+          <motion.div 
+            whileHover={{ scale: 1.05 }}
+            className="bg-card/40 backdrop-blur-3xl px-5 py-3 rounded-[2rem] border border-primary/5 flex items-center gap-3 shadow-2xl"
+          >
+            <div className="relative">
+              <Zap className="h-4 w-4 text-primary" />
+              <motion.div 
+                animate={{ opacity: [0, 1, 0], scale: [1, 1.5, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="absolute inset-0 bg-primary/20 rounded-full blur-sm"
+              />
+            </div>
+            <span className="text-lg font-black tabular-nums">{profile?.totalPoints?.toLocaleString()}</span>
+          </motion.div>
         </div>
 
-        <div className="space-y-12">
-          {/* SECTION PRESTIGE */}
-          <section className="space-y-5">
-            <div className="flex items-center gap-3 pl-2">
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="space-y-16"
+        >
+          {/* SECTION PRESTIGE (Badge Vérifié) */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-3 px-2">
               <Medal className="h-4 w-4 opacity-40" />
-              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Prestige & Titres</h2>
+              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Accréditation Royale</h2>
             </div>
             {STORE_ITEMS.filter(i => i.category === 'prestige').map((item) => {
               const isOwned = profile?.trustBadge === true;
               return (
-                <Card key={item.id} className={cn("border-none bg-primary text-primary-foreground shadow-2xl rounded-[2.5rem] overflow-hidden relative group transition-all", isOwned && "opacity-50 grayscale")}>
-                  <div className="absolute top-0 right-0 p-6 opacity-10"><ShieldCheck className="h-24 w-24" /></div>
-                  <CardContent className="p-8 flex items-center gap-6 relative z-10">
-                    <div className="h-16 w-16 bg-primary-foreground/10 rounded-[1.5rem] flex items-center justify-center shrink-0 border border-white/10 shadow-inner">
-                      <item.icon className="h-8 w-8" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-black tracking-tight uppercase italic">{item.name}</h3>
-                      <p className="text-[10px] font-medium opacity-60 leading-relaxed">{item.description}</p>
-                    </div>
-                    <Button 
-                      onClick={() => handlePurchase(item)} 
-                      disabled={buyingId === item.id || isOwned} 
-                      variant="secondary" 
-                      className="rounded-xl h-14 px-6 font-black text-xs gap-2 shadow-2xl"
-                    >
-                      {isOwned ? <Check className="h-4 w-4" /> : buyingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : `${item.price} PTS`}
-                    </Button>
-                  </CardContent>
-                </Card>
+                <motion.div key={item.id} variants={itemVariants}>
+                  <Card className={cn(
+                    "border-none bg-primary text-primary-foreground shadow-[0_32px_64px_-12px_rgba(0,0,0,0.3)] rounded-[2.5rem] overflow-hidden relative group transition-all duration-700",
+                    isOwned && "opacity-50 grayscale"
+                  )}>
+                    <div className="absolute top-0 right-0 p-10 opacity-10 rotate-12 scale-150"><BadgeCheck className="h-32 w-32" /></div>
+                    <CardContent className="p-10 flex flex-col gap-8 relative z-10">
+                      <div className="flex items-start justify-between">
+                        <div className="h-20 w-20 bg-primary-foreground/10 rounded-[2rem] flex items-center justify-center border border-white/10 shadow-inner">
+                          <item.icon className="h-10 w-10" />
+                        </div>
+                        {isOwned && <span className="bg-primary-foreground/20 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest">Invoqué</span>}
+                      </div>
+                      <div className="space-y-3">
+                        <h3 className="text-2xl font-black tracking-tight uppercase italic leading-none">{item.name}</h3>
+                        <p className="text-xs font-medium opacity-60 leading-relaxed max-w-[80%]">{item.description}</p>
+                      </div>
+                      <Button 
+                        onClick={() => handlePurchase(item)} 
+                        disabled={buyingId === item.id || isOwned} 
+                        variant="secondary" 
+                        className="rounded-2xl h-16 px-8 font-black text-xs uppercase tracking-[0.2em] gap-3 shadow-2xl active:scale-95 transition-all"
+                      >
+                        {isOwned ? <Check className="h-5 w-5" /> : buyingId === item.id ? <Loader2 className="h-5 w-5 animate-spin" /> : `${item.price} PTS`}
+                        {!isOwned && buyingId !== item.id && <ArrowUpRight className="h-4 w-4 opacity-40" />}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </motion.div>
               );
             })}
           </section>
 
-          {/* SECTION OUTILS */}
-          <section className="space-y-5">
-            <div className="flex items-center gap-3 pl-2">
+          {/* SECTION OUTILS (Grid 2x2) */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-3 px-2">
               <Sparkles className="h-4 w-4 opacity-40" />
               <h2 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Outils d'Éveil</h2>
             </div>
-            <div className="grid gap-4">
+            <div className="grid grid-cols-2 gap-4">
               {STORE_ITEMS.filter(i => i.category === 'tools').map((item) => {
                 const count = profile?.[(item as any).field] || 0;
                 return (
-                  <Card key={item.id} className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2rem] overflow-hidden group">
-                    <CardContent className="p-6 flex items-center gap-5">
-                      <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110", item.bg)}>
-                        <item.icon className={cn("h-7 w-7", item.color)} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-black text-base uppercase italic">{item.name}</h3>
-                          {count > 0 && <span className="bg-primary/10 text-primary text-[8px] font-black px-2 py-0.5 rounded-full">x{count}</span>}
+                  <motion.div key={item.id} variants={itemVariants}>
+                    <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.2rem] overflow-hidden group hover:bg-card/60 transition-colors relative">
+                      <div className={cn("absolute inset-0 opacity-10 bg-gradient-to-br", item.gradient)} />
+                      <CardContent className="p-6 flex flex-col gap-6 relative z-10">
+                        <div className="flex justify-between items-start">
+                          <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3", item.bg)}>
+                            <item.icon className={cn("h-7 w-7", item.color)} />
+                          </div>
+                          {count > 0 && <span className="bg-primary/5 border border-primary/5 px-2.5 py-1 rounded-full text-[10px] font-black tabular-nums">x{count}</span>}
                         </div>
-                        <p className="text-[10px] font-medium opacity-40 leading-relaxed">{item.description}</p>
-                      </div>
-                      <Button onClick={() => handlePurchase(item)} disabled={buyingId === item.id} className="rounded-xl h-12 px-4 font-black text-xs gap-2">
-                        {buyingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : item.price} <Zap className="h-3 w-3" />
-                      </Button>
-                    </CardContent>
-                  </Card>
+                        <div className="space-y-1">
+                          <h3 className="font-black text-sm uppercase tracking-tight italic leading-tight">{item.name}</h3>
+                          <p className="text-[9px] font-medium opacity-40 leading-tight h-6 line-clamp-2">{item.description}</p>
+                        </div>
+                        <Button 
+                          onClick={() => handlePurchase(item)} 
+                          disabled={buyingId === item.id} 
+                          className="rounded-xl h-12 w-full font-black text-xs gap-2 bg-primary/5 hover:bg-primary text-primary hover:text-primary-foreground border border-primary/5 transition-all shadow-none"
+                        >
+                          {buyingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : `${item.price} PTS`}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
                 );
               })}
             </div>
           </section>
 
-          {/* SECTION MYSTÈRE & PACKS */}
-          <div className="grid grid-cols-1 gap-10">
-            <section className="space-y-5">
-              <div className="flex items-center gap-3 pl-2">
-                <Dices className="h-4 w-4 opacity-40" />
-                <h2 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Hasard Sacré</h2>
-              </div>
-              {STORE_ITEMS.filter(i => i.category === 'mystery').map((item) => (
-                <Card key={item.id} className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden relative group">
-                  <div className="absolute top-0 right-0 p-6 opacity-5"><Dices className="h-20 w-20 text-primary" /></div>
-                  <CardContent className="p-8 flex items-center gap-6 relative z-10">
-                    <div className="h-16 w-16 bg-primary/5 rounded-2xl flex items-center justify-center shrink-0">
-                      <item.icon className="h-8 w-8 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-black tracking-tight uppercase italic text-primary">{item.name}</h3>
-                      <p className="text-[10px] font-medium opacity-40">{item.description}</p>
-                    </div>
-                    <Button onClick={() => handlePurchase(item)} disabled={buyingId === item.id} className="rounded-xl h-14 px-6 font-black text-xs gap-2 shadow-xl shadow-primary/5">
-                      {buyingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : item.price} <Zap className="h-3 w-3" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </section>
-
-            <section className="space-y-5">
-              <div className="flex items-center gap-3 pl-2">
-                <Boxes className="h-4 w-4 opacity-40" />
-                <h2 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Pactes de Puissance</h2>
-              </div>
-              <div className="grid gap-4">
-                {STORE_ITEMS.filter(i => i.category === 'packs').map((item) => (
-                  <Card key={item.id} className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2rem] overflow-hidden">
-                    <CardContent className="p-6 flex items-center gap-5">
-                      <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center shrink-0", item.bg)}>
-                        <item.icon className={cn("h-7 w-7", item.color)} />
+          {/* SECTION MYSTÈRE & PACTES */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-3 px-2">
+              <Boxes className="h-4 w-4 opacity-40" />
+              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Pactes de Puissance</h2>
+            </div>
+            <div className="grid gap-4">
+              {STORE_ITEMS.filter(i => i.category === 'packs').map((item) => (
+                <motion.div key={item.id} variants={itemVariants}>
+                  <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2rem] overflow-hidden group relative">
+                    <div className={cn("absolute inset-0 opacity-5 bg-gradient-to-r", item.gradient)} />
+                    <CardContent className="p-6 flex items-center gap-6 relative z-10">
+                      <div className={cn("h-16 w-16 rounded-[1.5rem] flex items-center justify-center shrink-0 border border-white/5", item.bg)}>
+                        <item.icon className={cn("h-8 w-8", item.color)} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-black text-base uppercase italic">{item.name}</h3>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-black text-base uppercase italic leading-none">{item.name}</h3>
                           <span className="bg-green-500/10 text-green-600 text-[8px] font-black px-2 py-0.5 rounded-full uppercase">Économique</span>
                         </div>
                         <p className="text-[10px] font-medium opacity-40 leading-relaxed">{item.description}</p>
                       </div>
-                      <Button onClick={() => handlePurchase(item)} disabled={buyingId === item.id} className="rounded-xl h-12 px-4 font-black text-xs gap-2">
-                        {buyingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : item.price} <Zap className="h-3 w-3" />
+                      <Button 
+                        onClick={() => handlePurchase(item)} 
+                        disabled={buyingId === item.id} 
+                        className="rounded-2xl h-14 px-6 font-black text-xs gap-2 shadow-2xl active:scale-95"
+                      >
+                        {buyingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : `${item.price} PTS`}
                       </Button>
                     </CardContent>
                   </Card>
-                ))}
-              </div>
-            </section>
-          </div>
+                </motion.div>
+              ))}
+            </div>
+          </section>
 
           {/* SECTION THÈMES */}
-          <section className="space-y-5">
-            <div className="flex items-center gap-3 pl-2">
+          <section className="space-y-6">
+            <div className="flex items-center gap-3 px-2">
               <Palette className="h-4 w-4 opacity-40" />
-              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Esthétique de l'Aura</h2>
+              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Auras de l'Esprit</h2>
             </div>
             <div className="grid gap-4">
               {STORE_ITEMS.filter(i => i.category === 'themes').map((item) => {
                 const isOwned = profile?.ownedThemes?.includes(item.id);
                 return (
-                  <Card key={item.id} className={cn("border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2rem] overflow-hidden transition-all duration-500", isOwned && "opacity-40 grayscale")}>
-                    <CardContent className="p-6 flex items-center gap-5">
-                      <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center shrink-0", item.bg)}>
-                        <item.icon className={cn("h-7 w-7", item.color)} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-black text-base uppercase italic">{item.name}</h3>
-                        <p className="text-[10px] font-medium opacity-40 leading-relaxed">{item.description}</p>
-                      </div>
-                      <Button onClick={() => handlePurchase(item)} disabled={buyingId === item.id || isOwned} variant={isOwned ? "outline" : "default"} className="rounded-xl h-12 px-4 font-black text-xs gap-2">
-                        {isOwned ? <Check className="h-4 w-4" /> : buyingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : item.price} {!isOwned && <Zap className="h-3 w-3" />}
-                      </Button>
-                    </CardContent>
-                  </Card>
+                  <motion.div key={item.id} variants={itemVariants}>
+                    <Card className={cn(
+                      "border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.2rem] overflow-hidden transition-all duration-500 group relative",
+                      isOwned && "opacity-40 grayscale"
+                    )}>
+                      <div className={cn("absolute inset-0 opacity-10 bg-gradient-to-br", item.gradient)} />
+                      <CardContent className="p-6 flex items-center gap-6 relative z-10">
+                        <div className={cn("h-16 w-16 rounded-[1.5rem] flex items-center justify-center shrink-0 shadow-inner border border-white/5", item.bg)}>
+                          <item.icon className={cn("h-8 w-8", item.color)} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-black text-base uppercase italic leading-none mb-1">{item.name}</h3>
+                          <p className="text-[10px] font-medium opacity-40 leading-relaxed">{item.description}</p>
+                        </div>
+                        <Button 
+                          onClick={() => handlePurchase(item)} 
+                          disabled={buyingId === item.id || isOwned} 
+                          variant={isOwned ? "outline" : "default"} 
+                          className="rounded-2xl h-14 px-6 font-black text-xs gap-2 transition-all active:scale-95"
+                        >
+                          {isOwned ? <Check className="h-4 w-4" /> : buyingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : `${item.price} PTS`}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
                 );
               })}
             </div>
           </section>
-        </div>
+        </motion.div>
 
-        <div className="p-8 bg-primary/5 rounded-[3rem] border border-primary/5 text-center space-y-2">
-          <TrendingUp className="h-6 w-6 mx-auto text-primary opacity-20" />
-          <p className="text-[10px] leading-relaxed font-medium opacity-40 italic">
-            "Le savoir est une arme, l'artéfact est son catalyseur. Forgez votre destin."
+        {/* Footer Poétique */}
+        <div className="p-10 bg-primary/5 rounded-[3rem] border border-primary/5 text-center space-y-3 relative overflow-hidden">
+          <TrendingUp className="h-8 w-8 mx-auto text-primary opacity-10" />
+          <p className="text-[11px] leading-relaxed font-medium opacity-40 italic px-4">
+            "Le savoir est une arme, l'artéfact est son catalyseur. Chaque acquisition résonne avec votre quête de Lumière."
           </p>
+          <div className="absolute -bottom-10 -left-10 h-32 w-32 bg-primary/5 blur-3xl rounded-full" />
         </div>
       </main>
     </div>
