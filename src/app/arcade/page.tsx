@@ -1,17 +1,18 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Script from "next/script";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Maximize, Loader2, Zap } from "lucide-react";
+import { ChevronLeft, Maximize, Loader2, Zap, ShieldAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { motion, AnimatePresence } from "framer-motion";
 
 /**
- * @fileOverview Le Circuit de l'Éveil.
- * Intégration cinématique du moteur Arcade Car Racing (Unity WebGL).
+ * @fileOverview Le Circuit de l'Éveil v3.0.
+ * Intégration fidèle de l'interface Arcade Car Racing (Unity WebGL)
+ * basée sur la structure HTML/JS originelle.
  */
 
 declare global {
@@ -23,33 +24,39 @@ declare global {
 export default function ArcadePage() {
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [progress, setProgress] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [isError, setIsRejected] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [progress, setProgress] = useState(0);
 
-  const toggleFullScreen = () => {
+  const toggleFullScreen = useCallback(() => {
     haptic.medium();
-    const element = document.querySelector(".webgl-content");
+    const isInFullScreen = (document.fullscreenElement && document.fullscreenElement !== null) || 
+                          ((document as any).webkitFullscreenElement && (document as any).webkitFullscreenElement !== null) || 
+                          ((document as any).msFullscreenElement && (document as any).msFullscreenElement !== null);
+
+    const element = document.querySelector(".webgl-content") as any;
     if (!element) return;
 
-    if (!document.fullscreenElement) {
-      if (element.requestFullscreen) element.requestFullscreen();
+    if (!isInFullScreen) {
+      if (element.webkitRequestFullscreen) {
+        element.webkitRequestFullscreen();
+      } else if (element.msRequestFullscreen) { 
+        element.msRequestFullscreen();
+      } else if (element.requestFullscreen) {
+        element.requestFullscreen();
+      } 
     } else {
-      if (document.exitFullscreen) document.exitFullscreen();
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      } else if ((document as any).msExitFullscreen) {
+        (document as any).msExitFullscreen();
+      }
     }
-  };
-
-  useEffect(() => {
-    // Nettoyage lors de la sortie
-    return () => {
-      const unityInstances = document.querySelectorAll('canvas');
-      unityInstances.forEach(c => {
-        // En Unity WebGL, il est parfois nécessaire de rafraîchir pour libérer la mémoire WASM
-      });
-    };
   }, []);
 
-  const handleUnityLoad = () => {
+  const handleUnityLoad = useCallback(() => {
     const buildUrl = "/Build";
     const config = {
       dataUrl: buildUrl + "/Arcade_Car_Racing.data",
@@ -61,18 +68,26 @@ export default function ArcadePage() {
       productVersion: "1.0",
     };
 
-    if (window.createUnityInstance && canvasRef.current) {
-      window.createUnityInstance(canvasRef.current, config, (p: number) => {
-        setProgress(p * 100);
+    const container = document.querySelector("#gameContainer");
+    const canvas = canvasRef.current;
+
+    if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) && container) {
+      container.className = "unity-mobile";
+      (config as any).devicePixelRatio = 1;
+    }
+
+    if (window.createUnityInstance && canvas) {
+      window.createUnityInstance(canvas, config, (p: number) => {
+        setProgress(p);
       }).then(() => {
         setLoading(false);
         haptic.success();
       }).catch((err: any) => {
         console.error(err);
-        setIsRejected(true);
+        setIsError(true);
       });
     }
-  };
+  }, []);
 
   return (
     <div className="min-h-screen bg-black flex flex-col relative overflow-hidden">
@@ -104,7 +119,7 @@ export default function ArcadePage() {
         </div>
       </div>
 
-      {/* Conteneur WebGL Pur */}
+      {/* Conteneur WebGL Fidèle à l'index.html */}
       <div className="keepRatio flex-1 flex items-center justify-center bg-zinc-950">
         <div id="gameContainer" className="unity-desktop webgl-content relative w-full h-full">
           <canvas 
@@ -113,10 +128,11 @@ export default function ArcadePage() {
             className="w-full h-full block touch-none"
           />
 
-          {/* Écran de Chargement Harmonisé */}
+          {/* Bloc de Chargement Originel */}
           <AnimatePresence>
             {loading && (
               <motion.div 
+                id="loadingBlock"
                 exit={{ opacity: 0, scale: 1.1, filter: "blur(20px)" }}
                 transition={{ duration: 1, ease: "easeOut" }}
                 className="absolute inset-0 z-40 bg-black flex flex-col items-center justify-center text-center p-8"
@@ -138,21 +154,14 @@ export default function ArcadePage() {
                   </div>
 
                   <div className="space-y-6">
-                    <div className="space-y-2">
-                      <h2 className="text-2xl font-black tracking-tight uppercase italic text-white">Circuit de l'Éveil</h2>
-                      <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Initialisation du Flux</p>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                        <motion.div 
-                          initial={{ width: 0 }}
-                          animate={{ width: `${progress}%` }}
-                          className="h-full bg-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]"
-                        />
+                    <div id="progressBar" className="space-y-4">
+                      <div className="text-[10px] font-black uppercase tracking-[0.4em] text-white opacity-40">Initialisation du Flux</div>
+                      <div className="centered relative h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                        <div id="emptyBar" className="absolute inset-0 bg-white/5" style={{ width: `${(1 - progress) * 100}%`, right: 0, left: 'auto' }} />
+                        <div id="fullBar" className="absolute inset-0 bg-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]" style={{ width: `${progress * 100}%` }} />
                       </div>
-                      <p className="text-[9px] font-bold opacity-30 uppercase tracking-widest tabular-nums">
-                        {Math.round(progress)}% - Synchronisation WASM
+                      <p className="text-[9px] font-bold opacity-30 uppercase tracking-widest tabular-nums text-white">
+                        {Math.round(progress * 100)}% - Synchronisation WASM
                       </p>
                     </div>
                   </div>
@@ -161,12 +170,12 @@ export default function ArcadePage() {
             )}
           </AnimatePresence>
 
-          {/* Bloc d'erreur */}
+          {/* Bloc d'erreur et compatibilité */}
           {isError && (
-            <div className="absolute inset-0 z-[100] bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center">
+            <div id="errorBrowserBlock" className="absolute inset-0 z-[100] bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center">
               <ShieldAlert className="h-16 w-16 text-destructive mb-6" />
               <h2 className="text-xl font-black text-white uppercase mb-2">Dissonance Système</h2>
-              <p className="text-sm opacity-60 text-white/60 mb-8 max-w-xs">Le moteur de course n'a pas pu s'ancrer dans votre navigateur. Vérifiez votre support WebGL.</p>
+              <p className="text-sm opacity-60 text-white/60 mb-8 max-w-xs">Le moteur de course n'a pas pu s'ancrer dans votre navigateur.</p>
               <Button onClick={() => window.location.reload()} className="rounded-2xl h-14 px-8 font-black uppercase tracking-widest">Réessayer</Button>
             </div>
           )}
@@ -174,9 +183,10 @@ export default function ArcadePage() {
       </div>
 
       <style jsx global>{`
-        .keepRatio { position: relative; }
+        .keepRatio { position: relative; width: 100%; height: 100%; }
         #gameCanvas { outline: none; }
         .webgl-content { width: 100%; height: 100%; }
+        .unity-mobile #gameCanvas { width: 100%; height: 100%; }
       `}</style>
     </div>
   );

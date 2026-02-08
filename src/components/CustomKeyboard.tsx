@@ -263,9 +263,9 @@ export function CustomKeyboard() {
 
           <div className="max-w-md mx-auto h-[320px] bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden flex flex-col transition-all duration-500">
             
-            {/* Barre de Suggestions - Masquée pour les Emojis */}
+            {/* Barre de Suggestions - Hauteur Augmentée à h-14 - Masquée pour les Emojis */}
             {layout !== "emoji" && (
-              <div className="h-10 mb-1 flex items-center justify-center gap-2 overflow-hidden px-2 shrink-0 border-b border-primary/5">
+              <div className="h-14 mb-1 flex items-center justify-center gap-3 overflow-hidden px-2 shrink-0 border-b border-primary/5">
                 <AnimatePresence mode="popLayout">
                   {suggestions.map((suggestion) => (
                     <motion.button
@@ -275,16 +275,16 @@ export function CustomKeyboard() {
                       exit={{ opacity: 0, y: -10, scale: 0.9 }}
                       onPointerDown={(e) => e.preventDefault()}
                       onClick={() => applySuggestion(suggestion)}
-                      className="px-3 py-1.5 rounded-full bg-primary/5 border border-primary/10 text-[10px] font-black uppercase tracking-wider text-primary shadow-sm hover:bg-primary/10 transition-colors flex items-center gap-1.5"
+                      className="px-4 py-2 rounded-full bg-primary/5 border border-primary/10 text-[11px] font-black uppercase tracking-wider text-primary shadow-sm hover:bg-primary/10 transition-colors flex items-center gap-2"
                     >
-                      <Wand2 className="h-2.5 w-2.5 opacity-40" />
+                      <Wand2 className="h-3 w-3 opacity-40" />
                       {suggestion}
                     </motion.button>
                   ))}
                   {suggestions.length === 0 && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.1 }} className="flex items-center gap-2">
-                      <Sparkles className="h-2.5 w-2.5" />
-                      <span className="text-[7px] font-black uppercase tracking-[0.3em]">Précognition</span>
+                      <Sparkles className="h-3 w-3" />
+                      <span className="text-[8px] font-black uppercase tracking-[0.3em]">Précognition</span>
                     </motion.div>
                   )}
                 </AnimatePresence>
