@@ -26,7 +26,7 @@ type KeyboardLayout = "alpha" | "numeric" | "emoji";
 /**
  * @fileOverview KeyboardEmoji - Composant de rendu individuel pour le clavier.
  * Gère la cascade : Animé -> Statique -> Texte.
- * Bouton carré avec bordures haut/bas égales.
+ * Bouton fixe carré avec bordures haut/bas égales pour une structure cristalline.
  */
 function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, onClick: (char: string) => void }) {
   const [stage, setStage] = useState<'animated' | 'static' | 'text'>('animated');
@@ -40,7 +40,7 @@ function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, on
     <button
       onPointerDown={(e) => e.preventDefault()}
       onClick={() => { haptic.light(); onClick(emoji); }}
-      className="flex items-center justify-center aspect-square w-full rounded-xl bg-primary/[0.03] border-t border-b border-x border-primary/10 hover:bg-primary/10 hover:border-primary/20 transition-all p-1.5 group overflow-hidden relative shadow-sm active:scale-90"
+      className="flex items-center justify-center aspect-square w-full rounded-xl bg-primary/[0.03] border-t border-b border-x border-primary/10 hover:bg-primary/10 hover:border-primary/20 transition-all p-1 group overflow-hidden relative shadow-sm active:scale-90"
     >
       {stage === 'text' ? (
         <span className="text-xl">{emoji}</span>
@@ -233,10 +233,10 @@ export function CustomKeyboard() {
                     ))}
                   </div>
                   
-                  {/* Flux Horizontal d'Emojis */}
-                  <div className="flex-1 overflow-x-auto no-scrollbar flex flex-row items-center gap-3 p-1">
+                  {/* Grille Octogonale Fixe d'Emojis */}
+                  <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-8 gap-2 p-1">
                     {categories[emojiCategory].items.map((emoji, idx) => (
-                      <div key={`${emojiCategory}-${idx}`} className="shrink-0 w-14 h-14">
+                      <div key={`${emojiCategory}-${idx}`} className="w-full">
                         <KeyboardEmoji 
                           emoji={emoji.char} 
                           hex={emoji.hex} 
@@ -305,4 +305,3 @@ export function CustomKeyboard() {
     </AnimatePresence>
   );
 }
-    
