@@ -177,7 +177,6 @@ export function LoginClient() {
         cameraAuthorized: false,
         createdAt: serverTimestamp(),
         totalPoints: 0,
-        // Paramètres de confidentialité et d'expérience désactivés par défaut
         rankingHidden: false,
         reducedMotion: false,
         hidePointsInHeader: false
@@ -238,7 +237,7 @@ export function LoginClient() {
                         <span className="text-[10px] font-bold uppercase tracking-widest">Identité</span>
                       </div>
                       <CardTitle className="text-2xl">Votre nom de plume</CardTitle>
-                      <CardDescription>Choisissez un pseudonyme unique.</CardDescription>
+                      <CardDescription>Choisissez un pseudonyme unique (sans point ni virgule).</CardDescription>
                     </CardHeader>
                     <CardContent className="p-6">
                       <div className="space-y-4">
@@ -246,7 +245,7 @@ export function LoginClient() {
                           <input 
                             placeholder="ex: aristote" 
                             value={formData.username}
-                            onChange={(e) => setFormData({...formData, username: e.target.value.replace(/\s/g, '').toLowerCase()})}
+                            onChange={(e) => setFormData({...formData, username: e.target.value.replace(/[\s.,]/g, '').toLowerCase()})}
                             className="flex h-14 w-full rounded-md border border-input bg-background/50 px-5 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                           />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -335,7 +334,7 @@ export function LoginClient() {
                     <CardHeader className="p-6">
                       <div className="flex items-center gap-3 mb-2 text-primary">
                         <ShieldCheck className="h-5 w-5" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">L legality</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Légalité</span>
                       </div>
                       <CardTitle className="text-2xl">Conditions</CardTitle>
                     </CardHeader>

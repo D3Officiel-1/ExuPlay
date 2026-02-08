@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
@@ -214,7 +215,7 @@ export default function ProfilPage() {
                   <div className="relative w-full max-w-[240px]">
                     <Input 
                       value={editedUsername} 
-                      onChange={(e) => setEditedUsername(e.target.value.toLowerCase().replace(/\s/g, ''))} 
+                      onChange={(e) => setEditedUsername(e.target.value.toLowerCase().replace(/[\s.,]/g, ''))} 
                       className="h-14 text-center text-xl font-black rounded-2xl bg-primary/5" 
                       autoFocus 
                       maxLength={15} 
@@ -268,6 +269,7 @@ export default function ProfilPage() {
                       : "border-primary/5 bg-background/50 opacity-40"
                   )}
                 >
+                  <span className="sr-only">Défaut</span>
                   <Sparkles className="h-6 w-6" />
                 </button>
                 {ownedThemes.map((tid: string) => {
@@ -285,7 +287,6 @@ export default function ProfilPage() {
                       )}
                     >
                       <div className={cn("h-8 w-8 rounded-full shadow-inner relative z-10", theme.color.replace('text-', 'bg-'))} />
-                      {/* Prévisualisation de la Lumière Divine dans le sélecteur */}
                       <div className={cn("absolute inset-[-20%] rounded-full blur-xl opacity-40", theme.auraClass.split(' ').find(c => c.startsWith('bg-')))} />
                     </button>
                   );

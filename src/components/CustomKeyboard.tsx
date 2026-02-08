@@ -114,20 +114,20 @@ export function CustomKeyboard() {
     activeInput.dispatchEvent(new Event("change", { bubbles: true }));
   }, [activeInput, isShift, layout]);
 
-  // Disposition AZERTY harmonisée
+  // Disposition AZERTY harmonisée sans point ni virgule
   const ALPHA_KEYS = [
     ["A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P"],
     ["Q", "S", "D", "F", "G", "H", "J", "K", "L", "M"],
     ["shift", "W", "X", "C", "V", "B", "N", "'", "backspace"],
-    ["?123", ",", "emoji", "space", ".", "enter"]
+    ["?123", "emoji", "space", "enter"]
   ];
 
-  // Carte des Symboles et Chiffres harmonisée en hauteur avec le mode alpha
+  // Carte des Symboles et Chiffres harmonisée sans point ni virgule
   const NUMERIC_KEYS = [
     ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
     ["@", "#", "&", "_", "-", "(", ")", "/", ":", ";"],
     ["+", "*", "\"", "'", "!", "?", "=", "%", "backspace"],
-    ["abc", ",", "emoji", "space", ".", "enter"]
+    ["abc", "emoji", "space", "enter"]
   ];
 
   const rows = layout === "alpha" ? ALPHA_KEYS : NUMERIC_KEYS;
@@ -157,7 +157,7 @@ export function CustomKeyboard() {
               {rows.map((row, i) => (
                 <div key={i} className="flex justify-center gap-1.5 h-12">
                   {row.map((key) => {
-                    const isSpecial = ["shift", "backspace", "enter", "?123", "abc", "space", ",", "emoji", "."].includes(key);
+                    const isSpecial = ["shift", "backspace", "enter", "?123", "abc", "space", "emoji"].includes(key);
                     
                     return (
                       <motion.button
@@ -171,8 +171,8 @@ export function CustomKeyboard() {
                         className={cn(
                           "relative flex items-center justify-center rounded-xl font-bold transition-colors select-none",
                           isSpecial ? "bg-primary/5 text-primary/60 text-xs px-3" : "bg-card/40 border border-primary/5 text-lg flex-1",
-                          key === "space" && "flex-[3]",
-                          key === "enter" && "flex-[1.5] bg-primary text-primary-foreground",
+                          key === "space" && "flex-[4]",
+                          key === "enter" && "flex-[2] bg-primary text-primary-foreground",
                           key === "shift" && isShift && "bg-primary text-primary-foreground opacity-100",
                           !isSpecial && "shadow-sm active:shadow-inner"
                         )}
@@ -184,8 +184,6 @@ export function CustomKeyboard() {
                         {key === "space" && <div className="w-12 h-1 bg-current opacity-20 rounded-full" />}
                         {key === "?123" && <span className="text-[10px] font-black tracking-tight uppercase">?123</span>}
                         {key === "abc" && <span className="text-[10px] font-black tracking-tight uppercase">abc</span>}
-                        {key === "," && <span className="text-lg">,</span>}
-                        {key === "." && <span className="text-lg">.</span>}
                         {!isSpecial && (layout === "alpha" && isShift ? key.toUpperCase() : key)}
                       </motion.button>
                     );
