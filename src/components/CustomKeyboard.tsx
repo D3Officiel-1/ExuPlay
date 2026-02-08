@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Delete, ArrowUp, Check, ChevronDown, Smile, Dog, Pizza, 
@@ -13,120 +13,31 @@ import { cn } from "@/lib/utils";
 
 type KeyboardLayout = "alpha" | "numeric" | "emoji";
 
-const EMOJI_CATEGORIES = [
-  { 
-    id: "faces", 
-    icon: Smile, 
-    items: [
-      { char: "🙂", hex: "1f642" }, { char: "😊", hex: "1f60a" }, { char: "😂", hex: "1f602" }, 
-      { char: "🤣", hex: "1f923" }, { char: "🥰", hex: "1f970" }, { char: "😍", hex: "1f60d" }, 
-      { char: "🤩", hex: "1f929" }, { char: "😎", hex: "1f60e" }, { char: "🤔", hex: "1f914" }, 
-      { char: "🧐", hex: "1f9d0" }, { char: "🥳", hex: "1f973" }, { char: "😇", hex: "1f607" },
-      { char: "🤠", hex: "1f920" }, { char: "🤡", hex: "1f921" }, { char: "😴", hex: "1f634" },
-      { char: "🤢", hex: "1f922" }, { char: "🥵", hex: "1f975" }, { char: "🥶", hex: "1f976" },
-      { char: "🤯", hex: "1f92f" }, { char: "🤫", hex: "1f92b" }, { char: "🫠", hex: "1fae0" },
-      { char: "🫣", hex: "1fae3" }, { char: "🫢", hex: "1fae2" }, { char: "🫡", hex: "1fae1" }
-    ]
-  },
-  { 
-    id: "people", 
-    icon: User, 
-    items: [
-      { char: "👋", hex: "1f44b" }, { char: "👌", hex: "1f44c" }, { char: "✌️", hex: "270c" }, 
-      { char: "🤞", hex: "1f91e" }, { char: "🤟", hex: "1f91f" }, { char: "🤘", hex: "1f918" }, 
-      { char: "🤙", hex: "1f919" }, { char: "🤜", hex: "1f91c" }, { char: "🤛", hex: "1f91b" },
-      { char: "🙌", hex: "1f64c" }, { char: "👏", hex: "1f44f" }, { char: "🙏", hex: "1f64f" },
-      { char: "🤝", hex: "1f91d" }, { char: "🤳", hex: "1f933" }, { char: "💪", hex: "1f4aa" },
-      { char: "🦾", hex: "1f9be" }, { char: "🧠", hex: "1f9e0" }, { char: "🫀", hex: "1fac0" },
-      { char: "👨‍💻", hex: "1f468-200d-1f4bb" }, { char: "🦸‍♂️", hex: "1f9b8-200d-2642-fe0f" }, { char: "🧟‍♂️", hex: "1f9df-200d-2642-fe0f" },
-      { char: "👼", hex: "1f47c" }, { char: "🧛", hex: "1f9db" }, { char: "🕺", hex: "1f57a" }
-    ]
-  },
-  { 
-    id: "nature", 
-    icon: Dog, 
-    items: [
-      { char: "🐶", hex: "1f436" }, { char: "🐱", hex: "1f431" }, { char: "🦁", hex: "1f981" }, 
-      { char: "🐯", hex: "1f42f" }, { char: "🦊", hex: "1f98a" }, { char: "🐻", hex: "1f43b" },
-      { char: "🐼", hex: "1f43c" }, { char: "🐨", hex: "1f428" }, { char: "🐸", hex: "1f438" },
-      { char: "🦄", hex: "1f984" }, { char: "🐉", hex: "1f409" }, { char: "🦖", hex: "1f996" },
-      { char: "🐳", hex: "1f433" }, { char: "🐙", hex: "1f419" }, { char: "🦋", hex: "1f98b" },
-      { char: "🐝", hex: "1f41d" }, { char: "🌸", hex: "1f338" }, { char: "🔥", hex: "1f525" },
-      { char: "🌵", hex: "1f335" }, { char: "🌴", hex: "1f334" }, { char: "🪐", hex: "1fa90" },
-      { char: "🌈", hex: "1f308" }, { char: "🍄", hex: "1f344" }, { char: "🌪️", hex: "1f32a" }
-    ]
-  },
-  { 
-    id: "food", 
-    icon: Pizza, 
-    items: [
-      { char: "🍎", hex: "1f34e" }, { char: "🍌", hex: "1f34c" }, { char: "🍉", hex: "1f349" }, 
-      { char: "🍓", hex: "1f353" }, { char: "🥑", hex: "1f951" }, { char: "🍕", hex: "1f355" },
-      { char: "🍔", hex: "1f354" }, { char: "🍟", hex: "1f35f" }, { char: "🌮", hex: "1f32e" },
-      { char: "Sushi", hex: "1f363" }, { char: "🍦", hex: "1f366" }, { char: "🍰", hex: "1f370" },
-      { char: "Donut", hex: "1f369" }, { char: "🍿", hex: "1f37f" }, { char: "Beer", hex: "1f37a" },
-      { char: "Wine", hex: "1f377" }, { char: "Coffee", hex: "2615" }, { char: "Mate", hex: "1f9c9" },
-      { char: "🥐", hex: "1f950" }, { char: "🥨", hex: "1f968" }, { char: "🥓", hex: "1f953" },
-      { char: "🧀", hex: "1f9c0" }, { char: "🥚", hex: "1f95a" }, { char: "🍭", hex: "1f36d" }
-    ]
-  },
-  { 
-    id: "activities", 
-    icon: Gamepad2, 
-    items: [
-      { char: "⚽", hex: "26bd" }, { char: "🏀", hex: "1f3c0" }, { char: "🏈", hex: "1f3c8" }, 
-      { char: "🎾", hex: "1f3be" }, { char: "🥊", hex: "1f94a" }, { char: "🎮", hex: "1f3ae" },
-      { char: "🎯", hex: "1f3af" }, { char: "🎲", hex: "1f3b2" }, { char: "🎸", hex: "1f3b8" },
-      { char: "🎨", hex: "1f3a8" }, { char: "🎬", hex: "1f3ac" }, { char: "🎤", hex: "1f3a4" },
-      { char: "🏆", hex: "1f3c6" }, { char: "🥇", hex: "1f947" }, { char: "🛹", hex: "1f6f9" },
-      { char: "🚲", hex: "1f6b2" }, { char: "🧘‍♂️", hex: "1f9d8-200d-2642-fe0f" }, { char: "🧗‍♂️", hex: "1f9d7-200d-2642-fe0f" },
-      { char: "🧩", hex: "1f9e9" }, { char: "🎳", hex: "1f3b3" }, { char: "🎷", hex: "1f3b7" },
-      { char: "🎻", hex: "1f3bb" }, { char: "🪁", hex: "1fa81" }, { char: "🎱", hex: "1f3b1" }
-    ]
-  },
-  { 
-    id: "travel", 
-    icon: Car, 
-    items: [
-      { char: "🚗", hex: "1f697" }, { char: "🚕", hex: "1f695" }, { char: "🚓", hex: "1f693" }, 
-      { char: "🚑", hex: "1f691" }, { char: "🚒", hex: "1f692" }, { char: "🚀", hex: "1f680" },
-      { char: "✈️", hex: "2708" }, { char: "🚁", hex: "1f681" }, { char: "🛸", hex: "1f6f8" },
-      { char: "🌋", hex: "1f30b" }, { char: "🏝️", hex: "1f3dd" }, { char: "🏜️", hex: "1f3dc" },
-      { char: "🗼", hex: "1f5fc" }, { char: "🏰", hex: "1f3f0" }, { char: "🌍", hex: "1f30d" },
-      { char: "🌙", hex: "1f319" }, { char: "⭐", hex: "2b50" }, { char: "🌈", hex: "1f308" },
-      { char: "⚓", hex: "2693" }, { char: "🗿", hex: "1f5ff" }, { char: "🎡", hex: "1f3a1" },
-      { char: "🗽", hex: "1f5fd" }, { char: "⛩️", hex: "26e9" }, { char: "🏰", hex: "1f3f0" }
-    ]
-  },
-  { 
-    id: "objects", 
-    icon: Lightbulb, 
-    items: [
-      { char: "💡", hex: "1f4a1" }, { char: "📱", hex: "1f4f1" }, { char: "💻", hex: "1f4bb" }, 
-      { char: "📷", hex: "1f4f7" }, { char: "🔭", hex: "1f52d" }, { char: "💎", hex: "1f48e" },
-      { char: "🛡️", hex: "1f6e1" }, { char: "⚔️", hex: "2694" }, { char: "🗝️", hex: "1f5dd" },
-      { char: "💊", hex: "1f48a" }, { char: "🧪", hex: "1f9ea" }, { char: "🧱", hex: "1f9f1" },
-      { char: "🎈", hex: "1f388" }, { char: "🎁", hex: "1f381" }, { char: "✉️", hex: "2709" },
-      { char: "💵", hex: "1f4b5" }, { char: "💳", hex: "1f4b3" }, { char: "🕯️", hex: "1f56f" },
-      { char: "🧨", hex: "1f9e8" }, { char: "🪩", hex: "1faa9" }, { char: "🏺", hex: "1f3fa" },
-      { char: "🔮", hex: "1f52e" }, { char: "📜", hex: "1f4dc" }, { char: "🪬", hex: "1faac" }
-    ]
-  },
-  { 
-    id: "symbols", 
-    icon: Heart, 
-    items: [
-      { char: "❤️", hex: "2764" }, { char: "🧡", hex: "1f9e1" }, { char: "💛", hex: "1f49b" }, 
-      { char: "💚", hex: "1f49a" }, { char: "💙", hex: "1f499" }, { char: "💜", hex: "1f49c" },
-      { char: "🖤", hex: "1f5a4" }, { char: "💔", hex: "1f494" }, { char: "❣️", hex: "2763" },
-      { char: "✨", hex: "2728" }, { char: "⚡", hex: "26a1" }, { char: "❄️", hex: "2744" },
-      { char: "⚛️", hex: "269b" }, { char: "♾️", hex: "267e" }, { char: "☯️", hex: "262f" },
-      { char: "🔱", hex: "1f531" }, { char: "✅", hex: "2705" }, { char: "❌", hex: "274c" },
-      { char: "🧿", hex: "1f9ff" }, { char: "🔔", hex: "1f514" }, { char: "🔞", hex: "1f51e" },
-      { char: "♻️", hex: "267b" }, { char: "🔱", hex: "1f531" }, { char: "☣️", hex: "2623" }
-    ]
-  }
-];
+/**
+ * @fileOverview Oracle du Parsing d'Emojis.
+ * Convertit une chaîne brute d'emojis en un tableau d'objets avec leurs codes Hex pour le rendu 3D.
+ */
+function parseEmojiString(raw: string) {
+  // Regex robuste pour capturer les emojis simples et les séquences complexes (ZWG)
+  const emojiRegex = /(\p{Emoji_Presentation}|\p{Emoji}\uFE0F|\p{Emoji_Modifier_Base}\p{Emoji_Modifier}?|[\u2600-\u27BF]\uFE0F?|[\uD83C-\uD83E][\uDC00-\uDFFF](?:\u200D[\uD83C-\uD83E][\uDC00-\uDFFF])*)/gu;
+  const matches = raw.match(emojiRegex) || [];
+  // Déduplication pour garder l'essence pure
+  const unique = Array.from(new Set(matches));
+  
+  return unique.map(emoji => ({
+    char: emoji,
+    hex: Array.from(emoji)
+      .map(c => c.codePointAt(0)?.toString(16))
+      .filter(h => h && h !== 'fe0f')
+      .join('-')
+  }));
+}
+
+// --- LES ARCHIVES DE L'ORACLE ---
+const RAW_EMOJI_PEOPLE = "😀😃😄😁😆🥹😅😂🤣🥲☺️😊😇🙂🙃😉😌😍🥰😘😗😙😚😋😛😝😜🤪🤨🧐🤓😎🥸🤩🥳🙂‍↕️😏😒🙂‍↔️😞😔😟😕🙁☹️😣😖😫😩🥺😢😭😤😠😡🤬🤯😳🥵🥶😶‍🌫️😱😨😰😥😓🤗🤔🫣🤭🫢🫡🤫🫠🤥😶🫥😐🫤😑🫨😬🙄😯😦😧😮😲🥱🫩😴🤤😪😮‍💨😵😵‍💫🤐🥴🤢🤮🤧😷🤒🤕🤑🤠😈👿👹👺🤡💩👻💀☠️👽👾🤖🎃😺😸😹😻😼😽🙀😿😾🫶🤲👐🙌👏🤝👍👎👊✊🤛🤜🫷🫸🤞✌️🫰🤟🤘👌🤌🤏🫳🫴👈👉👆👇☝️✋🤚🖐️🖖👋🤙🫲🫱💪🦾🖕✍️🙏🫵🦶🦵🦿💄💋👄🫦🦷👅👂🦻👃🫆👣👁️👀🫀🫁🧠🗣️👤👥🫂👶👧🧒👦👩🧑👨👩‍🦱🧑‍🦱👨‍🦱👩‍🦰🧑‍🦰👨‍🦰👱‍♀️👱👱‍♂️👩‍🦳🧑‍🦳👨‍🦳👩‍🦲🧑‍🦲👨‍🦲🧔‍♀️🧔🧔‍♂️👵🧓👴👲👳‍♀️👳👳‍♂️🧕👮‍♀️👮👮‍♂️👷‍♀️👷👷‍♂️💂‍♀️💂🏻💂‍♂️🕵️‍♀️🕵️🕵️‍♂️👩‍⚕️🧑‍⚕️👨‍⚕️👩‍🌾🧑‍🌾👨‍🌾👩‍🍳🧑‍🍳👨‍🍳👩‍🎓🧑‍🎓👨‍🎓👩‍🎤🧑‍🎤👨‍🎤👩‍🏫🧑‍🏫👨‍🏫👩‍🏭🧑‍🏭👨‍🏭👩‍💻🧑‍💻👨‍💻👩‍💼🧑‍💼👨‍💼👩‍🔧🧑‍🔧👨‍🔧👩‍🔬🧑‍🔬👨‍🔬👩‍🎨🧑‍🎨👨‍🎨👩‍🚒🧑‍🚒👨‍🚒👩‍✈️🧑‍✈️👨‍✈️👩‍🚀🧑‍🚀👨‍🚀👩‍⚖️🧑‍⚖️👨‍⚖️👰‍♀️👰👰‍♂️🤵‍♀️🤵🤵‍♂️👸🫅🤴🥷🦸‍♀️🦸🦸‍♂️🦹‍♀️🦹🦹‍♂️🤶🧑‍🎄🎅🧙‍♀️🧙🧙‍♂️🧝‍♀️🧝🧝‍♂️🧌🧛‍♀️🧛🧛‍♂️🧟‍♀️🧟🧟‍♂️🧞‍♀️🧞🧞‍♂️🧜‍♀️🧜🧜‍♂️🧚‍♀️🧚🧚‍♂️👼🤰🫄🫃🤱👩‍🍼🧑‍🍼👨‍🍼🙇‍♀️🙇🙇‍♂️💁‍♀️💁💁‍♂️🙅‍♀️🙅🙅‍♂️🙆‍♀️🙆🙆‍♂️🙋‍♀️🙋🙋‍♂️🧏‍♀️🧏🧏‍♂️🤦‍♀️🤦🤦‍♂️🤷‍♀️🤷🤷‍♂️🙎‍♀️🙎🙎‍♂️🙍‍♀️🙍🙍‍♂️💇‍♀️💇💇‍♂️💆‍♀️💆💆‍♂️🧖‍♀️🧖🧖‍♂️💅🤳💃🕺👯‍♀️👯👯‍♂️🕴️👩‍🦽🧑‍🦽👨‍🦽👩‍🦼🧑‍🦼👨‍🦼🚶‍♀️🚶🚶‍♂️👩‍🦯🧑‍🦯👨‍🦯🧎‍♀️🧎🧎‍♂️🏃‍♀️🏃🏃‍♂️🧍‍♀️🧍🧍‍♂️👫👭👬👩‍❤️‍👨👩‍❤️‍👩💑👨‍❤️‍👨👩‍❤️‍💋‍👨👩‍❤️‍💋‍👩💏👨‍❤️‍💋‍👨🪢🧶🧵🪡🧥🥼🦺👚👕👖🩲🩳👔👗👙🩱👘🥻🩴🥿👠👡👢👞👟🥾🧦🧤🧣🎩🧢👒🎓⛑️🪖👑💍👝👛👜💼🎒🧳Glasses🕶️🥽🌂";
+const RAW_NATURE = "🐶🐱🦁🐯🦊🐻🐼🐨🐸🦄🐉🦖🐳🐙🦋🐝🌸🔥🌵🌴🪐🌈🍄🌪️🌊🌍☀️🌙⭐⚡✨";
+const RAW_FOOD = "🍎建设🍌🍉🍓🥑🍕🍔🍟🌮🍣🍦🍰🍩🍿🍺🍷☕🥐🥨🧀🥚🍭🍱🍙🍜🍛";
+const RAW_ACTIVITIES = "⚽🏀🏈🎾🥊🎮🎯🎲🎸🎨🎬🎤🏆🥇🛹🚲🧩🎳🎷🎻🪁🎱🎮🕹️🎭🎟️";
 
 function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, onClick: (char: string) => void }) {
   const [stage, setStage] = useState<'animated' | 'static' | 'text'>('animated');
@@ -140,15 +51,16 @@ function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, on
     <button
       onPointerDown={(e) => e.preventDefault()}
       onClick={() => { haptic.light(); onClick(emoji); }}
-      className="flex items-center justify-center aspect-square rounded-[1.5rem] bg-primary/5 hover:bg-primary/10 transition-all p-2 relative group"
+      className="flex items-center justify-center aspect-square rounded-[1.25rem] bg-primary/5 hover:bg-primary/10 transition-all p-1.5 relative group overflow-hidden"
     >
       {stage === 'text' ? (
-        <span className="text-2xl">{emoji}</span>
+        <span className="text-xl">{emoji}</span>
       ) : (
         <img 
           src={getUrl()} 
           alt={emoji} 
           className="w-full h-full object-contain transition-transform group-hover:scale-110" 
+          loading="lazy"
           onError={() => {
             if (stage === 'animated') setStage('static');
             else if (stage === 'static') setStage('text');
@@ -168,6 +80,16 @@ export function CustomKeyboard() {
   
   const backspaceIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const backspaceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Mémorisation des catégories pour éviter les recalculs inutiles
+  const categories = useMemo(() => [
+    { id: "people", icon: Smile, items: parseEmojiString(RAW_EMOJI_PEOPLE) },
+    { id: "nature", icon: Dog, items: parseEmojiString(RAW_NATURE) },
+    { id: "food", icon: Pizza, items: parseEmojiString(RAW_FOOD) },
+    { id: "activities", icon: Gamepad2, items: parseEmojiString(RAW_ACTIVITIES) },
+    { id: "objects", icon: Lightbulb, items: parseEmojiString("💡📱💻📷🔭💎🛡️⚔️🗝️💊🧪🧱🎈🎁✉️💵💳") },
+    { id: "symbols", icon: Heart, items: parseEmojiString("❤️🧡💛💚💙💜🖤✨⚡❄️⚛️♾️☯️🔱✅❌🧿🔔") }
+  ], []);
 
   useEffect(() => {
     const handleFocus = (e: FocusEvent) => {
@@ -306,7 +228,7 @@ export function CustomKeyboard() {
                   className="flex flex-col h-full"
                 >
                   <div className="flex justify-between items-center gap-1 mb-4 px-1 overflow-x-auto no-scrollbar py-1">
-                    {EMOJI_CATEGORIES.map((cat, idx) => (
+                    {categories.map((cat, idx) => (
                       <button
                         key={cat.id}
                         onPointerDown={(e) => e.preventDefault()}
@@ -321,9 +243,9 @@ export function CustomKeyboard() {
                     ))}
                   </div>
                   <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-6 gap-3 p-1">
-                    {EMOJI_CATEGORIES[emojiCategory].items.map((emoji, idx) => (
+                    {categories[emojiCategory].items.map((emoji, idx) => (
                       <KeyboardEmoji 
-                        key={idx} 
+                        key={`${emojiCategory}-${idx}`} 
                         emoji={emoji.char} 
                         hex={emoji.hex} 
                         onClick={(char) => handleKeyPress(char)} 
