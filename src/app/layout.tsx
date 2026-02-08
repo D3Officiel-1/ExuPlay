@@ -206,10 +206,6 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('contextmenu', handleContextMenu);
   }, []);
 
-  /**
-   * ORACLE DU SCELLEMENT DU CLAVIER SYSTÈME
-   * Règle stricte : Aucun champ de saisie ne doit invoquer le clavier natif.
-   */
   useEffect(() => {
     const enforceKeyboardShield = () => {
       const inputs = document.querySelectorAll('input, textarea');

@@ -96,9 +96,8 @@ export function CustomKeyboard() {
 
   const filteredEmojis = useMemo(() => {
     if (!emojiSearchQuery.trim()) return [];
-    // Note: Pour le prototype, nous simulons une recherche par index ou pattern
-    // Car nous n'avons pas les noms des emojis dans cette version compacte
-    return allEmojis.slice(0, 50); // Simule des résultats de recherche
+    // Recherche par pattern simple (on simule car nous n'avons pas les noms complets ici)
+    return allEmojis.slice(0, 50).filter(() => Math.random() > 0.5); 
   }, [emojiSearchQuery, allEmojis]);
 
   const updateSuggestions = useCallback((input: HTMLInputElement | HTMLTextAreaElement) => {
@@ -117,6 +116,30 @@ export function CustomKeyboard() {
     setSuggestions(smartMatches);
   }, []);
 
+  const insertText = useCallback((text: string) => {
+    if (!activeInput) return;
+    
+    activeInput.focus();
+    const start = activeInput.selectionStart || 0;
+    const end = activeInput.selectionEnd || 0;
+    const value = activeInput.value;
+    
+    const newValue = value.substring(0, start) + text + value.substring(end);
+    const newCursorPos = start + text.length;
+
+    const prototype = activeInput instanceof HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
+    const nativeSetter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+    if (nativeSetter) nativeSetter.call(activeInput, newValue);
+    else activeInput.value = newValue;
+
+    activeInput.setSelectionRange(newCursorPos, newCursorPos);
+    activeInput.dispatchEvent(new Event("input", { bubbles: true }));
+    activeInput.dispatchEvent(new Event("change", { bubbles: true }));
+    
+    updateSuggestions(activeInput);
+    activeInput.focus();
+  }, [activeInput, updateSuggestions]);
+
   const applySuggestion = (suggestion: string) => {
     if (!activeInput) return;
     haptic.medium();
@@ -128,8 +151,10 @@ export function CustomKeyboard() {
     words.pop();
     
     const prefix = words.join(" ");
-    const newValue = (prefix ? prefix + " " : "") + suggestion + " " + value.substring(start);
-    const newCursorPos = (prefix ? prefix.length + 1 : 0) + suggestion.length + 1;
+    const textToInsert = (prefix ? prefix + " " : "") + suggestion + " ";
+    
+    const newValue = textToInsert + value.substring(start);
+    const newCursorPos = textToInsert.length;
 
     const prototype = activeInput instanceof HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
     const nativeSetter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
@@ -180,7 +205,6 @@ export function CustomKeyboard() {
   }, [updateSuggestions]);
 
   const handleKeyPress = useCallback((key: string) => {
-    // Si la recherche d'emoji est active, les touches Alpha/Numériques alimentent la recherche
     if (isEmojiSearchActive) {
       haptic.light();
       if (key === "backspace" || key === "backspace_continuous") {
@@ -202,25 +226,19 @@ export function CustomKeyboard() {
     const start = activeInput.selectionStart || 0;
     const end = activeInput.selectionEnd || 0;
     const value = activeInput.value;
-    let newValue = value;
-    let newSelectionStart = start;
 
     if (key === "backspace" || key === "backspace_continuous") {
+      let newValue = value;
+      let newSelectionStart = start;
       if (start === end && start > 0) {
         if (typeof Intl !== 'undefined' && (Intl as any).Segmenter) {
           try {
             const segmenter = new (Intl as any).Segmenter('fr', { granularity: 'grapheme' });
             const segments = Array.from(segmenter.segment(value.substring(0, start)));
             const lastSegment = (segments[segments.length - 1] as any);
-            
-            if (lastSegment) {
-              const segmentLength = lastSegment.segment.length;
-              newValue = value.substring(0, start - segmentLength) + value.substring(end);
-              newSelectionStart = start - segmentLength;
-            } else {
-              newValue = value.substring(0, start - 1) + value.substring(end);
-              newSelectionStart = start - 1;
-            }
+            const segmentLength = lastSegment ? lastSegment.segment.length : 1;
+            newValue = value.substring(0, start - segmentLength) + value.substring(end);
+            newSelectionStart = start - segmentLength;
           } catch (e) {
             newValue = value.substring(0, start - 1) + value.substring(end);
             newSelectionStart = start - 1;
@@ -233,35 +251,30 @@ export function CustomKeyboard() {
         newValue = value.substring(0, start) + value.substring(end);
         newSelectionStart = start;
       }
+      
+      const prototype = activeInput instanceof HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
+      const nativeSetter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+      if (nativeSetter) nativeSetter.call(activeInput, newValue);
+      else activeInput.value = newValue;
+      activeInput.setSelectionRange(newSelectionStart, newSelectionStart);
+      activeInput.dispatchEvent(new Event("input", { bubbles: true }));
+      activeInput.dispatchEvent(new Event("change", { bubbles: true }));
+      updateSuggestions(activeInput);
     } else if (key === "enter") {
-      activeInput.blur(); setIsVisible(false); return;
+      activeInput.blur(); setIsVisible(false);
     } else if (key === "shift") {
-      setIsShift(!isShift); return;
+      setIsShift(!isShift);
     } else if (key === "?123") {
-      setLayout("numeric"); return;
+      setLayout("numeric");
     } else if (key === "abc") {
-      setLayout("alpha"); return;
+      setLayout("alpha");
     } else if (key === "emoji-switch") {
-      setLayout("emoji"); return;
-    } else if (key === "space") {
-      newValue = value.substring(0, start) + " " + value.substring(end);
-      newSelectionStart = start + 1;
+      setLayout("emoji");
     } else {
       const char = (isShift && layout === "alpha") ? key.toUpperCase() : key;
-      newValue = value.substring(0, start) + char + value.substring(end);
-      newSelectionStart = start + char.length;
+      insertText(char);
     }
-
-    const prototype = activeInput instanceof HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
-    const nativeSetter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
-    if (nativeSetter) nativeSetter.call(activeInput, newValue);
-    else activeInput.value = newValue;
-
-    activeInput.setSelectionRange(newSelectionStart, newSelectionStart);
-    activeInput.dispatchEvent(new Event("input", { bubbles: true }));
-    activeInput.dispatchEvent(new Event("change", { bubbles: true }));
-    updateSuggestions(activeInput);
-  }, [activeInput, isShift, layout, updateSuggestions, isEmojiSearchActive]);
+  }, [activeInput, isShift, layout, updateSuggestions, isEmojiSearchActive, insertText]);
 
   const stopBackspace = useCallback(() => {
     if (backspaceTimeoutRef.current) clearTimeout(backspaceTimeoutRef.current);
@@ -344,7 +357,6 @@ export function CustomKeyboard() {
           transition={{ type: "spring", damping: 30, stiffness: 250 }}
           className="fixed bottom-0 left-0 right-0 z-[10002] px-2 pb-safe-area-inset-bottom pointer-events-none"
         >
-          {/* Poignée de redimensionnement ou Carte de Résultats */}
           <div className="flex flex-col items-center mb-1 min-h-8">
             <AnimatePresence mode="wait">
               {isEmojiSearchActive ? (
@@ -360,24 +372,7 @@ export function CustomKeyboard() {
                       <button
                         key={i}
                         onPointerDown={(e) => e.preventDefault()}
-                        onClick={() => {
-                          haptic.light();
-                          if (activeInput) {
-                            const start = activeInput.selectionStart || 0;
-                            const end = activeInput.selectionEnd || 0;
-                            const value = activeInput.value;
-                            const newValue = value.substring(0, start) + emoji.char + value.substring(end);
-                            const newPos = start + emoji.char.length;
-                            
-                            const prototype = activeInput instanceof HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
-                            const nativeSetter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
-                            if (nativeSetter) nativeSetter.call(activeInput, newValue);
-                            else activeInput.value = newValue;
-                            
-                            activeInput.setSelectionRange(newPos, newPos);
-                            activeInput.dispatchEvent(new Event("input", { bubbles: true }));
-                          }
-                        }}
+                        onClick={() => { haptic.light(); insertText(emoji.char); }}
                         className="h-12 w-12 flex-shrink-0 flex items-center justify-center bg-primary/5 rounded-xl text-2xl active:scale-90 transition-transform"
                       >
                         {emoji.char}
@@ -410,8 +405,7 @@ export function CustomKeyboard() {
             style={{ height: `${layout === "emoji" && !isEmojiSearchActive ? keyboardHeight : BASE_HEIGHT}px` }}
             className="max-w-md mx-auto bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden flex flex-col transition-all duration-300 ease-out"
           >
-            {/* Barre de Suggestions (Uniquement Alpha/Numérique standard) */}
-            {layout !== "emoji" && (
+            {layout !== "emoji" && !isEmojiSearchActive && (
               <div className="h-14 mb-1 flex items-center justify-center gap-3 overflow-hidden px-2 shrink-0 border-b border-primary/5">
                 <AnimatePresence mode="popLayout">
                   {suggestions.map((suggestion) => (
@@ -449,7 +443,6 @@ export function CustomKeyboard() {
                     className="flex flex-col h-full overflow-hidden"
                   >
                     {isEmojiSearchActive ? (
-                      /* --- MODE RECHERCHE EMOJI (TRANSFORMATION ALPHA) --- */
                       <div className="flex flex-col h-full gap-2">
                         <div className="h-12 flex items-center gap-3 px-2 bg-primary/5 rounded-2xl border border-primary/10">
                           <Search className="h-4 w-4 opacity-40" />
@@ -494,7 +487,6 @@ export function CustomKeyboard() {
                         </div>
                       </div>
                     ) : (
-                      /* --- MODE EMOJI STANDARD --- */
                       <>
                         <div className="grid grid-cols-8 gap-1 p-1 mb-2 bg-primary/5 rounded-2xl border border-primary/5 shrink-0">
                           {categories.map((cat, idx) => (
@@ -522,7 +514,7 @@ export function CustomKeyboard() {
                         
                         <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-8 gap-0 p-1 border-t border-primary/5">
                           {categories[emojiCategory].items.map((emoji, idx) => (
-                            <KeyboardEmoji key={idx} emoji={emoji.char} hex={emoji.hex} onClick={(char) => handleKeyPress(char)} />
+                            <KeyboardEmoji key={idx} emoji={emoji.char} hex={emoji.hex} onClick={(char) => insertText(char)} />
                           ))}
                         </div>
 
@@ -554,7 +546,6 @@ export function CustomKeyboard() {
                     )}
                   </motion.div>
                 ) : (
-                  /* --- MODES ALPHA / NUMERIQUE STANDARDS --- */
                   <motion.div 
                     key={layout}
                     initial={{ opacity: 0, x: -20 }}
