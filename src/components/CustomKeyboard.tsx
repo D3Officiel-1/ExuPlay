@@ -26,7 +26,7 @@ type KeyboardLayout = "alpha" | "numeric" | "emoji";
 /**
  * @fileOverview KeyboardEmoji - Composant de rendu individuel pour le clavier.
  * Gère la cascade : Animé -> Statique -> Texte.
- * Enveloppé dans un bouton fixe aspect-square.
+ * Enveloppé dans un bouton fixe carré avec des bordures haut/bas égales.
  */
 function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, onClick: (char: string) => void }) {
   const [stage, setStage] = useState<'animated' | 'static' | 'text'>('animated');
@@ -40,7 +40,7 @@ function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, on
     <button
       onPointerDown={(e) => e.preventDefault()}
       onClick={() => { haptic.light(); onClick(emoji); }}
-      className="flex items-center justify-center aspect-square w-full rounded-xl bg-primary/[0.03] border border-primary/5 hover:bg-primary/10 hover:border-primary/10 transition-all p-1.5 group overflow-hidden relative shadow-sm active:scale-90"
+      className="flex items-center justify-center aspect-square w-full rounded-xl bg-primary/[0.03] border-t border-b border-x border-primary/10 hover:bg-primary/10 hover:border-primary/20 transition-all p-1.5 group overflow-hidden relative shadow-sm active:scale-90"
     >
       {stage === 'text' ? (
         <span className="text-xl">{emoji}</span>
