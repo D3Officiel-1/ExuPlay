@@ -99,7 +99,6 @@ export function CustomKeyboard() {
     const query = emojiSearchQuery.toLowerCase().trim();
     if (!query) return [];
     
-    // On cherche dans les mots-clés pré-définis
     return allEmojis.filter(emoji => 
       emoji.keywords.some(kw => kw.includes(query)) ||
       emoji.char === query
@@ -131,8 +130,6 @@ export function CustomKeyboard() {
     const value = activeInput.value;
     
     const newValue = value.substring(0, start) + text + value.substring(end);
-    
-    // Calcul de la position réelle du curseur en tenant compte des paires de substitution
     const newCursorPos = start + text.length;
 
     const prototype = activeInput instanceof HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
@@ -140,7 +137,7 @@ export function CustomKeyboard() {
     if (nativeSetter) nativeSetter.call(activeInput, newValue);
     else activeInput.value = newValue;
 
-    // Forcer le focus et le positionnement du curseur APRES l'emoji
+    // Forcer le focus et le positionnement du curseur APRES l'emoji pour éviter la scission
     setTimeout(() => {
       activeInput.focus();
       activeInput.setSelectionRange(newCursorPos, newCursorPos);
@@ -241,6 +238,7 @@ export function CustomKeyboard() {
       let newValue = value;
       let newSelectionStart = start;
       if (start === end && start > 0) {
+        // Utilisation de Intl.Segmenter pour une suppression atomique des emojis complexes
         if (typeof Intl !== 'undefined' && (Intl as any).Segmenter) {
           try {
             const segmenter = new (Intl as any).Segmenter('fr', { granularity: 'grapheme' });
@@ -313,7 +311,8 @@ export function CustomKeyboard() {
     const handlePointerMove = (e: PointerEvent) => {
       if (!isResizing) return;
       const deltaY = e.clientY - resizeStartY.current;
-      const maxAllowedHeight = window.innerHeight - 100;
+      const headerHeight = 80;
+      const maxAllowedHeight = window.innerHeight - headerHeight - 20;
       const newHeight = Math.max(BASE_HEIGHT, Math.min(maxAllowedHeight, resizeStartHeight.current - deltaY));
       setKeyboardHeight(newHeight);
     };
@@ -357,6 +356,8 @@ export function CustomKeyboard() {
     ["abc", "emoji-switch", "space", "enter"]
   ];
 
+  const currentHeight = layout === "emoji" && !isEmojiSearchActive ? keyboardHeight : BASE_HEIGHT;
+
   return (
     <AnimatePresence>
       {isVisible && (
@@ -371,7 +372,7 @@ export function CustomKeyboard() {
             <AnimatePresence mode="wait">
               {isEmojiSearchActive ? (
                 <motion.div
-                  key="results-card"
+                  key="results-crystal"
                   initial={{ opacity: 0, y: 10, scale: 0.9 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.9 }}
@@ -397,7 +398,7 @@ export function CustomKeyboard() {
                 </motion.div>
               ) : layout === "emoji" && (
                 <motion.button 
-                  key="resize-handle"
+                  key="handle-crystal"
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
@@ -412,7 +413,7 @@ export function CustomKeyboard() {
           </div>
 
           <div 
-            style={{ height: `${layout === "emoji" && !isEmojiSearchActive ? keyboardHeight : BASE_HEIGHT}px` }}
+            style={{ height: `${currentHeight}px` }}
             className="max-w-md mx-auto bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden flex flex-col transition-all duration-300 ease-out"
           >
             {layout !== "emoji" && !isEmojiSearchActive && (
@@ -446,7 +447,7 @@ export function CustomKeyboard() {
               <AnimatePresence mode="wait">
                 {layout === "emoji" ? (
                   <motion.div 
-                    key={isEmojiSearchActive ? "emoji-search" : "emoji-standard"}
+                    key={isEmojiSearchActive ? "emoji-search" : "emoji-vault"}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
@@ -513,7 +514,7 @@ export function CustomKeyboard() {
                               <cat.icon className="h-3.5 w-3.5 relative z-20" />
                               {emojiCategory === idx && (
                                 <motion.div
-                                  layoutId="active-cat-pill"
+                                  layoutId="active-dim-pill"
                                   className="absolute inset-0 bg-primary rounded-xl shadow-lg z-10"
                                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                                 />
