@@ -11,12 +11,6 @@ import {
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
-/**
- * @fileOverview Oracle du Clavier Universel 3D v8.0.
- * Intègre l'intégralité des emojis animés Noto dans une structure AZERTY purifiée.
- * Hauteur stable à 280px.
- */
-
 type KeyboardLayout = "alpha" | "numeric" | "emoji";
 
 const EMOJI_CATEGORIES = [
@@ -24,12 +18,14 @@ const EMOJI_CATEGORIES = [
     id: "faces", 
     icon: Smile, 
     items: [
-      { char: "😊", hex: "1f60a" }, { char: "😂", hex: "1f602" }, { char: "🥰", hex: "1f970" }, 
-      { char: "😍", hex: "1f60d" }, { char: "🤩", hex: "1f929" }, { char: "😎", hex: "1f60e" }, 
-      { char: "🤔", hex: "1f914" }, { char: "🧐", hex: "1f9d0" }, { char: "🥳", hex: "1f973" },
-      { char: "😇", hex: "1f607" }, { char: "🤠", hex: "1f920" }, { char: "🤡", hex: "1f921" },
-      { char: "😴", hex: "1f634" }, { char: "🤢", hex: "1f922" }, { char: "🥵", hex: "1f975" },
-      { char: "🥶", hex: "1f976" }, { char: "🤯", hex: "1f92f" }, { char: "🤫", hex: "1f92b" }
+      { char: "🙂", hex: "1f642" }, { char: "😊", hex: "1f60a" }, { char: "😂", hex: "1f602" }, 
+      { char: "🤣", hex: "1f923" }, { char: "🥰", hex: "1f970" }, { char: "😍", hex: "1f60d" }, 
+      { char: "🤩", hex: "1f929" }, { char: "😎", hex: "1f60e" }, { char: "🤔", hex: "1f914" }, 
+      { char: "🧐", hex: "1f9d0" }, { char: "🥳", hex: "1f973" }, { char: "😇", hex: "1f607" },
+      { char: "🤠", hex: "1f920" }, { char: "🤡", hex: "1f921" }, { char: "😴", hex: "1f634" },
+      { char: "🤢", hex: "1f922" }, { char: "🥵", hex: "1f975" }, { char: "🥶", hex: "1f976" },
+      { char: "🤯", hex: "1f92f" }, { char: "🤫", hex: "1f92b" }, { char: "🫠", hex: "1fae0" },
+      { char: "🫣", hex: "1fae3" }, { char: "🫢", hex: "1fae2" }, { char: "🫡", hex: "1fae1" }
     ]
   },
   { 
@@ -40,8 +36,10 @@ const EMOJI_CATEGORIES = [
       { char: "🤞", hex: "1f91e" }, { char: "🤟", hex: "1f91f" }, { char: "🤘", hex: "1f918" }, 
       { char: "🤙", hex: "1f919" }, { char: "🤜", hex: "1f91c" }, { char: "🤛", hex: "1f91b" },
       { char: "🙌", hex: "1f64c" }, { char: "👏", hex: "1f44f" }, { char: "🙏", hex: "1f64f" },
-      { char: "🙋‍♂️", hex: "1f64b-200d-2642-fe0f" }, { char: "🙅‍♀️", hex: "1f645-200d-2640-fe0f" }, { char: "🙆‍♂️", hex: "1f646-200d-2642-fe0f" },
-      { char: "👨‍💻", hex: "1f468-200d-1f4bb" }, { char: "🦸‍♂️", hex: "1f9b8-200d-2642-fe0f" }, { char: "🧟‍♂️", hex: "1f9df-200d-2642-fe0f" }
+      { char: "🤝", hex: "1f91d" }, { char: "🤳", hex: "1f933" }, { char: "💪", hex: "1f4aa" },
+      { char: "🦾", hex: "1f9be" }, { char: "🧠", hex: "1f9e0" }, { char: "🫀", hex: "1fac0" },
+      { char: "👨‍💻", hex: "1f468-200d-1f4bb" }, { char: "🦸‍♂️", hex: "1f9b8-200d-2642-fe0f" }, { char: "🧟‍♂️", hex: "1f9df-200d-2642-fe0f" },
+      { char: "👼", hex: "1f47c" }, { char: "🧛", hex: "1f9db" }, { char: "🕺", hex: "1f57a" }
     ]
   },
   { 
@@ -53,7 +51,9 @@ const EMOJI_CATEGORIES = [
       { char: "🐼", hex: "1f43c" }, { char: "🐨", hex: "1f428" }, { char: "🐸", hex: "1f438" },
       { char: "🦄", hex: "1f984" }, { char: "🐉", hex: "1f409" }, { char: "🦖", hex: "1f996" },
       { char: "🐳", hex: "1f433" }, { char: "🐙", hex: "1f419" }, { char: "🦋", hex: "1f98b" },
-      { char: "🐝", hex: "1f41d" }, { char: "🌸", hex: "1f338" }, { char: "🔥", hex: "1f525" }
+      { char: "🐝", hex: "1f41d" }, { char: "🌸", hex: "1f338" }, { char: "🔥", hex: "1f525" },
+      { char: "🌵", hex: "1f335" }, { char: "🌴", hex: "1f334" }, { char: "🪐", hex: "1fa90" },
+      { char: "🌈", hex: "1f308" }, { char: "🍄", hex: "1f344" }, { char: "🌪️", hex: "1f32a" }
     ]
   },
   { 
@@ -61,11 +61,13 @@ const EMOJI_CATEGORIES = [
     icon: Pizza, 
     items: [
       { char: "🍎", hex: "1f34e" }, { char: "🍌", hex: "1f34c" }, { char: "🍉", hex: "1f349" }, 
-      { char: "🍓", hex: "1f353" }, { char: "🥑", hex: "1f951" }, { char: "Pizza", hex: "1f355" },
+      { char: "🍓", hex: "1f353" }, { char: "🥑", hex: "1f951" }, { char: "🍕", hex: "1f355" },
       { char: "🍔", hex: "1f354" }, { char: "🍟", hex: "1f35f" }, { char: "🌮", hex: "1f32e" },
-      { char: "🍣", hex: "1f363" }, { char: "🍦", hex: "1f366" }, { char: "🍰", hex: "1f370" },
-      { char: "🍩", hex: "1f369" }, { char: "🍿", hex: "1f37f" }, { char: "🍺", hex: "1f37a" },
-      { char: "🍷", hex: "1f377" }, { char: "☕", hex: "2615" }, { char: "🧉", hex: "1f9c9" }
+      { char: "Sushi", hex: "1f363" }, { char: "🍦", hex: "1f366" }, { char: "🍰", hex: "1f370" },
+      { char: "Donut", hex: "1f369" }, { char: "🍿", hex: "1f37f" }, { char: "Beer", hex: "1f37a" },
+      { char: "Wine", hex: "1f377" }, { char: "Coffee", hex: "2615" }, { char: "Mate", hex: "1f9c9" },
+      { char: "🥐", hex: "1f950" }, { char: "🥨", hex: "1f968" }, { char: "🥓", hex: "1f953" },
+      { char: "🧀", hex: "1f9c0" }, { char: "🥚", hex: "1f95a" }, { char: "🍭", hex: "1f36d" }
     ]
   },
   { 
@@ -77,7 +79,9 @@ const EMOJI_CATEGORIES = [
       { char: "🎯", hex: "1f3af" }, { char: "🎲", hex: "1f3b2" }, { char: "🎸", hex: "1f3b8" },
       { char: "🎨", hex: "1f3a8" }, { char: "🎬", hex: "1f3ac" }, { char: "🎤", hex: "1f3a4" },
       { char: "🏆", hex: "1f3c6" }, { char: "🥇", hex: "1f947" }, { char: "🛹", hex: "1f6f9" },
-      { char: "🚲", hex: "1f6b2" }, { char: "🧘‍♂️", hex: "1f9d8-200d-2642-fe0f" }, { char: "🧗‍♂️", hex: "1f9d7-200d-2642-fe0f" }
+      { char: "🚲", hex: "1f6b2" }, { char: "🧘‍♂️", hex: "1f9d8-200d-2642-fe0f" }, { char: "🧗‍♂️", hex: "1f9d7-200d-2642-fe0f" },
+      { char: "🧩", hex: "1f9e9" }, { char: "🎳", hex: "1f3b3" }, { char: "🎷", hex: "1f3b7" },
+      { char: "🎻", hex: "1f3bb" }, { char: "🪁", hex: "1fa81" }, { char: "🎱", hex: "1f3b1" }
     ]
   },
   { 
@@ -89,7 +93,9 @@ const EMOJI_CATEGORIES = [
       { char: "✈️", hex: "2708" }, { char: "🚁", hex: "1f681" }, { char: "🛸", hex: "1f6f8" },
       { char: "🌋", hex: "1f30b" }, { char: "🏝️", hex: "1f3dd" }, { char: "🏜️", hex: "1f3dc" },
       { char: "🗼", hex: "1f5fc" }, { char: "🏰", hex: "1f3f0" }, { char: "🌍", hex: "1f30d" },
-      { char: "🌙", hex: "1f319" }, { char: "⭐", hex: "2b50" }, { char: "🌈", hex: "1f308" }
+      { char: "🌙", hex: "1f319" }, { char: "⭐", hex: "2b50" }, { char: "🌈", hex: "1f308" },
+      { char: "⚓", hex: "2693" }, { char: "🗿", hex: "1f5ff" }, { char: "🎡", hex: "1f3a1" },
+      { char: "🗽", hex: "1f5fd" }, { char: "⛩️", hex: "26e9" }, { char: "🏰", hex: "1f3f0" }
     ]
   },
   { 
@@ -101,7 +107,9 @@ const EMOJI_CATEGORIES = [
       { char: "🛡️", hex: "1f6e1" }, { char: "⚔️", hex: "2694" }, { char: "🗝️", hex: "1f5dd" },
       { char: "💊", hex: "1f48a" }, { char: "🧪", hex: "1f9ea" }, { char: "🧱", hex: "1f9f1" },
       { char: "🎈", hex: "1f388" }, { char: "🎁", hex: "1f381" }, { char: "✉️", hex: "2709" },
-      { char: "💵", hex: "1f4b5" }, { char: "💳", hex: "1f4b3" }, { char: "🕯️", hex: "1f56f" }
+      { char: "💵", hex: "1f4b5" }, { char: "💳", hex: "1f4b3" }, { char: "🕯️", hex: "1f56f" },
+      { char: "🧨", hex: "1f9e8" }, { char: "🪩", hex: "1faa9" }, { char: "🏺", hex: "1f3fa" },
+      { char: "🔮", hex: "1f52e" }, { char: "📜", hex: "1f4dc" }, { char: "🪬", hex: "1faac" }
     ]
   },
   { 
@@ -113,10 +121,43 @@ const EMOJI_CATEGORIES = [
       { char: "🖤", hex: "1f5a4" }, { char: "💔", hex: "1f494" }, { char: "❣️", hex: "2763" },
       { char: "✨", hex: "2728" }, { char: "⚡", hex: "26a1" }, { char: "❄️", hex: "2744" },
       { char: "⚛️", hex: "269b" }, { char: "♾️", hex: "267e" }, { char: "☯️", hex: "262f" },
-      { char: "🔱", hex: "1f531" }, { char: "✅", hex: "2705" }, { char: "❌", hex: "274c" }
+      { char: "🔱", hex: "1f531" }, { char: "✅", hex: "2705" }, { char: "❌", hex: "274c" },
+      { char: "🧿", hex: "1f9ff" }, { char: "🔔", hex: "1f514" }, { char: "🔞", hex: "1f51e" },
+      { char: "♻️", hex: "267b" }, { char: "🔱", hex: "1f531" }, { char: "☣️", hex: "2623" }
     ]
   }
 ];
+
+function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, onClick: (char: string) => void }) {
+  const [stage, setStage] = useState<'animated' | 'static' | 'text'>('animated');
+
+  const getUrl = () => {
+    const ext = stage === 'animated' ? 'gif' : 'webp';
+    return `https://fonts.gstatic.com/s/e/notoemoji/latest/${hex}/512.${ext}`;
+  };
+
+  return (
+    <button
+      onPointerDown={(e) => e.preventDefault()}
+      onClick={() => { haptic.light(); onClick(emoji); }}
+      className="flex items-center justify-center aspect-square rounded-[1.5rem] bg-primary/5 hover:bg-primary/10 transition-all p-2 relative group"
+    >
+      {stage === 'text' ? (
+        <span className="text-2xl">{emoji}</span>
+      ) : (
+        <img 
+          src={getUrl()} 
+          alt={emoji} 
+          className="w-full h-full object-contain transition-transform group-hover:scale-110" 
+          onError={() => {
+            if (stage === 'animated') setStage('static');
+            else if (stage === 'static') setStage('text');
+          }}
+        />
+      )}
+    </button>
+  );
+}
 
 export function CustomKeyboard() {
   const [activeInput, setActiveInput] = useState<HTMLInputElement | HTMLTextAreaElement | null>(null);
@@ -234,8 +275,6 @@ export function CustomKeyboard() {
     ["abc", "emoji-switch", "space", "enter"]
   ];
 
-  const getEmojiUrl = (hex: string) => `https://fonts.gstatic.com/s/e/notoemoji/latest/${hex}/512.gif`;
-
   return (
     <AnimatePresence>
       {isVisible && (
@@ -283,14 +322,12 @@ export function CustomKeyboard() {
                   </div>
                   <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-6 gap-3 p-1">
                     {EMOJI_CATEGORIES[emojiCategory].items.map((emoji, idx) => (
-                      <button
-                        key={idx}
-                        onPointerDown={(e) => e.preventDefault()}
-                        onClick={() => handleKeyPress(emoji.char)}
-                        className="flex items-center justify-center aspect-square rounded-[1.5rem] bg-primary/5 hover:bg-primary/10 transition-all p-2"
-                      >
-                        <img src={getEmojiUrl(emoji.hex)} alt={emoji.char} className="w-full h-full object-contain" />
-                      </button>
+                      <KeyboardEmoji 
+                        key={idx} 
+                        emoji={emoji.char} 
+                        hex={emoji.hex} 
+                        onClick={(char) => handleKeyPress(char)} 
+                      />
                     ))}
                   </div>
                   <div className="flex gap-2 mt-4 h-12">
