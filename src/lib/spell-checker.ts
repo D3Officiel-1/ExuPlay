@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Oracle de l'Orthographe v2.0.
  * Bibliothèque logique pour la correction et la suggestion de mots utilisant cmdk et algolia principles.

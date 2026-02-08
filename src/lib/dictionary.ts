@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Lexique de l'Éveil v3.0.
  * Bibliothèque exhaustive de mots pour le moteur de suggestions et d'orthographe.

@@ -300,12 +300,20 @@ export default function HomePage() {
             >
               <div className="flex items-center gap-4">
                 <GlobalActivityTicker />
-                <Button 
-                  onClick={() => { haptic.medium(); router.push("/penalties"); }}
-                  className="h-10 w-10 rounded-full bg-primary/5 hover:bg-primary/10 border border-primary/5 text-lg p-0 flex items-center justify-center shadow-lg"
-                >
-                  ⚽
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={() => { haptic.medium(); router.push("/penalties"); }}
+                    className="h-10 w-10 rounded-full bg-primary/5 hover:bg-primary/10 border border-primary/5 text-lg p-0 flex items-center justify-center shadow-lg"
+                  >
+                    ⚽
+                  </Button>
+                  <Button 
+                    onClick={() => { haptic.medium(); router.push("/arcade"); }}
+                    className="h-10 w-10 rounded-full bg-primary/5 hover:bg-primary/10 border border-primary/5 text-lg p-0 flex items-center justify-center shadow-lg"
+                  >
+                    🏎️
+                  </Button>
+                </div>
               </div>
               <CommunityGoalProgress appStatus={appStatus} />
             </motion.div>

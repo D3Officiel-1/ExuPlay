@@ -1,3 +1,4 @@
+
 "use client";
 
 import "./globals.css";
@@ -197,7 +198,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const userDocRef = useMemo(() => (db && user?.uid) ? doc(db, "users", user.uid) : null, [db, user?.uid]);
 
   const { data: profile } = useDoc(userDocRef);
-  const { data: appStatus } = useDoc(appStatusRef);
+  const { data: appStatus } = useDoc(appConfigRef);
 
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => e.preventDefault();
@@ -287,8 +288,8 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div>;
   }
 
-  const excludedNavPaths = ["/", "/login", "/autoriser", "/offline", "/transfert", "/duels", "/_not-found"];
-  const excludedBottomNavPaths = ["/", "/login", "/autoriser", "/offline", "/transfert", "/echange", "/duels", "/_not-found"];
+  const excludedNavPaths = ["/", "/login", "/autoriser", "/offline", "/transfert", "/duels", "/arcade", "/_not-found"];
+  const excludedBottomNavPaths = ["/", "/login", "/autoriser", "/offline", "/transfert", "/echange", "/duels", "/arcade", "/_not-found"];
 
   const isPathExcluded = (path: string, exclusions: string[]) => exclusions.some(p => p === "/" ? path === "/" : path.startsWith(p));
 

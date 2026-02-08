@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
@@ -20,7 +21,6 @@ import {
   RAW_FLAGS
 } from "@/lib/emoji-library";
 import { getSmartSuggestions } from "@/lib/spell-checker";
-import { Command } from "cmdk";
 
 type KeyboardLayout = "alpha" | "numeric" | "emoji";
 
@@ -243,20 +243,20 @@ export function CustomKeyboard() {
           transition={{ type: "spring", damping: 30, stiffness: 250 }}
           className="fixed bottom-0 left-0 right-0 z-[10002] px-2 pb-safe-area-inset-bottom pointer-events-none"
         >
-          <div className="flex flex-col items-center mb-2">
+          <div className="flex flex-col items-center mb-1">
             <button 
               onPointerDown={(e) => e.preventDefault()}
               onClick={() => { haptic.medium(); activeInput?.blur(); setIsVisible(false); }}
-              className="h-8 w-16 bg-card/40 backdrop-blur-3xl rounded-full border border-primary/5 flex items-center justify-center shadow-lg pointer-events-auto"
+              className="h-6 w-12 bg-card/40 backdrop-blur-3xl rounded-full border border-primary/5 flex items-center justify-center shadow-lg pointer-events-auto"
             >
-              <ChevronDown className="h-4 w-4 opacity-40" />
+              <ChevronDown className="h-3 w-3 opacity-40" />
             </button>
           </div>
 
-          <div className="max-w-md mx-auto bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden h-[360px] flex flex-col">
+          <div className="max-w-md mx-auto bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden h-[340px] flex flex-col">
             
-            {/* Barre de Suggestions (Concept cmdk & Algolia) */}
-            <div className="h-12 mb-2 flex items-center justify-center gap-2 overflow-hidden px-2 shrink-0 border-b border-primary/5">
+            {/* Barre de Suggestions Ultra-Fine */}
+            <div className="h-10 mb-1 flex items-center justify-center gap-2 overflow-hidden px-2 shrink-0 border-b border-primary/5">
               <AnimatePresence mode="popLayout">
                 {suggestions.map((suggestion) => (
                   <motion.button
@@ -266,16 +266,16 @@ export function CustomKeyboard() {
                     exit={{ opacity: 0, y: -10, scale: 0.9 }}
                     onPointerDown={(e) => e.preventDefault()}
                     onClick={() => applySuggestion(suggestion)}
-                    className="px-4 py-2 rounded-full bg-primary/5 border border-primary/10 text-[11px] font-black uppercase tracking-wider text-primary shadow-sm hover:bg-primary/10 transition-colors flex items-center gap-2"
+                    className="px-3 py-1.5 rounded-full bg-primary/5 border border-primary/10 text-[10px] font-black uppercase tracking-wider text-primary shadow-sm hover:bg-primary/10 transition-colors flex items-center gap-1.5"
                   >
-                    <Wand2 className="h-3 w-3 opacity-40" />
+                    <Wand2 className="h-2.5 w-2.5 opacity-40" />
                     {suggestion}
                   </motion.button>
                 ))}
                 {suggestions.length === 0 && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.1 }} className="flex items-center gap-2">
-                    <Sparkles className="h-3 w-3" />
-                    <span className="text-[8px] font-black uppercase tracking-[0.3em]">Lumière Prédictive</span>
+                    <Sparkles className="h-2.5 w-2.5" />
+                    <span className="text-[7px] font-black uppercase tracking-[0.3em]">Précognition</span>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -291,8 +291,8 @@ export function CustomKeyboard() {
                     exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
                     className="flex flex-col h-full"
                   >
-                    {/* Barre de Catégories Ultra-Fine (8 Colonnes Fixes) */}
-                    <div className="relative mb-3 h-12 shrink-0">
+                    {/* Barre de Catégories Octogonale */}
+                    <div className="relative mb-2 h-10 shrink-0">
                       <div className="grid grid-cols-8 gap-1 h-full p-1 relative z-10">
                         {categories.map((cat, idx) => (
                           <motion.button
@@ -305,7 +305,7 @@ export function CustomKeyboard() {
                               emojiCategory === idx ? "text-primary-foreground" : "text-primary/30"
                             )}
                           >
-                            <cat.icon className="h-4 w-4 relative z-20" />
+                            <cat.icon className="h-3.5 w-3.5 relative z-20" />
                             {emojiCategory === idx && (
                               <motion.div
                                 layoutId="active-cat-pill"
@@ -331,11 +331,11 @@ export function CustomKeyboard() {
                       ))}
                     </div>
 
-                    <div className="flex gap-2 mt-3 h-14 shrink-0">
+                    <div className="flex gap-2 mt-2 h-12 shrink-0">
                       <button 
                         onPointerDown={(e) => e.preventDefault()} 
                         onClick={() => { haptic.medium(); setLayout("alpha"); }} 
-                        className="flex-[2] bg-primary/10 text-primary font-black text-[10px] uppercase rounded-2xl border border-primary/5"
+                        className="flex-[2] bg-primary/10 text-primary font-black text-[9px] uppercase rounded-2xl border border-primary/5"
                       >
                         abc
                       </button>
@@ -344,7 +344,7 @@ export function CustomKeyboard() {
                         onClick={() => handleKeyPress("space")} 
                         className="flex-[4] bg-card/40 border border-primary/10 rounded-2xl flex items-center justify-center shadow-inner"
                       >
-                        <div className="w-16 h-1 bg-primary/20 rounded-full" />
+                        <div className="w-12 h-1 bg-primary/20 rounded-full" />
                       </button>
                       <button 
                         onPointerDown={(e) => { e.preventDefault(); startBackspace(); }} 
@@ -352,7 +352,7 @@ export function CustomKeyboard() {
                         onPointerLeave={stopBackspace} 
                         className="flex-[2] bg-primary/5 text-primary/60 rounded-2xl flex items-center justify-center border border-primary/5"
                       >
-                        <Delete className="h-5 w-5" />
+                        <Delete className="h-4 w-4" />
                       </button>
                     </div>
                   </motion.div>
@@ -362,10 +362,10 @@ export function CustomKeyboard() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
-                    className="flex flex-col gap-2 h-full justify-end pb-2"
+                    className="flex flex-col gap-1.5 h-full justify-end pb-1"
                   >
                     {(layout === "alpha" ? ALPHA_KEYS : NUMERIC_KEYS).map((row, i) => (
-                      <div key={i} className="flex justify-center gap-1.5 h-12">
+                      <div key={i} className="flex justify-center gap-1 h-11">
                         {row.map((key) => {
                           const isSpecial = ["shift", "backspace", "enter", "?123", "abc", "space", "emoji-switch"].includes(key);
                           return (
@@ -381,7 +381,7 @@ export function CustomKeyboard() {
                               onPointerLeave={() => { if (key === "backspace") stopBackspace(); }}
                               className={cn(
                                 "relative flex items-center justify-center rounded-xl font-bold transition-all select-none",
-                                isSpecial ? "bg-primary/5 text-primary/60 text-[10px] uppercase tracking-widest px-3" : "bg-card/40 border border-primary/5 text-lg flex-1 shadow-sm",
+                                isSpecial ? "bg-primary/5 text-primary/60 text-[9px] uppercase tracking-widest px-2" : "bg-card/40 border border-primary/5 text-base flex-1 shadow-sm",
                                 key === "space" && "flex-[4]",
                                 key === "enter" && "flex-[2] bg-primary text-primary-foreground shadow-xl",
                                 key === "shift" && isShift && "bg-primary text-primary-foreground shadow-[0_0_20px_rgba(var(--primary-rgb),0.4)]"
@@ -389,12 +389,12 @@ export function CustomKeyboard() {
                             >
                               {key === "shift" ? (
                                 <div className="flex flex-col items-center justify-center gap-0.5">
-                                  <motion.div animate={{ y: isShift ? -1 : 0, scale: isShift ? 1.15 : 1 }}><ArrowUp className={cn("h-5 w-5", isShift ? "stroke-[3px]" : "stroke-2")} /></motion.div>
-                                  {isShift && <motion.div initial={{ width: 0 }} animate={{ width: 12 }} className="h-0.5 bg-current rounded-full" />}
+                                  <motion.div animate={{ y: isShift ? -1 : 0, scale: isShift ? 1.1 : 1 }}><ArrowUp className={cn("h-4 w-4", isShift ? "stroke-[3px]" : "stroke-2")} /></motion.div>
+                                  {isShift && <motion.div initial={{ width: 0 }} animate={{ width: 10 }} className="h-0.5 bg-current rounded-full" />}
                                 </div>
-                              ) : key === "backspace" ? <Delete className="h-5 w-5" /> : key === "enter" ? <Check className="h-5 w-5" /> : key === "emoji-switch" ? (
-                                <Smile className="h-5 w-5" />
-                              ) : key === "space" ? <div className="w-16 h-1 bg-current opacity-20 rounded-full" /> : (layout === "alpha" && isShift ? key.toUpperCase() : key)}
+                              ) : key === "backspace" ? <Delete className="h-4 w-4" /> : key === "enter" ? <Check className="h-4 w-4" /> : key === "emoji-switch" ? (
+                                <Smile className="h-4 w-4" />
+                              ) : key === "space" ? <div className="w-12 h-1 bg-current opacity-20 rounded-full" /> : (layout === "alpha" && isShift ? key.toUpperCase() : key)}
                             </motion.button>
                           );
                         })}
