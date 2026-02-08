@@ -50,6 +50,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { haptic } from "@/lib/haptics";
+import { EmojiOracle } from "@/components/EmojiOracle";
 
 export default function ClassementPage() {
   const db = useFirestore();
@@ -490,7 +491,7 @@ export default function ClassementPage() {
                     </div>
                   </div>
                   <div className="text-center">
-                    <p className="text-[9px] font-black uppercase truncate w-24">@{u.username}</p>
+                    <p className="text-[9px] font-black uppercase truncate w-24">@<EmojiOracle text={u.username} /></p>
                     <p className="text-[10px] font-bold opacity-40">{u.totalPoints?.toLocaleString()} PTS</p>
                   </div>
                 </motion.div>
@@ -548,7 +549,7 @@ export default function ClassementPage() {
                     <ProfileAvatar imageUrl={u.profileImage} points={u.totalPoints} size="sm" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="font-black text-sm truncate uppercase tracking-tight">@{u.username}</p>
+                        <p className="font-black text-sm truncate uppercase tracking-tight">@<EmojiOracle text={u.username} /></p>
                         {!isSelected && <Shield className={cn("h-2.5 w-2.5", title.color)} />}
                       </div>
                       <div className="flex items-center gap-1.5">
@@ -607,7 +608,7 @@ export default function ClassementPage() {
               <div className="p-10 space-y-8 relative z-10 bg-background/60 backdrop-blur-3xl border-t border-white/5">
                 <div className="text-center space-y-2">
                   <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-40">Oracle de la Vision</p>
-                  <h2 className="text-4xl font-black italic tracking-tighter uppercase">@{selectedUserForVision.username}</h2>
+                  <h2 className="text-4xl font-black italic tracking-tighter uppercase">@<EmojiOracle text={selectedUserForVision.username} /></h2>
                   <p className="text-[9px] font-medium opacity-40 italic">"{getHonorTitle(selectedUserForVision.totalPoints || 0).description}"</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">

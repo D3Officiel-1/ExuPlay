@@ -6,19 +6,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Delete, ArrowUp, Check, ChevronDown, Smile, Dog, Pizza, Bike, Plane, Lightbulb, Heart, Flag, Sparkles } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
+import { EmojiOracle } from "@/components/EmojiOracle";
 
 /**
- * @fileOverview Oracle du Clavier 3D Animé v5.0.
- * Une interface de saisie révolutionnaire avec emojis 3D animés.
- * Les visuels sont issus de la bibliothèque Noto Animated Emojis (Google).
+ * @fileOverview Oracle du Clavier 3D Animé v5.5.
+ * Une interface de saisie révolutionnaire avec emojis 3D animés et barre de résonance.
  */
 
 type KeyboardLayout = "alpha" | "numeric" | "emoji";
-
-interface EmojiItem {
-  char: string;
-  hex: string;
-}
 
 const EMOJI_CATEGORIES = [
   { 
@@ -101,6 +96,7 @@ export function CustomKeyboard() {
   const [isShift, setIsShift] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [emojiCategory, setEmojiCategory] = useState(0);
+  const [currentText, setCurrentText] = useState("");
   
   const backspaceIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const backspaceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -112,6 +108,7 @@ export function CustomKeyboard() {
         if (window.innerWidth < 768) {
           target.setAttribute("inputmode", "none");
           setActiveInput(target);
+          setCurrentText(target.value);
           setIsVisible(true);
           setLayout(target.type === "tel" || target.type === "number" || target.getAttribute("data-layout") === "numeric" ? "numeric" : "alpha");
         }
@@ -127,13 +124,22 @@ export function CustomKeyboard() {
       }, 150);
     };
 
+    const handleInput = (e: Event) => {
+      const target = e.target as HTMLInputElement;
+      if (target === activeInput) {
+        setCurrentText(target.value);
+      }
+    };
+
     document.addEventListener("focusin", handleFocus);
     document.addEventListener("focusout", handleBlur);
+    document.addEventListener("input", handleInput);
     return () => {
       document.removeEventListener("focusin", handleFocus);
       document.removeEventListener("focusout", handleBlur);
+      document.removeEventListener("input", handleInput);
     };
-  }, []);
+  }, [activeInput]);
 
   const handleKeyPress = useCallback((key: string) => {
     if (!activeInput) return;
@@ -157,11 +163,11 @@ export function CustomKeyboard() {
       activeInput.blur(); setIsVisible(false); return;
     } else if (key === "shift") {
       setIsShift(!isShift); return;
-    } else if (key === "layout-switch") {
+    } else if (key === "layout-switch" || key === "?123") {
       setLayout(layout === "alpha" ? "numeric" : "alpha"); return;
     } else if (key === "emoji-switch") {
       setLayout("emoji"); return;
-    } else if (key === "abc-switch") {
+    } else if (key === "abc-switch" || key === "abc") {
       setLayout("alpha"); return;
     } else if (key === "space") {
       newValue = value.substring(0, start) + " " + value.substring(end);
@@ -180,6 +186,7 @@ export function CustomKeyboard() {
     activeInput.setSelectionRange(newSelectionStart, newSelectionStart);
     activeInput.dispatchEvent(new Event("input", { bubbles: true }));
     activeInput.dispatchEvent(new Event("change", { bubbles: true }));
+    setCurrentText(newValue);
   }, [activeInput, isShift, layout]);
 
   const stopBackspace = useCallback(() => {
@@ -208,7 +215,7 @@ export function CustomKeyboard() {
     ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
     ["@", "#", "&", "_", "-", "(", ")", "/", ":", ";"],
     ["shift", "+", "*", "\"", "'", "!", "?", "=", "backspace"],
-    ["abc-switch", "emoji-switch", "space", "enter"]
+    ["abc", "emoji-switch", "space", "enter"]
   ];
 
   const getEmojiUrl = (hex: string) => `https://fonts.gstatic.com/s/e/notoemoji/latest/${hex}/512.gif`;
@@ -223,7 +230,23 @@ export function CustomKeyboard() {
           transition={{ type: "spring", damping: 25, stiffness: 200 }}
           className="fixed bottom-0 left-0 right-0 z-[10002] px-2 pb-safe-area-inset-bottom pointer-events-none"
         >
-          <div className="flex justify-center mb-2">
+          {/* Barre de Résonance (Aperçu animé) */}
+          <div className="flex flex-col items-center mb-2">
+            <AnimatePresence mode="wait">
+              {currentText && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="px-6 py-3 bg-card/60 backdrop-blur-3xl rounded-2xl border border-primary/10 shadow-2xl mb-2 max-w-[85vw] overflow-hidden whitespace-nowrap pointer-events-auto"
+                >
+                  <p className="text-sm font-bold text-center">
+                    <EmojiOracle text={currentText} />
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            
             <button 
               onPointerDown={(e) => e.preventDefault()}
               onClick={() => { haptic.medium(); activeInput?.blur(); setIsVisible(false); }}
@@ -322,7 +345,7 @@ export function CustomKeyboard() {
                   {(layout === "alpha" ? ALPHA_KEYS : NUMERIC_KEYS).map((row, i) => (
                     <div key={i} className="flex justify-center gap-1.5 h-12">
                       {row.map((key) => {
-                        const isSpecial = ["shift", "backspace", "enter", "?123", "abc-switch", "space", "emoji-switch"].includes(key);
+                        const isSpecial = ["shift", "backspace", "enter", "?123", "abc", "space", "emoji-switch"].includes(key);
                         return (
                           <motion.button
                             key={key}

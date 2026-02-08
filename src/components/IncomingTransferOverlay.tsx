@@ -9,11 +9,11 @@ import { Zap, Sparkles, Ghost, User, CheckCircle2 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { EmojiOracle } from "@/components/EmojiOracle";
 
 /**
  * @fileOverview Oracle de Transmission.
  * Overlay global cinématique s'activant à la réception d'un don de lumière.
- * Adapté pour ne jamais déborder verticalement.
  */
 
 export function IncomingTransferOverlay() {
@@ -120,7 +120,7 @@ export function IncomingTransferOverlay() {
                     {isAnonymous ? "Don Mystérieux" : "Résonance Établie"}
                   </p>
                   <h2 className="text-3xl font-black tracking-tight italic">
-                    {isAnonymous ? "Lumière du Voile" : `@${activeTransfer.fromName}`}
+                    {isAnonymous ? "Lumière du Voile" : <EmojiOracle text={`@${activeTransfer.fromName}`} />}
                   </h2>
                 </div>
 

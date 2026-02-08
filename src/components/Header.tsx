@@ -14,6 +14,7 @@ import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { getHonorTitle } from "@/lib/titles";
 import { haptic } from "@/lib/haptics";
 import { Button } from "@/components/ui/button";
+import { EmojiOracle } from "@/components/EmojiOracle";
 
 export function Header() {
   const { user } = useUser();
@@ -58,7 +59,6 @@ export function Header() {
 
   const hasAnnouncement = appStatus?.globalAnnouncement && appStatus.globalAnnouncement.trim() !== "";
 
-  // Oracle du Verrouillage de Scroll pour la Vision de Prospérité
   useEffect(() => {
     if (showPointsVisionOverlay) {
       document.body.style.overflow = "hidden";
@@ -133,7 +133,7 @@ export function Header() {
                   <Megaphone className="h-3 w-3 text-primary-foreground" />
                 </motion.div>
                 <p className="text-[9px] font-black text-primary-foreground uppercase tracking-[0.2em] text-center leading-none">
-                  {appStatus.globalAnnouncement}
+                  <EmojiOracle text={appStatus.globalAnnouncement} />
                 </p>
               </div>
             </motion.div>
@@ -174,7 +174,7 @@ export function Header() {
                       )}
                       {activeToast.description && (
                         <span className="text-[9px] font-medium opacity-60 line-clamp-1 leading-tight">
-                          {activeToast.description}
+                          <EmojiOracle text={activeToast.description as string} />
                         </span>
                       )}
                     </div>
@@ -257,7 +257,9 @@ export function Header() {
                       <div className="flex items-center gap-3 bg-card/60 backdrop-blur-3xl px-5 py-2 rounded-2xl border border-primary/5 shadow-2xl pointer-events-auto">
                         <ProfileAvatar imageUrl={profile?.profileImage} points={totalPoints} size="sm" />
                         <div className="flex flex-col">
-                          <span className="text-sm font-black tracking-tight">@{profile?.username || "Esprit"}</span>
+                          <span className="text-sm font-black tracking-tight">
+                            @<EmojiOracle text={profile?.username || "Esprit"} />
+                          </span>
                           <div className="flex items-center gap-1">
                             <Shield className={cn("h-2 w-2", currentTitle.color)} />
                             <span className={cn("text-[7px] font-black uppercase tracking-[0.2em] opacity-60", currentTitle.color)}>
@@ -298,7 +300,6 @@ export function Header() {
             className="fixed inset-0 z-[10000] bg-background/90 backdrop-blur-[40px] overflow-y-auto"
             onClick={() => setShowPointsVisionOverlay(false)}
           >
-            {/* Background éthéré fixe */}
             <div className="fixed inset-0 pointer-events-none opacity-20 overflow-hidden">
               <motion.div 
                 animate={{ scale: [1, 1.5, 1], opacity: [0.1, 0.3, 0.1] }}
@@ -378,7 +379,6 @@ export function Header() {
                 </div>
               </motion.div>
 
-              {/* Indicateur de bas de page interne au scroll */}
               <div className="py-8 flex items-center gap-4 opacity-20">
                 <div className="h-px w-12 bg-primary/20" />
                 <Sparkles className="h-4 w-4" />

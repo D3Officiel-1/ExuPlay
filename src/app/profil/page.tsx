@@ -52,6 +52,7 @@ import { ProfilePhotoDialog } from "@/components/ProfilePhotoDialog";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { getHonorTitle, THEMES } from "@/lib/titles";
 import { cn } from "@/lib/utils";
+import { EmojiOracle } from "@/components/EmojiOracle";
 
 export default function ProfilPage() {
   const { user } = useUser();
@@ -206,9 +207,14 @@ export default function ProfilPage() {
           <div className="space-y-3 flex flex-col items-center">
             <AnimatePresence mode="wait">
               {!isEditingName ? (
-                <motion.div key="display-name" className="group flex items-center gap-3 cursor-pointer" onClick={() => { setIsEditingName(true); haptic.light(); }}>
-                  <h1 className="text-3xl font-black tracking-tight uppercase italic">@{profile?.username || "Anonyme"}</h1>
-                  <Edit2 className="h-4 w-4 opacity-40" />
+                <motion.div key="display-name" className="group flex flex-col items-center gap-1 cursor-pointer" onClick={() => { setIsEditingName(true); haptic.light(); }}>
+                  <h1 className="text-3xl font-black tracking-tight uppercase italic flex items-center gap-2">
+                    @<EmojiOracle text={profile?.username || "Anonyme"} />
+                  </h1>
+                  <div className="flex items-center gap-2 opacity-20 group-hover:opacity-40 transition-opacity">
+                    <Edit2 className="h-3 w-3" />
+                    <span className="text-[8px] font-black uppercase tracking-widest">Éditer l'Essence</span>
+                  </div>
                 </motion.div>
               ) : (
                 <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-3 w-full">
@@ -224,24 +230,27 @@ export default function ProfilPage() {
                       {checkingUsername && <Loader2 className="h-4 w-4 animate-spin opacity-40" />}
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="ghost" onClick={() => setIsEditingName(false)} className="rounded-xl">Annuler</Button>
-                    <Button 
-                      size="sm" 
-                      className="px-6 rounded-xl" 
-                      onClick={async () => { 
-                        if (usernameStatus === 'available' && userDocRef) { 
-                          setIsSavingName(true); 
-                          await updateDoc(userDocRef, { username: editedUsername.trim(), updatedAt: serverTimestamp() }); 
-                          setIsEditingName(false); 
-                          setIsSavingName(false); 
-                          toast({ title: "Identité mise à jour" });
-                        } 
-                      }} 
-                      disabled={usernameStatus !== 'available' || isSavingName}
-                    >
-                      {isSavingName ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enregistrer"}
-                    </Button>
+                  <div className="flex flex-col items-center gap-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Aperçu : @<EmojiOracle text={editedUsername} /></p>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => setIsEditingName(false)} className="rounded-xl">Annuler</Button>
+                      <Button 
+                        size="sm" 
+                        className="px-6 rounded-xl" 
+                        onClick={async () => { 
+                          if (usernameStatus === 'available' && userDocRef) { 
+                            setIsSavingName(true); 
+                            await updateDoc(userDocRef, { username: editedUsername.trim(), updatedAt: serverTimestamp() }); 
+                            setIsEditingName(false); 
+                            setIsSavingName(false); 
+                            toast({ title: "Identité mise à jour" });
+                          } 
+                        }} 
+                        disabled={usernameStatus !== 'available' || isSavingName}
+                      >
+                        {isSavingName ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enregistrer"}
+                      </Button>
+                    </div>
                   </div>
                 </motion.div>
               )}
