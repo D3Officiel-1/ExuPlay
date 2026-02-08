@@ -1,3 +1,4 @@
+
 "use client";
 
 import "./globals.css";
@@ -15,6 +16,7 @@ import { AdminPendingExchangeOverlay } from "@/components/AdminPendingExchangeOv
 import { DuelInvitationListener } from "@/components/DuelInvitationListener";
 import { IncomingTransferOverlay } from "@/components/IncomingTransferOverlay";
 import { RewardQuickView } from "@/components/RewardQuickView";
+import { CustomKeyboard } from "@/components/CustomKeyboard";
 import { doc, getDoc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/Logo";
@@ -28,7 +30,6 @@ import { hexToHsl, hexToRgb, getContrastColor } from "@/lib/colors";
 /**
  * @fileOverview Oracle de la Symbiose Système.
  * Synchronise la couleur de la barre d'état et de navigation du système avec le fond de l'app.
- * Écoute en temps réel les changements de thème, de profil et de navigation.
  */
 function SystemBarSync() {
   const { resolvedTheme } = useTheme();
@@ -41,11 +42,8 @@ function SystemBarSync() {
 
   useEffect(() => {
     const applySync = () => {
-      // On récupère la couleur de fond réelle appliquée au body
-      // Cela permet de supporter les changements via thèmes, profils ou styles injectés
       const computedBg = window.getComputedStyle(document.body).backgroundColor;
       
-      // 1. Mise à jour du Theme Color (Barre de statut & Barre de navigation Android)
       let metaThemeColor = document.querySelector('meta[name="theme-color"]');
       if (!metaThemeColor) {
         metaThemeColor = document.createElement('meta');
@@ -54,7 +52,6 @@ function SystemBarSync() {
       }
       metaThemeColor.setAttribute('content', computedBg);
 
-      // 2. Spécificités iOS pour la barre d'état
       let metaApple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
       if (!metaApple) {
         metaApple = document.createElement('meta');
@@ -64,17 +61,9 @@ function SystemBarSync() {
       metaApple.setAttribute('content', 'default');
     };
 
-    // Exécution immédiate lors du montage ou changement de dépendances
     applySync();
-
-    // Observer pour détecter les changements de style/classe sur le body en temps réel
     const observer = new MutationObserver(applySync);
-    observer.observe(document.body, { 
-      attributes: true, 
-      attributeFilter: ['style', 'class'] 
-    });
-
-    // Sécurité supplémentaire pour les transitions de page et l'injection de styles
+    observer.observe(document.body, { attributes: true, attributeFilter: ['style', 'class'] });
     const timer = setTimeout(applySync, 200);
 
     return () => {
@@ -116,115 +105,61 @@ function ColorInjector() {
 
   const cssVariables = useMemo(() => {
     let styles = "";
-    
-    // Aura Primaire (Injectée dans --primary et dérivées)
     if (profile?.customColor && profile.customColor !== 'default') {
       try {
         const hsl = hexToHsl(profile.customColor);
         const rgb = hexToRgb(profile.customColor);
         const contrast = getContrastColor(profile.customColor);
-        styles += `
-          --primary: ${hsl.hslValue};
-          --primary-rgb: ${rgb};
-          --primary-foreground: ${contrast};
-          --ring: ${hsl.hslValue};
-          --accent: ${hsl.hslValue};
-          --accent-foreground: ${contrast};
-        `;
-      } catch (e) {
-        console.error("Dissonance lors de l'infusion de l'aura:", e);
-      }
+        styles += `--primary: ${hsl.hslValue}; --primary-rgb: ${rgb}; --primary-foreground: ${contrast}; --ring: ${hsl.hslValue}; --accent: ${hsl.hslValue}; --accent-foreground: ${contrast};`;
+      } catch (e) {}
     }
-
-    // Fond du Sanctuaire (Injecté dans --background et dérivées)
     if (profile?.customBgColor && profile.customBgColor !== 'default') {
       try {
         const hsl = hexToHsl(profile.customBgColor);
         const contrast = getContrastColor(profile.customBgColor);
-        styles += `
-          --background: ${hsl.hslValue};
-          --foreground: ${contrast};
-          --card: ${hsl.hslValue};
-          --card-foreground: ${contrast};
-          --popover: ${hsl.hslValue};
-          --popover-foreground: ${contrast};
-          --muted: ${hsl.hslValue};
-          --muted-foreground: ${contrast};
-        `;
-      } catch (e) {
-        console.error("Dissonance lors de l'ancrage du fond:", e);
-      }
+        styles += `--background: ${hsl.hslValue}; --foreground: ${contrast}; --card: ${hsl.hslValue}; --card-foreground: ${contrast}; --popover: ${hsl.hslValue}; --popover-foreground: ${contrast}; --muted: ${hsl.hslValue}; --muted-foreground: ${contrast};`;
+      } catch (e) {}
     }
-
     if (!styles) return "";
-    
-    return `
-      :root, .dark {
-        ${styles}
-      }
-    `;
+    return `:root, .dark { ${styles} }`;
   }, [profile?.customColor, profile?.customBgColor]);
 
   if (!cssVariables) return null;
-
   return <style dangerouslySetInnerHTML={{ __html: cssVariables }} />;
 }
 
 function CommunityFluxPulsar() {
   const { user } = useUser();
   const db = useFirestore();
-
   useEffect(() => {
     if (!user || !db) return;
-
     const pulseFlux = async () => {
       try {
         const appStatusRef = doc(db, "appConfig", "status");
-        await updateDoc(appStatusRef, {
-          communityGoalPoints: increment(1),
-          updatedAt: serverTimestamp()
-        });
+        await updateDoc(appStatusRef, { communityGoalPoints: increment(1), updatedAt: serverTimestamp() });
       } catch (error) {}
     };
-
     const interval = setInterval(pulseFlux, 120000);
     return () => clearInterval(interval);
   }, [user, db]);
-
   return null;
 }
 
 function MaintenanceOverlay({ message }: { message?: string }) {
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="fixed inset-0 z-[1000] bg-background flex flex-col items-center justify-center p-8 text-center"
-    >
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[1000] bg-background flex flex-col items-center justify-center p-8 text-center">
       <div className="absolute inset-0 pointer-events-none opacity-20 overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-primary/10 blur-[120px]" />
       </div>
-
-      <motion.div 
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="space-y-12 max-w-sm"
-      >
-        <div className="flex justify-center">
-          <Logo className="scale-125" />
-        </div>
-        
+      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="space-y-12 max-w-sm">
+        <div className="flex justify-center"><Logo className="scale-125" /></div>
         <div className="space-y-6">
           <div className="mx-auto w-24 h-24 bg-primary/5 rounded-[2.5rem] flex items-center justify-center border border-primary/10 shadow-2xl relative">
             <ShieldAlert className="h-10 w-10 text-primary" />
           </div>
-          
           <div className="space-y-2">
             <h2 className="text-3xl font-black tracking-tight uppercase">Éveil en Pause</h2>
-            <p className="text-sm font-medium opacity-40 leading-relaxed px-4">
-              {message || "Nous harmonisons l'éther numérique. Revenez bientôt."}
-            </p>
+            <p className="text-sm font-medium opacity-40 leading-relaxed px-4">{message || "Nous harmonisons l'éther numérique. Revenez bientôt."}</p>
           </div>
         </div>
       </motion.div>
@@ -234,12 +169,7 @@ function MaintenanceOverlay({ message }: { message?: string }) {
 
 function OfflineOverlay() {
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0, filter: "blur(20px)" }}
-      className="fixed inset-0 z-[1100] bg-background flex flex-col items-center justify-center p-8 text-center"
-    >
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, filter: "blur(20px)" }} className="fixed inset-0 z-[1100] bg-background flex flex-col items-center justify-center p-8 text-center">
       <div className="space-y-12 max-w-sm z-10">
         <div className="flex justify-center"><Logo className="scale-110" /></div>
         <div className="space-y-8">
@@ -277,6 +207,24 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('contextmenu', handleContextMenu);
   }, []);
 
+  // Force l'inputmode='none' sur tous les inputs pour empêcher le clavier système
+  useEffect(() => {
+    const disableSystemKeyboard = () => {
+      const inputs = document.querySelectorAll('input, textarea');
+      inputs.forEach(input => {
+        if (input.getAttribute('inputmode') !== 'none') {
+          input.setAttribute('inputmode', 'none');
+        }
+      });
+    };
+    
+    const observer = new MutationObserver(disableSystemKeyboard);
+    observer.observe(document.body, { childList: true, subtree: true });
+    disableSystemKeyboard();
+    
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     if (isAuthLoading) return;
     const publicPaths = ["/", "/login", "/offline", "/autoriser"];
@@ -302,7 +250,6 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const isMaintenanceActive = appStatus?.maintenanceMode === true;
   const isStandardUser = profile?.role === 'user';
   const showMaintenance = isMaintenanceActive && isStandardUser;
-  
   const showOffline = isOffline && !["/", "/login", "/autoriser", "/offline"].includes(pathname);
 
   if (isAuthLoading && !["/", "/login", "/autoriser", "/offline"].includes(pathname)) {
@@ -312,13 +259,10 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const excludedNavPaths = ["/", "/login", "/autoriser", "/offline", "/transfert", "/duels", "/_not-found"];
   const excludedBottomNavPaths = ["/", "/login", "/autoriser", "/offline", "/transfert", "/echange", "/duels", "/_not-found"];
 
-  const isPathExcluded = (path: string, exclusions: string[]) => {
-    return exclusions.some(p => p === "/" ? path === "/" : path.startsWith(p));
-  };
+  const isPathExcluded = (path: string, exclusions: string[]) => exclusions.some(p => p === "/" ? path === "/" : path.startsWith(p));
 
   const showNav = user && !isPathExcluded(pathname, excludedNavPaths);
   const showBottomNav = user && !isPathExcluded(pathname, excludedBottomNavPaths);
-
   const isEcoMode = profile?.reducedMotion === true;
 
   return (
@@ -337,6 +281,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
         <DuelInvitationListener />
         <CommunityFluxPulsar />
         <RewardQuickView />
+        <CustomKeyboard />
         {showNav && <Header />}
         <PageTransition>{children}</PageTransition>
         {showBottomNav && <BottomNav />}

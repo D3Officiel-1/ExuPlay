@@ -54,12 +54,17 @@
 @layer base {
   * {
     @apply border-border;
+    -webkit-tap-highlight-color: transparent;
   }
   body {
     @apply bg-background text-foreground transition-colors duration-300 select-none;
     overscroll-behavior: none;
-    touch-action: pan-x pan-y; /* Empêche le zoom par pincement et double-tap */
-    -webkit-touch-callout: none; /* Désactive le menu contextuel iOS sur appui long */
+    touch-action: pan-x pan-y;
+    -webkit-touch-callout: none;
+  }
+  input, textarea {
+    user-select: text !important;
+    -webkit-user-select: text !important;
   }
 }
 
@@ -75,4 +80,9 @@
 .reduced-motion .animate-spin,
 .reduced-motion .animate-bounce {
   animation: none !important;
+}
+
+/* Adaptation pour le clavier personnalisé */
+.pb-safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
 }
