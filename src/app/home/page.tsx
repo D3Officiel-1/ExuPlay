@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -87,7 +88,7 @@ function CommunityGoalProgress({ appStatus }: { appStatus: any }) {
 
   return (
     <Card className={cn(
-      "border-none bg-card/20 backdrop-blur-3xl rounded-full overflow-hidden w-full max-w-lg mb-10 transition-all duration-700",
+      "border-none bg-card/20 backdrop-blur-3xl rounded-full overflow-hidden w-full max-w-lg mb-4 transition-all duration-700",
       isRoyalActive && "ring-1 ring-yellow-500/30 shadow-[0_0_20px_rgba(234,179,8,0.1)]"
     )}>
       <CardContent className="p-3 px-6 space-y-2">
@@ -288,13 +289,13 @@ export default function HomePage() {
   return (
     <div className={cn("min-h-screen bg-background flex flex-col pb-32 transition-colors duration-1000", isRoyalActive && "bg-yellow-500/[0.02]")}>
       <main className="flex-1 flex flex-col items-center justify-center p-6 pt-24 space-y-6 z-10">
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout">
           {!quizStarted && !quizComplete && (
             <motion.div
               key="flux-stats"
               initial={{ opacity: 0, y: -20, filter: "blur(10px)" }}
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              exit={{ opacity: 0, y: -20, filter: "blur(10px)" }}
+              exit={{ opacity: 0, y: -40, scale: 0.95, filter: "blur(20px)", transition: { duration: 0.4 } }}
               className="w-full flex flex-col items-center space-y-6"
             >
               <div className="flex items-center gap-4">
@@ -311,10 +312,17 @@ export default function HomePage() {
           )}
         </AnimatePresence>
 
-        <div className="w-full max-w-lg relative">
+        <motion.div layout className="w-full max-w-lg relative">
           <AnimatePresence mode="wait">
             {!quizComplete ? (
-              <motion.div key={question?.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
+              <motion.div 
+                key={quizStarted ? question?.id : 'intro'} 
+                initial={{ opacity: 0, y: 20, scale: 0.98, filter: "blur(10px)" }} 
+                animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }} 
+                exit={{ opacity: 0, y: -20, filter: "blur(10px)" }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                className="space-y-8"
+              >
                 {quizStarted && !isAnswered && (
                   <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-4">
                     <div className={cn("flex items-center gap-3 px-6 py-3 backdrop-blur-3xl rounded-2xl border shadow-xl", isRoyalActive ? "bg-yellow-500/10 border-yellow-500/30" : "bg-card/40 border-primary/10")}>
@@ -359,11 +367,11 @@ export default function HomePage() {
                   <Card className={cn("border-none backdrop-blur-3xl shadow-2xl rounded-[3rem] overflow-hidden relative transition-all duration-700", isRoyalActive ? "bg-yellow-500/[0.03] ring-2 ring-yellow-500/20 shadow-yellow-500/10" : "bg-card/40", isPeekingPoints && "opacity-0 scale-95 blur-xl pointer-events-none")}>
                     <CardContent className="p-8 sm:p-12 space-y-12">
                       <div className="relative min-h-[140px] flex items-center justify-center overflow-hidden rounded-[2rem]">
-                        <AnimatePresence>
+                        <AnimatePresence mode="wait">
                           {quizStarted ? (
-                            <motion.p initial={{ opacity: 0, filter: "blur(8px)" }} animate={{ opacity: 1, filter: "blur(0px)" }} className="text-xl sm:text-2xl font-black leading-tight tracking-tight text-center px-4">{question?.question}</motion.p>
+                            <motion.p key="question-text" initial={{ opacity: 0, filter: "blur(8px)" }} animate={{ opacity: 1, filter: "blur(0px)" }} className="text-xl sm:text-2xl font-black leading-tight tracking-tight text-center px-4">{question?.question}</motion.p>
                           ) : (
-                            <motion.div key="mask" exit={{ opacity: 0 }} className="absolute inset-0 z-20 flex items-center justify-center">
+                            <motion.div key="mask" exit={{ opacity: 0, scale: 1.1, filter: "blur(10px)" }} className="absolute inset-0 z-20 flex items-center justify-center">
                               <SpoilerOverlay />
                               <Button 
                                 onClick={handleStartChallenge} 
@@ -430,14 +438,14 @@ export default function HomePage() {
                 </div>
               </motion.div>
             ) : (
-              <div className="text-center space-y-12">
+              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center space-y-12">
                 <div className="relative h-40 w-40 bg-card rounded-[3.5rem] flex items-center justify-center border shadow-2xl mx-auto"><Trophy className="h-20 w-20 text-primary" /></div>
                 <h2 className="text-5xl font-black tracking-tighter">+{score} PTS</h2>
                 <Button onClick={() => setQuizComplete(false)} className="w-full h-20 rounded-3xl font-black text-sm uppercase gap-4 shadow-2xl">Nouveau Cycle</Button>
-              </div>
+              </motion.div>
             )}
           </AnimatePresence>
-        </div>
+        </motion.div>
       </main>
     </div>
   );
