@@ -133,8 +133,8 @@ function CommunityFluxPulsar() {
     if (!user || !db) return;
     const pulseFlux = async () => {
       try {
-        const appStatusRef = doc(db, "appConfig", "status");
-        await updateDoc(appStatusRef, { communityGoalPoints: increment(1), updatedAt: serverTimestamp() });
+        const appConfigRef = doc(db, "appConfig", "status");
+        await updateDoc(appConfigRef, { communityGoalPoints: increment(1), updatedAt: serverTimestamp() });
       } catch (error) {}
     };
     const interval = setInterval(pulseFlux, 120000);

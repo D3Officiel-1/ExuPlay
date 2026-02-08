@@ -286,7 +286,7 @@ export function CustomKeyboard() {
               </div>
             )}
 
-            <div className="flex-1 flex flex-col justify-end">
+            <div className="flex-1 flex flex-col justify-end overflow-hidden">
               <AnimatePresence mode="wait">
                 {layout === "emoji" ? (
                   <motion.div 
@@ -294,7 +294,7 @@ export function CustomKeyboard() {
                     initial={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
                     animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
                     exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
-                    className="flex flex-col h-full"
+                    className="flex flex-col h-full overflow-hidden"
                   >
                     {/* Barre de Catégories Octogonale */}
                     <div className="relative mb-2 h-10 shrink-0">
@@ -324,6 +324,7 @@ export function CustomKeyboard() {
                       <div className="absolute inset-0 bg-primary/5 rounded-2xl border border-primary/5 -z-0" />
                     </div>
                     
+                    {/* Grille Scrollable - Middle */}
                     <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-8 gap-0 p-1 border-t border-primary/5">
                       {categories[emojiCategory].items.map((emoji, idx) => (
                         <div key={`${emojiCategory}-${idx}`} className="w-full">
@@ -336,7 +337,8 @@ export function CustomKeyboard() {
                       ))}
                     </div>
 
-                    <div className="flex gap-2 mt-2 h-12 shrink-0">
+                    {/* Contrôles Fixes - Bottom */}
+                    <div className="flex gap-2 mt-2 h-12 shrink-0 border-t border-primary/5 pt-2">
                       <button 
                         onPointerDown={(e) => e.preventDefault()} 
                         onClick={() => { haptic.medium(); setLayout("alpha"); }} 
