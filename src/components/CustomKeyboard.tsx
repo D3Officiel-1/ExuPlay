@@ -64,9 +64,13 @@ export function CustomKeyboard() {
   const [isVisible, setIsVisible] = useState(false);
   const [emojiCategory, setEmojiCategory] = useState(0);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [keyboardHeight, setKeyboardHeight] = useState(320);
+  const [isResizing, setIsResizing] = useState(false);
   
   const backspaceIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const backspaceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const resizeStartY = useRef<number>(0);
+  const resizeStartHeight = useRef<number>(0);
 
   const categories = useMemo(() => [
     { id: "people", icon: Smile, items: parseEmojiString(RAW_EMOJI_PEOPLE) },
@@ -219,6 +223,41 @@ export function CustomKeyboard() {
     }, 500);
   }, [handleKeyPress, stopBackspace]);
 
+  // LOGIQUE DE REDIMENSIONNEMENT
+  const handleResizeStart = (e: React.PointerEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    resizeStartY.current = e.clientY;
+    resizeStartHeight.current = keyboardHeight;
+    haptic.medium();
+  };
+
+  useEffect(() => {
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!isResizing) return;
+      const deltaY = e.clientY - resizeStartY.current;
+      const newHeight = Math.max(250, Math.min(600, resizeStartHeight.current - deltaY));
+      setKeyboardHeight(newHeight);
+    };
+
+    const handlePointerUp = () => {
+      if (isResizing) {
+        setIsResizing(false);
+        haptic.light();
+      }
+    };
+
+    if (isResizing) {
+      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+    }
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [isResizing]);
+
   const ALPHA_KEYS = [
     ["A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P"],
     ["Q", "S", "D", "F", "G", "H", "J", "K", "L", "M"],
@@ -243,27 +282,30 @@ export function CustomKeyboard() {
           transition={{ type: "spring", damping: 30, stiffness: 250 }}
           className="fixed bottom-0 left-0 right-0 z-[10002] px-2 pb-safe-area-inset-bottom pointer-events-none"
         >
-          {/* Bouton Réduire - Uniquement sur la carte Emoji */}
-          <div className="flex flex-col items-center mb-1 h-6">
+          {/* Poignée de Redimensionnement / Fermeture - Uniquement sur Emoji */}
+          <div className="flex flex-col items-center mb-1 h-8">
             <AnimatePresence>
               {layout === "emoji" && (
                 <motion.button 
                   initial={{ opacity: 0, scale: 0.8, y: 10 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.8, y: 10 }}
-                  onPointerDown={(e) => e.preventDefault()}
-                  onClick={() => { haptic.medium(); activeInput?.blur(); setIsVisible(false); }}
-                  className="h-6 w-12 bg-card/40 backdrop-blur-3xl rounded-full border border-primary/5 flex items-center justify-center shadow-lg pointer-events-auto"
+                  onPointerDown={handleResizeStart}
+                  onClick={() => { if (!isResizing) { activeInput?.blur(); setIsVisible(false); haptic.medium(); } }}
+                  className="h-8 w-16 bg-card/40 backdrop-blur-3xl rounded-full border border-primary/5 flex items-center justify-center shadow-lg pointer-events-auto cursor-ns-resize group active:scale-95 transition-transform"
                 >
-                  <ChevronDown className="h-3 w-3 opacity-40" />
+                  <div className="w-8 h-1 bg-primary/20 rounded-full group-hover:bg-primary/40 transition-colors" />
                 </motion.button>
               )}
             </AnimatePresence>
           </div>
 
-          <div className="max-w-md mx-auto h-[320px] bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden flex flex-col transition-all duration-500">
+          <div 
+            style={{ height: `${keyboardHeight}px` }}
+            className="max-w-md mx-auto bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden flex flex-col transition-all duration-300 ease-out"
+          >
             
-            {/* Barre de Suggestions - Hauteur Augmentée à h-14 - Masquée pour les Emojis */}
+            {/* Barre de Suggestions - Masquée pour les Emojis */}
             {layout !== "emoji" && (
               <div className="h-14 mb-1 flex items-center justify-center gap-3 overflow-hidden px-2 shrink-0 border-b border-primary/5">
                 <AnimatePresence mode="popLayout">
@@ -377,7 +419,7 @@ export function CustomKeyboard() {
                     className="flex flex-col gap-1.5 h-full justify-end pb-1"
                   >
                     {(layout === "alpha" ? ALPHA_KEYS : NUMERIC_KEYS).map((row, i) => (
-                      <div key={i} className="flex justify-center gap-1 h-11">
+                      <div key={i} className="flex justify-center gap-1 h-[12%] min-h-[40px]">
                         {row.map((key) => {
                           const isSpecial = ["shift", "backspace", "enter", "?123", "abc", "space", "emoji-switch"].includes(key);
                           return (
