@@ -17,6 +17,7 @@ import { DuelInvitationListener } from "@/components/DuelInvitationListener";
 import { IncomingTransferOverlay } from "@/components/IncomingTransferOverlay";
 import { RewardQuickView } from "@/components/RewardQuickView";
 import { CustomKeyboard } from "@/components/CustomKeyboard";
+import { TextSelectionMenu } from "@/components/TextSelectionMenu";
 import { doc, getDoc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/Logo";
@@ -292,6 +293,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
         <CommunityFluxPulsar />
         <RewardQuickView />
         {isMobile && <CustomKeyboard />}
+        <TextSelectionMenu />
         {showNav && <Header />}
         <PageTransition>{children}</PageTransition>
         {showBottomNav && <BottomNav />}
