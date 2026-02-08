@@ -43,10 +43,12 @@ export function CustomKeyboard() {
     const handleBlur = (e: FocusEvent) => {
       // On attend un peu pour voir si un autre input prend le focus
       setTimeout(() => {
-        if (document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
+        const active = document.activeElement;
+        if (!active || (active.tagName !== "INPUT" && active.tagName !== "TEXTAREA")) {
+          // On ne ferme pas si on est en train de cliquer sur le clavier (géré par onPointerDown)
           setIsVisible(false);
         }
-      }, 100);
+      }, 150);
     };
 
     document.addEventListener("focusin", handleFocus);
@@ -95,7 +97,6 @@ export function CustomKeyboard() {
     }
 
     // Technique du "Native Setter" pour forcer React à reconnaître le changement
-    // Indispensable pour les composants contrôlés par React
     const prototype = activeInput instanceof HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
     const nativeSetter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
     
@@ -108,7 +109,7 @@ export function CustomKeyboard() {
     // Repositionner le curseur de saisie
     activeInput.setSelectionRange(newSelectionStart, newSelectionStart);
 
-    // Déclencher les événements système pour notifier l'application du changement
+    // Déclencher les événements système
     activeInput.dispatchEvent(new Event("input", { bubbles: true }));
     activeInput.dispatchEvent(new Event("change", { bubbles: true }));
   }, [activeInput, isShift, layout]);
@@ -140,9 +141,9 @@ export function CustomKeyboard() {
           transition={{ type: "spring", damping: 25, stiffness: 200 }}
           className="fixed bottom-0 left-0 right-0 z-[10002] px-2 pb-safe-area-inset-bottom pointer-events-none"
         >
-          {/* Header du clavier pour fermeture rapide */}
           <div className="flex justify-center mb-2">
             <button 
+              onPointerDown={(e) => e.preventDefault()}
               onClick={() => { haptic.medium(); activeInput?.blur(); setIsVisible(false); }}
               className="h-8 w-16 bg-card/40 backdrop-blur-3xl rounded-full border border-primary/5 flex items-center justify-center shadow-lg pointer-events-auto"
             >
@@ -160,7 +161,9 @@ export function CustomKeyboard() {
                     return (
                       <motion.button
                         key={key}
+                        tabIndex={-1}
                         whileTap={{ scale: 0.92, backgroundColor: "rgba(var(--primary-rgb), 0.1)" }}
+                        onPointerDown={(e) => e.preventDefault()} // Empêche la perte de focus du champ de texte
                         onClick={() => handleKeyPress(
                           key === "123" || key === "ABC" ? "layout-switch" : key
                         )}
