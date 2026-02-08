@@ -26,7 +26,7 @@ import { getSmartSuggestions } from "@/lib/spell-checker";
 
 type KeyboardLayout = "alpha" | "numeric" | "emoji";
 
-// Stase de Hauteur Unifiée
+// Stase de Hauteur Unifiée (Plus compacte : 280px)
 const BASE_HEIGHT = 280;
 
 function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, onClick: (char: string) => void }) {
@@ -121,6 +121,9 @@ export function CustomKeyboard() {
     const end = activeInput.selectionEnd || 0;
     const value = activeInput.value;
     const newValue = value.substring(0, start) + text + value.substring(end);
+    
+    // Calcul précis de la nouvelle position du curseur
+    const textLength = Array.from(text).length;
     const newCursorPos = start + text.length;
 
     const prototype = activeInput instanceof HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
@@ -128,6 +131,7 @@ export function CustomKeyboard() {
     if (nativeSetter) nativeSetter.call(activeInput, newValue);
     else activeInput.value = newValue;
 
+    // Déclencher les événements et repositionner le curseur
     setTimeout(() => {
       activeInput.focus();
       activeInput.setSelectionRange(newCursorPos, newCursorPos);
@@ -193,6 +197,7 @@ export function CustomKeyboard() {
     };
   }, [updateSuggestions]);
 
+  // Sceau de Verrouillage du Scroll
   useEffect(() => {
     if (isResizing) {
       document.body.style.overflow = "hidden";
@@ -231,6 +236,7 @@ export function CustomKeyboard() {
       let newValue = value;
       let newSelectionStart = start;
       if (start === end && start > 0) {
+        // Utilisation du Segmenter pour une suppression propre d'emojis complexes
         if (typeof Intl !== 'undefined' && (Intl as any).Segmenter) {
           const segmenter = new (Intl as any).Segmenter('fr', { granularity: 'grapheme' });
           const segments = Array.from(segmenter.segment(value.substring(0, start)));
@@ -295,6 +301,7 @@ export function CustomKeyboard() {
     const handleMove = (e: PointerEvent) => {
       if (!isResizing) return;
       const deltaY = e.clientY - resizeStartY.current;
+      // Limite supérieure : Arrêt avant l'entête (environ 100px du haut)
       const maxAllowedHeight = window.innerHeight - 100;
       const newHeight = Math.max(BASE_HEIGHT, Math.min(maxAllowedHeight, resizeStartHeight.current - deltaY));
       setKeyboardHeight(newHeight);
@@ -331,6 +338,7 @@ export function CustomKeyboard() {
           transition={{ type: "spring", damping: 35, stiffness: 200 }}
           className="fixed bottom-0 left-0 right-0 z-[10002] px-2 pb-safe-area-inset-bottom pointer-events-none flex flex-col items-center"
         >
+          {/* Cristal de Résultats (Mode Recherche WhatsApp) */}
           <AnimatePresence>
             {isEmojiSearchActive && (
               <motion.div
@@ -355,6 +363,7 @@ export function CustomKeyboard() {
             )}
           </AnimatePresence>
 
+          {/* Sceau de Cristal (Poignée de Redimensionnement) */}
           {!isEmojiSearchActive && layout === "emoji" && (
             <motion.div 
               onPointerDown={handleResizeStart}
@@ -375,9 +384,9 @@ export function CustomKeyboard() {
             }}
             className="w-full max-w-md bg-card/60 backdrop-blur-[55px] border-t border-x border-primary/5 rounded-t-[3rem] p-4 shadow-[0_-20px_100px_-20px_rgba(0,0,0,0.5)] pointer-events-auto overflow-hidden flex flex-col"
           >
-            {/* Lumière Prédictive (Suggestions) - Hauteur réduite à h-10 */}
+            {/* Lumière Prédictive (Suggestions) - Intégrée sans bordure ni espace */}
             {layout !== "emoji" && !isEmojiSearchActive && (
-              <div className="h-10 mb-2 flex items-center justify-center gap-3 overflow-hidden px-4 shrink-0 border-b border-primary/5">
+              <div className="h-10 flex items-center justify-center gap-3 overflow-hidden px-4 shrink-0">
                 <AnimatePresence mode="popLayout">
                   {suggestions.length > 0 ? suggestions.map((suggestion) => (
                     <motion.button
@@ -414,6 +423,7 @@ export function CustomKeyboard() {
                   >
                     {isEmojiSearchActive ? (
                       <div className="flex flex-col h-full gap-4">
+                        {/* Barre de Saisie de Recherche Interne */}
                         <div className="h-14 flex items-center gap-4 px-6 bg-primary/5 rounded-[2rem] border border-primary/10 shrink-0">
                           <Search className="h-5 w-5 text-primary opacity-40" />
                           <div className="flex-1 text-base font-black italic truncate text-primary">
@@ -423,6 +433,7 @@ export function CustomKeyboard() {
                           <button onClick={() => { haptic.light(); setIsEmojiSearchActive(false); }} className="p-2 opacity-40 hover:opacity-100 transition-opacity"><X className="h-5 w-5" /></button>
                         </div>
 
+                        {/* Touches Alpha pour la recherche */}
                         <div className="flex-1 flex flex-col justify-end gap-2 pb-2">
                           {ALPHA_KEYS.map((row, i) => (
                             <div key={i} className="flex justify-center gap-1.5 h-[20%]">
@@ -452,6 +463,7 @@ export function CustomKeyboard() {
                       </div>
                     ) : (
                       <div className="flex flex-col h-full">
+                        {/* Navigation des catégories */}
                         <div className="grid grid-cols-8 gap-1.5 p-1.5 mb-4 bg-primary/5 rounded-[2rem] border border-primary/5 shrink-0 relative">
                           <LayoutGroup id="emoji-nav">
                             {categories.map((cat, idx) => (
@@ -477,12 +489,14 @@ export function CustomKeyboard() {
                           </LayoutGroup>
                         </div>
                         
+                        {/* Grille d'emojis */}
                         <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-6 gap-3 p-2 bg-primary/[0.02] rounded-3xl border border-primary/5 shadow-inner">
                           {categories[emojiCategory].items.map((emoji, idx) => (
                             <KeyboardEmoji key={idx} emoji={emoji.char} hex={emoji.hex} onClick={(char) => insertText(char)} />
                           ))}
                         </div>
 
+                        {/* Commandes inférieures */}
                         <div className="flex gap-3 mt-4 h-16 shrink-0 border-t border-primary/5 pt-3">
                           <motion.button 
                             whileTap={{ scale: 0.95 }}
@@ -492,10 +506,16 @@ export function CustomKeyboard() {
                           >
                             ABC
                           </motion.button>
+                          {/* Sceau de Loupe (Transmutation de Quête) */}
                           <motion.button 
                             whileTap={{ scale: 0.95 }}
                             onPointerDown={(e) => e.preventDefault()} 
-                            onClick={() => { haptic.medium(); setKeyboardHeight(BASE_HEIGHT); setIsEmojiSearchActive(true); setEmojiSearchQuery(""); }} 
+                            onClick={() => { 
+                              haptic.medium(); 
+                              setKeyboardHeight(BASE_HEIGHT); 
+                              setIsEmojiSearchActive(true); 
+                              setEmojiSearchQuery(""); 
+                            }} 
                             className="flex-[4] bg-primary/5 border border-primary/10 text-primary/40 rounded-2xl flex items-center justify-center shadow-inner group overflow-hidden relative"
                           >
                             <Search className="h-6 w-6 group-hover:scale-110 transition-transform relative z-10" />
