@@ -253,10 +253,7 @@ export function CustomKeyboard() {
             </button>
           </div>
 
-          <div className={cn(
-            "max-w-md mx-auto bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden flex flex-col transition-all duration-500",
-            layout === "emoji" ? "h-[280px]" : "h-[340px]"
-          )}>
+          <div className="max-w-md mx-auto h-[320px] bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden flex flex-col transition-all duration-500">
             
             {/* Barre de Suggestions - Masquée pour les Emojis */}
             {layout !== "emoji" && (
