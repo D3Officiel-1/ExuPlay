@@ -243,14 +243,22 @@ export function CustomKeyboard() {
           transition={{ type: "spring", damping: 30, stiffness: 250 }}
           className="fixed bottom-0 left-0 right-0 z-[10002] px-2 pb-safe-area-inset-bottom pointer-events-none"
         >
-          <div className="flex flex-col items-center mb-1">
-            <button 
-              onPointerDown={(e) => e.preventDefault()}
-              onClick={() => { haptic.medium(); activeInput?.blur(); setIsVisible(false); }}
-              className="h-6 w-12 bg-card/40 backdrop-blur-3xl rounded-full border border-primary/5 flex items-center justify-center shadow-lg pointer-events-auto"
-            >
-              <ChevronDown className="h-3 w-3 opacity-40" />
-            </button>
+          {/* Bouton Réduire - Uniquement sur la carte Emoji */}
+          <div className="flex flex-col items-center mb-1 h-6">
+            <AnimatePresence>
+              {layout === "emoji" && (
+                <motion.button 
+                  initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.8, y: 10 }}
+                  onPointerDown={(e) => e.preventDefault()}
+                  onClick={() => { haptic.medium(); activeInput?.blur(); setIsVisible(false); }}
+                  className="h-6 w-12 bg-card/40 backdrop-blur-3xl rounded-full border border-primary/5 flex items-center justify-center shadow-lg pointer-events-auto"
+                >
+                  <ChevronDown className="h-3 w-3 opacity-40" />
+                </motion.button>
+              )}
+            </AnimatePresence>
           </div>
 
           <div className="max-w-md mx-auto h-[320px] bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden flex flex-col transition-all duration-500">
@@ -293,7 +301,7 @@ export function CustomKeyboard() {
                     exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
                     className="flex flex-col h-full overflow-hidden"
                   >
-                    {/* Barre de Catégories Octogonale */}
+                    {/* Barre de Catégories */}
                     <div className="relative mb-2 h-10 shrink-0">
                       <div className="grid grid-cols-8 gap-1 h-full p-1 relative z-10">
                         {categories.map((cat, idx) => (
@@ -321,7 +329,7 @@ export function CustomKeyboard() {
                       <div className="absolute inset-0 bg-primary/5 rounded-2xl border border-primary/5 -z-0" />
                     </div>
                     
-                    {/* Grille Scrollable - Middle */}
+                    {/* Grille Scrollable des Emojis */}
                     <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-8 gap-0 p-1 border-t border-primary/5">
                       {categories[emojiCategory].items.map((emoji, idx) => (
                         <div key={`${emojiCategory}-${idx}`} className="w-full">
@@ -334,7 +342,7 @@ export function CustomKeyboard() {
                       ))}
                     </div>
 
-                    {/* Contrôles Fixes - Bottom */}
+                    {/* Contrôles Fixes au Bas de la Carte Emoji */}
                     <div className="flex gap-2 mt-2 h-12 shrink-0 border-t border-primary/5 pt-2">
                       <button 
                         onPointerDown={(e) => e.preventDefault()} 
