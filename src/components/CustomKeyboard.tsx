@@ -26,7 +26,6 @@ type KeyboardLayout = "alpha" | "numeric" | "emoji";
 /**
  * @fileOverview KeyboardEmoji - Composant de rendu individuel pour le clavier.
  * Gère la cascade : Animé (GIF) -> Statique (WebP) -> Texte (Unicode).
- * Chaque emoji est scellé dans un bouton fixe carré avec bordures symétriques.
  */
 function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, onClick: (char: string) => void }) {
   const [stage, setStage] = useState<'animated' | 'static' | 'text'>('animated');
@@ -86,17 +85,24 @@ export function CustomKeyboard() {
     const handleFocus = (e: FocusEvent) => {
       const target = e.target as HTMLInputElement | HTMLTextAreaElement;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
-        if (window.innerWidth < 768) {
-          target.setAttribute("inputmode", "none");
-          setActiveInput(target);
-          setIsVisible(true);
-          setLayout(target.type === "tel" || target.type === "number" || target.getAttribute("data-layout") === "numeric" ? "numeric" : "alpha");
+        // Désactivation agressive du clavier système
+        target.setAttribute("inputmode", "none");
+        target.setAttribute("virtualKeyboardPolicy", "manual");
+        
+        setActiveInput(target);
+        setIsVisible(true);
+        
+        // Déterminer le layout initial
+        if (target.type === "tel" || target.type === "number" || target.getAttribute("data-layout") === "numeric") {
+          setLayout("numeric");
+        } else {
+          setLayout("alpha");
         }
       }
     };
 
     const handleFocusOut = (e: FocusEvent) => {
-      // Small delay to check if the new focus is another input
+      // Un délai court pour vérifier si le nouveau focus est un autre input
       setTimeout(() => {
         const active = document.activeElement;
         if (!active || (active.tagName !== "INPUT" && active.tagName !== "TEXTAREA")) {
@@ -219,7 +225,6 @@ export function CustomKeyboard() {
                   exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
                   className="flex flex-col h-full"
                 >
-                  {/* Barre de Catégories Ultra-Fine en 8 Colonnes Fixes */}
                   <div className="relative mb-3 px-1">
                     <div className="grid grid-cols-8 gap-1 relative z-10 p-1">
                       {categories.map((cat, idx) => (
@@ -249,7 +254,6 @@ export function CustomKeyboard() {
                     <div className="absolute inset-0 bg-primary/5 rounded-2xl border border-primary/5 -z-0" />
                   </div>
                   
-                  {/* Grille Octogonale Fixe d'Emojis 3D */}
                   <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-8 gap-0 p-1">
                     {categories[emojiCategory].items.map((emoji, idx) => (
                       <div key={`${emojiCategory}-${idx}`} className="w-full">

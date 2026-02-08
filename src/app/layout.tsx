@@ -210,31 +210,63 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('contextmenu', handleContextMenu);
   }, []);
 
-  // Force l'inputmode='none' sur tous les inputs pour empêcher le clavier système (UNIQUEMENT SUR MOBILE)
+  /**
+   * ORACLE DU SCELLEMENT DU CLAVIER SYSTÈME
+   * Règle stricte : Aucun champ de saisie ne doit invoquer le clavier natif.
+   */
   useEffect(() => {
-    const syncKeyboardMode = () => {
+    const enforceKeyboardShield = () => {
       const inputs = document.querySelectorAll('input, textarea');
-      inputs.forEach(input => {
-        if (isMobile) {
-          // Sur mobile, on bloque le clavier système au profit du clavier personnalisé
-          if (input.getAttribute('inputmode') !== 'none') {
-            input.setAttribute('inputmode', 'none');
-          }
-        } else {
-          // Sur ordinateur, on laisse le clavier système s'afficher normalement
-          if (input.getAttribute('inputmode') === 'none') {
-            input.removeAttribute('inputmode');
-          }
+      inputs.forEach(el => {
+        // Bloquer l'invocation du clavier virtuel natif
+        if (el.getAttribute('inputmode') !== 'none') {
+          el.setAttribute('inputmode', 'none');
+        }
+        // Politique Chromium pour les claviers virtuels
+        if (el.getAttribute('virtualKeyboardPolicy') !== 'manual') {
+          el.setAttribute('virtualKeyboardPolicy', 'manual');
+        }
+        // Empêcher l'autofocus système de déclencher le clavier
+        if (el.getAttribute('autocomplete') !== 'off') {
+          el.setAttribute('autocomplete', 'off');
         }
       });
     };
-    
-    const observer = new MutationObserver(syncKeyboardMode);
+
+    // Scan initial et monitoring des injections DOM
+    enforceKeyboardShield();
+    const observer = new MutationObserver(enforceKeyboardShield);
     observer.observe(document.body, { childList: true, subtree: true });
-    syncKeyboardMode();
+
+    // Sécurité lors du focus explicite
+    const handleFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        target.setAttribute('inputmode', 'none');
+        target.setAttribute('virtualKeyboardPolicy', 'manual');
+      }
+    };
+
+    // Sécurité lors du retour dans l'application (changement d'onglet ou d'app)
+    const handleWindowFocus = () => {
+      enforceKeyboardShield();
+      // Si un élément est déjà focus, on s'assure que le clavier système est masqué
+      if (document.activeElement instanceof HTMLElement && 
+         (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+        document.activeElement.blur();
+        setTimeout(() => (document.activeElement as HTMLElement)?.focus(), 10);
+      }
+    };
+
+    window.addEventListener('focusin', handleFocusIn);
+    window.addEventListener('focus', handleWindowFocus);
     
-    return () => observer.disconnect();
-  }, [isMobile]);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('focusin', handleFocusIn);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
+  }, []);
 
   useEffect(() => {
     if (isAuthLoading) return;
