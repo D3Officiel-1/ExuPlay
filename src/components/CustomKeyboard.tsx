@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
  * @fileOverview Oracle du Clavier Sacré.
  * Une interface de saisie sur-mesure, cinématique et immersive.
  * Harmonisé pour une compatibilité parfaite avec les états React.
+ * Disposition AZERTY pour les esprits francophones.
  */
 
 type KeyboardLayout = "alpha" | "numeric";
@@ -114,10 +115,11 @@ export function CustomKeyboard() {
     activeInput.dispatchEvent(new Event("change", { bubbles: true }));
   }, [activeInput, isShift, layout]);
 
+  // Disposition AZERTY
   const ALPHA_KEYS = [
-    ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
-    ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
-    ["shift", "Z", "X", "C", "V", "B", "N", "M", "backspace"],
+    ["A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P"],
+    ["Q", "S", "D", "F", "G", "H", "J", "K", "L"],
+    ["shift", "W", "X", "C", "V", "B", "N", "M", "backspace"],
     ["123", "space", "enter"]
   ];
 
@@ -125,7 +127,7 @@ export function CustomKeyboard() {
     ["1", "2", "3"],
     ["4", "5", "6"],
     ["7", "8", "9"],
-    ["ABC", "0", "backspace", "enter"]
+    ["abc", "0", "backspace", "enter"]
   ];
 
   const rows = layout === "alpha" ? ALPHA_KEYS : NUMERIC_KEYS;
@@ -155,7 +157,7 @@ export function CustomKeyboard() {
               {rows.map((row, i) => (
                 <div key={i} className="flex justify-center gap-1.5 h-12">
                   {row.map((key) => {
-                    const isSpecial = ["shift", "backspace", "enter", "123", "ABC", "space"].includes(key);
+                    const isSpecial = ["shift", "backspace", "enter", "123", "abc", "space"].includes(key);
                     
                     return (
                       <motion.button
@@ -164,7 +166,7 @@ export function CustomKeyboard() {
                         whileTap={{ scale: 0.92, backgroundColor: "rgba(var(--primary-rgb), 0.1)" }}
                         onPointerDown={(e) => e.preventDefault()} // Empêche la perte de focus du champ de texte
                         onClick={() => handleKeyPress(
-                          key === "123" || key === "ABC" ? "layout-switch" : key
+                          key === "123" || key === "abc" ? "layout-switch" : key
                         )}
                         className={cn(
                           "relative flex items-center justify-center rounded-xl font-bold transition-colors select-none",
@@ -179,8 +181,8 @@ export function CustomKeyboard() {
                         {key === "backspace" && <Delete className="h-5 w-5" />}
                         {key === "enter" && <Check className="h-5 w-5" />}
                         {key === "space" && <div className="w-12 h-1 bg-current opacity-20 rounded-full" />}
-                        {key === "123" && <span className="text-[10px] font-black tracking-tight">123</span>}
-                        {key === "ABC" && <span className="text-[10px] font-black tracking-tight">abc</span>}
+                        {key === "123" && <span className="text-[10px] font-black tracking-tight uppercase">123</span>}
+                        {key === "abc" && <span className="text-[10px] font-black tracking-tight uppercase">abc</span>}
                         {!isSpecial && (isShift ? key.toUpperCase() : key.toLowerCase())}
                       </motion.button>
                     );
