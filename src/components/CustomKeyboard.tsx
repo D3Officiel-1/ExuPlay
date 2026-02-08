@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 /**
  * @fileOverview Oracle du Clavier Sacré.
  * Une interface de saisie sur-mesure, cinématique et immersive.
+ * Harmonisé pour une compatibilité parfaite avec les états React.
  */
 
 type KeyboardLayout = "alpha" | "numeric";
@@ -63,32 +64,53 @@ export function CustomKeyboard() {
     const start = activeInput.selectionStart || 0;
     const end = activeInput.selectionEnd || 0;
     const value = activeInput.value;
+    let newValue = value;
+    let newSelectionStart = start;
 
     if (key === "backspace") {
       if (start === end && start > 0) {
-        activeInput.value = value.substring(0, start - 1) + value.substring(end);
-        activeInput.setSelectionRange(start - 1, start - 1);
+        newValue = value.substring(0, start - 1) + value.substring(end);
+        newSelectionStart = start - 1;
       } else {
-        activeInput.value = value.substring(0, start) + value.substring(end);
-        activeInput.setSelectionRange(start, start);
+        newValue = value.substring(0, start) + value.substring(end);
+        newSelectionStart = start;
       }
     } else if (key === "enter") {
       activeInput.blur();
       setIsVisible(false);
+      return;
     } else if (key === "shift") {
       setIsShift(!isShift);
       return;
     } else if (key === "layout-switch") {
       setLayout(layout === "alpha" ? "numeric" : "alpha");
       return;
+    } else if (key === "space") {
+      newValue = value.substring(0, start) + " " + value.substring(end);
+      newSelectionStart = start + 1;
     } else {
       const char = isShift ? key.toUpperCase() : key.toLowerCase();
-      activeInput.value = value.substring(0, start) + char + value.substring(end);
-      activeInput.setSelectionRange(start + 1, start + 1);
+      newValue = value.substring(0, start) + char + value.substring(end);
+      newSelectionStart = start + 1;
     }
 
-    // Déclencher l'événement 'input' pour que React/Firebase voient le changement
+    // Technique du "Native Setter" pour forcer React à reconnaître le changement
+    // Indispensable pour les composants contrôlés par React
+    const prototype = activeInput instanceof HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
+    const nativeSetter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+    
+    if (nativeSetter) {
+      nativeSetter.call(activeInput, newValue);
+    } else {
+      activeInput.value = newValue;
+    }
+
+    // Repositionner le curseur de saisie
+    activeInput.setSelectionRange(newSelectionStart, newSelectionStart);
+
+    // Déclencher les événements système pour notifier l'application du changement
     activeInput.dispatchEvent(new Event("input", { bubbles: true }));
+    activeInput.dispatchEvent(new Event("change", { bubbles: true }));
   }, [activeInput, isShift, layout]);
 
   const ALPHA_KEYS = [
@@ -134,7 +156,6 @@ export function CustomKeyboard() {
                 <div key={i} className="flex justify-center gap-1.5 h-12">
                   {row.map((key) => {
                     const isSpecial = ["shift", "backspace", "enter", "123", "ABC", "space"].includes(key);
-                    const isLong = key === "space" || key === "enter";
                     
                     return (
                       <motion.button
