@@ -8,10 +8,9 @@ import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
 /**
- * @fileOverview Oracle du Clavier Sacré.
+ * @fileOverview Oracle du Clavier Sacré v3.0.
  * Une interface de saisie sur-mesure, cinématique et immersive.
- * Harmonisé pour une compatibilité parfaite avec les états React.
- * Disposition AZERTY pour les esprits francophones.
+ * Touche Shift réimaginée, AZERTY purifié (sans . ni ,).
  */
 
 type KeyboardLayout = "alpha" | "numeric";
@@ -27,22 +26,22 @@ export function CustomKeyboard() {
     const handleFocus = (e: FocusEvent) => {
       const target = e.target as HTMLInputElement | HTMLTextAreaElement;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
-        // Empêcher le clavier système de force
-        target.setAttribute("inputmode", "none");
-        setActiveInput(target);
-        setIsVisible(true);
-        
-        // Déterminer le layout initial selon le type d'input
-        if (target.type === "tel" || target.type === "number" || target.getAttribute("data-layout") === "numeric") {
-          setLayout("numeric");
-        } else {
-          setLayout("alpha");
+        // Empêcher le clavier système uniquement sur mobile
+        if (window.innerWidth < 768) {
+          target.setAttribute("inputmode", "none");
+          setActiveInput(target);
+          setIsVisible(true);
+          
+          if (target.type === "tel" || target.type === "number" || target.getAttribute("data-layout") === "numeric") {
+            setLayout("numeric");
+          } else {
+            setLayout("alpha");
+          }
         }
       }
     };
 
-    const handleBlur = (e: FocusEvent) => {
-      // On attend un peu pour voir si un autre input prend le focus
+    const handleBlur = () => {
       setTimeout(() => {
         const active = document.activeElement;
         if (!active || (active.tagName !== "INPUT" && active.tagName !== "TEXTAREA")) {
@@ -99,7 +98,6 @@ export function CustomKeyboard() {
       newSelectionStart = start + 1;
     }
 
-    // Technique du "Native Setter" pour forcer React à reconnaître le changement
     const prototype = activeInput instanceof HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
     const nativeSetter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
     
@@ -114,7 +112,7 @@ export function CustomKeyboard() {
     activeInput.dispatchEvent(new Event("change", { bubbles: true }));
   }, [activeInput, isShift, layout]);
 
-  // Disposition AZERTY harmonisée sans point ni virgule
+  // Disposition AZERTY purifiée (sans . ni ,)
   const ALPHA_KEYS = [
     ["A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P"],
     ["Q", "S", "D", "F", "G", "H", "J", "K", "L", "M"],
@@ -122,7 +120,7 @@ export function CustomKeyboard() {
     ["?123", "emoji", "space", "enter"]
   ];
 
-  // Carte des Symboles et Chiffres harmonisée sans point ni virgule
+  // Disposition Numérique & Symboles purifiée
   const NUMERIC_KEYS = [
     ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
     ["@", "#", "&", "_", "-", "(", ")", "/", ":", ";"],
@@ -169,22 +167,51 @@ export function CustomKeyboard() {
                           key === "?123" || key === "abc" ? "layout-switch" : key
                         )}
                         className={cn(
-                          "relative flex items-center justify-center rounded-xl font-bold transition-colors select-none",
-                          isSpecial ? "bg-primary/5 text-primary/60 text-xs px-3" : "bg-card/40 border border-primary/5 text-lg flex-1",
+                          "relative flex items-center justify-center rounded-xl font-bold transition-all select-none",
+                          isSpecial ? "bg-primary/5 text-primary/60 text-xs px-3" : "bg-card/40 border border-primary/5 text-lg flex-1 shadow-sm",
                           key === "space" && "flex-[4]",
                           key === "enter" && "flex-[2] bg-primary text-primary-foreground",
-                          key === "shift" && isShift && "bg-primary text-primary-foreground opacity-100",
-                          !isSpecial && "shadow-sm active:shadow-inner"
+                          key === "shift" && isShift && "bg-primary text-primary-foreground shadow-[0_0_20px_rgba(var(--primary-rgb),0.4)]",
+                          !isSpecial && "active:shadow-inner"
                         )}
                       >
-                        {key === "shift" && <ArrowUp className={cn("h-5 w-5", isShift ? "fill-current" : "")} />}
-                        {key === "backspace" && <Delete className="h-5 w-5" />}
-                        {key === "enter" && <Check className="h-5 w-5" />}
-                        {key === "emoji" && <Smile className="h-5 w-5" />}
-                        {key === "space" && <div className="w-12 h-1 bg-current opacity-20 rounded-full" />}
-                        {key === "?123" && <span className="text-[10px] font-black tracking-tight uppercase">?123</span>}
-                        {key === "abc" && <span className="text-[10px] font-black tracking-tight uppercase">abc</span>}
-                        {!isSpecial && (layout === "alpha" && isShift ? key.toUpperCase() : key)}
+                        {key === "shift" ? (
+                          <div className="flex flex-col items-center justify-center gap-0.5">
+                            <motion.div
+                              animate={{ 
+                                y: isShift ? -1 : 0,
+                                scale: isShift ? 1.15 : 1
+                              }}
+                              transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                            >
+                              <ArrowUp className={cn("h-5 w-5", isShift ? "stroke-[3px]" : "stroke-2")} />
+                            </motion.div>
+                            <AnimatePresence>
+                              {isShift && (
+                                <motion.div 
+                                  initial={{ width: 0, opacity: 0 }}
+                                  animate={{ width: 12, opacity: 1 }}
+                                  exit={{ width: 0, opacity: 0 }}
+                                  className="h-0.5 bg-current rounded-full"
+                                />
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        ) : key === "backspace" ? (
+                          <Delete className="h-5 w-5" />
+                        ) : key === "enter" ? (
+                          <Check className="h-5 w-5" />
+                        ) : key === "emoji" ? (
+                          <Smile className="h-5 w-5" />
+                        ) : key === "space" ? (
+                          <div className="w-12 h-1 bg-current opacity-20 rounded-full" />
+                        ) : key === "?123" ? (
+                          <span className="text-[10px] font-black tracking-tight uppercase">?123</span>
+                        ) : key === "abc" ? (
+                          <span className="text-[10px] font-black tracking-tight uppercase">abc</span>
+                        ) : (
+                          layout === "alpha" && isShift ? key.toUpperCase() : key
+                        )}
                       </motion.button>
                     );
                   })}
