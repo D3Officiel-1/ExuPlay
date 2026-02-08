@@ -253,33 +253,38 @@ export function CustomKeyboard() {
             </button>
           </div>
 
-          <div className="max-w-md mx-auto bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden h-[340px] flex flex-col">
+          <div className={cn(
+            "max-w-md mx-auto bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden flex flex-col transition-all duration-500",
+            layout === "emoji" ? "h-[280px]" : "h-[340px]"
+          )}>
             
-            {/* Barre de Suggestions Ultra-Fine */}
-            <div className="h-10 mb-1 flex items-center justify-center gap-2 overflow-hidden px-2 shrink-0 border-b border-primary/5">
-              <AnimatePresence mode="popLayout">
-                {suggestions.map((suggestion) => (
-                  <motion.button
-                    key={suggestion}
-                    initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -10, scale: 0.9 }}
-                    onPointerDown={(e) => e.preventDefault()}
-                    onClick={() => applySuggestion(suggestion)}
-                    className="px-3 py-1.5 rounded-full bg-primary/5 border border-primary/10 text-[10px] font-black uppercase tracking-wider text-primary shadow-sm hover:bg-primary/10 transition-colors flex items-center gap-1.5"
-                  >
-                    <Wand2 className="h-2.5 w-2.5 opacity-40" />
-                    {suggestion}
-                  </motion.button>
-                ))}
-                {suggestions.length === 0 && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.1 }} className="flex items-center gap-2">
-                    <Sparkles className="h-2.5 w-2.5" />
-                    <span className="text-[7px] font-black uppercase tracking-[0.3em]">Précognition</span>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+            {/* Barre de Suggestions - Masquée pour les Emojis */}
+            {layout !== "emoji" && (
+              <div className="h-10 mb-1 flex items-center justify-center gap-2 overflow-hidden px-2 shrink-0 border-b border-primary/5">
+                <AnimatePresence mode="popLayout">
+                  {suggestions.map((suggestion) => (
+                    <motion.button
+                      key={suggestion}
+                      initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.9 }}
+                      onPointerDown={(e) => e.preventDefault()}
+                      onClick={() => applySuggestion(suggestion)}
+                      className="px-3 py-1.5 rounded-full bg-primary/5 border border-primary/10 text-[10px] font-black uppercase tracking-wider text-primary shadow-sm hover:bg-primary/10 transition-colors flex items-center gap-1.5"
+                    >
+                      <Wand2 className="h-2.5 w-2.5 opacity-40" />
+                      {suggestion}
+                    </motion.button>
+                  ))}
+                  {suggestions.length === 0 && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.1 }} className="flex items-center gap-2">
+                      <Sparkles className="h-2.5 w-2.5" />
+                      <span className="text-[7px] font-black uppercase tracking-[0.3em]">Précognition</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
 
             <div className="flex-1 flex flex-col justify-end">
               <AnimatePresence mode="wait">
