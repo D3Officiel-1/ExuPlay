@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Delete, ArrowUp, Check, ChevronDown, Smile, Dog, Pizza, 
-  Plane, Heart, Gamepad2, LayoutGrid, Flag
+  Plane, Heart, Gamepad2, LayoutGrid, Flag, Sparkles
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -20,12 +20,12 @@ import {
   RAW_SYMBOLS,
   RAW_FLAGS
 } from "@/lib/emoji-library";
+import { SACRED_DICTIONARY } from "@/lib/dictionary";
 
 type KeyboardLayout = "alpha" | "numeric" | "emoji";
 
 /**
  * @fileOverview KeyboardEmoji - Composant de rendu individuel pour le clavier.
- * Gère la cascade : Animé (GIF) -> Statique (WebP) -> Texte (Unicode).
  */
 function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, onClick: (char: string) => void }) {
   const [stage, setStage] = useState<'animated' | 'static' | 'text'>('animated');
@@ -66,6 +66,7 @@ export function CustomKeyboard() {
   const [isShift, setIsShift] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [emojiCategory, setEmojiCategory] = useState(0);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   
   const backspaceIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const backspaceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -81,28 +82,79 @@ export function CustomKeyboard() {
     { id: "flags", icon: Flag, items: parseEmojiString(RAW_FLAGS) }
   ], []);
 
+  /**
+   * Extrait le mot en cours sous le curseur et met à jour les suggestions.
+   */
+  const updateSuggestions = useCallback((input: HTMLInputElement | HTMLTextAreaElement) => {
+    const value = input.value;
+    const selectionEnd = input.selectionStart || 0;
+    
+    // On cherche le début du mot actuel (jusqu'à l'espace précédent ou le début de la chaîne)
+    const textBefore = value.substring(0, selectionEnd);
+    const words = textBefore.split(/\s/);
+    const currentWord = words[words.length - 1].toLowerCase();
+
+    if (currentWord.length < 1) {
+      setSuggestions([]);
+      return;
+    }
+
+    const matches = SACRED_DICTIONARY.filter(word => 
+      word.toLowerCase().startsWith(currentWord) && word.toLowerCase() !== currentWord
+    ).slice(0, 3); // Limite de 3 pour la clarté
+
+    setSuggestions(matches);
+  }, []);
+
+  const applySuggestion = (suggestion: string) => {
+    if (!activeInput) return;
+    haptic.medium();
+
+    const value = activeInput.value;
+    const start = activeInput.selectionStart || 0;
+    
+    const textBefore = value.substring(0, start);
+    const words = textBefore.split(/\s/);
+    // On retire le préfixe partiel
+    words.pop();
+    
+    const prefix = words.join(" ");
+    const newValue = (prefix ? prefix + " " : "") + suggestion + " " + value.substring(start);
+    const newCursorPos = (prefix ? prefix.length + 1 : 0) + suggestion.length + 1;
+
+    const prototype = activeInput instanceof HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
+    const nativeSetter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+    if (nativeSetter) nativeSetter.call(activeInput, newValue);
+    else activeInput.value = newValue;
+
+    activeInput.setSelectionRange(newCursorPos, newCursorPos);
+    activeInput.dispatchEvent(new Event("input", { bubbles: true }));
+    activeInput.dispatchEvent(new Event("change", { bubbles: true }));
+    
+    setSuggestions([]);
+    activeInput.focus();
+  };
+
   useEffect(() => {
     const handleFocus = (e: FocusEvent) => {
       const target = e.target as HTMLInputElement | HTMLTextAreaElement;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
-        // Désactivation agressive du clavier système
         target.setAttribute("inputmode", "none");
         target.setAttribute("virtualKeyboardPolicy", "manual");
         
         setActiveInput(target);
         setIsVisible(true);
         
-        // Déterminer le layout initial
         if (target.type === "tel" || target.type === "number" || target.getAttribute("data-layout") === "numeric") {
           setLayout("numeric");
         } else {
           setLayout("alpha");
         }
+        updateSuggestions(target);
       }
     };
 
     const handleFocusOut = (e: FocusEvent) => {
-      // Un délai court pour vérifier si le nouveau focus est un autre input
       setTimeout(() => {
         const active = document.activeElement;
         if (!active || (active.tagName !== "INPUT" && active.tagName !== "TEXTAREA")) {
@@ -117,7 +169,7 @@ export function CustomKeyboard() {
       document.removeEventListener("focusin", handleFocus);
       document.removeEventListener("focusout", handleFocusOut);
     };
-  }, []);
+  }, [updateSuggestions]);
 
   const handleKeyPress = useCallback((key: string) => {
     if (!activeInput) return;
@@ -164,7 +216,9 @@ export function CustomKeyboard() {
     activeInput.setSelectionRange(newSelectionStart, newSelectionStart);
     activeInput.dispatchEvent(new Event("input", { bubbles: true }));
     activeInput.dispatchEvent(new Event("change", { bubbles: true }));
-  }, [activeInput, isShift, layout]);
+    
+    updateSuggestions(activeInput);
+  }, [activeInput, isShift, layout, updateSuggestions]);
 
   const stopBackspace = useCallback(() => {
     if (backspaceTimeoutRef.current) clearTimeout(backspaceTimeoutRef.current);
@@ -215,129 +269,161 @@ export function CustomKeyboard() {
             </button>
           </div>
 
-          <div className="max-w-md mx-auto bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden h-[300px]">
-            <AnimatePresence mode="wait">
-              {layout === "emoji" ? (
-                <motion.div 
-                  key="emoji-layout"
-                  initial={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
-                  animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                  exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
-                  className="flex flex-col h-full"
-                >
-                  <div className="relative mb-3 px-1">
-                    <div className="grid grid-cols-8 gap-1 relative z-10 p-1">
-                      {categories.map((cat, idx) => (
-                        <motion.button
-                          key={cat.id}
-                          onPointerDown={(e) => e.preventDefault()}
-                          onClick={() => { haptic.light(); setEmojiCategory(idx); }}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          className={cn(
-                            "relative flex items-center justify-center h-10 rounded-xl transition-colors duration-500",
-                            emojiCategory === idx ? "text-primary-foreground" : "text-primary/30"
-                          )}
-                        >
-                          <cat.icon className="h-4 w-4 relative z-20" />
-                          
-                          {emojiCategory === idx && (
-                            <motion.div
-                              layoutId="active-cat-pill"
-                              className="absolute inset-0 bg-primary rounded-xl shadow-lg z-10"
-                              transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                            />
-                          )}
-                        </motion.button>
-                      ))}
-                    </div>
-                    <div className="absolute inset-0 bg-primary/5 rounded-2xl border border-primary/5 -z-0" />
-                  </div>
-                  
-                  <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-8 gap-0 p-1">
-                    {categories[emojiCategory].items.map((emoji, idx) => (
-                      <div key={`${emojiCategory}-${idx}`} className="w-full">
-                        <KeyboardEmoji 
-                          emoji={emoji.char} 
-                          hex={emoji.hex} 
-                          onClick={(char) => handleKeyPress(char)} 
-                        />
-                      </div>
-                    ))}
-                  </div>
+          <div className="max-w-md mx-auto bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden h-[340px] flex flex-col">
+            
+            {/* Barre de Suggestions */}
+            <div className="h-10 mb-2 flex items-center justify-center gap-2 overflow-hidden px-2 shrink-0">
+              <AnimatePresence mode="popLayout">
+                {suggestions.map((suggestion) => (
+                  <motion.button
+                    key={suggestion}
+                    initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.9 }}
+                    onPointerDown={(e) => e.preventDefault()}
+                    onClick={() => applySuggestion(suggestion)}
+                    className="px-4 py-1.5 rounded-full bg-primary/5 border border-primary/10 text-[11px] font-black uppercase tracking-wider text-primary shadow-sm hover:bg-primary/10 transition-colors"
+                  >
+                    {suggestion}
+                  </motion.button>
+                ))}
+                {suggestions.length === 0 && (
+                  <motion.div 
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 0.1 }} 
+                    className="flex items-center gap-2"
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    <span className="text-[8px] font-black uppercase tracking-[0.3em]">Lumière Prédictive</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
-                  <div className="flex gap-2 mt-3 h-12">
-                    <button 
-                      onPointerDown={(e) => e.preventDefault()} 
-                      onClick={() => { haptic.medium(); setLayout("alpha"); }} 
-                      className="flex-[2] bg-primary/10 text-primary font-black text-[10px] uppercase rounded-2xl border border-primary/5"
-                    >
-                      abc
-                    </button>
-                    <button 
-                      onPointerDown={(e) => e.preventDefault()} 
-                      onClick={() => handleKeyPress("space")} 
-                      className="flex-[4] bg-card/40 border border-primary/10 rounded-2xl flex items-center justify-center shadow-inner"
-                    >
-                      <div className="w-16 h-1 bg-primary/20 rounded-full" />
-                    </button>
-                    <button 
-                      onPointerDown={(e) => { e.preventDefault(); startBackspace(); }} 
-                      onPointerUp={stopBackspace} 
-                      onPointerLeave={stopBackspace} 
-                      className="flex-[2] bg-primary/5 text-primary/60 rounded-2xl flex items-center justify-center border border-primary/5"
-                    >
-                      <Delete className="h-5 w-5" />
-                    </button>
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div 
-                  key={layout}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="flex flex-col gap-2 h-full justify-end pb-2"
-                >
-                  {(layout === "alpha" ? ALPHA_KEYS : NUMERIC_KEYS).map((row, i) => (
-                    <div key={i} className="flex justify-center gap-1.5 h-12">
-                      {row.map((key) => {
-                        const isSpecial = ["shift", "backspace", "enter", "?123", "abc", "space", "emoji-switch"].includes(key);
-                        return (
+            <div className="flex-1 flex flex-col justify-end">
+              <AnimatePresence mode="wait">
+                {layout === "emoji" ? (
+                  <motion.div 
+                    key="emoji-layout"
+                    initial={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
+                    animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
+                    className="flex flex-col h-full"
+                  >
+                    <div className="relative mb-3 px-1">
+                      <div className="grid grid-cols-8 gap-1 relative z-10 p-1">
+                        {categories.map((cat, idx) => (
                           <motion.button
-                            key={key}
-                            whileTap={{ scale: 0.92 }}
-                            onPointerDown={(e) => {
-                              e.preventDefault();
-                              if (key === "backspace") startBackspace();
-                              else handleKeyPress(key);
-                            }}
-                            onPointerUp={() => { if (key === "backspace") stopBackspace(); }}
-                            onPointerLeave={() => { if (key === "backspace") stopBackspace(); }}
+                            key={cat.id}
+                            onPointerDown={(e) => e.preventDefault()}
+                            onClick={() => { haptic.light(); setEmojiCategory(idx); }}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                             className={cn(
-                              "relative flex items-center justify-center rounded-xl font-bold transition-all select-none",
-                              isSpecial ? "bg-primary/5 text-primary/60 text-[10px] uppercase tracking-widest px-3" : "bg-card/40 border border-primary/5 text-lg flex-1 shadow-sm",
-                              key === "space" && "flex-[4]",
-                              key === "enter" && "flex-[2] bg-primary text-primary-foreground shadow-xl",
-                              key === "shift" && isShift && "bg-primary text-primary-foreground shadow-[0_0_20px_rgba(var(--primary-rgb),0.4)]"
+                              "relative flex items-center justify-center h-10 rounded-xl transition-colors duration-500",
+                              emojiCategory === idx ? "text-primary-foreground" : "text-primary/30"
                             )}
                           >
-                            {key === "shift" ? (
-                              <div className="flex flex-col items-center justify-center gap-0.5">
-                                <motion.div animate={{ y: isShift ? -1 : 0, scale: isShift ? 1.15 : 1 }}><ArrowUp className={cn("h-5 w-5", isShift ? "stroke-[3px]" : "stroke-2")} /></motion.div>
-                                {isShift && <motion.div initial={{ width: 0 }} animate={{ width: 12 }} className="h-0.5 bg-current rounded-full" />}
-                              </div>
-                            ) : key === "backspace" ? <Delete className="h-5 w-5" /> : key === "enter" ? <Check className="h-5 w-5" /> : key === "emoji-switch" ? (
-                              <Smile className="h-5 w-5" />
-                            ) : key === "space" ? <div className="w-16 h-1 bg-current opacity-20 rounded-full" /> : (layout === "alpha" && isShift ? key.toUpperCase() : key)}
+                            <cat.icon className="h-4 w-4 relative z-20" />
+                            
+                            {emojiCategory === idx && (
+                              <motion.div
+                                layoutId="active-cat-pill"
+                                className="absolute inset-0 bg-primary rounded-xl shadow-lg z-10"
+                                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                              />
+                            )}
                           </motion.button>
-                        );
-                      })}
+                        ))}
+                      </div>
+                      <div className="absolute inset-0 bg-primary/5 rounded-2xl border border-primary/5 -z-0" />
                     </div>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
+                    
+                    <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-8 gap-0 p-1">
+                      {categories[emojiCategory].items.map((emoji, idx) => (
+                        <div key={`${emojiCategory}-${idx}`} className="w-full">
+                          <KeyboardEmoji 
+                            emoji={emoji.char} 
+                            hex={emoji.hex} 
+                            onClick={(char) => handleKeyPress(char)} 
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex gap-2 mt-3 h-12">
+                      <button 
+                        onPointerDown={(e) => e.preventDefault()} 
+                        onClick={() => { haptic.medium(); setLayout("alpha"); }} 
+                        className="flex-[2] bg-primary/10 text-primary font-black text-[10px] uppercase rounded-2xl border border-primary/5"
+                      >
+                        abc
+                      </button>
+                      <button 
+                        onPointerDown={(e) => e.preventDefault()} 
+                        onClick={() => handleKeyPress("space")} 
+                        className="flex-[4] bg-card/40 border border-primary/10 rounded-2xl flex items-center justify-center shadow-inner"
+                      >
+                        <div className="w-16 h-1 bg-primary/20 rounded-full" />
+                      </button>
+                      <button 
+                        onPointerDown={(e) => { e.preventDefault(); startBackspace(); }} 
+                        onPointerUp={stopBackspace} 
+                        onPointerLeave={stopBackspace} 
+                        className="flex-[2] bg-primary/5 text-primary/60 rounded-2xl flex items-center justify-center border border-primary/5"
+                      >
+                        <Delete className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    key={layout}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    className="flex flex-col gap-2 h-full justify-end pb-2"
+                  >
+                    {(layout === "alpha" ? ALPHA_KEYS : NUMERIC_KEYS).map((row, i) => (
+                      <div key={i} className="flex justify-center gap-1.5 h-12">
+                        {row.map((key) => {
+                          const isSpecial = ["shift", "backspace", "enter", "?123", "abc", "space", "emoji-switch"].includes(key);
+                          return (
+                            <motion.button
+                              key={key}
+                              whileTap={{ scale: 0.92 }}
+                              onPointerDown={(e) => {
+                                e.preventDefault();
+                                if (key === "backspace") startBackspace();
+                                else handleKeyPress(key);
+                              }}
+                              onPointerUp={() => { if (key === "backspace") stopBackspace(); }}
+                              onPointerLeave={() => { if (key === "backspace") stopBackspace(); }}
+                              className={cn(
+                                "relative flex items-center justify-center rounded-xl font-bold transition-all select-none",
+                                isSpecial ? "bg-primary/5 text-primary/60 text-[10px] uppercase tracking-widest px-3" : "bg-card/40 border border-primary/5 text-lg flex-1 shadow-sm",
+                                key === "space" && "flex-[4]",
+                                key === "enter" && "flex-[2] bg-primary text-primary-foreground shadow-xl",
+                                key === "shift" && isShift && "bg-primary text-primary-foreground shadow-[0_0_20px_rgba(var(--primary-rgb),0.4)]"
+                              )}
+                            >
+                              {key === "shift" ? (
+                                <div className="flex flex-col items-center justify-center gap-0.5">
+                                  <motion.div animate={{ y: isShift ? -1 : 0, scale: isShift ? 1.15 : 1 }}><ArrowUp className={cn("h-5 w-5", isShift ? "stroke-[3px]" : "stroke-2")} /></motion.div>
+                                  {isShift && <motion.div initial={{ width: 0 }} animate={{ width: 12 }} className="h-0.5 bg-current rounded-full" />}
+                                </div>
+                              ) : key === "backspace" ? <Delete className="h-5 w-5" /> : key === "enter" ? <Check className="h-5 w-5" /> : key === "emoji-switch" ? (
+                                <Smile className="h-5 w-5" />
+                              ) : key === "space" ? <div className="w-16 h-1 bg-current opacity-20 rounded-full" /> : (layout === "alpha" && isShift ? key.toUpperCase() : key)}
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </motion.div>
       )}
