@@ -1,11 +1,10 @@
-
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Delete, ArrowUp, Check, ChevronDown, Smile, Dog, Pizza, 
-  Plane, Heart, Gamepad2, LayoutGrid, Flag, Sparkles
+  Plane, Heart, Gamepad2, LayoutGrid, Flag, Sparkles, Wand2
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -20,7 +19,7 @@ import {
   RAW_SYMBOLS,
   RAW_FLAGS
 } from "@/lib/emoji-library";
-import { SACRED_DICTIONARY } from "@/lib/dictionary";
+import { getSmartSuggestions } from "@/lib/spell-checker";
 
 type KeyboardLayout = "alpha" | "numeric" | "emoji";
 
@@ -83,27 +82,24 @@ export function CustomKeyboard() {
   ], []);
 
   /**
-   * Extrait le mot en cours sous le curseur et met à jour les suggestions.
+   * Analyse le texte pour extraire le mot sous le curseur et générer suggestions/corrections.
    */
   const updateSuggestions = useCallback((input: HTMLInputElement | HTMLTextAreaElement) => {
     const value = input.value;
     const selectionEnd = input.selectionStart || 0;
     
-    // On cherche le début du mot actuel (jusqu'à l'espace précédent ou le début de la chaîne)
+    // On extrait le mot juste avant le curseur
     const textBefore = value.substring(0, selectionEnd);
     const words = textBefore.split(/\s/);
-    const currentWord = words[words.length - 1].toLowerCase();
+    const currentWord = words[words.length - 1];
 
     if (currentWord.length < 1) {
       setSuggestions([]);
       return;
     }
 
-    const matches = SACRED_DICTIONARY.filter(word => 
-      word.toLowerCase().startsWith(currentWord) && word.toLowerCase() !== currentWord
-    ).slice(0, 3); // Limite de 3 pour la clarté
-
-    setSuggestions(matches);
+    const smartMatches = getSmartSuggestions(currentWord, 3);
+    setSuggestions(smartMatches);
   }, []);
 
   const applySuggestion = (suggestion: string) => {
@@ -115,7 +111,7 @@ export function CustomKeyboard() {
     
     const textBefore = value.substring(0, start);
     const words = textBefore.split(/\s/);
-    // On retire le préfixe partiel
+    // On remplace le fragment incomplet ou erroné
     words.pop();
     
     const prefix = words.join(" ");
@@ -271,7 +267,7 @@ export function CustomKeyboard() {
 
           <div className="max-w-md mx-auto bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden h-[340px] flex flex-col">
             
-            {/* Barre de Suggestions */}
+            {/* Barre de Suggestions & Orthographe */}
             <div className="h-10 mb-2 flex items-center justify-center gap-2 overflow-hidden px-2 shrink-0">
               <AnimatePresence mode="popLayout">
                 {suggestions.map((suggestion) => (
@@ -282,8 +278,9 @@ export function CustomKeyboard() {
                     exit={{ opacity: 0, y: -10, scale: 0.9 }}
                     onPointerDown={(e) => e.preventDefault()}
                     onClick={() => applySuggestion(suggestion)}
-                    className="px-4 py-1.5 rounded-full bg-primary/5 border border-primary/10 text-[11px] font-black uppercase tracking-wider text-primary shadow-sm hover:bg-primary/10 transition-colors"
+                    className="px-4 py-1.5 rounded-full bg-primary/5 border border-primary/10 text-[11px] font-black uppercase tracking-wider text-primary shadow-sm hover:bg-primary/10 transition-colors flex items-center gap-2"
                   >
+                    <Wand2 className="h-3 w-3 opacity-40" />
                     {suggestion}
                   </motion.button>
                 ))}

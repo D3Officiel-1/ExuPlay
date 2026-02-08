@@ -1,6 +1,6 @@
 /**
- * @fileOverview Lexique de l'Éveil v1.0.
- * Bibliothèque de mots pour le moteur de suggestions du CustomKeyboard.
+ * @fileOverview Lexique de l'Éveil v2.0.
+ * Bibliothèque exhaustive de mots pour le moteur de suggestions et d'orthographe.
  */
 
 export const SACRED_DICTIONARY = [
@@ -9,16 +9,58 @@ export const SACRED_DICTIONARY = [
   "résonance", "essence", "sceau", "harmonie", "adepte", "initié", "sage", "aura", 
   "immersion", "pensée", "réalité", "conscience", "vibration", "énergie", "cycle",
   "transmutation", "éther", "mystique", "vision", "vérité", "connaissance", "pouvoir",
+  "parrainage", "profil", "classement", "défi", "quiz", "points", "transfert", "échange",
+  "boutique", "paramètres", "sécurité", "wave", "numéro", "téléphone", "biométrie",
   
-  // Mots courants français (Courts & Utiles)
-  "bonjour", "salut", "comment", "allez", "bien", "merci", "faire", "dire", "vouloir",
-  "aller", "voir", "venir", "prendre", "croire", "aimer", "penser", "trouver", "donner",
-  "temps", "vie", "homme", "femme", "monde", "jour", "nuit", "heure", "grand", "petit",
-  "nouveau", "bon", "beau", "tout", "tous", "cette", "c'est", "dans", "avec", "pour",
-  "mais", "plus", "très", "aussi", "encore", "toujours", "jamais", "rien", "quelque",
-  "quel", "quelle", "ici", "là", "là-bas", "pourquoi", "quand", "où", "comment", "si",
-  
-  // Termes de l'interface
-  "profil", "classement", "défi", "quiz", "points", "transfert", "échange", "boutique",
-  "paramètres", "sécurité", "parrainage", "code", "wave", "numéro", "téléphone"
+  // Mots courants français (Expansion)
+  "abandonner", "accepter", "accompagner", "acheter", "adorer", "agir", "aider", "aimer",
+  "ajouter", "aller", "amener", "amuser", "annoncer", "apercevoir", "apparaître", "appeler",
+  "apporter", "apprendre", "approuver", "arrêter", "arriver", "asseoir", "assurer", "attendre",
+  "aucun", "aujourd'hui", "aussi", "autant", "autre", "avancer", "avant", "avec", "avoir",
+  "beau", "beaucoup", "besoin", "bien", "bon", "bonjour", "bord", "bouger", "bras", "bruit",
+  "cadeau", "calme", "car", "ce", "cela", "celui", "cent", "certain", "ces", "c'est", "ceux",
+  "chaque", "chercher", "chez", "choisir", "chose", "ciel", "cinq", "clair", "cœur", "combien",
+  "comme", "comment", "comprendre", "compter", "connaître", "continuer", "contre", "corps",
+  "côté", "coup", "courir", "croire", "dans", "de", "debout", "décider", "découvrir", "demain",
+  "demander", "depuis", "dernier", "derrière", "des", "descendre", "désirer", "devant", "devenir",
+  "devoir", "dire", "discuter", "donner", "dont", "dormir", "droit", "du", "durant", "eau",
+  "écouter", "écrire", "elle", "elles", "en", "encore", "enfant", "enfin", "enlever", "ensemble",
+  "entendre", "entre", "entrer", "envoyer", "espace", "essayer", "et", "était", "état", "été",
+  "être", "étudier", "eux", "exemple", "face", "facile", "faire", "fait", "falloir", "famille",
+  "femme", "fenêtre", "fermer", "fête", "feu", "fille", "fils", "fin", "finir", "fois", "force",
+  "forme", "fort", "frapper", "frère", "froid", "gagner", "garçon", "garder", "gens", "grand",
+  "grandir", "gros", "groupe", "haut", "heure", "heureux", "hier", "histoire", "homme", "ici",
+  "idée", "il", "ils", "image", "imaginer", "important", "impossible", "instant", "intéressant",
+  "inviter", "jamais", "jardin", "je", "jeter", "jeu", "jeune", "joie", "jouer", "jour", "journal",
+  "jusque", "juste", "là", "laisser", "langue", "le", "les", "lever", "leur", "leurs", "libre",
+  "lieu", "lire", "livre", "loi", "loin", "long", "longtemps", "lorsque", "lui", "lumière", "main",
+  "maintenant", "mais", "maison", "maître", "mal", "malgré", "manger", "manière", "manquer",
+  "marcher", "mauvais", "me", "même", "mer", "merci", "mettre", "mieux", "milieu", "mille",
+  "minute", "moi", "moins", "mois", "moment", "mon", "monde", "monter", "montrer", "mort", "mot",
+  "mourir", "mouvement", "moyen", "muet", "mur", "musique", "ne", "nécessaire", "neuf", "ni",
+  "nom", "nombre", "non", "nos", "notre", "nous", "nouveau", "nuit", "nul", "objet", "occuper",
+  "œil", "offrir", "on", "onze", "oser", "ou", "où", "oublier", "oui", "ouvrir", "page", "paix",
+  "par", "paraître", "parce", "parcourir", "parfois", "parler", "parti", "particulier", "partir",
+  "partout", "pas", "passer", "pauvre", "payer", "pays", "pendant", "penser", "perdre", "père",
+  "permettre", "personne", "petit", "peu", "peur", "peut-être", "photo", "phrase", "pied", "pierre",
+  "place", "plaisir", "plan", "plus", "plusieurs", "plutôt", "point", "point", "porte", "porter",
+  "poser", "possible", "pour", "pourquoi", "pousser", "pouvoir", "premier", "prendre", "préparer",
+  "près", "présent", "présenter", "presque", "prêt", "prier", "prix", "problème", "prochain",
+  "produire", "profiter", "promettre", "proposer", "propre", "puis", "puisque", "quand", "quant",
+  "quatre", "que", "quel", "quelle", "quelque", "quelqu'un", "question", "qui", "quitter", "quoi",
+  "raison", "rappeler", "recevoir", "reconnaître", "regarder", "rejoindre", "remarquer", "remettre",
+  "remplir", "rencontrer", "rendre", "rentrer", "répondre", "reposer", "reprendre", "ressembler",
+  "rester", "retirer", "retourner", "retrouver", "réussir", "réveiller", "revenir", "rêver", "revoir",
+  "rien", "rire", "route", "rue", "sa", "sac", "saisir", "saison", "salut", "sang", "sans", "santé",
+  "savoir", "se", "secours", "selon", "semaine", "sembler", "sens", "sentir", "sept", "serait",
+  "servir", "seul", "seulement", "si", "siècle", "signe", "silence", "simple", "sinon", "six",
+  "soi", "soir", "soit", "soleil", "somme", "son", "sont", "sortir", "souffrir", "sourire", "sous",
+  "souvent", "suivre", "sur", "surtout", "table", "tandis", "tant", "tard", "te", "tel", "tellement",
+  "temps", "tenir", "tenter", "terre", "tête", "tiens", "tirer", "toi", "tomber", "ton", "tôt",
+  "toucher", "toujours", "tour", "tourner", "tout", "toute", "traiter", "travail", "travailler",
+  "travers", "treize", "trente", "très", "trois", "trop", "trouver", "tu", "tuer", "un", "une",
+  "unique", "usage", "utiliser", "va", "valeur", "valoir", "venir", "vent", "vérité", "vers",
+  "vert", "vêtement", "vidéo", "vie", "vieux", "ville", "vin", "vingt", "visage", "visite", "vite",
+  "vivre", "voici", "voie", "voilà", "voir", "voisin", "voiture", "voix", "voler", "vouloir",
+  "vous", "voyage", "vrai", "vraiment", "vue", "y", "yeux", "zéro"
 ].sort();
