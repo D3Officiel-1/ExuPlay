@@ -1,21 +1,20 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Delete, ArrowUp, Check, ChevronDown, Smile, Baby, Dog, Pizza, Bike, Plane, Lightbulb, Heart, Flag, Languages } from "lucide-react";
+import { Delete, ArrowUp, Check, ChevronDown, Smile, Dog, Pizza, Bike, Plane, Lightbulb, Heart, Flag } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
 /**
- * @fileOverview Oracle du Clavier Sacré v4.0.
+ * @fileOverview Oracle du Clavier Sacré v4.5.
  * Une interface de saisie sur-mesure, cinématique et immersive.
- * Désormais enrichi d'une Dimension Emoji ultra-complète et animée.
+ * Désormais doté de la suppression continue par appui long.
  */
 
 type KeyboardLayout = "alpha" | "numeric" | "emoji";
 
-// Bibliothèque d'Emojis par catégories
 const EMOJI_DATA = [
   { 
     id: "people", 
@@ -35,7 +34,7 @@ const EMOJI_DATA = [
   { 
     id: "activity", 
     icon: Bike, 
-    emojis: ["⚽", "🏀", "🏈", "⚾", "🥎", "🎾", "🏐", "🏉", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍", "🏏", "🪃", "🥅", "⛳", "🪁", "🏹", "🎣", "🤿", "🥊", "🥋", "🎽", "🛹", "🛼", "🛷", "⛸️", " Curling", "🎿", "⛷️", "🏂", "🪂", "🏋️", "🤼", "🤸", "⛹️", "🤺", "🤾", "🏌️", "🏇", "🧘", "🏄", "🏊", "🤽", "🚣", "🧗", "🚵", "🚴", "🏆", "🥇", "🥈", "🥉", "🏅", "🎖️", "🏵️", "🎗️", "🎫", "🎟️", "🎭", "🎨", "🖼️", "🧵", "🪡", "🧶", "🪢", "🎤", "🎧", "🎼", "🎹", "🥁", "🪘", "🎷", "🎺", "🎸", "🪕", "🎻"] 
+    emojis: ["⚽", "🏀", "🏈", "⚾", "🥎", "🎾", "🏐", "🏉", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍", "🏏", "🪃", "🥅", "⛳", "🪁", "🏹", "🎣", "🤿", "🥊", "🥋", "🎽", " skateboard", "🛼", "🛷", "⛸️", "🎿", "⛷️", "🏂", "🪂", "🏋️", "🤼", "🤸", "⛹️", "🤺", "🤾", "🏌️", "🏇", "🧘", "🏄", "🏊", "🤽", "🚣", "🧗", "🚵", "🚴", "🏆", "🥇", "🥈", "🥉", "🏅", "🎖️", "🏵️", "🎗️", "🎫", "🎟️", "🎭", "🎨", "🖼️", "🧵", "🪡", "🧶", "🪢", "🎤", "🎧", "🎼", "🎹", "🥁", "🪘", "🎷", "🎺", "🎸", "🪕", "🎻"] 
   },
   { 
     id: "travel", 
@@ -65,6 +64,9 @@ export function CustomKeyboard() {
   const [isShift, setIsShift] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [emojiCategory, setEmojiCategory] = useState(0);
+  
+  const backspaceIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const backspaceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Écouter les focus pour déclencher le clavier
   useEffect(() => {
@@ -104,7 +106,11 @@ export function CustomKeyboard() {
 
   const handleKeyPress = useCallback((key: string) => {
     if (!activeInput) return;
-    haptic.light();
+    
+    // Pour la suppression continue, on gère les vibrations séparément
+    if (key !== "backspace_continuous") {
+      haptic.light();
+    }
 
     const start = activeInput.selectionStart || 0;
     const end = activeInput.selectionEnd || 0;
@@ -112,7 +118,7 @@ export function CustomKeyboard() {
     let newValue = value;
     let newSelectionStart = start;
 
-    if (key === "backspace") {
+    if (key === "backspace" || key === "backspace_continuous") {
       if (start === end && start > 0) {
         newValue = value.substring(0, start - 1) + value.substring(end);
         newSelectionStart = start - 1;
@@ -140,7 +146,6 @@ export function CustomKeyboard() {
       newValue = value.substring(0, start) + " " + value.substring(end);
       newSelectionStart = start + 1;
     } else {
-      // Pour les lettres, majuscule ou minuscule selon le shift
       const char = (isShift && layout === "alpha") ? key.toUpperCase() : key;
       newValue = value.substring(0, start) + char + value.substring(end);
       newSelectionStart = start + char.length;
@@ -160,7 +165,31 @@ export function CustomKeyboard() {
     activeInput.dispatchEvent(new Event("change", { bubbles: true }));
   }, [activeInput, isShift, layout]);
 
-  // Disposition AZERTY purifiée
+  // --- LOGIQUE DE SUPPRESSION CONTINUE ---
+  const stopBackspace = useCallback(() => {
+    if (backspaceTimeoutRef.current) clearTimeout(backspaceTimeoutRef.current);
+    if (backspaceIntervalRef.current) clearInterval(backspaceIntervalRef.current);
+    backspaceTimeoutRef.current = null;
+    backspaceIntervalRef.current = null;
+  }, []);
+
+  const startBackspace = useCallback(() => {
+    stopBackspace();
+    handleKeyPress("backspace"); // Premier effacement immédiat
+    
+    backspaceTimeoutRef.current = setTimeout(() => {
+      backspaceIntervalRef.current = setInterval(() => {
+        handleKeyPress("backspace_continuous");
+        haptic.light();
+      }, 75); // Vitesse de rafale
+    }, 500); // Délai avant début de rafale
+  }, [handleKeyPress, stopBackspace]);
+
+  useEffect(() => {
+    return () => stopBackspace();
+  }, [stopBackspace]);
+
+  // Disposition AZERTY purifiée (AZERTY 10-10-9-4)
   const ALPHA_KEYS = [
     ["A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P"],
     ["Q", "S", "D", "F", "G", "H", "J", "K", "L", "M"],
@@ -168,11 +197,11 @@ export function CustomKeyboard() {
     ["?123", "emoji-switch", "space", "enter"]
   ];
 
-  // Disposition Symboles
+  // Disposition Symboles symétrique (10-10-9-4)
   const NUMERIC_KEYS = [
     ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
     ["@", "#", "&", "_", "-", "(", ")", "/", ":", ";"],
-    ["+", "*", "\"", "'", "!", "?", "=", "%", "backspace"],
+    ["shift", "+", "*", "\"", "'", "!", "?", "=", "backspace"],
     ["abc-switch", "emoji-switch", "space", "enter"]
   ];
 
@@ -207,7 +236,6 @@ export function CustomKeyboard() {
                   transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                   className="flex flex-col h-[240px]"
                 >
-                  {/* Sélecteur de Catégorie */}
                   <div className="flex justify-between items-center gap-1 mb-3 px-1 overflow-x-auto no-scrollbar py-1">
                     {EMOJI_DATA.map((cat, idx) => {
                       const CatIcon = cat.icon;
@@ -227,7 +255,6 @@ export function CustomKeyboard() {
                     })}
                   </div>
 
-                  {/* Grille d'Emojis */}
                   <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-8 gap-2 p-1">
                     {EMOJI_DATA[emojiCategory].emojis.map((emoji, idx) => (
                       <button
@@ -241,7 +268,6 @@ export function CustomKeyboard() {
                     ))}
                   </div>
 
-                  {/* Contrôles Emoji */}
                   <div className="flex gap-2 mt-3 h-12">
                     <button
                       onPointerDown={(e) => e.preventDefault()}
@@ -258,8 +284,9 @@ export function CustomKeyboard() {
                       <div className="w-12 h-1 bg-current opacity-20 rounded-full" />
                     </button>
                     <button
-                      onPointerDown={(e) => e.preventDefault()}
-                      onClick={() => handleKeyPress("backspace")}
+                      onPointerDown={(e) => { e.preventDefault(); startBackspace(); }}
+                      onPointerUp={stopBackspace}
+                      onPointerLeave={stopBackspace}
                       className="flex-[2] bg-primary/5 text-primary/60 rounded-xl flex items-center justify-center"
                     >
                       <Delete className="h-5 w-5" />
@@ -285,8 +312,13 @@ export function CustomKeyboard() {
                             key={key}
                             tabIndex={-1}
                             whileTap={{ scale: 0.92, backgroundColor: "rgba(var(--primary-rgb), 0.1)" }}
-                            onPointerDown={(e) => e.preventDefault()}
-                            onClick={() => handleKeyPress(key)}
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              if (key === "backspace") startBackspace();
+                              else handleKeyPress(key);
+                            }}
+                            onPointerUp={() => { if (key === "backspace") stopBackspace(); }}
+                            onPointerLeave={() => { if (key === "backspace") stopBackspace(); }}
                             className={cn(
                               "relative flex items-center justify-center rounded-xl font-bold transition-all select-none",
                               isSpecial ? "bg-primary/5 text-primary/60 text-xs px-3" : "bg-card/40 border border-primary/5 text-lg flex-1 shadow-sm",
