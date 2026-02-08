@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Delete, ArrowUp, Check, ChevronDown, Smile, Dog, Pizza, 
   Bike, Plane, Lightbulb, Heart, Flag, Sparkles, User, Footprints,
-  Gamepad2, Music2, Coffee, Ghost, Sun, Car, MapPin
+  Gamepad2, Music2, Coffee, Ghost, Sun, Car, MapPin, LayoutGrid
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -40,7 +40,7 @@ function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, on
     <button
       onPointerDown={(e) => e.preventDefault()}
       onClick={() => { haptic.light(); onClick(emoji); }}
-      className="flex items-center justify-center aspect-square w-full rounded-xl bg-primary/[0.03] border-t border-b border-x border-primary/10 hover:bg-primary/10 hover:border-primary/20 transition-all p-1 group overflow-hidden relative shadow-sm active:scale-90"
+      className="flex items-center justify-center aspect-square w-full rounded-xl bg-primary/[0.02] border-t border-b border-primary/10 hover:bg-primary/5 transition-all p-1 group overflow-hidden relative active:scale-90"
     >
       {stage === 'text' ? (
         <span className="text-xl">{emoji}</span>
@@ -97,7 +97,7 @@ export function CustomKeyboard() {
     const handleBlur = () => {
       setTimeout(() => {
         const active = document.activeElement;
-        if (!active || (active.tagName !== "INPUT" && active.tagName !== "TEXTAREA")) {
+        if (!active || (active.tagName !== "INPUT" || active.tagName !== "TEXTAREA")) {
           setIsVisible(false);
         }
       }, 150);
@@ -207,7 +207,7 @@ export function CustomKeyboard() {
             </button>
           </div>
 
-          <div className="max-w-md mx-auto bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden h-[280px]">
+          <div className="max-w-md mx-auto bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden h-[300px]">
             <AnimatePresence mode="wait">
               {layout === "emoji" ? (
                 <motion.div 
@@ -217,24 +217,39 @@ export function CustomKeyboard() {
                   exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
                   className="flex flex-col h-full"
                 >
-                  <div className="flex justify-between items-center gap-1 mb-4 px-1 overflow-x-auto no-scrollbar py-1">
-                    {categories.map((cat, idx) => (
-                      <button
-                        key={cat.id}
-                        onPointerDown={(e) => e.preventDefault()}
-                        onClick={() => { haptic.light(); setEmojiCategory(idx); }}
-                        className={cn(
-                          "flex items-center justify-center min-w-[44px] h-11 rounded-xl transition-all",
-                          emojiCategory === idx ? "bg-primary text-primary-foreground shadow-lg scale-110" : "bg-primary/5 text-primary/40"
-                        )}
-                      >
-                        <cat.icon className="h-5 w-5" />
-                      </button>
-                    ))}
+                  {/* Barre de Catégories Ultra Moderne */}
+                  <div className="relative mb-4 px-1">
+                    <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-2 relative z-10">
+                      {categories.map((cat, idx) => (
+                        <motion.button
+                          key={cat.id}
+                          onPointerDown={(e) => e.preventDefault()}
+                          onClick={() => { haptic.light(); setEmojiCategory(idx); }}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className={cn(
+                            "relative flex items-center justify-center min-w-[48px] h-12 rounded-2xl transition-colors duration-500",
+                            emojiCategory === idx ? "text-primary-foreground" : "text-primary/30"
+                          )}
+                        >
+                          <cat.icon className="h-5 w-5 relative z-20" />
+                          
+                          {emojiCategory === idx && (
+                            <motion.div
+                              layoutId="active-cat-pill"
+                              className="absolute inset-0 bg-primary rounded-2xl shadow-xl z-10"
+                              transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                            />
+                          )}
+                        </motion.button>
+                      ))}
+                    </div>
+                    {/* Fond de la barre */}
+                    <div className="absolute inset-0 bg-primary/5 rounded-[1.5rem] border border-primary/5 -z-0" />
                   </div>
                   
                   {/* Grille Octogonale Fixe d'Emojis */}
-                  <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-8 gap-2 p-1">
+                  <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-8 gap-1.5 p-1">
                     {categories[emojiCategory].items.map((emoji, idx) => (
                       <div key={`${emojiCategory}-${idx}`} className="w-full">
                         <KeyboardEmoji 
@@ -247,9 +262,28 @@ export function CustomKeyboard() {
                   </div>
 
                   <div className="flex gap-2 mt-4 h-12">
-                    <button onPointerDown={(e) => e.preventDefault()} onClick={() => setLayout("alpha")} className="flex-[2] bg-primary/10 text-primary font-black text-[10px] uppercase rounded-xl">abc</button>
-                    <button onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress("space")} className="flex-[4] bg-card/40 border border-primary/5 rounded-xl flex items-center justify-center"><div className="w-16 h-1.5 bg-primary/20 rounded-full" /></button>
-                    <button onPointerDown={(e) => { e.preventDefault(); startBackspace(); }} onPointerUp={stopBackspace} onPointerLeave={stopBackspace} className="flex-[2] bg-primary/5 text-primary/60 rounded-xl flex items-center justify-center"><Delete className="h-5 w-5" /></button>
+                    <button 
+                      onPointerDown={(e) => e.preventDefault()} 
+                      onClick={() => { haptic.medium(); setLayout("alpha"); }} 
+                      className="flex-[2] bg-primary/10 text-primary font-black text-[10px] uppercase rounded-2xl border border-primary/5"
+                    >
+                      abc
+                    </button>
+                    <button 
+                      onPointerDown={(e) => e.preventDefault()} 
+                      onClick={() => handleKeyPress("space")} 
+                      className="flex-[4] bg-card/40 border border-primary/10 rounded-2xl flex items-center justify-center shadow-inner"
+                    >
+                      <div className="w-16 h-1.5 bg-primary/20 rounded-full" />
+                    </button>
+                    <button 
+                      onPointerDown={(e) => { e.preventDefault(); startBackspace(); }} 
+                      onPointerUp={stopBackspace} 
+                      onPointerLeave={stopBackspace} 
+                      className="flex-[2] bg-primary/5 text-primary/60 rounded-2xl flex items-center justify-center border border-primary/5"
+                    >
+                      <Delete className="h-5 w-5" />
+                    </button>
                   </div>
                 </motion.div>
               ) : (
