@@ -22,6 +22,10 @@ import {
 
 type KeyboardLayout = "alpha" | "numeric" | "emoji";
 
+/**
+ * @fileOverview KeyboardEmoji - Composant de rendu individuel pour le clavier.
+ * Gère la cascade : Animé -> Statique -> Texte.
+ */
 function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, onClick: (char: string) => void }) {
   const [stage, setStage] = useState<'animated' | 'static' | 'text'>('animated');
 
@@ -64,6 +68,7 @@ export function CustomKeyboard() {
   const backspaceIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const backspaceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Bibliothèque des essences classées par catégories
   const categories = useMemo(() => [
     { id: "people", icon: Smile, items: parseEmojiString(RAW_EMOJI_PEOPLE) },
     { id: "nature", icon: Dog, items: parseEmojiString(RAW_NATURE) },
