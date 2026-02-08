@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Delete, ArrowUp, Check, ChevronDown, Smile, Dog, Pizza, 
-  Plane, Heart, Gamepad2, LayoutGrid
+  Plane, Heart, Gamepad2, LayoutGrid, Flag
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,8 @@ import {
   RAW_ACTIVITIES, 
   RAW_PLACES,
   RAW_OBJECTS, 
-  RAW_SYMBOLS 
+  RAW_SYMBOLS,
+  RAW_FLAGS
 } from "@/lib/emoji-library";
 
 type KeyboardLayout = "alpha" | "numeric" | "emoji";
@@ -25,7 +26,7 @@ type KeyboardLayout = "alpha" | "numeric" | "emoji";
 /**
  * @fileOverview KeyboardEmoji - Composant de rendu individuel pour le clavier.
  * Gère la cascade : Animé (GIF) -> Statique (WebP) -> Texte (Unicode).
- * Enveloppé dans un bouton fixe carré avec bordures symétriques.
+ * Chaque emoji est scellé dans un bouton fixe carré avec bordures symétriques.
  */
 function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, onClick: (char: string) => void }) {
   const [stage, setStage] = useState<'animated' | 'static' | 'text'>('animated');
@@ -77,7 +78,8 @@ export function CustomKeyboard() {
     { id: "activities", icon: Gamepad2, items: parseEmojiString(RAW_ACTIVITIES) },
     { id: "places", icon: Plane, items: parseEmojiString(RAW_PLACES) },
     { id: "objects", icon: LayoutGrid, items: parseEmojiString(RAW_OBJECTS) },
-    { id: "symbols", icon: Heart, items: parseEmojiString(RAW_SYMBOLS) }
+    { id: "symbols", icon: Heart, items: parseEmojiString(RAW_SYMBOLS) },
+    { id: "flags", icon: Flag, items: parseEmojiString(RAW_FLAGS) }
   ], []);
 
   useEffect(() => {
