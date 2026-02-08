@@ -6,7 +6,7 @@ import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { 
   Delete, ArrowUp, Check, Smile, Dog, Pizza, 
   Plane, Heart, Gamepad2, LayoutGrid, Flag, Sparkles, Wand2,
-  Search, X, GripHorizontal, ChevronDown
+  Search, X, GripHorizontal, ChevronDown, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -26,7 +26,7 @@ import { getSmartSuggestions } from "@/lib/spell-checker";
 
 type KeyboardLayout = "alpha" | "numeric" | "emoji";
 
-// Stase de Hauteur Unifiée (Plus compacte : 280px)
+// Stase de Hauteur Unifiée
 const BASE_HEIGHT = 280;
 
 function KeyboardEmoji({ emoji, hex, onClick }: { emoji: string, hex: string, onClick: (char: string) => void }) {
@@ -75,6 +75,11 @@ export function CustomKeyboard() {
   
   const [isEmojiSearchActive, setIsEmojiSearchActive] = useState(false);
   const [emojiSearchQuery, setEmojiSearchQuery] = useState("");
+
+  // États pour le déplacement du curseur via l'espace
+  const [isSpaceDragging, setIsSpaceDragging] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [dragLastX, setDragLastX] = useState(0);
   
   const backspaceIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const backspaceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -123,15 +128,13 @@ export function CustomKeyboard() {
     const newValue = value.substring(0, start) + text + value.substring(end);
     
     // Calcul précis de la nouvelle position du curseur
-    const textLength = Array.from(text).length;
-    const newCursorPos = start + text.length;
+    const newCursorPos = start + Array.from(text).length;
 
     const prototype = activeInput instanceof HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
     const nativeSetter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
     if (nativeSetter) nativeSetter.call(activeInput, newValue);
     else activeInput.value = newValue;
 
-    // Déclencher les événements et repositionner le curseur
     setTimeout(() => {
       activeInput.focus();
       activeInput.setSelectionRange(newCursorPos, newCursorPos);
@@ -140,77 +143,6 @@ export function CustomKeyboard() {
       updateSuggestions(activeInput);
     }, 0);
   }, [activeInput, updateSuggestions]);
-
-  const applySuggestion = (suggestion: string) => {
-    if (!activeInput) return;
-    haptic.medium();
-    const value = activeInput.value;
-    const start = activeInput.selectionStart || 0;
-    const words = value.substring(0, start).split(/\s/);
-    words.pop();
-    const textToInsert = (words.length > 0 ? words.join(" ") + " " : "") + suggestion + " ";
-    const newValue = textToInsert + value.substring(start);
-    const newCursorPos = textToInsert.length;
-
-    const prototype = activeInput instanceof HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
-    const nativeSetter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
-    if (nativeSetter) nativeSetter.call(activeInput, newValue);
-    else activeInput.value = newValue;
-
-    activeInput.setSelectionRange(newCursorPos, newCursorPos);
-    activeInput.dispatchEvent(new Event("input", { bubbles: true }));
-    activeInput.dispatchEvent(new Event("change", { bubbles: true }));
-    setSuggestions([]);
-    activeInput.focus();
-  };
-
-  useEffect(() => {
-    const handleFocus = (e: FocusEvent) => {
-      const target = e.target as HTMLInputElement | HTMLTextAreaElement;
-      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
-        target.setAttribute("inputmode", "none");
-        target.setAttribute("virtualKeyboardPolicy", "manual");
-        setActiveInput(target);
-        setIsVisible(true);
-        if (target.type === "tel" || target.type === "number" || target.getAttribute("data-layout") === "numeric") {
-          setLayout("numeric");
-        } else {
-          setLayout("alpha");
-        }
-        updateSuggestions(target);
-      }
-    };
-    const handleFocusOut = () => {
-      setTimeout(() => {
-        const active = document.activeElement;
-        if (!active || (active.tagName !== "INPUT" && active.tagName !== "TEXTAREA")) {
-          setIsVisible(false);
-          setIsEmojiSearchActive(false);
-        }
-      }, 100);
-    };
-    document.addEventListener("focusin", handleFocus);
-    document.addEventListener("focusout", handleFocusOut);
-    return () => {
-      document.removeEventListener("focusin", handleFocus);
-      document.removeEventListener("focusout", handleFocusOut);
-    };
-  }, [updateSuggestions]);
-
-  // Sceau de Verrouillage du Scroll
-  useEffect(() => {
-    if (isResizing) {
-      document.body.style.overflow = "hidden";
-      document.body.style.touchAction = "none";
-    } else {
-      document.body.style.overflow = "";
-      document.body.style.touchAction = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-      document.body.style.touchAction = "";
-    };
-  }, [isResizing]);
 
   const handleKeyPress = useCallback((key: string) => {
     if (isEmojiSearchActive) {
@@ -236,7 +168,6 @@ export function CustomKeyboard() {
       let newValue = value;
       let newSelectionStart = start;
       if (start === end && start > 0) {
-        // Utilisation du Segmenter pour une suppression propre d'emojis complexes
         if (typeof Intl !== 'undefined' && (Intl as any).Segmenter) {
           const segmenter = new (Intl as any).Segmenter('fr', { granularity: 'grapheme' });
           const segments = Array.from(segmenter.segment(value.substring(0, start)));
@@ -276,6 +207,124 @@ export function CustomKeyboard() {
     }
   }, [activeInput, isShift, layout, updateSuggestions, isEmojiSearchActive, insertText]);
 
+  const applySuggestion = (suggestion: string) => {
+    if (!activeInput) return;
+    haptic.medium();
+    const value = activeInput.value;
+    const start = activeInput.selectionStart || 0;
+    const words = value.substring(0, start).split(/\s/);
+    words.pop();
+    const textToInsert = (words.length > 0 ? words.join(" ") + " " : "") + suggestion + " ";
+    const newValue = textToInsert + value.substring(start);
+    const newCursorPos = textToInsert.length;
+
+    const prototype = activeInput instanceof HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
+    const nativeSetter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+    if (nativeSetter) nativeSetter.call(activeInput, newValue);
+    else activeInput.value = newValue;
+
+    activeInput.setSelectionRange(newCursorPos, newCursorPos);
+    activeInput.dispatchEvent(new Event("input", { bubbles: true }));
+    activeInput.dispatchEvent(new Event("change", { bubbles: true }));
+    setSuggestions([]);
+    activeInput.focus();
+  };
+
+  const handleSpaceDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    if (!activeInput || isEmojiSearchActive) return;
+    setIsSpaceDragging(true);
+    setDragStartX(e.clientX);
+    setDragLastX(e.clientX);
+    haptic.medium();
+  };
+
+  useEffect(() => {
+    if (!isSpaceDragging || !activeInput) return;
+
+    const handleMove = (e: PointerEvent) => {
+      const currentX = e.clientX;
+      const delta = currentX - dragLastX;
+      const threshold = 15; // Sensibilité : px par caractère
+
+      if (Math.abs(delta) >= threshold) {
+        const direction = delta > 0 ? 1 : -1;
+        const start = activeInput.selectionStart || 0;
+        const newPos = Math.max(0, Math.min(activeInput.value.length, start + direction));
+        
+        if (newPos !== start) {
+          activeInput.setSelectionRange(newPos, newPos);
+          setDragLastX(currentX);
+          haptic.light();
+        }
+      }
+    };
+
+    const handleUp = (e: PointerEvent) => {
+      const currentX = e.clientX;
+      // Si le déplacement est minime, c'est un clic simple pour un espace
+      if (Math.abs(currentX - dragStartX) < 10) {
+        handleKeyPress("space");
+      }
+      setIsSpaceDragging(false);
+      haptic.light();
+    };
+
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+    };
+  }, [isSpaceDragging, dragLastX, dragStartX, activeInput, handleKeyPress]);
+
+  useEffect(() => {
+    const handleFocus = (e: FocusEvent) => {
+      const target = e.target as HTMLInputElement | HTMLTextAreaElement;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
+        target.setAttribute("inputmode", "none");
+        target.setAttribute("virtualKeyboardPolicy", "manual");
+        setActiveInput(target);
+        setIsVisible(true);
+        if (target.type === "tel" || target.type === "number" || target.getAttribute("data-layout") === "numeric") {
+          setLayout("numeric");
+        } else {
+          setLayout("alpha");
+        }
+        updateSuggestions(target);
+      }
+    };
+    const handleFocusOut = () => {
+      setTimeout(() => {
+        const active = document.activeElement;
+        if (!active || (active.tagName !== "INPUT" && active.tagName !== "TEXTAREA")) {
+          setIsVisible(false);
+          setIsEmojiSearchActive(false);
+        }
+      }, 100);
+    };
+    document.addEventListener("focusin", handleFocus);
+    document.addEventListener("focusout", handleFocusOut);
+    return () => {
+      document.removeEventListener("focusin", handleFocus);
+      document.removeEventListener("focusout", handleFocusOut);
+    };
+  }, [updateSuggestions]);
+
+  useEffect(() => {
+    if (isResizing || isSpaceDragging) {
+      document.body.style.overflow = "hidden";
+      document.body.style.touchAction = "none";
+    } else {
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
+    };
+  }, [isResizing, isSpaceDragging]);
+
   const stopBackspace = useCallback(() => {
     if (backspaceTimeoutRef.current) clearTimeout(backspaceTimeoutRef.current);
     if (backspaceIntervalRef.current) clearInterval(backspaceIntervalRef.current);
@@ -301,7 +350,6 @@ export function CustomKeyboard() {
     const handleMove = (e: PointerEvent) => {
       if (!isResizing) return;
       const deltaY = e.clientY - resizeStartY.current;
-      // Limite supérieure : Arrêt avant l'entête (environ 100px du haut)
       const maxAllowedHeight = window.innerHeight - 100;
       const newHeight = Math.max(BASE_HEIGHT, Math.min(maxAllowedHeight, resizeStartHeight.current - deltaY));
       setKeyboardHeight(newHeight);
@@ -338,16 +386,24 @@ export function CustomKeyboard() {
           transition={{ type: "spring", damping: 35, stiffness: 200 }}
           className="fixed bottom-0 left-0 right-0 z-[10002] px-2 pb-safe-area-inset-bottom pointer-events-none flex flex-col items-center"
         >
-          {/* Cristal de Résultats (Mode Recherche WhatsApp) */}
           <AnimatePresence>
-            {isEmojiSearchActive && (
+            {(isEmojiSearchActive || isSpaceDragging) && (
               <motion.div
                 initial={{ opacity: 0, y: 20, scale: 0.9, filter: "blur(10px)" }}
                 animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
                 exit={{ opacity: 0, y: 20, scale: 0.9, filter: "blur(10px)" }}
                 className="w-full max-w-md bg-card/80 backdrop-blur-3xl rounded-3xl border border-primary/10 shadow-2xl p-2.5 mb-2 flex gap-3 overflow-x-auto no-scrollbar pointer-events-auto h-20 items-center"
               >
-                {filteredEmojis.length > 0 ? (
+                {isSpaceDragging ? (
+                  <div className="w-full text-center flex flex-col items-center justify-center gap-1">
+                    <div className="flex items-center gap-4 text-primary">
+                      <ChevronLeft className="h-5 w-5 animate-pulse" />
+                      <span className="text-[10px] font-black uppercase tracking-[0.4em]">Sceau de Navigation</span>
+                      <ChevronRight className="h-5 w-5 animate-pulse" />
+                    </div>
+                    <p className="text-[8px] font-bold opacity-30 uppercase tracking-widest">Glissez pour déplacer le curseur</p>
+                  </div>
+                ) : filteredEmojis.length > 0 ? (
                   filteredEmojis.map((emoji, i) => (
                     <div key={i} className="h-14 w-14 shrink-0">
                       <KeyboardEmoji emoji={emoji.char} hex={emoji.hex} onClick={(char) => insertText(char)} />
@@ -363,7 +419,6 @@ export function CustomKeyboard() {
             )}
           </AnimatePresence>
 
-          {/* Sceau de Cristal (Poignée de Redimensionnement) */}
           {!isEmojiSearchActive && layout === "emoji" && (
             <motion.div 
               onPointerDown={handleResizeStart}
@@ -380,12 +435,11 @@ export function CustomKeyboard() {
           <div 
             style={{ 
               height: `${currentHeight}px`,
-              transition: isResizing ? 'none' : 'height 0.5s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.3s'
+              transition: (isResizing || isSpaceDragging) ? 'none' : 'height 0.5s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.3s'
             }}
             className="w-full max-w-md bg-card/60 backdrop-blur-[55px] border-t border-x border-primary/5 rounded-t-[3rem] p-4 shadow-[0_-20px_100px_-20px_rgba(0,0,0,0.5)] pointer-events-auto overflow-hidden flex flex-col"
           >
-            {/* Lumière Prédictive (Suggestions) - Intégrée sans bordure ni espace */}
-            {layout !== "emoji" && !isEmojiSearchActive && (
+            {layout !== "emoji" && !isEmojiSearchActive && !isSpaceDragging && (
               <div className="h-10 flex items-center justify-center gap-3 overflow-hidden px-4 shrink-0">
                 <AnimatePresence mode="popLayout">
                   {suggestions.length > 0 ? suggestions.map((suggestion) => (
@@ -411,7 +465,7 @@ export function CustomKeyboard() {
               </div>
             )}
 
-            <div className="flex-1 flex flex-col justify-end overflow-hidden">
+            <div className="flex-1 flex flex-col justify-end overflow-hidden relative">
               <AnimatePresence mode="wait">
                 {layout === "emoji" ? (
                   <motion.div 
@@ -423,7 +477,6 @@ export function CustomKeyboard() {
                   >
                     {isEmojiSearchActive ? (
                       <div className="flex flex-col h-full gap-4">
-                        {/* Barre de Saisie de Recherche Interne */}
                         <div className="h-14 flex items-center gap-4 px-6 bg-primary/5 rounded-[2rem] border border-primary/10 shrink-0">
                           <Search className="h-5 w-5 text-primary opacity-40" />
                           <div className="flex-1 text-base font-black italic truncate text-primary">
@@ -433,7 +486,6 @@ export function CustomKeyboard() {
                           <button onClick={() => { haptic.light(); setIsEmojiSearchActive(false); }} className="p-2 opacity-40 hover:opacity-100 transition-opacity"><X className="h-5 w-5" /></button>
                         </div>
 
-                        {/* Touches Alpha pour la recherche */}
                         <div className="flex-1 flex flex-col justify-end gap-2 pb-2">
                           {ALPHA_KEYS.map((row, i) => (
                             <div key={i} className="flex justify-center gap-1.5 h-[20%]">
@@ -463,7 +515,6 @@ export function CustomKeyboard() {
                       </div>
                     ) : (
                       <div className="flex flex-col h-full">
-                        {/* Navigation des catégories */}
                         <div className="grid grid-cols-8 gap-1.5 p-1.5 mb-4 bg-primary/5 rounded-[2rem] border border-primary/5 shrink-0 relative">
                           <LayoutGroup id="emoji-nav">
                             {categories.map((cat, idx) => (
@@ -489,14 +540,12 @@ export function CustomKeyboard() {
                           </LayoutGroup>
                         </div>
                         
-                        {/* Grille d'emojis */}
                         <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-6 gap-3 p-2 bg-primary/[0.02] rounded-3xl border border-primary/5 shadow-inner">
                           {categories[emojiCategory].items.map((emoji, idx) => (
                             <KeyboardEmoji key={idx} emoji={emoji.char} hex={emoji.hex} onClick={(char) => insertText(char)} />
                           ))}
                         </div>
 
-                        {/* Commandes inférieures */}
                         <div className="flex gap-3 mt-4 h-16 shrink-0 border-t border-primary/5 pt-3">
                           <motion.button 
                             whileTap={{ scale: 0.95 }}
@@ -506,7 +555,6 @@ export function CustomKeyboard() {
                           >
                             ABC
                           </motion.button>
-                          {/* Sceau de Loupe (Transmutation de Quête) */}
                           <motion.button 
                             whileTap={{ scale: 0.95 }}
                             onPointerDown={(e) => e.preventDefault()} 
@@ -547,6 +595,48 @@ export function CustomKeyboard() {
                       <div key={i} className="flex justify-center gap-1.5 h-[18%]">
                         {row.map((key) => {
                           const isSpecial = ["shift", "backspace", "enter", "?123", "abc", "space", "emoji-switch"].includes(key);
+                          
+                          if (key === "space") {
+                            return (
+                              <motion.button
+                                key={key}
+                                layout
+                                onPointerDown={handleSpaceDown}
+                                className={cn(
+                                  "relative flex items-center justify-center rounded-2xl font-black transition-all select-none shadow-sm border",
+                                  "bg-primary/5 border-primary/5 text-primary/60 overflow-hidden",
+                                  isSpaceDragging ? "absolute inset-x-0 h-14 z-50 bg-primary/10 border-primary/20 shadow-2xl" : "flex-[4]"
+                                )}
+                              >
+                                <AnimatePresence mode="wait">
+                                  {isSpaceDragging ? (
+                                    <motion.div 
+                                      key="cursor-mode"
+                                      initial={{ opacity: 0, y: 10 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      exit={{ opacity: 0, scale: 0.8 }}
+                                      className="flex items-center gap-6 text-primary"
+                                    >
+                                      <ChevronLeft className="h-5 w-5 animate-pulse" />
+                                      <div className="flex flex-col items-center">
+                                        <span className="text-[10px] font-black uppercase tracking-[0.3em]">Navigation</span>
+                                        <div className="w-12 h-0.5 bg-primary/20 rounded-full mt-1" />
+                                      </div>
+                                      <ChevronRight className="h-5 w-5 animate-pulse" />
+                                    </motion.div>
+                                  ) : (
+                                    <motion.div 
+                                      key="normal-mode" 
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                      className="w-16 h-1.5 bg-primary/20 rounded-full" 
+                                    />
+                                  )}
+                                </AnimatePresence>
+                              </motion.button>
+                            );
+                          }
+
                           return (
                             <motion.button
                               key={key}
@@ -556,7 +646,6 @@ export function CustomKeyboard() {
                               className={cn(
                                 "relative flex items-center justify-center rounded-2xl font-black transition-all select-none shadow-sm border",
                                 isSpecial ? "bg-primary/5 border-primary/5 text-primary/60 text-[10px] uppercase tracking-widest px-3" : "bg-card/40 border border-primary/5 text-xl flex-1",
-                                key === "space" && "flex-[4] bg-primary/5",
                                 key === "enter" && "flex-[2] bg-primary text-primary-foreground shadow-xl border-none",
                                 key === "shift" && isShift && "bg-primary text-primary-foreground shadow-[0_0_25px_rgba(var(--primary-rgb),0.4)] border-none"
                               )}
@@ -567,7 +656,7 @@ export function CustomKeyboard() {
                                 </motion.div>
                               ) : key === "backspace" ? <Delete className="h-5 w-5" /> : key === "enter" ? <Check className="h-5 w-5" /> : key === "emoji-switch" ? (
                                 <Smile className="h-5 w-5" />
-                              ) : key === "space" ? <div className="w-16 h-1.5 bg-primary/20 rounded-full" /> : (layout === "alpha" && isShift ? key.toUpperCase() : key)}
+                              ) : (layout === "alpha" && isShift ? key.toUpperCase() : key)}
                             </motion.button>
                           );
                         })}
