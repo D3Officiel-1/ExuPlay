@@ -244,7 +244,10 @@ export function CustomKeyboard() {
     } else if (key === "shift") setIsShift(!isShift);
     else if (key === "?123") setLayout("numeric");
     else if (key === "abc") setLayout("alpha");
-    else if (key === "emoji-switch") setLayout("emoji");
+    else if (key === "emoji-switch") {
+      setLayout("emoji");
+      setKeyboardHeight(BASE_HEIGHT);
+    }
     else if (key === "space") insertText(" ");
     else {
       const char = (isShift && layout === "alpha") ? key.toUpperCase() : key;
@@ -267,7 +270,10 @@ export function CustomKeyboard() {
 
   const handleResizeStart = (e: React.PointerEvent) => {
     e.preventDefault();
-    if (isEmojiSearchActive) return;
+    if (isEmojiSearchActive) {
+      // Un simple clic sur la barre de recherche ferme/ouvre
+      return;
+    }
     setIsResizing(true);
     resizeStartY.current = e.clientY;
     resizeStartHeight.current = keyboardHeight;
@@ -279,11 +285,26 @@ export function CustomKeyboard() {
       if (!isResizing) return;
       const deltaY = e.clientY - resizeStartY.current;
       const maxAllowedHeight = window.innerHeight - 100;
-      setKeyboardHeight(Math.max(BASE_HEIGHT, Math.min(maxAllowedHeight, resizeStartHeight.current - deltaY)));
+      // On calcule la nouvelle hauteur en temps réel pour un suivi parfait du doigt
+      const newHeight = Math.max(BASE_HEIGHT, Math.min(maxAllowedHeight, resizeStartHeight.current - deltaY));
+      setKeyboardHeight(newHeight);
     };
-    const handleUp = () => { if (isResizing) { setIsResizing(false); haptic.light(); } };
-    if (isResizing) { window.addEventListener("pointermove", handleMove); window.addEventListener("pointerup", handleUp); }
-    return () => { window.removeEventListener("pointermove", handleMove); window.removeEventListener("pointerup", handleUp); };
+    
+    const handleUp = () => { 
+      if (isResizing) { 
+        setIsResizing(false); 
+        haptic.light(); 
+      } 
+    };
+
+    if (isResizing) { 
+      window.addEventListener("pointermove", handleMove); 
+      window.addEventListener("pointerup", handleUp); 
+    } 
+    return () => { 
+      window.removeEventListener("pointermove", handleMove); 
+      window.removeEventListener("pointerup", handleUp); 
+    };
   }, [isResizing]);
 
   const ALPHA_KEYS = [
@@ -300,6 +321,7 @@ export function CustomKeyboard() {
     ["abc", "emoji-switch", "space", "enter"]
   ];
 
+  // La hauteur actuelle dépend du mode et du redimensionnement
   const currentHeight = (layout === "emoji" && !isEmojiSearchActive) ? keyboardHeight : BASE_HEIGHT;
 
   return (
@@ -312,7 +334,7 @@ export function CustomKeyboard() {
           transition={{ type: "spring", damping: 35, stiffness: 200 }}
           className="fixed bottom-0 left-0 right-0 z-[10002] px-2 pb-safe-area-inset-bottom pointer-events-none flex flex-col items-center"
         >
-          {/* CRISTAL DE RÉSULTATS (WhatsApp style) */}
+          {/* CRISTAL DE RÉSULTATS (WhatsApp style) - Remplace la poignée en mode recherche */}
           <AnimatePresence>
             {isEmojiSearchActive && (
               <motion.div
@@ -337,24 +359,32 @@ export function CustomKeyboard() {
             )}
           </AnimatePresence>
 
-          {/* POIGNÉE DE LÉVITATION */}
+          {/* POIGNÉE DE LÉVITATION DYNAMIQUE */}
           {!isEmojiSearchActive && layout === "emoji" && (
             <motion.div 
               onPointerDown={handleResizeStart}
-              className="h-8 w-20 bg-card/40 backdrop-blur-3xl rounded-full border border-primary/10 flex items-center justify-center shadow-lg pointer-events-auto cursor-ns-resize group active:scale-95 transition-transform mb-1"
+              onClick={() => { if (!isResizing) { haptic.light(); activeInput?.blur(); setIsVisible(false); } }}
+              className="h-8 w-24 bg-card/40 backdrop-blur-[45px] rounded-full border border-primary/10 flex items-center justify-center shadow-lg pointer-events-auto cursor-ns-resize group active:scale-95 transition-transform mb-1"
             >
-              <div className="w-10 h-1 bg-primary/20 rounded-full group-hover:bg-primary/40 transition-colors" />
+              <motion.div 
+                animate={isResizing ? { width: 40, backgroundColor: "hsl(var(--primary))" } : { width: 32, backgroundColor: "hsl(var(--primary) / 0.2)" }}
+                className="h-1 rounded-full transition-all duration-300" 
+              />
             </motion.div>
           )}
 
-          {/* LE RÉCEPTACLE SACRÉ */}
+          {/* RÉCEPTACLE SACRÉ */}
           <div 
-            style={{ height: `${currentHeight}px` }}
-            className="w-full max-w-md bg-card/60 backdrop-blur-[55px] border-t border-x border-primary/5 rounded-t-[3rem] p-4 shadow-[0_-20px_100px_-20px_rgba(0,0,0,0.5)] pointer-events-auto overflow-hidden flex flex-col transition-all duration-500 ease-[0.22, 1, 0.36, 1]"
+            style={{ 
+              height: `${currentHeight}px`,
+              // On retire les transitions CSS sur la hauteur pendant le redimensionnement pour une fluidité spectaculaire
+              transition: isResizing ? 'none' : 'height 0.5s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.3s'
+            }}
+            className="w-full max-w-md bg-card/60 backdrop-blur-[55px] border-t border-x border-primary/5 rounded-t-[3rem] p-4 shadow-[0_-20px_100px_-20px_rgba(0,0,0,0.5)] pointer-events-auto overflow-hidden flex flex-col"
           >
-            {/* BARRE DE PRÉCOGNITION (Alpha/Numeric) */}
+            {/* BARRE DE PRÉCOGNITION / SUGGESTIONS (Uniquement Alpha/Numeric) */}
             {layout !== "emoji" && !isEmojiSearchActive && (
-              <div className="h-16 mb-2 flex items-center justify-center gap-3 overflow-hidden px-4 shrink-0 border-b border-primary/5">
+              <div className="h-14 mb-2 flex items-center justify-center gap-3 overflow-hidden px-4 shrink-0 border-b border-primary/5">
                 <AnimatePresence mode="popLayout">
                   {suggestions.length > 0 ? suggestions.map((suggestion) => (
                     <motion.button
@@ -364,7 +394,7 @@ export function CustomKeyboard() {
                       exit={{ opacity: 0, y: -15, scale: 0.8 }}
                       onPointerDown={(e) => e.preventDefault()}
                       onClick={() => applySuggestion(suggestion)}
-                      className="px-5 py-2.5 rounded-full bg-primary/5 border border-primary/10 text-xs font-black uppercase tracking-widest text-primary shadow-sm hover:bg-primary/10 transition-all flex items-center gap-2"
+                      className="px-5 py-2.5 rounded-full bg-primary/5 border border-primary/10 text-[10px] font-black uppercase tracking-widest text-primary shadow-sm hover:bg-primary/10 transition-all flex items-center gap-2"
                     >
                       <Wand2 className="h-3.5 w-3.5 opacity-40" />
                       {suggestion}
@@ -390,7 +420,7 @@ export function CustomKeyboard() {
                     className="flex flex-col h-full overflow-hidden"
                   >
                     {isEmojiSearchActive ? (
-                      /* INTERFACE DE QUÊTE */
+                      /* INTERFACE DE QUÊTE (MODE RECHERCHE) */
                       <div className="flex flex-col h-full gap-4">
                         <div className="h-14 flex items-center gap-4 px-6 bg-primary/5 rounded-[2rem] border border-primary/10 shrink-0">
                           <Search className="h-5 w-5 text-primary opacity-40" />
@@ -398,7 +428,7 @@ export function CustomKeyboard() {
                             {emojiSearchQuery || "Quelle essence cherchez-vous ?"}
                             <motion.span animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 0.8 }} className="border-l-2 border-primary ml-1" />
                           </div>
-                          <button onClick={() => { haptic.light(); setIsEmojiSearchActive(false); }} className="p-2 opacity-40 hover:opacity-100"><X className="h-5 w-5" /></button>
+                          <button onClick={() => { haptic.light(); setIsEmojiSearchActive(false); }} className="p-2 opacity-40 hover:opacity-100 transition-opacity"><X className="h-5 w-5" /></button>
                         </div>
 
                         <div className="flex-1 flex flex-col justify-end gap-2 pb-2">
@@ -416,8 +446,8 @@ export function CustomKeyboard() {
                                       "relative flex items-center justify-center rounded-2xl font-bold transition-all select-none shadow-sm",
                                       isSpecial ? "bg-primary/10 text-primary/60 text-[10px] uppercase tracking-widest px-3" : "bg-card/40 border border-primary/5 text-lg flex-1",
                                       key === "space" && "flex-[4]",
-                                      key === "enter" && "flex-[2] bg-primary text-primary-foreground",
-                                      key === "shift" && isShift && "bg-primary text-primary-foreground"
+                                      key === "enter" && "flex-[2] bg-primary text-primary-foreground shadow-xl",
+                                      key === "shift" && isShift && "bg-primary text-primary-foreground shadow-lg"
                                     )}
                                   >
                                     {key === "shift" ? <ArrowUp className="h-5 w-5" /> : key === "backspace" ? <Delete className="h-5 w-5" /> : key === "enter" ? <Check className="h-5 w-5" /> : key === "emoji-switch" ? <Smile className="h-5 w-5" /> : key === "space" ? "ESPACE" : (isShift ? key.toUpperCase() : key.toLowerCase())}
@@ -429,7 +459,7 @@ export function CustomKeyboard() {
                         </div>
                       </div>
                     ) : (
-                      /* VOÛTE DES ESSENCES */
+                      /* VOÛTE DES ESSENCES (MODE EXPLORATION) */
                       <div className="flex flex-col h-full">
                         <div className="grid grid-cols-8 gap-1.5 p-1.5 mb-4 bg-primary/5 rounded-[2rem] border border-primary/5 shrink-0 relative">
                           <LayoutGroup id="emoji-nav">
@@ -462,12 +492,13 @@ export function CustomKeyboard() {
                           ))}
                         </div>
 
+                        {/* COMMANDES FIXES INFÉRIEURES */}
                         <div className="flex gap-3 mt-4 h-16 shrink-0 border-t border-primary/5 pt-3">
                           <motion.button 
                             whileTap={{ scale: 0.95 }}
                             onPointerDown={(e) => e.preventDefault()} 
-                            onClick={() => { haptic.medium(); setLayout("alpha"); }} 
-                            className="flex-[2] bg-primary/10 text-primary font-black text-xs uppercase tracking-widest rounded-2xl border border-primary/5 shadow-sm"
+                            onClick={() => { haptic.medium(); setLayout("alpha"); setKeyboardHeight(BASE_HEIGHT); }} 
+                            className="flex-[2] bg-primary/10 text-primary font-black text-xs uppercase tracking-widest rounded-2xl border border-primary/5 shadow-sm active:bg-primary/20"
                           >
                             ABC
                           </motion.button>
@@ -475,17 +506,17 @@ export function CustomKeyboard() {
                             whileTap={{ scale: 0.95 }}
                             onPointerDown={(e) => e.preventDefault()} 
                             onClick={() => { haptic.medium(); setKeyboardHeight(BASE_HEIGHT); setIsEmojiSearchActive(true); setEmojiSearchQuery(""); }} 
-                            className="flex-[4] bg-primary/5 border border-primary/10 text-primary/40 rounded-2xl flex items-center justify-center shadow-inner group overflow-hidden"
+                            className="flex-[4] bg-primary/5 border border-primary/10 text-primary/40 rounded-2xl flex items-center justify-center shadow-inner group overflow-hidden relative"
                           >
-                            <Search className="h-6 w-6 group-hover:scale-110 transition-transform" />
-                            <motion.div animate={{ opacity: [0, 0.5, 0] }} transition={{ duration: 2, repeat: Infinity }} className="absolute inset-0 bg-primary/10" />
+                            <Search className="h-6 w-6 group-hover:scale-110 transition-transform relative z-10" />
+                            <motion.div animate={{ opacity: [0, 0.3, 0] }} transition={{ duration: 2, repeat: Infinity }} className="absolute inset-0 bg-primary/10" />
                           </motion.button>
                           <motion.button 
                             whileTap={{ scale: 0.95 }}
                             onPointerDown={(e) => { e.preventDefault(); startBackspace(); }} 
                             onPointerUp={stopBackspace} 
                             onPointerLeave={stopBackspace} 
-                            className="flex-[2] bg-primary/5 text-primary/60 rounded-2xl flex items-center justify-center border border-primary/5 shadow-sm"
+                            className="flex-[2] bg-primary/5 text-primary/60 rounded-2xl flex items-center justify-center border border-primary/5 shadow-sm active:bg-destructive/5 active:text-destructive"
                           >
                             <Delete className="h-6 w-6" />
                           </motion.button>
