@@ -9,9 +9,9 @@ import { cn } from "@/lib/utils";
 import { EmojiOracle } from "@/components/EmojiOracle";
 
 /**
- * @fileOverview Oracle du Clavier 3D Animé v6.0.
+ * @fileOverview Oracle du Clavier 3D Animé v6.5.
  * Une interface de saisie révolutionnaire avec emojis 3D animés, barre de résonance 
- * et disposition AZERTY purifiée.
+ * et disposition AZERTY purifiée avec hauteur synchronisée.
  */
 
 type KeyboardLayout = "alpha" | "numeric" | "emoji";
@@ -37,7 +37,7 @@ const EMOJI_CATEGORIES = [
       { char: "🦁", hex: "1f981" }, { char: "🐯", hex: "1f42f" }, { char: "🦊", hex: "1f98a" },
       { char: "🐻", hex: "1f43b" }, { char: "🐨", hex: "1f428" }, { char: "🐸", hex: "1f438" },
       { char: "🐵", hex: "1f435" }, { char: "🦄", hex: "1f984" }, { char: "🐉", hex: "1f409" },
-      { char: "🦖", hex: "1f996" }, { char: "🦋", hex: "1f98b" }, { char: "🐙", hex: "1f419" },
+      { char: "Rex", hex: "1f996" }, { char: "🦋", hex: "1f98b" }, { char: "🐙", hex: "1f419" },
       { char: "🐝", hex: "1f41d" }, { char: "🌵", hex: "1f335" }, { char: "🌸", hex: "1f338" }
     ]
   },
@@ -258,144 +258,146 @@ export function CustomKeyboard() {
           </div>
 
           <div className="max-w-md mx-auto bg-card/60 backdrop-blur-[45px] border-t border-x border-primary/5 rounded-t-[2.5rem] p-3 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.4)] pointer-events-auto overflow-hidden">
-            <AnimatePresence mode="wait">
-              {layout === "emoji" ? (
-                <motion.div 
-                  key="emoji-layout"
-                  initial={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
-                  animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                  exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
-                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                  className="flex flex-col h-[280px]"
-                >
-                  <div className="flex justify-between items-center gap-1 mb-4 px-1 overflow-x-auto no-scrollbar py-1">
-                    {EMOJI_CATEGORIES.map((cat, idx) => {
-                      const CatIcon = cat.icon;
-                      return (
-                        <button
-                          key={cat.id}
-                          onPointerDown={(e) => e.preventDefault()}
-                          onClick={() => { haptic.light(); setEmojiCategory(idx); }}
-                          className={cn(
-                            "flex items-center justify-center min-w-[44px] h-11 rounded-xl transition-all",
-                            emojiCategory === idx ? "bg-primary text-primary-foreground shadow-lg scale-110" : "bg-primary/5 text-primary/40 hover:bg-primary/10"
-                          )}
-                        >
-                          <CatIcon className="h-5 w-5" />
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-6 gap-3 p-1">
-                    {EMOJI_CATEGORIES[emojiCategory].items.map((emoji, idx) => (
-                      <motion.button
-                        key={idx}
-                        whileTap={{ scale: 0.85 }}
-                        onPointerDown={(e) => e.preventDefault()}
-                        onClick={() => handleKeyPress(emoji.char)}
-                        className="flex items-center justify-center aspect-square rounded-[1.5rem] bg-primary/5 hover:bg-primary/10 transition-all p-2 group"
-                      >
-                        <img 
-                          src={getEmojiUrl(emoji.hex)} 
-                          alt={emoji.char} 
-                          className="w-full h-full object-contain filter drop-shadow-md group-hover:scale-110 transition-transform"
-                          loading="lazy"
-                        />
-                      </motion.button>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-2 mt-4 h-12">
-                    <button
-                      onPointerDown={(e) => e.preventDefault()}
-                      onClick={() => { haptic.medium(); setLayout("alpha"); }}
-                      className="flex-[2] bg-primary/10 text-primary font-black text-[10px] uppercase tracking-widest rounded-xl shadow-inner"
-                    >
-                      abc
-                    </button>
-                    <button
-                      onPointerDown={(e) => e.preventDefault()}
-                      onClick={() => handleKeyPress("space")}
-                      className="flex-[4] bg-card/40 border border-primary/5 rounded-xl flex items-center justify-center shadow-sm"
-                    >
-                      <div className="w-16 h-1.5 bg-primary/20 rounded-full" />
-                    </button>
-                    <button
-                      onPointerDown={(e) => { e.preventDefault(); startBackspace(); }}
-                      onPointerUp={stopBackspace}
-                      onPointerLeave={stopBackspace}
-                      className="flex-[2] bg-primary/5 text-primary/60 rounded-xl flex items-center justify-center"
-                    >
-                      <Delete className="h-5 w-5" />
-                    </button>
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div 
-                  key={layout}
-                  initial={{ opacity: 0, x: layout === "alpha" ? -20 : 20, filter: "blur(5px)" }}
-                  animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-                  exit={{ opacity: 0, x: layout === "alpha" ? 20 : -20, filter: "blur(5px)" }}
-                  transition={{ duration: 0.3 }}
-                  className="flex flex-col gap-2"
-                >
-                  {(layout === "alpha" ? ALPHA_KEYS : NUMERIC_KEYS).map((row, i) => (
-                    <div key={i} className="flex justify-center gap-1.5 h-12">
-                      {row.map((key) => {
-                        const isSpecial = ["shift", "backspace", "enter", "?123", "abc", "space", "emoji-switch"].includes(key);
+            <div className="h-[280px] flex flex-col justify-center">
+              <AnimatePresence mode="wait">
+                {layout === "emoji" ? (
+                  <motion.div 
+                    key="emoji-layout"
+                    initial={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
+                    animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
+                    transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                    className="flex flex-col h-full"
+                  >
+                    <div className="flex justify-between items-center gap-1 mb-4 px-1 overflow-x-auto no-scrollbar py-1">
+                      {EMOJI_CATEGORIES.map((cat, idx) => {
+                        const CatIcon = cat.icon;
                         return (
-                          <motion.button
-                            key={key}
-                            tabIndex={-1}
-                            whileTap={{ scale: 0.92, backgroundColor: "rgba(var(--primary-rgb), 0.1)" }}
-                            onPointerDown={(e) => {
-                              e.preventDefault();
-                              if (key === "backspace") startBackspace();
-                              else handleKeyPress(key);
-                            }}
-                            onPointerUp={() => { if (key === "backspace") stopBackspace(); }}
-                            onPointerLeave={() => { if (key === "backspace") stopBackspace(); }}
+                          <button
+                            key={cat.id}
+                            onPointerDown={(e) => e.preventDefault()}
+                            onClick={() => { haptic.light(); setEmojiCategory(idx); }}
                             className={cn(
-                              "relative flex items-center justify-center rounded-xl font-bold transition-all select-none",
-                              isSpecial ? "bg-primary/5 text-primary/60 text-[10px] uppercase tracking-widest px-3" : "bg-card/40 border border-primary/5 text-lg flex-1 shadow-sm",
-                              key === "space" && "flex-[4]",
-                              key === "enter" && "flex-[2] bg-primary text-primary-foreground shadow-xl",
-                              key === "shift" && isShift && "bg-primary text-primary-foreground shadow-[0_0_20px_rgba(var(--primary-rgb),0.4)]",
-                              !isSpecial && "active:shadow-inner"
+                              "flex items-center justify-center min-w-[44px] h-11 rounded-xl transition-all",
+                              emojiCategory === idx ? "bg-primary text-primary-foreground shadow-lg scale-110" : "bg-primary/5 text-primary/40 hover:bg-primary/10"
                             )}
                           >
-                            {key === "shift" ? (
-                              <div className="flex flex-col items-center justify-center gap-0.5">
-                                <motion.div animate={{ y: isShift ? -1 : 0, scale: isShift ? 1.15 : 1 }}>
-                                  <ArrowUp className={cn("h-5 w-5", isShift ? "stroke-[3px]" : "stroke-2")} />
-                                </motion.div>
-                                <AnimatePresence>
-                                  {isShift && <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 12, opacity: 1 }} exit={{ width: 0, opacity: 0 }} className="h-0.5 bg-current rounded-full" />}
-                                </AnimatePresence>
-                              </div>
-                            ) : key === "backspace" ? (
-                              <Delete className="h-5 w-5" />
-                            ) : key === "enter" ? (
-                              <Check className="h-5 w-5" />
-                            ) : key === "emoji-switch" ? (
-                              <div className="relative">
-                                <Smile className="h-5 w-5" />
-                                <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ duration: 2, repeat: Infinity }} className="absolute -top-1 -right-1"><Sparkles className="h-2 w-2 text-primary" /></motion.div>
-                              </div>
-                            ) : key === "space" ? (
-                              <div className="w-16 h-1 bg-current opacity-20 rounded-full" />
-                            ) : (
-                              layout === "alpha" && isShift ? key.toUpperCase() : key
-                            )}
-                          </motion.button>
+                            <CatIcon className="h-5 w-5" />
+                          </button>
                         );
                       })}
                     </div>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
+
+                    <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-6 gap-3 p-1">
+                      {EMOJI_CATEGORIES[emojiCategory].items.map((emoji, idx) => (
+                        <motion.button
+                          key={idx}
+                          whileTap={{ scale: 0.85 }}
+                          onPointerDown={(e) => e.preventDefault()}
+                          onClick={() => handleKeyPress(emoji.char)}
+                          className="flex items-center justify-center aspect-square rounded-[1.5rem] bg-primary/5 hover:bg-primary/10 transition-all p-2 group"
+                        >
+                          <img 
+                            src={getEmojiUrl(emoji.hex)} 
+                            alt={emoji.char} 
+                            className="w-full h-full object-contain filter drop-shadow-md group-hover:scale-110 transition-transform"
+                            loading="lazy"
+                          />
+                        </motion.button>
+                      ))}
+                    </div>
+
+                    <div className="flex gap-2 mt-4 h-12">
+                      <button
+                        onPointerDown={(e) => e.preventDefault()}
+                        onClick={() => { haptic.medium(); setLayout("alpha"); }}
+                        className="flex-[2] bg-primary/10 text-primary font-black text-[10px] uppercase tracking-widest rounded-xl shadow-inner"
+                      >
+                        abc
+                      </button>
+                      <button
+                        onPointerDown={(e) => e.preventDefault()}
+                        onClick={() => handleKeyPress("space")}
+                        className="flex-[4] bg-card/40 border border-primary/5 rounded-xl flex items-center justify-center shadow-sm"
+                      >
+                        <div className="w-16 h-1.5 bg-primary/20 rounded-full" />
+                      </button>
+                      <button
+                        onPointerDown={(e) => { e.preventDefault(); startBackspace(); }}
+                        onPointerUp={stopBackspace}
+                        onPointerLeave={stopBackspace}
+                        className="flex-[2] bg-primary/5 text-primary/60 rounded-xl flex items-center justify-center"
+                      >
+                        <Delete className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    key={layout}
+                    initial={{ opacity: 0, x: layout === "alpha" ? -20 : 20, filter: "blur(5px)" }}
+                    animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, x: layout === "alpha" ? 20 : -20, filter: "blur(5px)" }}
+                    transition={{ duration: 0.3 }}
+                    className="flex flex-col gap-2 h-full justify-center"
+                  >
+                    {(layout === "alpha" ? ALPHA_KEYS : NUMERIC_KEYS).map((row, i) => (
+                      <div key={i} className="flex justify-center gap-1.5 h-12">
+                        {row.map((key) => {
+                          const isSpecial = ["shift", "backspace", "enter", "?123", "abc", "space", "emoji-switch"].includes(key);
+                          return (
+                            <motion.button
+                              key={key}
+                              tabIndex={-1}
+                              whileTap={{ scale: 0.92, backgroundColor: "rgba(var(--primary-rgb), 0.1)" }}
+                              onPointerDown={(e) => {
+                                e.preventDefault();
+                                if (key === "backspace") startBackspace();
+                                else handleKeyPress(key);
+                              }}
+                              onPointerUp={() => { if (key === "backspace") stopBackspace(); }}
+                              onPointerLeave={() => { if (key === "backspace") stopBackspace(); }}
+                              className={cn(
+                                "relative flex items-center justify-center rounded-xl font-bold transition-all select-none",
+                                isSpecial ? "bg-primary/5 text-primary/60 text-[10px] uppercase tracking-widest px-3" : "bg-card/40 border border-primary/5 text-lg flex-1 shadow-sm",
+                                key === "space" && "flex-[4]",
+                                key === "enter" && "flex-[2] bg-primary text-primary-foreground shadow-xl",
+                                key === "shift" && isShift && "bg-primary text-primary-foreground shadow-[0_0_20px_rgba(var(--primary-rgb),0.4)]",
+                                !isSpecial && "active:shadow-inner"
+                              )}
+                            >
+                              {key === "shift" ? (
+                                <div className="flex flex-col items-center justify-center gap-0.5">
+                                  <motion.div animate={{ y: isShift ? -1 : 0, scale: isShift ? 1.15 : 1 }}>
+                                    <ArrowUp className={cn("h-5 w-5", isShift ? "stroke-[3px]" : "stroke-2")} />
+                                  </motion.div>
+                                  <AnimatePresence>
+                                    {isShift && <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 12, opacity: 1 }} exit={{ width: 0, opacity: 0 }} className="h-0.5 bg-current rounded-full" />}
+                                  </AnimatePresence>
+                                </div>
+                              ) : key === "backspace" ? (
+                                <Delete className="h-5 w-5" />
+                              ) : key === "enter" ? (
+                                <Check className="h-5 w-5" />
+                              ) : key === "emoji-switch" ? (
+                                <div className="relative">
+                                  <Smile className="h-5 w-5" />
+                                  <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ duration: 2, repeat: Infinity }} className="absolute -top-1 -right-1"><Sparkles className="h-2 w-2 text-primary" /></motion.div>
+                                </div>
+                              ) : key === "space" ? (
+                                <div className="w-16 h-1 bg-current opacity-20 rounded-full" />
+                              ) : (
+                                layout === "alpha" && isShift ? key.toUpperCase() : key
+                              )}
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </motion.div>
       )}
