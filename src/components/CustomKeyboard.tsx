@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Delete, ArrowUp, Check, ChevronDown, Smile, Dog, Pizza, 
   Bike, Plane, Lightbulb, Heart, Flag, Sparkles, User, Footprints,
-  Gamepad2, Music2, Coffee, Ghost, Sun, Car
+  Gamepad2, Music2, Coffee, Ghost, Sun, Car, MapPin
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ import {
   RAW_NATURE, 
   RAW_FOOD, 
   RAW_ACTIVITIES, 
+  RAW_PLACES,
   RAW_OBJECTS, 
   RAW_SYMBOLS 
 } from "@/lib/emoji-library";
@@ -74,6 +75,7 @@ export function CustomKeyboard() {
     { id: "nature", icon: Dog, items: parseEmojiString(RAW_NATURE) },
     { id: "food", icon: Pizza, items: parseEmojiString(RAW_FOOD) },
     { id: "activities", icon: Gamepad2, items: parseEmojiString(RAW_ACTIVITIES) },
+    { id: "places", icon: Plane, items: parseEmojiString(RAW_PLACES) },
     { id: "objects", icon: Lightbulb, items: parseEmojiString(RAW_OBJECTS) },
     { id: "symbols", icon: Heart, items: parseEmojiString(RAW_SYMBOLS) }
   ], []);
