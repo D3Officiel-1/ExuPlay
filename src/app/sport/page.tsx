@@ -43,7 +43,8 @@ import {
   ShoppingCart,
   Trash2,
   Edit3,
-  ArrowUpRight
+  ArrowUpRight,
+  Sparkles
 } from "lucide-react";
 import { 
   Dialog,
@@ -147,15 +148,12 @@ export default function SportPage() {
     const matchId = match.fixture.id.toString();
 
     setSelections(prev => {
-      // Si le match est déjà sélectionné
       const existingIdx = prev.findIndex(s => s.matchId === matchId);
       
       if (existingIdx !== -1) {
-        // Si c'est la même issue, on l'enlève
         if (prev[existingIdx].outcome === outcome) {
           return prev.filter(s => s.matchId !== matchId);
         }
-        // Sinon on remplace l'issue pour ce match
         const newSelections = [...prev];
         newSelections[existingIdx] = {
           matchId,
@@ -169,7 +167,6 @@ export default function SportPage() {
         return newSelections;
       }
 
-      // Nouveau match ajouté
       return [...prev, {
         matchId,
         matchName: `${match.teams.home.name} vs ${match.teams.away.name}`,
@@ -237,7 +234,7 @@ export default function SportPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-48">
-      <header className="fixed top-0 left-0 right-0 z-50 p-6 flex items-center justify-between">
+      <header className="fixed top-0 left-0 right-0 z-50 p-6 flex items-center justify-between bg-background/10 backdrop-blur-xl">
         <Button variant="ghost" size="icon" onClick={() => router.push("/home")} className="rounded-full bg-card/40 backdrop-blur-xl border border-primary/5">
           <ChevronLeft className="h-6 w-6" />
         </Button>
@@ -408,20 +405,20 @@ export default function SportPage() {
         </Tabs>
       </main>
 
-      {/* Barre de Flux Superposée (Type Barre de Navigation Fixe) */}
+      {/* Barre de Flux Superposée (Capsule Flottante) */}
       <AnimatePresence>
         {selections.length > 0 && activeTab === "matches" && !isCouponOpen && (
-          <div className="fixed bottom-0 left-0 right-0 z-[150] p-6 pb-8 bg-gradient-to-t from-background via-background/90 to-transparent pointer-events-none">
+          <div className="fixed bottom-10 left-0 right-0 z-[200] px-6 pointer-events-none flex justify-center">
             <motion.div 
-              initial={{ y: 100, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 100, opacity: 0 }}
+              initial={{ y: 100, opacity: 0, scale: 0.8 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 100, opacity: 0, scale: 0.8 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="max-w-lg mx-auto pointer-events-auto"
+              className="w-full max-w-sm pointer-events-auto"
             >
               <button 
                 onClick={() => { haptic.medium(); setIsCouponOpen(true); }}
-                className="w-full flex items-center justify-between px-8 h-16 bg-primary text-primary-foreground rounded-full shadow-[0_32px_128px_-16px_rgba(0,0,0,0.5)] border border-white/10 active:scale-95 transition-all group overflow-hidden relative"
+                className="w-full flex items-center justify-between px-8 h-16 bg-primary text-primary-foreground rounded-full shadow-[0_32px_128px_-16px_rgba(0,0,0,0.6)] border border-white/10 active:scale-95 transition-all group overflow-hidden relative"
               >
                 <motion.div 
                   animate={{ x: ["-100%", "200%"] }}
@@ -430,17 +427,20 @@ export default function SportPage() {
                 />
                 
                 <div className="flex flex-col items-start leading-none relative z-10">
-                  <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Pacte Combiné</span>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Pacte de Flux</span>
+                  </div>
                   <span className="text-sm font-black">{selections.length} Sélection{selections.length > 1 ? 's' : ''}</span>
                 </div>
 
                 <div className="flex items-center gap-4 relative z-10">
                   <div className="flex flex-col items-end leading-none">
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Flux Total</span>
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Cote Totale</span>
                     <span className="text-sm font-black italic">@{totalOdds.toFixed(2)}</span>
                   </div>
-                  <div className="h-8 w-8 rounded-xl bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
-                    <ChevronRight className="h-5 w-5 opacity-60 group-hover:translate-x-0.5 transition-transform" />
+                  <div className="h-10 w-10 rounded-2xl bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                    <ChevronRight className="h-6 w-6 opacity-60 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </div>
               </button>
@@ -552,8 +552,9 @@ export default function SportPage() {
       </Dialog>
 
       <div className="p-10 bg-primary/5 rounded-[3rem] border border-primary/5 text-center space-y-3 relative overflow-hidden mt-8 max-w-lg mx-auto w-full">
-        <p className="text-[11px] leading-relaxed font-medium opacity-40 italic">
-          "Combinez les flux des arènes pour magnifier votre prospérité. L'Oracle favorise les esprits audacieux."
+        <Sparkles className="h-8 w-8 mx-auto text-primary opacity-10" />
+        <p className="text-[11px] leading-relaxed font-medium opacity-40 italic px-4">
+          "L'Oracle favorise les esprits audacieux. Fusionnez les flux mondiaux pour magnifier votre prospérité."
         </p>
       </div>
     </div>
