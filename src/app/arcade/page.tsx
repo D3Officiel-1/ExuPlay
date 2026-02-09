@@ -208,18 +208,20 @@ export default function ArcadePage() {
                   {winner === idx && <Trophy className="h-3 w-3 text-yellow-500 animate-bounce" />}
                 </div>
                 <div className="h-10 bg-primary/5 rounded-xl flex items-center relative overflow-hidden px-2 border border-primary/5 shadow-inner">
-                  {/* Ligne d'arrivée */}
-                  <div className="absolute right-0 top-0 bottom-0 w-8 bg-black/5 flex flex-col justify-center items-center gap-1 opacity-20">
+                  {/* Ligne d'arrivée (Gauche désormais) */}
+                  <div className="absolute left-0 top-0 bottom-0 w-8 bg-black/5 flex flex-col justify-center items-center gap-1 opacity-20">
                     <div className="w-1 h-1 bg-white" />
                     <div className="w-1 h-1 bg-black" />
                     <div className="w-1 h-1 bg-white" />
                   </div>
 
+                  {/* Bolide s'élançant de la droite */}
                   <motion.div 
-                    animate={{ x: `${Math.min(carProgress[idx], 100)}%` }}
+                    initial={{ x: 0 }}
+                    animate={{ x: `-${Math.min(carProgress[idx], 100)}%` }}
                     transition={gameState === 'racing' ? { type: "spring", stiffness: 50, damping: 20 } : { duration: 0.5 }}
-                    className="absolute left-0 h-full flex items-center px-4"
-                    style={{ marginLeft: '-40px' }}
+                    className="absolute right-0 h-full flex items-center px-4"
+                    style={{ marginRight: '-40px' }}
                   >
                     <div className="relative">
                       <motion.div 
@@ -227,7 +229,10 @@ export default function ArcadePage() {
                         transition={{ duration: 0.2, repeat: Infinity }}
                         className={cn("h-8 w-12 rounded-lg flex items-center justify-center text-xl shadow-lg relative z-10", car.color)}
                       >
-                        <EmojiOracle text={car.emoji} forceStatic />
+                        {/* Retournement du bolide pour faire face à la gauche */}
+                        <div className="scale-x-[-1] flex items-center justify-center">
+                          <EmojiOracle text={car.emoji} forceStatic />
+                        </div>
                       </motion.div>
                       <div className={cn("absolute inset-[-150%] blur-xl rounded-full opacity-40", car.aura)} />
                     </div>
