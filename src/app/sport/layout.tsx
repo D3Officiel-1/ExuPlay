@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo, useState } from "react";
@@ -30,6 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 /**
  * @fileOverview Oracle du Sceau Global.
  * Gère le bouton de coupon fixe au sommet et l'état des sélections pour toutes les pages sportives.
+ * Le coupon est désormais scrollable pour éviter tout débordement visuel.
  */
 
 function CouponOverlay() {
@@ -109,19 +111,33 @@ function CouponOverlay() {
       <Dialog open={isCouponOpen} onOpenChange={setIsCouponOpen}>
         <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-[45px] border-primary/10 rounded-[3rem] p-0 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
           <div className="p-8 flex flex-col h-full gap-8">
-            <DialogHeader>
+            <DialogHeader className="shrink-0">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Scellage du Flux</p>
                   <DialogTitle className="text-2xl font-black tracking-tight italic uppercase">Votre Coupon</DialogTitle>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => { haptic.light(); setSelections([]); setIsCouponOpen(false); }} className="rounded-2xl h-12 w-12 text-destructive hover:bg-destructive/10"><Trash2 className="h-5 w-5" /></Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => { haptic.light(); setSelections([]); setIsCouponOpen(false); }} 
+                  className="rounded-2xl h-12 w-12 text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-5 w-5" />
+                </Button>
               </div>
             </DialogHeader>
-            <ScrollArea className="flex-1 pr-4 -mr-4">
-              <div className="space-y-4 px-1">
+
+            <ScrollArea className="flex-1 -mx-2 px-2 overflow-hidden min-h-0">
+              <div className="space-y-4 py-1">
                 {selections.map((sel) => (
-                  <motion.div key={sel.matchId} layout initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="relative p-5 bg-primary/5 rounded-[2rem] border border-primary/5 overflow-hidden group">
+                  <motion.div 
+                    key={sel.matchId} 
+                    layout 
+                    initial={{ opacity: 0, x: -20 }} 
+                    animate={{ opacity: 1, x: 0 }} 
+                    className="relative p-5 bg-primary/5 rounded-[2rem] border border-primary/5 overflow-hidden group"
+                  >
                     <button 
                       onClick={() => setSelections(prev => prev.filter(s => s.matchId !== sel.matchId))}
                       className="absolute top-4 right-4 h-6 w-6 rounded-full bg-destructive/10 text-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
@@ -140,22 +156,45 @@ function CouponOverlay() {
                 ))}
               </div>
             </ScrollArea>
-            <div className="space-y-6 pt-4 border-t border-primary/5">
+
+            <div className="space-y-6 pt-4 border-t border-primary/5 shrink-0">
               <div className="space-y-4">
                 <div className="flex justify-between items-end px-2">
                   <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">Mise de Lumière</Label>
                   <span className="text-[9px] font-black uppercase opacity-20">Dispo: {profile?.totalPoints?.toLocaleString()} PTS</span>
                 </div>
                 <div className="relative">
-                  <Input type="number" value={betAmount} onChange={(e) => setBetAmount(e.target.value)} className="h-16 text-3xl font-black text-center rounded-2xl bg-primary/5 border-none shadow-inner" autoFocus />
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 opacity-20"><Zap className="h-6 w-6 text-primary" /></div>
+                  <Input 
+                    type="number" 
+                    value={betAmount} 
+                    onChange={(e) => setBetAmount(e.target.value)} 
+                    className="h-16 text-3xl font-black text-center rounded-2xl bg-primary/5 border-none shadow-inner" 
+                    autoFocus 
+                  />
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 opacity-20">
+                    <Zap className="h-6 w-6 text-primary" />
+                  </div>
                 </div>
               </div>
+              
               <div className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/5 flex justify-between items-center shadow-inner">
-                <div className="flex flex-col"><p className="text-[9px] font-black uppercase opacity-30">Multiplicateur</p><p className="text-2xl font-black italic text-primary tabular-nums">@{totalOdds.toFixed(2)}</p></div>
-                <div className="text-right"><p className="text-[9px] font-black uppercase opacity-30">Gain de Lumière</p><p className="text-3xl font-black tabular-nums tracking-tighter">+{potentialWin} <span className="text-xs opacity-20">PTS</span></p></div>
+                <div className="flex flex-col">
+                  <p className="text-[9px] font-black uppercase opacity-30">Multiplicateur</p>
+                  <p className="text-2xl font-black italic text-primary tabular-nums">@{totalOdds.toFixed(2)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[9px] font-black uppercase opacity-30">Gain de Lumière</p>
+                  <p className="text-3xl font-black tabular-nums tracking-tighter">
+                    +{potentialWin} <span className="text-xs opacity-20">PTS</span>
+                  </p>
+                </div>
               </div>
-              <Button onClick={handlePlaceBet} disabled={isProcessing || selections.length === 0 || currentStake > (profile?.totalPoints || 0)} className="w-full h-20 rounded-[2.2rem] font-black text-sm uppercase shadow-2xl bg-primary text-primary-foreground gap-4 active:scale-95">
+
+              <Button 
+                onClick={handlePlaceBet} 
+                disabled={isProcessing || selections.length === 0 || currentStake > (profile?.totalPoints || 0)} 
+                className="w-full h-20 rounded-[2.2rem] font-black text-sm uppercase shadow-2xl bg-primary text-primary-foreground gap-4 active:scale-95"
+              >
                 {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : <ShieldCheck className="h-6 w-6" />} Sceller le Pacte
               </Button>
             </div>
