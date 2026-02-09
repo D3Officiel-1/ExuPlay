@@ -40,7 +40,9 @@ import {
   AlertCircle,
   Dices,
   RefreshCw,
-  Globe
+  Globe,
+  ShoppingCart,
+  ArrowUpRight
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
@@ -85,10 +87,7 @@ export default function SportPage() {
           
           if (db) {
             data.forEach((match: any) => {
-              // L'ID unique de l'API est utilisé comme ancre Firestore
               const matchRef = doc(db, "matches", match.fixture.id.toString());
-              
-              // On enregistre l'objet COMPLET tel que demandé
               setDoc(matchRef, {
                 ...match,
                 updatedAt: serverTimestamp()
@@ -137,10 +136,12 @@ export default function SportPage() {
         }
         return prev.map(b => b.matchId === mId ? { ...b, outcome, odd } : b);
       }
+      
+      // Auto-open coupon on first selection
+      if (prev.length === 0) setShowCoupon(true);
+      
       return [...prev, { matchId: mId, matchName, outcome, odd }];
     });
-    
-    if (!showCoupon && selectedBets.length === 0) setShowCoupon(true);
   };
 
   const handlePlaceBet = async () => {
@@ -199,10 +200,18 @@ export default function SportPage() {
             <span className="text-xs font-black tabular-nums">{profile?.totalPoints?.toLocaleString()} PTS</span>
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => setShowCoupon(true)} className="rounded-full bg-primary/5 relative">
-          <Ticket className="h-5 w-5 text-primary" />
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => { haptic.light(); setShowCoupon(true); }} 
+          className={cn(
+            "rounded-full transition-all duration-500",
+            selectedBets.length > 0 ? "bg-primary text-primary-foreground shadow-lg" : "bg-primary/5 text-primary"
+          )}
+        >
+          <Ticket className="h-5 w-5" />
           {selectedBets.length > 0 && (
-            <span className="absolute -top-1 -right-1 h-4 w-4 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[8px] font-black border border-background">
+            <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[8px] font-black border border-background">
               {selectedBets.length}
             </span>
           )}
@@ -344,93 +353,165 @@ export default function SportPage() {
         </Tabs>
       </main>
 
+      {/* Résumé du Coupon Flottant (1xBet style) */}
+      <AnimatePresence>
+        {selectedBets.length > 0 && !showCoupon && (
+          <motion.div 
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-6 left-0 right-0 z-[100] px-6 pointer-events-none"
+          >
+            <Button 
+              onClick={() => { haptic.medium(); setShowCoupon(true); }}
+              className="max-w-md mx-auto w-full h-16 rounded-[2rem] bg-primary text-primary-foreground shadow-[0_20px_60px_-10px_rgba(0,0,0,0.4)] border border-white/10 flex items-center justify-between px-8 pointer-events-auto group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 bg-white/10 rounded-xl flex items-center justify-center relative">
+                  <ShoppingCart className="h-5 w-5" />
+                  <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] font-black border-2 border-primary">
+                    {selectedBets.length}
+                  </span>
+                </div>
+                <div className="text-left">
+                  <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Coupon Combiné</p>
+                  <p className="text-sm font-black italic">Cote: x{totalOdds.toFixed(2)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest">Ouvrir</span>
+                <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {showCoupon && (
           <>
             <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
               onClick={() => setShowCoupon(false)}
-              className="fixed inset-0 bg-background/60 backdrop-blur-sm z-[100]"
+              className="fixed inset-0 bg-background/80 backdrop-blur-md z-[1000]"
             />
             <motion.div
-              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed bottom-0 left-0 right-0 z-[101] bg-card/95 backdrop-blur-[45px] rounded-t-[3rem] border-t border-primary/10 shadow-[0_-20px_80px_rgba(0,0,0,0.4)] max-h-[85vh] flex flex-col"
+              initial={{ y: "100%" }} 
+              animate={{ y: 0 }} 
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 z-[1001] bg-card/95 backdrop-blur-[45px] rounded-t-[3.5rem] border-t border-primary/10 shadow-[0_-20px_100px_rgba(0,0,0,0.5)] max-h-[90vh] flex flex-col max-w-lg mx-auto"
             >
-              <div className="p-8 space-y-8 overflow-y-auto no-scrollbar flex-1">
+              <div className="p-8 pb-12 space-y-8 overflow-y-auto no-scrollbar flex-1">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Mon Coupon</p>
-                    <h3 className="text-2xl font-black italic tracking-tight">Le Pacte de Flux</h3>
+                    <h3 className="text-2xl font-black italic tracking-tight uppercase">Le Pacte de Flux</h3>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => setShowCoupon(false)} className="rounded-full h-10 w-10 bg-primary/5">
-                    <X className="h-5 w-5" />
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => setShowCoupon(false)} 
+                    className="rounded-full h-12 w-12 bg-primary/5 hover:bg-primary/10 transition-colors"
+                  >
+                    <X className="h-6 w-6" />
                   </Button>
                 </div>
 
                 {selectedBets.length > 0 ? (
-                  <div className="space-y-6">
+                  <div className="space-y-8">
                     <div className="space-y-3">
                       {selectedBets.map((bet) => (
-                        <div key={bet.matchId} className="p-4 bg-primary/5 rounded-2xl border border-primary/5 flex items-center justify-between group">
+                        <motion.div 
+                          key={bet.matchId}
+                          initial={{ x: -20, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          className="p-5 bg-primary/5 rounded-[2rem] border border-primary/5 flex items-center justify-between group relative overflow-hidden"
+                        >
                           <div className="flex-1 min-w-0 pr-4">
-                            <p className="text-[10px] font-black uppercase opacity-40 mb-1">{bet.matchName}</p>
-                            <p className="font-bold text-sm">Résultat: <span className="text-primary font-black uppercase">{bet.outcome === "1" ? "Victoire Domicile" : bet.outcome === "X" ? "Match Nul" : "Victoire Extérieur"}</span></p>
+                            <p className="text-[9px] font-black uppercase opacity-40 mb-1 truncate">{bet.matchName}</p>
+                            <p className="font-bold text-sm">
+                              Flux: <span className="text-primary font-black uppercase">
+                                {bet.outcome === "1" ? "Dom." : bet.outcome === "X" ? "Nul" : "Ext."}
+                              </span>
+                            </p>
                           </div>
                           <div className="flex items-center gap-4">
-                            <span className="text-sm font-black tabular-nums">@{bet.odd.toFixed(2)}</span>
-                            <button onClick={() => setSelectedBets(prev => prev.filter(b => b.matchId !== bet.matchId))} className="text-destructive opacity-20 hover:opacity-100 transition-opacity">
+                            <span className="text-base font-black tabular-nums text-primary">@{bet.odd.toFixed(2)}</span>
+                            <button 
+                              onClick={() => setSelectedBets(prev => prev.filter(b => b.matchId !== bet.matchId))} 
+                              className="h-10 w-10 rounded-xl bg-destructive/5 text-destructive flex items-center justify-center transition-all active:scale-90"
+                            >
                               <X className="h-4 w-4" />
                             </button>
                           </div>
-                        </div>
+                        </motion.div>
                       ))}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="p-5 bg-background border border-primary/5 rounded-[2rem] space-y-1">
-                        <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Cote Totale</p>
-                        <p className="text-2xl font-black text-primary">x{totalOdds.toFixed(2)}</p>
+                      <div className="p-6 bg-background/50 backdrop-blur-md border border-primary/5 rounded-[2.5rem] space-y-1 shadow-inner">
+                        <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Multiplicateur</p>
+                        <p className="text-3xl font-black text-primary italic">x{totalOdds.toFixed(2)}</p>
                       </div>
-                      <div className="p-5 bg-background border border-primary/5 rounded-[2rem] space-y-1">
-                        <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Gain Potentiel</p>
-                        <p className="text-2xl font-black tabular-nums">{potentialWin.toLocaleString()} <span className="text-xs opacity-30">PTS</span></p>
+                      <div className="p-6 bg-background/50 backdrop-blur-md border border-primary/5 rounded-[2.5rem] space-y-1 shadow-inner">
+                        <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Gain Estimé</p>
+                        <p className="text-3xl font-black tabular-nums">{potentialWin.toLocaleString()} <span className="text-xs opacity-30">PTS</span></p>
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Mise de Lumière</Label>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-end px-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">Engagement de Lumière</Label>
+                        <span className="text-[9px] font-black opacity-20 uppercase">Dispo: {profile?.totalPoints?.toLocaleString()} PTS</span>
+                      </div>
                       <div className="relative">
                         <Input 
                           type="number" 
                           value={betInput} 
                           onChange={(e) => setBetInput(e.target.value)} 
-                          className="h-16 text-3xl font-black text-center rounded-[2.2rem] bg-primary/5 border-none shadow-inner"
+                          className="h-20 text-4xl font-black text-center rounded-[2.5rem] bg-primary/5 border-none shadow-inner transition-all focus:ring-2 focus:ring-primary/20"
                         />
-                        <Zap className="absolute right-6 top-1/2 -translate-y-1/2 h-6 w-6 text-primary opacity-20" />
+                        <Zap className="absolute right-8 top-1/2 -translate-y-1/2 h-8 w-8 text-primary opacity-20" />
                       </div>
                     </div>
 
                     <Button 
                       onClick={handlePlaceBet}
-                      disabled={isProcessing}
-                      className="w-full h-20 rounded-[2.5rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-primary/20 gap-3"
+                      disabled={isProcessing || currentBetAmount > (profile?.totalPoints || 0)}
+                      className="w-full h-24 rounded-[3rem] font-black text-sm uppercase tracking-[0.4em] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.4)] gap-4 transition-all active:scale-95 bg-primary text-primary-foreground"
                     >
-                      {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : (
+                      {isProcessing ? <Loader2 className="h-8 w-8 animate-spin" /> : (
                         <>
-                          <ShieldCheck className="h-6 w-6" />
+                          <ShieldCheck className="h-8 w-8" />
                           Sceller le Pari
                         </>
                       )}
                     </Button>
                   </div>
                 ) : (
-                  <div className="py-20 text-center space-y-6">
-                    <div className="h-20 w-20 bg-primary/5 rounded-[2.5rem] flex items-center justify-center mx-auto">
-                      <Dices className="h-10 w-10 text-primary opacity-20" />
+                  <div className="py-24 text-center space-y-8">
+                    <div className="h-24 w-24 bg-primary/5 rounded-[3rem] flex items-center justify-center mx-auto relative">
+                      <Dices className="h-12 w-12 text-primary opacity-20" />
+                      <motion.div 
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                        className="absolute inset-[-10px] border border-dashed border-primary/10 rounded-full"
+                      />
                     </div>
-                    <p className="text-sm font-medium opacity-40 px-10 leading-relaxed italic">"Votre coupon est vierge. Sélectionnez des flux sportifs pour initier la transmutation."</p>
-                    <Button onClick={() => setShowCoupon(false)} className="rounded-full px-8 h-12">Retour aux Arènes</Button>
+                    <div className="space-y-3 px-10">
+                      <p className="text-lg font-black uppercase italic tracking-tight">Coupon Vierge</p>
+                      <p className="text-xs font-medium opacity-40 leading-relaxed italic">"L'Oracle attend votre vision. Sélectionnez des flux sportifs pour initier la transmutation."</p>
+                    </div>
+                    <Button 
+                      variant="outline"
+                      onClick={() => setShowCoupon(false)} 
+                      className="rounded-[1.5rem] px-10 h-14 font-black text-[10px] uppercase tracking-widest border-primary/10"
+                    >
+                      Retour aux Arènes
+                    </Button>
                   </div>
                 )}
               </div>
