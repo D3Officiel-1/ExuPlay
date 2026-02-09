@@ -13,7 +13,7 @@ import {
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Zap, Users, Sparkles, Brain, Trophy, Swords, Flag, ChevronRight, Rocket, Bomb } from "lucide-react";
+import { Zap, Users, Sparkles, Brain, Trophy, Swords, Flag, ChevronRight, Rocket, Bomb, Ticket } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -154,6 +154,15 @@ export default function HomePage() {
 
   const GAMES = [
     {
+      id: "sport",
+      title: "Arènes Sportives",
+      description: "Prédisez les flux des champions mondiaux.",
+      icon: Ticket,
+      color: "text-orange-500",
+      bg: "bg-orange-500/5",
+      path: "/sport"
+    },
+    {
       id: "quiz",
       title: "Défis de Savoir",
       description: "Explorez les frontières de la pensée Ivoirienne.",
@@ -201,7 +210,10 @@ export default function HomePage() {
   ];
 
   return (
-    <div className={cn("min-h-screen bg-background flex flex-col pb-32 transition-colors duration-1000", isRoyalActive && "bg-yellow-500/[0.02]")}>
+    <div className={cn(
+      "min-h-screen bg-background flex flex-col pb-32 transition-colors duration-1000",
+      isRoyalActive && "bg-yellow-500/[0.02]"
+    )}>
       <main className="flex-1 flex flex-col items-center p-6 pt-24 space-y-8 z-10 max-w-lg mx-auto w-full">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
