@@ -38,7 +38,7 @@ export function QuizAutoGenerator() {
 
       if (now - lastGen >= fiveMinutes) {
         setIsGenerating(true);
-        console.log("[Oracle] Le cycle de 5 minutes est révolu. Invocation du Savoir...");
+        console.log("[Oracle] Le cycle de 5 minutes est révolu. Invocation de l'IA pour forger le Savoir...");
 
         try {
           // 1. Marquer immédiatement le début de la génération pour verrouiller le slot
@@ -47,8 +47,11 @@ export function QuizAutoGenerator() {
             lastAutoGenerationAt: serverTimestamp()
           });
 
-          // 2. Invoquer l'IA pour créer un nouveau défi
-          const result = await generateQuiz({});
+          // 2. Invoquer l'IA pour créer un nouveau défi complexe
+          // C'est ici que l'IA (Genkit) est sollicitée
+          const result = await generateQuiz({ 
+            theme: "Côte d'Ivoire - Culture et Histoire" 
+          });
           
           if (result) {
             // 3. Ancrer le nouveau défi dans la base de connaissances
@@ -57,18 +60,18 @@ export function QuizAutoGenerator() {
               playedCount: 0,
               createdAt: serverTimestamp()
             });
-            console.log("[Oracle] Un nouveau défi a été matérialisé avec succès.");
+            console.log("[Oracle] Un nouveau défi a été matérialisé par l'IA.");
           }
         } catch (error) {
-          console.error("[Oracle] Dissonance lors de la genèse automatique:", error);
+          console.error("[Oracle] Dissonance lors de la genèse automatique par l'IA:", error);
         } finally {
           setIsGenerating(false);
         }
       }
     };
 
-    // Vérification périodique du flux temporel
-    const interval = setInterval(checkAndGenerate, 60000); // Toutes les minutes
+    // Vérification périodique du flux temporel toutes les minutes
+    const interval = setInterval(checkAndGenerate, 60000);
     checkAndGenerate();
 
     return () => clearInterval(interval);
