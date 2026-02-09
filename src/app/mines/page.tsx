@@ -8,6 +8,8 @@ import { doc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { 
   ChevronLeft, 
   Zap, 
@@ -20,7 +22,8 @@ import {
   AlertTriangle,
   History,
   TrendingUp,
-  Settings2
+  Settings2,
+  Edit3
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
@@ -29,21 +32,15 @@ import { EmojiOracle } from "@/components/EmojiOracle";
 import confetti from "canvas-confetti";
 
 const GRID_SIZE = 25;
-const BET_PRESETS = [50, 100, 200, 500];
+const MIN_BET = 5;
+const BET_PRESETS = [5, 50, 100, 500];
 const MINES_PRESETS = [1, 3, 5, 10, 24];
 
-type CellState = 'hidden' | 'gem' | 'mine';
-
-/**
- * Calcule le multiplicateur pour le prochain clic réussi.
- * Formule : (Combinaisons Totales / Combinaisons Possibles sans mines)
- */
 function calculateMultiplier(totalCells: number, totalMines: number, gemsFound: number) {
   let multiplier = 1;
   for (let i = 0; i < gemsFound; i++) {
     multiplier = multiplier * ((totalCells - i) / (totalCells - totalMines - i));
   }
-  // On applique une marge de 3% pour le Sanctuaire
   return Math.max(1, multiplier * 0.97);
 }
 
@@ -53,8 +50,7 @@ export default function MinesPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // États du jeu
-  const [bet, setBet] = useState(100);
+  const [betInput, setBetInput] = useState("100");
   const [minesCount, setMinesCount] = useState(3);
   const [gameState, setGameState] = useState<'idle' | 'playing' | 'ended'>('idle');
   const [grid, setGrid] = useState<CellState[]>(Array(GRID_SIZE).fill('hidden'));
@@ -66,6 +62,8 @@ export default function MinesPage() {
   const userDocRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
 
+  const currentBet = Math.max(MIN_BET, parseInt(betInput) || 0);
+
   const currentMultiplier = useMemo(() => {
     if (revealedIndices.length === 0) return 1;
     return calculateMultiplier(GRID_SIZE, minesCount, revealedIndices.length);
@@ -75,17 +73,23 @@ export default function MinesPage() {
     return calculateMultiplier(GRID_SIZE, minesCount, revealedIndices.length + 1);
   }, [revealedIndices.length, minesCount]);
 
-  const potentialWin = Math.floor(bet * currentMultiplier);
+  const potentialWin = Math.floor(currentBet * currentMultiplier);
 
   const handleStartGame = async () => {
     if (!profile || !userDocRef || isProcessing) return;
     
-    if ((profile.totalPoints || 0) < bet) {
+    if (currentBet < MIN_BET) {
+      haptic.error();
+      toast({ variant: "destructive", title: "Mise invalide", description: `Le minimum est de ${MIN_BET} PTS.` });
+      return;
+    }
+
+    if ((profile.totalPoints || 0) < currentBet) {
       haptic.error();
       toast({
         variant: "destructive",
         title: "Lumière insuffisante",
-        description: `Il vous manque ${bet - (profile.totalPoints || 0)} PTS.`
+        description: `Il vous manque ${currentBet - (profile.totalPoints || 0)} PTS.`
       });
       return;
     }
@@ -94,13 +98,11 @@ export default function MinesPage() {
     haptic.medium();
 
     try {
-      // Déduire la mise
       await updateDoc(userDocRef, {
-        totalPoints: increment(-bet),
+        totalPoints: increment(-currentBet),
         updatedAt: serverTimestamp()
       });
 
-      // Générer les mines
       const positions: number[] = [];
       while (positions.length < minesCount) {
         const r = Math.floor(Math.random() * GRID_SIZE);
@@ -125,26 +127,19 @@ export default function MinesPage() {
     haptic.light();
     
     if (minePositions.includes(index)) {
-      // PERDU
       haptic.error();
       const newGrid = [...grid];
       minePositions.forEach(pos => newGrid[pos] = 'mine');
       setGrid(newGrid);
       setGameState('ended');
-      toast({
-        variant: "destructive",
-        title: "Dissonance !",
-        description: "Vous avez heurté une mine de vide."
-      });
+      toast({ variant: "destructive", title: "Dissonance !", description: "Vous avez heurté une mine de vide." });
     } else {
-      // CONTINUER
       haptic.success();
       setRevealedIndices(prev => [...prev, index]);
       const newGrid = [...grid];
       newGrid[index] = 'gem';
       setGrid(newGrid);
 
-      // Si toutes les gemmes sont trouvées, on cashout auto
       if (revealedIndices.length + 1 === GRID_SIZE - minesCount) {
         handleCashout();
       }
@@ -158,7 +153,7 @@ export default function MinesPage() {
     haptic.impact();
 
     try {
-      const win = Math.floor(bet * currentMultiplier);
+      const win = Math.floor(currentBet * currentMultiplier);
       await updateDoc(userDocRef!, {
         totalPoints: increment(win),
         updatedAt: serverTimestamp()
@@ -174,17 +169,13 @@ export default function MinesPage() {
       setLastWin(win);
       setGameState('ended');
       
-      // Révéler les mines restantes en transparence
       const newGrid = [...grid];
       minePositions.forEach(pos => {
         if (newGrid[pos] === 'hidden') newGrid[pos] = 'mine';
       });
       setGrid(newGrid);
 
-      toast({
-        title: "Lumière Récoltée !",
-        description: `+${win} PTS de prospérité.`
-      });
+      toast({ title: "Lumière Récoltée !", description: `+${win} PTS de prospérité.` });
     } catch (e) {
       toast({ variant: "destructive", title: "Erreur de transfert" });
     } finally {
@@ -217,10 +208,8 @@ export default function MinesPage() {
       </header>
 
       <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
-        {/* Grille de Jeu */}
         <div className="relative aspect-square w-full grid grid-cols-5 gap-2 sm:gap-3 p-4 bg-card/20 backdrop-blur-3xl rounded-[3rem] border border-primary/5 shadow-2xl overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(var(--primary-rgb),0.03),transparent_70%)] pointer-events-none" />
-          
           {grid.map((state, i) => (
             <motion.button
               key={i}
@@ -242,48 +231,44 @@ export default function MinesPage() {
                     <div className="h-2 w-2 rounded-full bg-primary/10" />
                   </motion.div>
                 ) : state === 'gem' ? (
-                  <motion.div 
-                    key="gem" 
-                    initial={{ scale: 0, rotate: -180 }} 
-                    animate={{ scale: 1, rotate: 0 }} 
-                    className="text-xl sm:text-2xl"
-                  >
-                    <EmojiOracle text="💎" forceStatic />
-                  </motion.div>
+                  <motion.div key="gem" initial={{ scale: 0, rotate: -180 }} animate={{ scale: 1, rotate: 0 }} className="text-xl sm:text-2xl"><EmojiOracle text="💎" forceStatic /></motion.div>
                 ) : (
-                  <motion.div 
-                    key="mine" 
-                    initial={{ scale: 0, rotate: 180 }} 
-                    animate={{ scale: 1, rotate: 0 }} 
-                    className="text-xl sm:text-2xl"
-                  >
-                    <EmojiOracle text="💣" forceStatic />
-                  </motion.div>
+                  <motion.div key="mine" initial={{ scale: 0, rotate: 180 }} animate={{ scale: 1, rotate: 0 }} className="text-xl sm:text-2xl"><EmojiOracle text="💣" forceStatic /></motion.div>
                 )}
               </AnimatePresence>
             </motion.button>
           ))}
         </div>
 
-        {/* Panneau de Contrôle */}
         <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2.5rem] p-6 shadow-2xl border border-primary/5">
           <div className="space-y-8">
             {gameState === 'idle' ? (
               <div className="space-y-6">
-                {/* Configuration de la mise */}
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 px-2">
-                    <Zap className="h-3 w-3 text-primary opacity-40" />
-                    <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Mise de Lumière</span>
+                  <div className="flex items-center justify-between px-2">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-3 w-3 text-primary opacity-40" />
+                      <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Mise de Lumière</span>
+                    </div>
+                    <span className="text-[9px] font-black opacity-20 uppercase">Min: 5 PTS</span>
+                  </div>
+                  <div className="relative">
+                    <Input 
+                      type="number" 
+                      value={betInput} 
+                      onChange={(e) => setBetInput(e.target.value)} 
+                      className="h-14 text-2xl font-black text-center rounded-2xl bg-primary/5 border-none shadow-inner"
+                    />
+                    <Edit3 className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-20" />
                   </div>
                   <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
                     {BET_PRESETS.map(amt => (
                       <button 
                         key={amt} 
-                        onClick={() => { haptic.light(); setBet(amt); }}
+                        onClick={() => { haptic.light(); setBetInput(amt.toString()); }}
                         className={cn(
                           "px-5 py-2.5 rounded-xl font-black text-xs transition-all border shrink-0",
-                          bet === amt ? "bg-primary text-primary-foreground border-primary shadow-lg" : "bg-primary/5 border-transparent opacity-40"
+                          betInput === amt.toString() ? "bg-primary text-primary-foreground border-primary shadow-lg" : "bg-primary/5 border-transparent opacity-40"
                         )}
                       >
                         {amt}
@@ -292,7 +277,6 @@ export default function MinesPage() {
                   </div>
                 </div>
 
-                {/* Configuration des mines */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 px-2">
                     <Bomb className="h-3 w-3 text-primary opacity-40" />
@@ -334,7 +318,6 @@ export default function MinesPage() {
                     <p className="text-2xl font-black text-primary">x{nextMultiplier.toFixed(2)}</p>
                   </div>
                 </div>
-
                 <Button 
                   onClick={handleCashout} 
                   disabled={revealedIndices.length === 0 || isProcessing}
@@ -360,23 +343,13 @@ export default function MinesPage() {
                     </motion.div>
                   )}
                 </div>
-
-                <Button 
-                  onClick={handleReset}
-                  className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-[0.3em] shadow-xl"
-                >
-                  Nouveau Cycle
-                </Button>
+                <Button onClick={handleReset} className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-[0.3em] shadow-xl">Nouveau Cycle</Button>
               </div>
             )}
           </div>
         </Card>
-
-        {/* Footer Poétique */}
         <div className="p-8 bg-primary/5 rounded-[3rem] border border-primary/5 text-center space-y-3 relative overflow-hidden">
-          <p className="text-[11px] leading-relaxed font-medium opacity-40 italic">
-            "Le savoir est une gemme cachée sous le poids de l'illusion. Purifiez votre intuition."
-          </p>
+          <p className="text-[11px] leading-relaxed font-medium opacity-40 italic">"Le savoir est une gemme cachée sous le poids de l'illusion. Purifiez votre intuition."</p>
         </div>
       </main>
     </div>

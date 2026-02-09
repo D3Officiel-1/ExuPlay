@@ -6,7 +6,7 @@ import { useUser, useFirestore, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ChevronLeft, Minus, Plus, History, Send, Rocket, Zap, Brain } from 'lucide-react';
+import { ChevronLeft, Minus, Plus, History, Send, Rocket, Zap, Brain, Edit3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -70,6 +70,7 @@ interface BetPanelProps {
 }
 
 const BETTING_TIME = 8000; 
+const MIN_BET = 5;
 
 const generateCrashPoint = (): number => {
   const r = Math.random();
@@ -215,6 +216,7 @@ const BetPanel: FC<BetPanelProps> = ({ id, balance, gameState, betData, onBet, o
 
   const handleBetClick = () => {
     if (gameState !== 'BETTING' || betState !== 'IDLE') return;
+    if (betAmount < MIN_BET) { toast({ variant: 'destructive', title: `Mise minimale: ${MIN_BET} PTS` }); return; }
     if (betAmount > balance) { toast({ variant: 'destructive', title: 'Solde insuffisant' }); return; }
     onBet(id, betAmount);
   };
@@ -257,12 +259,12 @@ const BetPanel: FC<BetPanelProps> = ({ id, balance, gameState, betData, onBet, o
     <div className="bg-[#242c48] rounded-2xl p-4 md:p-6 space-y-4 text-white shadow-xl">
         <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-            <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">Mise</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">Mise (Min: 5)</Label>
             <div className="relative">
-                <Input type="number" value={betAmount} onChange={e => onUpdate(id, { betAmount: Number(e.target.value) })} className="bg-[#10142a] border-primary/10 rounded-xl text-center font-bold h-12" disabled={!isIdle} />
+                <Input type="number" min={5} value={betAmount} onChange={e => onUpdate(id, { betAmount: Number(e.target.value) })} className="bg-[#10142a] border-primary/10 rounded-xl text-center font-bold h-12" disabled={!isIdle} />
                 <div className="absolute right-1 top-1/2 -translate-y-1/2 flex flex-col items-center">
                 <button onClick={() => onUpdate(id, { betAmount: betAmount + 10 })} disabled={!isIdle} className="px-2 text-primary opacity-40 hover:opacity-100"><Plus size={14} /></button>
-                <button onClick={() => onUpdate(id, { betAmount: Math.max(10, betAmount - 10) })} disabled={!isIdle} className="px-2 text-primary opacity-40 hover:opacity-100"><Minus size={14} /></button>
+                <button onClick={() => onUpdate(id, { betAmount: Math.max(MIN_BET, betAmount - 10) })} disabled={!isIdle} className="px-2 text-primary opacity-40 hover:opacity-100"><Minus size={14} /></button>
                 </div>
             </div>
             </div>
@@ -278,7 +280,7 @@ const BetPanel: FC<BetPanelProps> = ({ id, balance, gameState, betData, onBet, o
             </div>
         </div>
         <div className="grid grid-cols-4 gap-2">
-            {[50, 100, 200, 500].map(val => (
+            {[5, 50, 100, 500].map(val => (
             <Button key={val} size="sm" className="bg-[#303a5c] hover:bg-[#414e7a] text-[10px] font-black rounded-lg h-8" onClick={() => quickSetBet(val)} disabled={!isIdle}>+{val}</Button>
             ))}
         </div>
@@ -392,6 +394,7 @@ export default function SimulationPage() {
   const handleBet = useCallback((id: number, amount: number) => {
     const betSetter = id === 1 ? setBet1Data : setBet2Data;
     setBalance(bal => {
+      if (amount < MIN_BET) { toast({ variant: 'destructive', title: `Minimum ${MIN_BET} PTS` }); return bal; }
       if (amount > bal) { toast({ variant: 'destructive', title: 'Solde insuffisant' }); return bal; }
       betSetter(prev => ({ ...prev, betState: 'PENDING', betAmount: amount, winAmount: 0 }));
       if (profile?.username) {
