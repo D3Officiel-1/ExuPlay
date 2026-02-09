@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
@@ -191,7 +190,6 @@ export function CustomKeyboard() {
     }
   }, [activeInput, isShift, layout, updateSuggestions, isEmojiSearchActive, insertText, isEcoMode, userDocRef]);
 
-  // Sceau de Navigation (Espace)
   const handleSpaceDown = (e: React.PointerEvent) => {
     e.preventDefault();
     if (!activeInput || isEmojiSearchActive) return;
@@ -229,13 +227,12 @@ export function CustomKeyboard() {
     };
   }, [isSpaceDragging, dragLastX, activeInput]);
 
-  // Lévitation Haptique (Redimensionnement)
   const handleResizeStart = (e: React.PointerEvent) => {
     if (isEmojiSearchActive) return;
     setIsResizing(true);
     resizeStartY.current = e.clientY;
     resizeStartHeight.current = keyboardHeight;
-    document.body.style.overflow = "hidden"; // Sceau de Stase arrière-plan
+    document.body.style.overflow = "hidden";
     haptic.medium();
   };
 
@@ -257,7 +254,6 @@ export function CustomKeyboard() {
     return () => { window.removeEventListener("pointermove", handleMove); window.removeEventListener("pointerup", handleUp); };
   }, [isResizing]);
 
-  // Écouteurs de Focus
   useEffect(() => {
     const handleFocus = (e: FocusEvent) => {
       const target = e.target as HTMLInputElement | HTMLTextAreaElement;
@@ -320,7 +316,6 @@ export function CustomKeyboard() {
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
           className="fixed bottom-0 left-0 right-0 z-[10002] px-2 pb-safe-area-inset-bottom pointer-events-none flex flex-col items-center"
         >
-          {/* Cristal de Résultats Recherche Emoji */}
           <AnimatePresence>
             {isEmojiSearchActive && (
               <motion.div
@@ -338,7 +333,6 @@ export function CustomKeyboard() {
             )}
           </AnimatePresence>
 
-          {/* Poignée de Lévitation (Emoji uniquement) */}
           {!isEmojiSearchActive && layout === "emoji" && (
             <motion.div 
               onPointerDown={handleResizeStart}
@@ -358,9 +352,8 @@ export function CustomKeyboard() {
             }}
             className="w-full max-w-md bg-card/60 backdrop-blur-[55px] border-t border-x border-primary/5 rounded-t-[3rem] p-4 shadow-[0_-20px_100px_-20px_rgba(0,0,0,0.5)] pointer-events-auto overflow-hidden flex flex-col"
           >
-            {/* Suggestions / Recherche */}
             {layout !== "emoji" && !isEmojiSearchActive && !isSpaceDragging && (
-              <div className="h-10 flex items-center justify-center gap-3 overflow-hidden px-4 shrink-0">
+              <div className="h-10 flex items-center justify-center gap-3 overflow-hidden px-4 shrink-0 mb-2">
                 <AnimatePresence mode="popLayout">
                   {suggestions.length > 0 ? suggestions.map((s) => (
                     <motion.button
