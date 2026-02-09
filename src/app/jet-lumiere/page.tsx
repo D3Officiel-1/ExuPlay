@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, FC, useRef, useMemo } from 'react';
@@ -32,6 +31,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { haptic } from '@/lib/haptics';
 import { EmojiOracle } from '@/components/EmojiOracle';
 import { triggerNextJetRound, getJetHistory, validateJetCashout } from '@/app/actions/jet-lumiere';
+import confetti from "canvas-confetti";
 
 type GameState = 'waiting' | 'betting' | 'in_progress' | 'crashed';
 type BetState = 'IDLE' | 'PENDING' | 'PLACED' | 'CASHED_OUT' | 'LOST';
@@ -466,6 +466,15 @@ export default function JetLumierePage() {
           totalPoints: increment(winAmount),
           updatedAt: serverTimestamp()
         });
+
+        // Oracle : Déclenchement de la pluie de lumière (confetti)
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#3b82f6', '#10b981', '#fbbf24', '#ffffff']
+        });
+
         setBetData(prev => ({ ...prev, betState: 'CASHED_OUT', winAmount }));
         toast({ 
             title: "Cible Atteinte !", 
