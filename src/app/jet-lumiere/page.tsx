@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, FC, useRef, useMemo } from 'react';
@@ -6,22 +5,22 @@ import { useUser, useFirestore, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ChevronLeft, Minus, Plus, History, Send, Rocket, Zap, Brain, Edit3 } from 'lucide-react';
+import { ChevronLeft, Minus, Plus, History, Send, Rocket, Zap, Brain, Edit3, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { doc, updateDoc, serverTimestamp, increment } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp, increment, collection, query, where } from 'firebase/firestore';
 import Image from 'next/image';
 import { motion, AnimatePresence } from "framer-motion";
 import { haptic } from '@/lib/haptics';
 import { EmojiOracle } from '@/components/EmojiOracle';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 type GameState = 'IDLE' | 'WAITING' | 'BETTING' | 'IN_PROGRESS' | 'CRASHED';
 type BetState = 'IDLE' | 'PENDING' | 'PLACED' | 'CASHED_OUT' | 'LOST';
-type GameLevel = "Facile" | "Moyen" | "Difficile" | "Expert";
 type PlayerStatus = 'waiting' | 'betting' | 'cashed_out' | 'lost';
 
 interface BetPanelData {
@@ -67,6 +66,7 @@ interface BetPanelProps {
   onCashout: (id: number, cashoutMultiplier?: number) => void;
   onUpdate: (id: number, data: Partial<BetPanelData>) => void;
   multiplier: number;
+  isProcessing: boolean;
 }
 
 const BETTING_TIME = 8000; 
@@ -107,7 +107,6 @@ const generateFakePlayers = (count: number): SimulatedPlayer[] => {
 const fakeMessages = [
     { text: "Let's goooo! 🚀", color: "#60a5fa" },
     { text: "Big win incoming! 💰", color: "#4ade80" },
-    { text: "Suerte a todos! 🍀", color: "#4ade80" },
     { text: "Fly high! ✨", color: "#22d3ee" },
     { text: "Easy money! 😎", color: "#4ade80" }
 ];
@@ -210,22 +209,23 @@ const JetCanvasAnimation: FC<{ multiplier: number; gameState: GameState }> = ({ 
     return <canvas ref={canvasRef} width={800} height={400} className="absolute inset-0 w-full h-full" />;
 };
 
-const BetPanel: FC<BetPanelProps> = ({ id, balance, gameState, betData, onBet, onCancel, onCashout, onUpdate, multiplier }) => {
-  const { betState, betAmount, autoCashoutValue, isAutoBet, isAutoCashout } = betData;
+const BetPanel: FC<BetPanelProps> = ({ id, balance, gameState, betData, onBet, onCancel, onCashout, onUpdate, multiplier, isProcessing }) => {
+  const { betState, betAmount, autoCashoutValue } = betData;
   const { toast } = useToast();
 
   const handleBetClick = () => {
-    if (gameState !== 'BETTING' || betState !== 'IDLE') return;
+    if (gameState !== 'BETTING' || betState !== 'IDLE' || isProcessing) return;
     if (betAmount < MIN_BET) { toast({ variant: 'destructive', title: `Mise minimale: ${MIN_BET} PTS` }); return; }
-    if (betAmount > balance) { toast({ variant: 'destructive', title: 'Solde insuffisant' }); return; }
+    if (betAmount > balance) { toast({ variant: 'destructive', title: 'Lumière insuffisante' }); return; }
     onBet(id, betAmount);
   };
   
-  const handleCancelClick = () => { if ((gameState === 'BETTING' || gameState === 'WAITING') && betState === 'PENDING') onCancel(id); };
+  const handleCancelClick = () => { if ((gameState === 'BETTING' || gameState === 'WAITING') && betState === 'PENDING' && !isProcessing) onCancel(id); };
 
-  const handleCashoutClick = () => { if (gameState === 'IN_PROGRESS' && betState === 'PLACED') onCashout(id); }
+  const handleCashoutClick = () => { if (gameState === 'IN_PROGRESS' && betState === 'PLACED' && !isProcessing) onCashout(id); }
 
   const getButtonContent = () => {
+    if (isProcessing) return <Loader2 className="h-5 w-5 animate-spin" />;
     switch(betState) {
         case 'PENDING': return `ANNULER`;
         case 'PLACED': return `RETIRER ${(betAmount * multiplier).toLocaleString('fr-FR', {maximumFractionDigits: 0})} F`;
@@ -294,7 +294,7 @@ const BetPanel: FC<BetPanelProps> = ({ id, balance, gameState, betData, onBet, o
                 <Label className="text-[10px] font-black uppercase opacity-40">Auto Retrait</Label>
             </div>
         </div>
-        <Button className={cn("w-full h-14 rounded-2xl font-black text-xs uppercase tracking-widest transition-all", getButtonClass())} onClick={mainButtonClick} disabled={(betState === 'IDLE' && gameState !== 'BETTING') || betState === 'CASHED_OUT' || betState === 'LOST'}>{getButtonContent()}</Button>
+        <Button className={cn("w-full h-14 rounded-2xl font-black text-xs uppercase tracking-widest transition-all", getButtonClass())} onClick={mainButtonClick} disabled={(betState === 'IDLE' && gameState !== 'BETTING') || betState === 'CASHED_OUT' || betState === 'LOST' || isProcessing}>{getButtonContent()}</Button>
     </div>
   );
 };
@@ -338,7 +338,7 @@ const MultiplierDisplay: FC<{ multiplier: number; gameState: GameState; crashPoi
     );
 };
 
-export default function SimulationPage() {
+export default function JetLumierePage() {
   const { user } = useUser();
   const db = useFirestore();
   const router = useRouter();
@@ -350,79 +350,142 @@ export default function SimulationPage() {
   const [gameState, setGameState] = useState<GameState>('IDLE');
   const [multiplier, setMultiplier] = useState(1.00);
   const [crashPoint, setCrashPoint] = useState(0);
-  const [balance, setBalance] = useState(0);
   const [history, setHistory] = useState<number[]>(initialHistory);
-  const [gameLevel, setGameLevel] = useState<GameLevel | null>(null);
-  const [isLevelSelectorOpen, setIsLevelSelectorOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [loadingTextIndex, setLoadingTextIndex] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const [bet1Data, setBet1Data] = useState<BetPanelData>({ betState: 'IDLE', betAmount: 100, winAmount: 0, isAutoBet: false, isAutoCashout: false, autoCashoutValue: 2.00 });
   const [bet2Data, setBet2Data] = useState<BetPanelData>({ betState: 'IDLE', betAmount: 100, winAmount: 0, isAutoBet: false, isAutoCashout: false, autoCashoutValue: 2.00 });
   
   const [simulatedPlayers, setSimulatedPlayers] = useState<SimulatedPlayer[]>([]);
-  const [totalBetsCount, setTotalBetsCount] = useState(0);
-  const [totalBetAmount, setTotalBetAmount] = useState(0);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const bet1DataRef = useRef(bet1Data);
   const bet2DataRef = useRef(bet2Data);
+  
   useEffect(() => { bet1DataRef.current = bet1Data; }, [bet1Data]);
   useEffect(() => { bet2DataRef.current = bet2Data; }, [bet2Data]);
 
-    useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages]);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages]);
 
-    useEffect(() => {
-        const chatInterval = setInterval(() => {
-            const randomMessage = fakeMessages[Math.floor(Math.random() * fakeMessages.length)];
-            const randomName = generateRandomName();
-            const newMessage: ChatMessage = { id: `${Date.now()}-${Math.random()}`, user: randomName, ...randomMessage };
-            setChatMessages(prev => [...prev.slice(-10), newMessage]);
-        }, Math.random() * 5000 + 3000);
-        return () => clearInterval(chatInterval);
-    }, []);
+  useEffect(() => {
+      const chatInterval = setInterval(() => {
+          const randomMessage = fakeMessages[Math.floor(Math.random() * fakeMessages.length)];
+          const randomName = generateRandomName();
+          const newMessage: ChatMessage = { id: `${Date.now()}-${Math.random()}`, user: randomName, ...randomMessage };
+          setChatMessages(prev => [...prev.slice(-10), newMessage]);
+      }, Math.random() * 5000 + 3000);
+      return () => clearInterval(chatInterval);
+  }, []);
 
-    const handleSendMessage = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (chatInput.trim() === '' || !profile) return;
-        const newMessage: ChatMessage = { id: `${Date.now()}-${Math.random()}`, user: profile.username, text: chatInput, color: '#f472b6', isUser: true };
-        setChatMessages(prev => [...prev.slice(-10), newMessage]); setChatInput('');
-    };
+  const handleSendMessage = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (chatInput.trim() === '' || !profile) return;
+      const newMessage: ChatMessage = { id: `${Date.now()}-${Math.random()}`, user: profile.username, text: chatInput, color: '#f472b6', isUser: true };
+      setChatMessages(prev => [...prev.slice(-10), newMessage]); setChatInput('');
+  };
 
-  const handleBet = useCallback((id: number, amount: number) => {
+  const handleBet = useCallback(async (id: number, amount: number) => {
+    if (!userDocRef || isProcessing) return;
     const betSetter = id === 1 ? setBet1Data : setBet2Data;
-    setBalance(bal => {
-      if (amount < MIN_BET) { toast({ variant: 'destructive', title: `Minimum ${MIN_BET} PTS` }); return bal; }
-      if (amount > bal) { toast({ variant: 'destructive', title: 'Solde insuffisant' }); return bal; }
+    
+    if (amount < MIN_BET) { toast({ variant: 'destructive', title: `Minimum ${MIN_BET} PTS` }); return; }
+    if (amount > (profile?.totalPoints || 0)) { toast({ variant: 'destructive', title: 'Solde insuffisant' }); return; }
+
+    setIsProcessing(true);
+    haptic.medium();
+
+    try {
+      await updateDoc(userDocRef, {
+        totalPoints: increment(-amount),
+        updatedAt: serverTimestamp()
+      });
+
       betSetter(prev => ({ ...prev, betState: 'PENDING', betAmount: amount, winAmount: 0 }));
+      
       if (profile?.username) {
         setSimulatedPlayers(players => {
             const userPlayer: SimulatedPlayer = { id: `user-${id}`, name: profile.username, avatar: profile.username.slice(0, 2).toUpperCase(), bet: amount, status: 'betting' };
             return [userPlayer, ...players.filter(p => p.id !== `user-${id}`)];
         });
       }
-      return bal - amount;
-    });
-  }, [toast, profile]);
+    } catch (error) {
+      const permissionError = new FirestorePermissionError({
+        path: userDocRef.path,
+        operation: 'update',
+        requestResourceData: { totalPoints: `decrement ${amount}` },
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [profile, userDocRef, isProcessing, toast]);
 
-  const handleCancel = useCallback((id: number) => {
+  const handleCancel = useCallback(async (id: number) => {
+      if (!userDocRef || isProcessing) return;
+      const betData = id === 1 ? bet1DataRef.current : bet2DataRef.current;
       const betSetter = id === 1 ? setBet1Data : setBet2Data;
-      betSetter(prev => { setBalance(bal => bal + prev.betAmount); setSimulatedPlayers(players => players.filter(p => p.id !== `user-${id}`)); return { ...prev, betState: 'IDLE' }; });
-  }, []);
+      
+      if (betData.betState !== 'PENDING') return;
 
-  const handleCashout = useCallback((id: number, cashoutMultiplier?: number) => {
-      const betRef = id === 1 ? bet1DataRef : bet2DataRef;
+      setIsProcessing(true);
+      haptic.light();
+
+      try {
+        await updateDoc(userDocRef, {
+          totalPoints: increment(betData.betAmount),
+          updatedAt: serverTimestamp()
+        });
+
+        betSetter(prev => ({ ...prev, betState: 'IDLE' }));
+        setSimulatedPlayers(players => players.filter(p => p.id !== `user-${id}`));
+      } catch (error) {
+        const permissionError = new FirestorePermissionError({
+          path: userDocRef.path,
+          operation: 'update',
+          requestResourceData: { totalPoints: `increment ${betData.betAmount}` },
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+      } finally {
+        setIsProcessing(false);
+      }
+  }, [userDocRef, isProcessing]);
+
+  const handleCashout = useCallback(async (id: number, cashoutMultiplier?: number) => {
+      if (!userDocRef || isProcessing) return;
+      const betData = id === 1 ? bet1DataRef.current : bet2DataRef.current;
       const betSetter = id === 1 ? setBet1Data : setBet2Data;
-      if (betRef.current.betState !== 'PLACED') return;
-      const finalMultiplier = cashoutMultiplier || multiplier;
-      const winAmount = betRef.current.betAmount * finalMultiplier;
-      setBalance(bal => bal + winAmount);
+      
+      if (betData.betState !== 'PLACED') return;
+
+      setIsProcessing(true);
       haptic.success();
-      toast({ title: "Flux Récupéré !", description: `+${winAmount.toLocaleString('fr-FR')} PTS à x${finalMultiplier.toFixed(2)}` });
-      betSetter(prev => ({ ...prev, betState: 'CASHED_OUT', winAmount }));
-  }, [multiplier, toast]);
+
+      const finalMultiplier = cashoutMultiplier || multiplier;
+      const winAmount = Math.floor(betData.betAmount * finalMultiplier);
+
+      try {
+        await updateDoc(userDocRef, {
+          totalPoints: increment(winAmount),
+          updatedAt: serverTimestamp()
+        });
+
+        toast({ title: "Flux Récupéré !", description: `+${winAmount.toLocaleString('fr-FR')} PTS à x${finalMultiplier.toFixed(2)}` });
+        betSetter(prev => ({ ...prev, betState: 'CASHED_OUT', winAmount }));
+      } catch (error) {
+        const permissionError = new FirestorePermissionError({
+          path: userDocRef.path,
+          operation: 'update',
+          requestResourceData: { totalPoints: `increment ${winAmount}` },
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+      } finally {
+        setIsProcessing(false);
+      }
+  }, [multiplier, userDocRef, isProcessing, toast]);
   
   const handleUpdateBet = useCallback((id: number, data: Partial<BetPanelData>) => {
       const betSetter = id === 1 ? setBet1Data : setBet2Data;
@@ -448,9 +511,13 @@ export default function SimulationPage() {
   }, [bet1Data, bet2Data, profile]);
 
   const gameLoop = useCallback(() => {
-    setGameState('WAITING'); setMultiplier(1.00); setSimulatedPlayers(generateFakePlayers(15)); setTotalBetsCount(0); setTotalBetAmount(0);
-    if (bet1DataRef.current.isAutoBet && balance < bet1DataRef.current.betAmount) { setBet1Data(b => ({ ...b, isAutoBet: false })); }
-    if (bet2DataRef.current.isAutoBet && balance < bet2DataRef.current.betAmount) { setBet2Data(b => ({ ...b, isAutoBet: false })); }
+    setGameState('WAITING'); setMultiplier(1.00); setSimulatedPlayers(generateFakePlayers(15));
+    
+    // Auto-bet logic using real balance
+    const currentPoints = profile?.totalPoints || 0;
+    if (bet1DataRef.current.isAutoBet && currentPoints < bet1DataRef.current.betAmount) { setBet1Data(b => ({ ...b, isAutoBet: false })); }
+    if (bet2DataRef.current.isAutoBet && currentPoints < bet2DataRef.current.betAmount) { setBet2Data(b => ({ ...b, isAutoBet: false })); }
+    
     const waitTimer = setTimeout(() => {
         setGameState('BETTING');
         let bettingInterval = setInterval(() => {
@@ -459,12 +526,13 @@ export default function SimulationPage() {
             if (playersToBet.length === 0) { clearInterval(bettingInterval); return players; }
             const playerToUpdate = playersToBet[Math.floor(Math.random() * playersToBet.length)];
             const betAmount = Math.floor(Math.random() * 500) + 10;
-            setTotalBetsCount(c => c + 1); setTotalBetAmount(a => a + betAmount);
             return players.map(p => p.id === playerToUpdate.id ? { ...p, status: 'betting', bet: betAmount } : p);
           });
         }, 400);
-        if (bet1DataRef.current.isAutoBet && balance >= bet1DataRef.current.betAmount) handleBet(1, bet1DataRef.current.betAmount);
-        if (bet2DataRef.current.isAutoBet && balance >= bet2DataRef.current.betAmount) handleBet(2, bet2DataRef.current.betAmount);
+
+        if (bet1DataRef.current.isAutoBet && currentPoints >= bet1DataRef.current.betAmount) handleBet(1, bet1DataRef.current.betAmount);
+        if (bet2DataRef.current.isAutoBet && currentPoints >= bet2DataRef.current.betAmount) handleBet(2, bet2DataRef.current.betAmount);
+
         const bettingTimer = setTimeout(() => {
             clearInterval(bettingInterval);
             const newCrashPoint = generateCrashPoint(); setCrashPoint(newCrashPoint); setGameState('IN_PROGRESS');
@@ -476,7 +544,7 @@ export default function SimulationPage() {
                 currentMultiplier += baseSpeed + (acceleration * Math.pow(currentMultiplier, 2));
                 setMultiplier(currentMultiplier);
                 setSimulatedPlayers(players => players.map(p => {
-                    if (p.status === 'betting' && typeof p.id === 'number' && Math.random() < 0.01) { setTotalBetsCount(c => c - 1); return { ...p, status: 'cashed_out', cashoutMultiplier: currentMultiplier }; }
+                    if (p.status === 'betting' && typeof p.id === 'number' && Math.random() < 0.01) { return { ...p, status: 'cashed_out', cashoutMultiplier: currentMultiplier }; }
                     return p;
                 }));
                 if (bet1DataRef.current.betState === 'PLACED' && bet1DataRef.current.isAutoCashout && currentMultiplier >= bet1DataRef.current.autoCashoutValue) handleCashout(1, bet1DataRef.current.autoCashoutValue);
@@ -493,9 +561,9 @@ export default function SimulationPage() {
         }, BETTING_TIME);
     }, 5000);
     return () => clearTimeout(waitTimer);
-  }, [handleBet, handleCashout, balance]);
+  }, [handleBet, handleCashout, profile?.totalPoints]);
 
-  useEffect(() => { if (gameLevel !== null && gameState === 'IDLE') setTimeout(gameLoop, 1000); }, [gameLevel, gameState, gameLoop]);
+  useEffect(() => { if (gameState === 'IDLE') setTimeout(gameLoop, 1000); }, [gameState, gameLoop]);
 
   useEffect(() => {
     if (isLoading) {
@@ -504,17 +572,6 @@ export default function SimulationPage() {
         return () => { clearInterval(textInterval); clearTimeout(readyTimer); };
     }
   }, [isLoading]);
-
-  const selectLevel = (level: GameLevel) => {
-    setGameLevel(level);
-    switch(level) {
-        case 'Facile': setBalance(10000); break;
-        case 'Moyen': setBalance(5000); break;
-        case 'Difficile': setBalance(1000); break;
-        case 'Expert': setBalance(500); break;
-    }
-    setIsLevelSelectorOpen(false);
-  }
 
   if (isLoading || !user) {
     return (
@@ -541,32 +598,6 @@ export default function SimulationPage() {
   }
 
   return (
-    <>
-    <Dialog open={isLevelSelectorOpen}>
-        <DialogContent className="bg-card/95 backdrop-blur-3xl border-primary/10 text-white rounded-[2.5rem] p-8 max-w-sm sm:max-w-md">
-            <DialogHeader className="text-center">
-                <DialogTitle className="text-2xl font-black italic">Capacité de Flux</DialogTitle>
-                <DialogDescription className="text-sm font-medium opacity-40">Déterminez l'intensité de votre point de départ.</DialogDescription>
-            </DialogHeader>
-            <div className="grid grid-cols-2 gap-4 pt-6">
-                {[
-                  { l: 'Facile', e: '😀', p: '10,000 PTS' },
-                  { l: 'Moyen', e: '🙂', p: '5,000 PTS' },
-                  { l: 'Difficile', e: '😎', p: '1,000 PTS' },
-                  { l: 'Expert', e: '😈', p: '500 PTS' }
-                ].map((item) => (
-                  <Button key={item.l} variant="outline" className="h-24 flex flex-col items-center justify-center gap-2 bg-primary/5 border-primary/5 hover:bg-primary/10 rounded-[2rem] transition-all group" onClick={() => selectLevel(item.l as GameLevel)}>
-                    <span className="text-2xl group-hover:scale-125 transition-transform">{item.e}</span>
-                    <div className="text-center">
-                      <p className="text-[10px] font-black uppercase">{item.l}</p>
-                      <p className="text-[8px] font-bold opacity-40">{item.p}</p>
-                    </div>
-                  </Button>
-                ))}
-            </div>
-        </DialogContent>
-    </Dialog>
-
     <div className="min-h-screen bg-background text-white flex flex-col pb-32">
       <header className="fixed top-0 left-0 right-0 z-50 p-6 flex items-center justify-between">
         <Button variant="ghost" size="icon" onClick={() => router.push("/home")} className="rounded-full bg-card/40 backdrop-blur-xl border border-primary/5">
@@ -576,7 +607,7 @@ export default function SimulationPage() {
           <p className="text-[8px] font-black uppercase tracking-[0.4em] opacity-40">Oracle du Flux</p>
           <div className="flex items-center gap-2 px-4 py-1 bg-primary/5 rounded-full border border-primary/5">
             <Zap className="h-3 w-3 text-primary" />
-            <span className="text-xs font-black tabular-nums">{balance.toLocaleString()} PTS</span>
+            <span className="text-xs font-black tabular-nums">{(profile?.totalPoints || 0).toLocaleString()} PTS</span>
           </div>
         </div>
         <div className="w-10 h-10" />
@@ -602,8 +633,8 @@ export default function SimulationPage() {
                 <MultiplierDisplay multiplier={multiplier} gameState={gameState} crashPoint={crashPoint}/>
             </main>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <BetPanel id={1} balance={balance} gameState={gameState} betData={bet1Data} onBet={handleBet} onCancel={handleCancel} onCashout={handleCashout} onUpdate={handleUpdateBet} multiplier={multiplier} />
-                <BetPanel id={2} balance={balance} gameState={gameState} betData={bet2Data} onBet={handleBet} onCancel={handleCancel} onCashout={handleCashout} onUpdate={handleUpdateBet} multiplier={multiplier} />
+                <BetPanel id={1} balance={profile?.totalPoints || 0} gameState={gameState} betData={bet1Data} onBet={handleBet} onCancel={handleCancel} onCashout={handleCashout} onUpdate={handleUpdateBet} multiplier={multiplier} isProcessing={isProcessing} />
+                <BetPanel id={2} balance={profile?.totalPoints || 0} gameState={gameState} betData={bet2Data} onBet={handleBet} onCancel={handleCancel} onCashout={handleCashout} onUpdate={handleUpdateBet} multiplier={multiplier} isProcessing={isProcessing} />
             </div>
             <div className="lg:hidden space-y-6">
                  <Card className="bg-card/20 backdrop-blur-2xl border-none rounded-[2.5rem] p-6 h-80 flex flex-col">
@@ -618,7 +649,6 @@ export default function SimulationPage() {
         </aside>
       </div>
     </div>
-    </>
   );
 }
 
