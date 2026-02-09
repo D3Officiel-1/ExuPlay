@@ -1,36 +1,33 @@
 
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser, useFirestore, useDoc } from "@/firebase";
 import { doc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { 
   ChevronLeft, 
   Zap, 
   Loader2, 
   Trophy, 
-  Flag, 
   Timer,
-  ChevronRight,
-  TrendingUp,
   Edit3,
-  CheckCircle2,
   AlertCircle
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { EmojiOracle } from "@/components/EmojiOracle";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import confetti from "canvas-confetti";
 
 const MIN_BET = 5;
-const WIN_MULTIPLIER = 4.8; // x5 moins une petite marge pour la maison
+const WIN_MULTIPLIER = 4.8; 
 
 interface Car {
   id: number;
@@ -58,7 +55,7 @@ export default function ArcadePage() {
 
   const [gameState, setGameState] = useState<GameState>('betting');
   const [selectedCar, setSelectedCar] = useState<number | null>(null);
-  const [betInput, setBetInput] = useState("100");
+  const [betInput, setBetInput] = useState("50");
   const [isProcessing, setIsProcessing] = useState(false);
   const [carProgress, setCarProgress] = useState<number[]>([0, 0, 0, 0, 0]);
   const [winner, setWinner] = useState<number | null>(null);
@@ -69,8 +66,8 @@ export default function ArcadePage() {
 
   const currentBet = Math.max(MIN_BET, parseInt(betInput) || 0);
 
-  const handleStartRace = async () => {
-    if (!profile || !userDocRef || isProcessing || selectedCar === null) return;
+  const handleStartRace = () => {
+    if (!profile || !userDocRef || !db || isProcessing || selectedCar === null) return;
     
     if (currentBet < MIN_BET) {
       haptic.error();
@@ -91,12 +88,12 @@ export default function ArcadePage() {
     setIsProcessing(true);
     haptic.medium();
 
-    try {
-      await updateDoc(userDocRef, {
-        totalPoints: increment(-currentBet),
-        updatedAt: serverTimestamp()
-      });
-
+    // On déduit la mise immédiatement selon le protocole de sécurité
+    updateDoc(userDocRef, {
+      totalPoints: increment(-currentBet),
+      updatedAt: serverTimestamp()
+    })
+    .then(() => {
       setGameState('starting');
       setWinner(null);
       setCarProgress([0, 0, 0, 0, 0]);
@@ -113,11 +110,16 @@ export default function ArcadePage() {
           haptic.impact();
         }
       }, 1000);
-
-    } catch (e) {
-      toast({ variant: "destructive", title: "Dissonance Système" });
+    })
+    .catch(async (error) => {
+      const permissionError = new FirestorePermissionError({
+        path: userDocRef.path,
+        operation: 'update',
+        requestResourceData: { totalPoints: `decrement ${currentBet}` },
+      } satisfies SecurityRuleContext);
+      errorEmitter.emit('permission-error', permissionError);
       setIsProcessing(false);
-    }
+    });
   };
 
   useEffect(() => {
@@ -125,7 +127,13 @@ export default function ArcadePage() {
 
     const interval = setInterval(() => {
       setCarProgress(prev => {
-        const newProgress = prev.map(p => p + (Math.random() * 2 + 0.5));
+        // Moteur de hasard pur : incréments hautement volatils
+        const newProgress = prev.map(p => {
+          // Chaque bolide avance de 0.2 à 2.8 unités par frame de façon aléatoire
+          const step = Math.random() * 2.6 + 0.2;
+          return p + step;
+        });
+
         const winnerIdx = newProgress.findIndex(p => p >= 100);
         
         if (winnerIdx !== -1) {
@@ -141,8 +149,8 @@ export default function ArcadePage() {
     return () => clearInterval(interval);
   }, [gameState]);
 
-  const handleFinishRace = async (winningIdx: number) => {
-    if (!userDocRef || selectedCar === null) return;
+  const handleFinishRace = (winningIdx: number) => {
+    if (!userDocRef || !db || selectedCar === null) return;
 
     const isWon = winningIdx === selectedCar;
     
@@ -157,16 +165,24 @@ export default function ArcadePage() {
         colors: ['#ffffff', '#000000', '#ffd700']
       });
 
-      try {
-        await updateDoc(userDocRef, {
-          totalPoints: increment(winAmount),
-          updatedAt: serverTimestamp()
-        });
+      updateDoc(userDocRef, {
+        totalPoints: increment(winAmount),
+        updatedAt: serverTimestamp()
+      })
+      .then(() => {
         toast({ title: "Triomphe au Circuit !", description: `Votre champion a gagné. +${winAmount} PTS.` });
-      } catch (e) {}
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: userDocRef.path,
+          operation: 'update',
+          requestResourceData: { totalPoints: `increment ${winAmount}` },
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+      });
     } else {
       haptic.error();
-      toast({ variant: "destructive", title: "Dissonance", description: "Votre champion a fini derrière." });
+      toast({ variant: "destructive", title: "Dissonance", description: "Votre bolide a fini derrière. Le hasard a tranché." });
     }
     
     setIsProcessing(false);
@@ -208,7 +224,7 @@ export default function ArcadePage() {
                   {winner === idx && <Trophy className="h-3 w-3 text-yellow-500 animate-bounce" />}
                 </div>
                 <div className="h-10 bg-primary/5 rounded-xl flex items-center relative overflow-hidden px-2 border border-primary/5 shadow-inner">
-                  {/* Ligne d'arrivée (Gauche désormais) */}
+                  {/* Ligne d'arrivée (Gauche) */}
                   <div className="absolute left-0 top-0 bottom-0 w-8 bg-black/5 flex flex-col justify-center items-center gap-1 opacity-20">
                     <div className="w-1 h-1 bg-white" />
                     <div className="w-1 h-1 bg-black" />
@@ -229,7 +245,6 @@ export default function ArcadePage() {
                         transition={{ duration: 0.2, repeat: Infinity }}
                         className={cn("h-8 w-12 rounded-lg flex items-center justify-center text-xl shadow-lg relative z-10", car.color)}
                       >
-                        {/* Retournement du bolide pour faire face à la gauche */}
                         <div className="scale-x-[-1] flex items-center justify-center">
                           <EmojiOracle text={car.emoji} forceStatic />
                         </div>
@@ -336,7 +351,7 @@ export default function ArcadePage() {
                         <Trophy className="h-10 w-10 text-green-500" />
                       </div>
                       <h2 className="text-4xl font-black italic uppercase tracking-tighter">Victoire !</h2>
-                      <p className="text-sm font-medium opacity-40">Votre champion a conquis le circuit.</p>
+                      <p className="text-sm font-medium opacity-40">L'éther a favorisé votre champion.</p>
                       <div className="mt-4 p-4 bg-primary/5 rounded-2xl border border-primary/5">
                         <span className="text-3xl font-black text-primary">+{Math.floor(currentBet * WIN_MULTIPLIER)} PTS</span>
                       </div>
@@ -347,7 +362,7 @@ export default function ArcadePage() {
                         <AlertCircle className="h-10 w-10 text-destructive" />
                       </div>
                       <h2 className="text-4xl font-black italic uppercase tracking-tighter opacity-40">Dissonance</h2>
-                      <p className="text-sm font-medium opacity-40">Le flux n'était pas avec @{CARS[selectedCar!].name}.</p>
+                      <p className="text-sm font-medium opacity-40">Le flux était imprévisible. @{CARS[winner!].name} triomphe.</p>
                     </>
                   )}
                 </div>
@@ -366,7 +381,7 @@ export default function ArcadePage() {
                   />
                 </div>
                 <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-40 animate-pulse text-center">
-                  Course en cours...<br/>Alignement temporel
+                  Course en cours...<br/>Flux imprévisible
                 </p>
               </div>
             )}
@@ -375,7 +390,7 @@ export default function ArcadePage() {
 
         <div className="p-8 bg-primary/5 rounded-[3rem] border border-primary/5 text-center space-y-3 relative overflow-hidden">
           <p className="text-[11px] leading-relaxed font-medium opacity-40 italic">
-            "La vitesse est la forme physique du savoir. Prédisez le flux, dominez le circuit."
+            "Le hasard est la seule loi que l'Oracle ne dicte pas. Prédisez l'imprévisible."
           </p>
         </div>
       </main>
