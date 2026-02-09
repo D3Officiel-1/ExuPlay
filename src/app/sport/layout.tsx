@@ -31,7 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 /**
  * @fileOverview Oracle du Sceau Global.
  * Gère le bouton de coupon fixe au sommet et l'état des sélections pour toutes les pages sportives.
- * Le coupon est désormais strictement confiné pour éviter tout débordement.
+ * Le coupon est désormais strictement confiné pour éviter tout débordement de la liste de sélections.
  */
 
 function CouponOverlay() {
@@ -110,54 +110,61 @@ function CouponOverlay() {
 
       <Dialog open={isCouponOpen} onOpenChange={setIsCouponOpen}>
         <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-[45px] border-primary/10 rounded-[3rem] p-0 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-          <div className="p-8 flex flex-col h-full gap-6 overflow-hidden">
-            <DialogHeader className="shrink-0">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Scellage du Flux</p>
-                  <DialogTitle className="text-2xl font-black tracking-tight italic uppercase">Votre Coupon</DialogTitle>
-                </div>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => { haptic.light(); setSelections([]); setIsCouponOpen(false); }} 
-                  className="rounded-2xl h-12 w-12 text-destructive hover:bg-destructive/10"
-                >
-                  <Trash2 className="h-5 w-5" />
-                </Button>
-              </div>
-            </DialogHeader>
-
-            <ScrollArea className="flex-1 -mx-2 px-2 min-h-0">
-              <div className="space-y-4 py-1">
-                {selections.map((sel) => (
-                  <motion.div 
-                    key={sel.matchId} 
-                    layout 
-                    initial={{ opacity: 0, x: -20 }} 
-                    animate={{ opacity: 1, x: 0 }} 
-                    className="relative p-5 bg-primary/5 rounded-[2rem] border border-primary/5 overflow-hidden group"
+          <div className="flex flex-col flex-1 overflow-hidden">
+            {/* Header Fixe */}
+            <div className="p-8 pb-4 shrink-0">
+              <DialogHeader>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1 text-left">
+                    <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Scellage du Flux</p>
+                    <DialogTitle className="text-2xl font-black tracking-tight italic uppercase">Votre Coupon</DialogTitle>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => { haptic.light(); setSelections([]); setIsCouponOpen(false); }} 
+                    className="rounded-2xl h-12 w-12 text-destructive hover:bg-destructive/10"
                   >
-                    <button 
-                      onClick={() => setSelections(prev => prev.filter(s => s.matchId !== sel.matchId))}
-                      className="absolute top-4 right-4 h-6 w-6 rounded-full bg-destructive/10 text-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                    <p className="text-[9px] font-black uppercase tracking-widest opacity-40 mb-2">{sel.matchName}</p>
-                    <div className="flex justify-between items-end">
-                      <div className="space-y-1">
-                        <p className="text-[8px] font-bold uppercase opacity-30">Votre choix</p>
-                        <p className="font-black text-primary text-base truncate max-w-[180px]">{sel.outcomeLabel}</p>
-                      </div>
-                      <p className="text-2xl font-black tabular-nums italic">@{sel.odd.toFixed(2)}</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </ScrollArea>
+                    <Trash2 className="h-5 w-5" />
+                  </Button>
+                </div>
+              </DialogHeader>
+            </div>
 
-            <div className="space-y-6 pt-4 border-t border-primary/5 shrink-0 bg-card/50">
+            {/* Zone de Sélection Scrollable (Cœur du Confinement) */}
+            <div className="flex-1 min-h-0 px-8">
+              <ScrollArea className="h-full w-full">
+                <div className="space-y-4 py-2 pr-4">
+                  {selections.map((sel) => (
+                    <motion.div 
+                      key={sel.matchId} 
+                      layout 
+                      initial={{ opacity: 0, x: -20 }} 
+                      animate={{ opacity: 1, x: 0 }} 
+                      className="relative p-5 bg-primary/5 rounded-[2rem] border border-primary/5 overflow-hidden group"
+                    >
+                      <button 
+                        onClick={() => setSelections(prev => prev.filter(s => s.matchId !== sel.matchId))}
+                        className="absolute top-4 right-4 h-6 w-6 rounded-full bg-destructive/10 text-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                      <p className="text-[9px] font-black uppercase tracking-widest opacity-40 mb-2">{sel.matchName}</p>
+                      <div className="flex justify-between items-end">
+                        <div className="space-y-1">
+                          <p className="text-[8px] font-bold uppercase opacity-30">Votre choix</p>
+                          <p className="font-black text-primary text-base truncate max-w-[180px]">{sel.outcomeLabel}</p>
+                        </div>
+                        <p className="text-2xl font-black tabular-nums italic">@{sel.odd.toFixed(2)}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+
+            {/* Footer de Mise Fixe */}
+            <div className="p-8 pt-6 border-t border-primary/5 shrink-0 bg-card/50 space-y-6">
               <div className="space-y-4">
                 <div className="flex justify-between items-end px-2">
                   <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">Mise de Lumière</Label>
