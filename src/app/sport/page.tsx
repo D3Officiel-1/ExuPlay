@@ -408,31 +408,29 @@ export default function SportPage() {
         </Tabs>
       </main>
 
-      {/* Barre de Flux Flottante (Ouvre le Coupon) */}
+      {/* Barre de Flux Superposée (Déclencheur du Coupon) */}
       <AnimatePresence>
         {selections.length > 0 && activeTab === "matches" && !isCouponOpen && (
           <motion.div 
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-24 left-6 right-6 z-[100] pointer-events-none"
+            initial={{ scale: 0.8, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.8, opacity: 0, y: 20 }}
+            className="fixed bottom-28 left-0 right-0 z-[150] flex justify-center px-6 pointer-events-none"
           >
             <button 
               onClick={() => { haptic.medium(); setIsCouponOpen(true); }}
-              className="w-full max-w-md mx-auto pointer-events-auto flex items-center justify-between p-4 bg-primary text-primary-foreground rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] group active:scale-95 transition-all"
+              className="pointer-events-auto flex items-center gap-4 px-8 h-16 bg-primary text-primary-foreground rounded-full shadow-[0_32px_128px_-16px_rgba(0,0,0,0.5)] border border-white/10 active:scale-95 transition-all group"
             >
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 bg-primary-foreground/20 rounded-xl flex items-center justify-center font-black">
-                  {selections.length}
-                </div>
-                <div className="flex flex-col items-start">
-                  <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Coupon de Pari</p>
-                  <p className="text-sm font-black">Cote Totale: @{totalOdds.toFixed(2)}</p>
-                </div>
+              <div className="flex flex-col items-start leading-none">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Pacte</span>
+                <span className="text-sm font-black">{selections.length} Sélection{selections.length > 1 ? 's' : ''}</span>
               </div>
-              <div className="h-10 w-10 bg-primary-foreground/10 rounded-full flex items-center justify-center">
-                <ShoppingCart className="h-5 w-5" />
+              <div className="h-8 w-[1px] bg-white/10 mx-1" />
+              <div className="flex flex-col items-end leading-none">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Flux</span>
+                <span className="text-sm font-black italic">@{totalOdds.toFixed(2)}</span>
               </div>
+              <ChevronRight className="h-5 w-5 ml-2 opacity-20 group-hover:translate-x-1 group-hover:opacity-100 transition-all" />
             </button>
           </motion.div>
         )}
