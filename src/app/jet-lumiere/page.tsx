@@ -1,29 +1,21 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, FC, useRef, useMemo } from 'react';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { 
   ChevronLeft, 
-  Minus, 
-  Plus, 
-  History, 
   Send, 
   Rocket, 
   Zap, 
-  Activity, 
-  Edit3, 
-  Loader2, 
-  TrendingUp,
-  Flame,
   Globe,
   Users,
-  ShieldCheck,
-  X,
-  Clock
+  Loader2, 
+  Edit3,
+  Flame,
+  History
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -75,14 +67,13 @@ interface ChatMessage {
 }
 
 interface BetPanelProps {
-  id: number;
   balance: number;
   gameState: GameState;
   betData: BetPanelData;
-  onBet: (id: number, amount: number) => void;
-  onCancel: (id: number) => void;
-  onCashout: (id: number, cashoutMultiplier?: number) => void;
-  onUpdate: (id: number, data: Partial<BetPanelData>) => void;
+  onBet: (amount: number) => void;
+  onCancel: () => void;
+  onCashout: (cashoutMultiplier?: number) => void;
+  onUpdate: (data: Partial<BetPanelData>) => void;
   multiplier: number;
   isProcessing: boolean;
 }
@@ -267,7 +258,7 @@ const JetCanvasAnimation: FC<{ multiplier: number; gameState: GameState }> = ({ 
     return <canvas ref={canvasRef} width={1200} height={600} className="absolute inset-0 w-full h-full object-cover opacity-60" />;
 };
 
-const BetPanel: FC<BetPanelProps> = ({ id, balance, gameState, betData, onBet, onCancel, onCashout, onUpdate, multiplier, isProcessing }) => {
+const BetPanel: FC<BetPanelProps> = ({ balance, gameState, betData, onBet, onCancel, onCashout, onUpdate, multiplier, isProcessing }) => {
   const { betState, betAmount, autoCashoutValue } = betData;
   const { toast } = useToast();
 
@@ -283,41 +274,41 @@ const BetPanel: FC<BetPanelProps> = ({ id, balance, gameState, betData, onBet, o
             toast({ variant: 'destructive', title: "Lumière insuffisante" });
             return;
         }
-        onBet(id, betAmount);
+        onBet(betAmount);
     } else if (betState === 'PENDING') {
-        onCancel(id);
+        onCancel();
     } else if (betState === 'PLACED') {
         if (gameState !== 'in_progress') return;
-        onCashout(id);
+        onCashout();
     }
   };
 
   const isLocked = betState === 'CASHED_OUT' || betState === 'LOST';
 
   return (
-    <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[2rem] p-5 space-y-5 border border-primary/5 shadow-2xl relative overflow-hidden group">
+    <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[2rem] p-6 space-y-6 border border-primary/5 shadow-2xl relative overflow-hidden group">
         <div className="flex justify-between items-center px-1">
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Poste de Flux #{id}</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Poste de Flux Sacré</span>
             {betState === 'PLACED' && (
                 <div className="flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full border border-primary/10">
                     <Zap className="h-3 w-3 text-primary animate-pulse" />
-                    <span className="text-[9px] font-black text-primary uppercase">Actif</span>
+                    <span className="text-[9px] font-black text-primary uppercase">Vol en Cours</span>
                 </div>
             )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
                 <Label className="text-[9px] font-black uppercase tracking-widest opacity-30 ml-2">Mise (PTS)</Label>
                 <div className="relative">
                     <Input 
                         type="number" 
                         value={betAmount} 
-                        onChange={e => onUpdate(id, { betAmount: Number(e.target.value) })}
+                        onChange={e => onUpdate({ betAmount: Number(e.target.value) })}
                         disabled={betState !== 'IDLE'}
-                        className="h-12 bg-primary/5 border-none rounded-xl text-center font-black text-lg shadow-inner"
+                        className="h-14 bg-primary/5 border-none rounded-2xl text-center font-black text-xl shadow-inner"
                     />
-                    <Edit3 className="absolute right-3 top-1/2 -translate-y-1/2 h-3 w-3 opacity-20" />
+                    <Edit3 className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-20" />
                 </div>
             </div>
             <div className="space-y-2">
@@ -327,11 +318,11 @@ const BetPanel: FC<BetPanelProps> = ({ id, balance, gameState, betData, onBet, o
                         type="number" 
                         step="0.1"
                         value={autoCashoutValue} 
-                        onChange={e => onUpdate(id, { autoCashoutValue: Number(e.target.value) })}
+                        onChange={e => onUpdate({ autoCashoutValue: Number(e.target.value) })}
                         disabled={betState !== 'IDLE'}
-                        className="h-12 bg-primary/5 border-none rounded-xl text-center font-black text-lg shadow-inner"
+                        className="h-14 bg-primary/5 border-none rounded-2xl text-center font-black text-xl shadow-inner"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black opacity-20">X</span>
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black opacity-20">X</span>
                 </div>
             </div>
         </div>
@@ -341,28 +332,28 @@ const BetPanel: FC<BetPanelProps> = ({ id, balance, gameState, betData, onBet, o
                 <button 
                     key={v}
                     disabled={betState !== 'IDLE'}
-                    onClick={() => onUpdate(id, { betAmount: betAmount + v })}
-                    className="h-8 rounded-lg bg-primary/5 text-[9px] font-black uppercase tracking-widest hover:bg-primary/10 disabled:opacity-20 transition-all"
+                    onClick={() => onUpdate({ betAmount: betAmount + v })}
+                    className="h-10 rounded-xl bg-primary/5 text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 disabled:opacity-20 transition-all"
                 >
                     +{v}
                 </button>
             ))}
         </div>
 
-        <div className="flex items-center justify-between px-2 py-1 bg-primary/5 rounded-2xl border border-primary/5">
+        <div className="flex items-center justify-between px-4 py-2 bg-primary/5 rounded-2xl border border-primary/5">
             <div className="flex items-center gap-3">
                 <Switch 
                     checked={betData.isAutoBet} 
-                    onCheckedChange={checked => onUpdate(id, { isAutoBet: checked })} 
+                    onCheckedChange={checked => onUpdate({ isAutoBet: checked })} 
                 />
-                <span className="text-[8px] font-black uppercase tracking-widest opacity-40">Auto Pari</span>
+                <span className="text-[9px] font-black uppercase tracking-widest opacity-40">Auto Pari</span>
             </div>
             <div className="flex items-center gap-3">
                 <Switch 
                     checked={betData.isAutoCashout} 
-                    onCheckedChange={checked => onUpdate(id, { isAutoCashout: checked })} 
+                    onCheckedChange={checked => onUpdate({ isAutoCashout: checked })} 
                 />
-                <span className="text-[8px] font-black uppercase tracking-widest opacity-40">Auto Retrait</span>
+                <span className="text-[9px] font-black uppercase tracking-widest opacity-40">Auto Retrait</span>
             </div>
         </div>
 
@@ -370,18 +361,18 @@ const BetPanel: FC<BetPanelProps> = ({ id, balance, gameState, betData, onBet, o
             onClick={handleAction}
             disabled={isLocked || isProcessing || (betState === 'IDLE' && gameState === 'in_progress')}
             className={cn(
-                "w-full h-16 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl transition-all duration-500",
+                "w-full h-20 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] shadow-xl transition-all duration-500",
                 betState === 'IDLE' ? "bg-primary text-primary-foreground shadow-primary/20" :
                 betState === 'PENDING' ? "bg-orange-500/10 text-orange-600 border border-orange-500/20 shadow-none" :
                 betState === 'PLACED' ? "bg-green-600 hover:bg-green-700 text-white shadow-green-600/30 scale-[1.02]" :
                 "opacity-40 grayscale"
             )}
         >
-            {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : 
-             betState === 'IDLE' ? "Invoquer" :
-             betState === 'PENDING' ? "Annuler" :
-             betState === 'PLACED' ? `Encaisser ${(betAmount * multiplier).toFixed(0)} F` :
-             betState === 'CASHED_OUT' ? "Succès" : "Perdu"}
+            {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : 
+             betState === 'IDLE' ? "Invoquer le Flux" :
+             betState === 'PENDING' ? "Révoquer" :
+             betState === 'PLACED' ? `Encaisser ${(betAmount * multiplier).toFixed(0)} PTS` :
+             betState === 'CASHED_OUT' ? "Succès" : "Échec"}
         </Button>
     </Card>
   );
@@ -405,20 +396,25 @@ export default function JetLumierePage() {
   const [loadingTextIndex, setLoadingTextIndex] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const [bet1Data, setBet1Data] = useState<BetPanelData>({ betState: 'IDLE', betAmount: 100, winAmount: 0, isAutoBet: false, isAutoCashout: false, autoCashoutValue: 2.00, lastRoundId: '' });
-  const [bet2Data, setBet2Data] = useState<BetPanelData>({ betState: 'IDLE', betAmount: 100, winAmount: 0, isAutoBet: false, isAutoCashout: false, autoCashoutValue: 2.00, lastRoundId: '' });
+  const [betData, setBetData] = useState<BetPanelData>({ 
+    betState: 'IDLE', 
+    betAmount: 100, 
+    winAmount: 0, 
+    isAutoBet: false, 
+    isAutoCashout: false, 
+    autoCashoutValue: 2.00, 
+    lastRoundId: '' 
+  });
   
   const [simulatedPlayers, setSimulatedPlayers] = useState<SimulatedPlayer[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const bet1DataRef = useRef(bet1Data);
-  const bet2DataRef = useRef(bet2Data);
+  const betDataRef = useRef(betData);
   const globalStateRef = useRef<any>(null);
   
-  useEffect(() => { bet1DataRef.current = bet1Data; }, [bet1Data]);
-  useEffect(() => { bet2DataRef.current = bet2Data; }, [bet2Data]);
+  useEffect(() => { betDataRef.current = betData; }, [betData]);
   useEffect(() => { globalStateRef.current = globalState; }, [globalState]);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages]);
@@ -439,11 +435,9 @@ export default function JetLumierePage() {
       return () => clearInterval(chatInterval);
   }, []);
 
-  // --- MOTEUR DE SYNCHRONISATION UNIVERSEL ---
   useEffect(() => {
     if (!db || !jetConfigRef) return;
 
-    // Initialisation si le document n'existe pas
     const initDoc = async () => {
         const snap = await getDoc(jetConfigRef);
         if (!snap.exists()) {
@@ -468,10 +462,8 @@ export default function JetLumierePage() {
         : new Date(startTimeStr).getTime();
     const crashPoint = globalState.crashPoint;
 
-    // Reset local bets if a new round starts
-    if (roundId !== bet1DataRef.current.lastRoundId) {
-        setBet1Data(prev => ({ ...prev, betState: 'IDLE', lastRoundId: roundId, winAmount: 0 }));
-        setBet2Data(prev => ({ ...prev, betState: 'IDLE', lastRoundId: roundId, winAmount: 0 }));
+    if (roundId !== betDataRef.current.lastRoundId) {
+        setBetData(prev => ({ ...prev, betState: 'IDLE', lastRoundId: roundId, winAmount: 0 }));
         setSimulatedPlayers(generateFakePlayers(12));
     }
 
@@ -481,23 +473,16 @@ export default function JetLumierePage() {
         const growthLoop = () => {
             const now = Date.now();
             const elapsedMs = now - startTime;
-            
-            // Formule déterministe partagée : m = 1.002 ^ (t / 10)
             const currentMultiplier = Math.pow(1.002, elapsedMs / 10);
             
             if (currentMultiplier >= crashPoint) {
-                // Détection locale du crash synchrone
                 setMultiplier(crashPoint);
                 handleGlobalStateTransition('crashed');
             } else {
                 setMultiplier(currentMultiplier);
                 
-                // Auto-Cashout Sync
-                if (bet1DataRef.current.betState === 'PLACED' && bet1DataRef.current.isAutoCashout && currentMultiplier >= bet1DataRef.current.autoCashoutValue) {
-                    handleCashout(1, bet1DataRef.current.autoCashoutValue);
-                }
-                if (bet2DataRef.current.betState === 'PLACED' && bet2DataRef.current.isAutoCashout && currentMultiplier >= bet2DataRef.current.autoCashoutValue) {
-                    handleCashout(2, bet2DataRef.current.autoCashoutValue);
+                if (betDataRef.current.betState === 'PLACED' && betDataRef.current.isAutoCashout && currentMultiplier >= betDataRef.current.autoCashoutValue) {
+                    handleCashout(betDataRef.current.autoCashoutValue);
                 }
 
                 growthFrameId = requestAnimationFrame(growthLoop);
@@ -507,17 +492,13 @@ export default function JetLumierePage() {
     } else {
         setMultiplier(status === 'crashed' ? crashPoint : 1.00);
         
-        // Timers de transition pour le "Leader"
         let timer: NodeJS.Timeout;
         if (status === 'crashed') {
             timer = setTimeout(() => handleGlobalStateTransition('waiting'), 4000);
         } else if (status === 'waiting') {
             timer = setTimeout(() => handleGlobalStateTransition('betting'), 3000);
         } else if (status === 'betting') {
-            // Auto-pari logic
-            if (bet1DataRef.current.isAutoBet && bet1DataRef.current.betState === 'IDLE' && (profile?.totalPoints || 0) >= bet1DataRef.current.betAmount) handleBet(1, bet1DataRef.current.betAmount);
-            if (bet2DataRef.current.isAutoBet && bet2DataRef.current.betState === 'IDLE' && (profile?.totalPoints || 0) >= bet2DataRef.current.betAmount) handleBet(2, bet2DataRef.current.betAmount);
-
+            if (betDataRef.current.isAutoBet && betDataRef.current.betState === 'IDLE' && (profile?.totalPoints || 0) >= betDataRef.current.betAmount) handleBet(betDataRef.current.betAmount);
             timer = setTimeout(() => handleGlobalStateTransition('in_progress'), 8000);
         }
         return () => {
@@ -531,10 +512,7 @@ export default function JetLumierePage() {
 
   const handleGlobalStateTransition = async (nextStatus: GameState) => {
     if (!db || !jetConfigRef || !globalStateRef.current) return;
-    
     const currentStatus = globalStateRef.current.status;
-    
-    // Protection anti-race condition : on ne fait rien si le document a été mis à jour très récemment (par un autre leader)
     const lastUpdate = (globalStateRef.current.lastUpdate as Timestamp)?.toDate().getTime() || 0;
     if (Date.now() - lastUpdate < 1000) return;
 
@@ -548,37 +526,29 @@ export default function JetLumierePage() {
                 roundId: nextRound.id,
                 lastUpdate: serverTimestamp()
             });
-            // Validation locale immédiate des paris en attente
-            setBet1Data(b => b.betState === 'PENDING' ? { ...b, betState: 'PLACED' } : b);
-            setBet2Data(b => b.betState === 'PENDING' ? { ...b, betState: 'PLACED' } : b);
+            setBetData(b => b.betState === 'PENDING' ? { ...b, betState: 'PLACED' } : b);
         } else if (nextStatus === 'crashed' && currentStatus === 'in_progress') {
             await updateDoc(jetConfigRef, { status: 'crashed', lastUpdate: serverTimestamp() });
-            setBet1Data(b => b.betState === 'PLACED' ? {...b, betState: 'LOST'} : b);
-            setBet2Data(b => b.betState === 'PLACED' ? {...b, betState: 'LOST'} : b);
+            setBetData(b => b.betState === 'PLACED' ? {...b, betState: 'LOST'} : b);
             haptic.impact();
         } else if (nextStatus === 'waiting' && currentStatus === 'crashed') {
             await updateDoc(jetConfigRef, { status: 'waiting', lastUpdate: serverTimestamp() });
         } else if (nextStatus === 'betting' && currentStatus === 'waiting') {
             await updateDoc(jetConfigRef, { status: 'betting', lastUpdate: serverTimestamp() });
         }
-    } catch (e) {
-        // Ignorer les erreurs de permissions ou de conflits
-    }
+    } catch (e) {}
   };
 
-  const handleBet = useCallback(async (id: number, amount: number) => {
+  const handleBet = useCallback(async (amount: number) => {
     if (!userDocRef || isProcessing) return;
-    const betSetter = id === 1 ? setBet1Data : setBet2Data;
-    
     setIsProcessing(true);
     haptic.medium();
-
     try {
       await updateDoc(userDocRef, {
         totalPoints: increment(-amount),
         updatedAt: serverTimestamp()
       });
-      betSetter(prev => ({ ...prev, betState: 'PENDING', betAmount: amount }));
+      setBetData(prev => ({ ...prev, betState: 'PENDING', betAmount: amount }));
     } catch (error) {
       toast({ variant: 'destructive', title: "Erreur de mise" });
     } finally {
@@ -586,53 +556,45 @@ export default function JetLumierePage() {
     }
   }, [userDocRef, isProcessing, toast]);
 
-  const handleCancel = useCallback(async (id: number) => {
+  const handleCancel = useCallback(async () => {
       if (!userDocRef || isProcessing) return;
-      const betData = id === 1 ? bet1DataRef.current : bet2DataRef.current;
-      const betSetter = id === 1 ? setBet1Data : setBet2Data;
-      
       setIsProcessing(true);
       haptic.light();
-
       try {
         await updateDoc(userDocRef, {
-          totalPoints: increment(betData.betAmount),
+          totalPoints: increment(betDataRef.current.betAmount),
           updatedAt: serverTimestamp()
         });
-        betSetter(prev => ({ ...prev, betState: 'IDLE' }));
+        setBetData(prev => ({ ...prev, betState: 'IDLE' }));
       } finally {
         setIsProcessing(false);
       }
   }, [userDocRef, isProcessing]);
 
-  const handleCashout = useCallback(async (id: number, cashoutMultiplier?: number) => {
+  const handleCashout = useCallback(async (cashoutMultiplier?: number) => {
       if (!userDocRef || isProcessing || !globalStateRef.current) return;
-      const betData = id === 1 ? bet1DataRef.current : bet2DataRef.current;
-      const betSetter = id === 1 ? setBet1Data : setBet2Data;
-      
-      if (betData.betState !== 'PLACED') return;
+      if (betDataRef.current.betState !== 'PLACED') return;
 
       setIsProcessing(true);
       haptic.success();
 
       const finalMultiplier = cashoutMultiplier || multiplier;
-      const winAmount = Math.floor(betData.betAmount * finalMultiplier);
+      const winAmount = Math.floor(betDataRef.current.betAmount * finalMultiplier);
 
       try {
         await updateDoc(userDocRef, {
           totalPoints: increment(winAmount),
           updatedAt: serverTimestamp()
         });
-        betSetter(prev => ({ ...prev, betState: 'CASHED_OUT', winAmount }));
+        setBetData(prev => ({ ...prev, betState: 'CASHED_OUT', winAmount }));
         toast({ title: "Flux Récupéré !", description: `+${winAmount} PTS (x${finalMultiplier.toFixed(2)})` });
       } finally {
         setIsProcessing(false);
       }
   }, [multiplier, userDocRef, isProcessing, toast]);
   
-  const handleUpdateBet = useCallback((id: number, data: Partial<BetPanelData>) => {
-      const betSetter = id === 1 ? setBet1Data : setBet2Data;
-      betSetter(prev => ({...prev, ...data}));
+  const handleUpdateBet = useCallback((data: Partial<BetPanelData>) => {
+      setBetData(prev => ({...prev, ...data}));
   }, []);
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -695,7 +657,6 @@ export default function JetLumierePage() {
       </header>
 
       <div className="flex-1 flex flex-col lg:grid lg:grid-cols-[300px_1fr_320px] pt-24 px-4 gap-6 max-w-screen-2xl mx-auto w-full">
-        {/* Sidebar Gauche: Esprits */}
         <aside className="hidden lg:flex flex-col bg-card/10 backdrop-blur-3xl rounded-[3rem] border border-primary/5 p-8 space-y-8 overflow-hidden shadow-2xl">
             <div className="space-y-1">
                 <div className="flex items-center gap-2 mb-1">
@@ -709,10 +670,8 @@ export default function JetLumierePage() {
             </div>
         </aside>
 
-        {/* Centre: Arène de Vol */}
         <div className="flex flex-col gap-6">
             <main className="relative aspect-video lg:flex-1 min-h-[360px] bg-card/20 backdrop-blur-3xl rounded-[3.5rem] border border-primary/10 shadow-[0_32px_128px_-16px_rgba(0,0,0,0.5)] overflow-hidden">
-                {/* Historique des Flux */}
                 <div className="absolute top-8 left-8 right-8 z-20 flex gap-2 overflow-x-auto no-scrollbar py-2">
                     <div className="h-10 w-10 shrink-0 bg-primary/5 rounded-xl flex items-center justify-center border border-primary/10 backdrop-blur-md">
                         <History className="h-4 w-4 opacity-40" />
@@ -738,7 +697,6 @@ export default function JetLumierePage() {
                     <JetCanvasAnimation multiplier={multiplier} gameState={gameState} />
                 </div>
 
-                {/* Multiplicateur Central */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                     <AnimatePresence mode="wait">
                         {gameState === 'waiting' || gameState === 'betting' ? (
@@ -788,24 +746,11 @@ export default function JetLumierePage() {
                 </div>
             </main>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="w-full max-w-lg mx-auto">
                 <BetPanel 
-                    id={1} 
                     balance={profile?.totalPoints || 0} 
                     gameState={gameState} 
-                    betData={bet1Data} 
-                    onBet={handleBet} 
-                    onCancel={handleCancel} 
-                    onCashout={handleCashout} 
-                    onUpdate={handleUpdateBet} 
-                    multiplier={multiplier} 
-                    isProcessing={isProcessing} 
-                />
-                <BetPanel 
-                    id={2} 
-                    balance={profile?.totalPoints || 0} 
-                    gameState={gameState} 
-                    betData={bet2Data} 
+                    betData={betData} 
                     onBet={handleBet} 
                     onCancel={handleCancel} 
                     onCashout={handleCashout} 
@@ -822,7 +767,6 @@ export default function JetLumierePage() {
             </div>
         </div>
 
-        {/* Sidebar Droite: Chat */}
         <aside className="hidden lg:flex flex-col bg-card/10 backdrop-blur-3xl rounded-[3rem] border border-primary/5 p-8 space-y-8 overflow-hidden shadow-2xl">
            <div className="space-y-1">
                 <div className="flex items-center gap-2 mb-1">
@@ -844,7 +788,7 @@ function PlayerList({ players, profile }: { players: SimulatedPlayer[], profile:
   return (
     <div className="space-y-2">
       {players.map((p) => {
-        const isMe = p.id === 'user-1' || p.id === 'user-2';
+        const isMe = p.name === profile?.username;
         return (
             <motion.div 
                 key={p.id} 
@@ -857,7 +801,7 @@ function PlayerList({ players, profile }: { players: SimulatedPlayer[], profile:
             >
                 <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-xl bg-background flex items-center justify-center text-[10px] font-black border border-primary/10 relative overflow-hidden">
-                        {p.name === profile?.username ? <EmojiOracle text="🧘" forceStatic /> : <span className="opacity-40">{p.avatar}</span>}
+                        {isMe ? <EmojiOracle text="🧘" forceStatic /> : <span className="opacity-40">{p.avatar}</span>}
                     </div>
                     <span className="truncate w-24">@{p.name}</span>
                 </div>
@@ -883,7 +827,7 @@ function PlayerList({ players, profile }: { players: SimulatedPlayer[], profile:
   );
 }
 
-function ChatPanel({ messages, profile, chatInput, setChatInput, handleSendMessage, chatEndRef }: any) {
+function ChatPanel({ messages, chatInput, setChatInput, handleSendMessage, chatEndRef }: any) {
   return (
     <div className="flex flex-col h-full">
         <div className="flex-1 space-y-5 overflow-y-auto no-scrollbar pr-2">
