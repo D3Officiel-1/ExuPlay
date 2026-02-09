@@ -186,8 +186,9 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const excludedNavPaths = ["/", "/login", "/autoriser", "/arcade"];
   const excludedBottomNavPaths = ["/", "/login", "/autoriser", "/transfert", "/echange", "/duels", "/arcade"];
 
-  const showNav = user && !excludedNavPaths.some(p => pathname === p || pathname.startsWith(p));
-  const showBottomNav = user && !excludedBottomNavPaths.some(p => pathname === p || pathname.startsWith(p));
+  // Oracle: Correction de la détection des chemins exclus pour éviter de masquer le header sur /home
+  const showNav = user && !excludedNavPaths.some(p => p === "/" ? pathname === p : pathname.startsWith(p));
+  const showBottomNav = user && !excludedBottomNavPaths.some(p => p === "/" ? pathname === p : pathname.startsWith(p));
 
   return (
     <div className={cn(isEcoMode && "reduced-motion")}>

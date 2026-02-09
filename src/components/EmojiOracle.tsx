@@ -18,7 +18,7 @@ interface SingleEmojiProps {
 function SingleEmoji({ emoji, hex, className, forceStatic = false }: SingleEmojiProps) {
   const [stage, setStage] = useState<'animated' | 'static' | 'text'>('animated');
 
-  // Si forcé statique (clavier) ou repli, on utilise WebP
+  // Oracle: Si forcé statique (clavier) ou repli, on utilise WebP
   const currentStage = forceStatic ? 'static' : stage;
 
   if (stage === 'text') {
