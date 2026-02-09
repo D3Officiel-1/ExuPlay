@@ -33,7 +33,10 @@ import {
   ChevronRight,
   AlertCircle,
   Trash2,
-  ShieldCheck
+  ShieldCheck,
+  Globe,
+  Trophy,
+  Activity
 } from "lucide-react";
 import { 
   Dialog,
@@ -46,6 +49,9 @@ import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { EmojiOracle } from "@/components/EmojiOracle";
+import { getDailyMatches, type GeneratedMatch } from "@/app/actions/sport";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 interface BetSelection {
   matchId: string;
@@ -64,12 +70,12 @@ export default function SportPage() {
   const { toast } = useToast();
 
   const [activeTab, setTab] = useState("matches");
-  const [matches, setMatches] = useState<any[]>([]);
-  const [isLoadingMatches, setIsLoadingMatches] = useState(false);
+  const [matches, setMatches] = useState<GeneratedMatch[]>([]);
+  const [isLoadingMatches, setIsLoadingMatches] = useState(true);
   
   const [selections, setSelections] = useState<BetSelection[]>([]);
   const [isCouponOpen, setIsCouponOpen] = useState(false);
-  const [betAmount, setBetInput] = useState("100");
+  const [betAmount, setBetInput] = useState("50");
   const [isProcessing, setIsProcessing] = useState(false);
 
   const userDocRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
@@ -81,6 +87,20 @@ export default function SportPage() {
   }, [db, user?.uid]);
   const { data: userBets } = useCollection(betsQuery);
 
+  useEffect(() => {
+    const fetchMatches = async () => {
+      try {
+        const daily = await getDailyMatches();
+        setMatches(daily);
+      } catch (e) {
+        console.error("Dissonance lors de l'invocation des matchs:", e);
+      } finally {
+        setIsLoadingMatches(false);
+      }
+    };
+    fetchMatches();
+  }, []);
+
   const totalOdds = useMemo(() => {
     if (selections.length === 0) return 0;
     return parseFloat(selections.reduce((acc, sel) => acc * sel.odd, 1).toFixed(2));
@@ -89,21 +109,22 @@ export default function SportPage() {
   const currentStake = Math.max(5, parseInt(betAmount) || 0);
   const potentialWin = Math.floor(currentStake * totalOdds);
 
-  const toggleSelection = (match: any, outcome: "1" | "X" | "2") => {
+  const toggleSelection = (match: GeneratedMatch, outcome: "1" | "X" | "2") => {
+    if (match.status !== 'scheduled') return;
     haptic.light();
-    const odd = parseFloat(match.odds[outcome]);
-    const outcomeLabel = outcome === "1" ? match.teams.home.name : outcome === "X" ? "Nul" : match.teams.away.name;
-    const matchId = match.fixture.id.toString();
+    const odd = match.odds[outcome];
+    const outcomeLabel = outcome === "1" ? match.homeTeam.name : outcome === "X" ? "Match Nul" : match.awayTeam.name;
+    const matchId = match.id;
 
     setSelections(prev => {
       const existingIdx = prev.findIndex(s => s.matchId === matchId);
       if (existingIdx !== -1) {
         if (prev[existingIdx].outcome === outcome) return prev.filter(s => s.matchId !== matchId);
         const newSelections = [...prev];
-        newSelections[existingIdx] = { matchId, matchName: `${match.teams.home.name} vs ${match.teams.away.name}`, homeTeam: match.teams.home.name, awayTeam: match.teams.away.name, outcome, outcomeLabel, odd };
+        newSelections[existingIdx] = { matchId, matchName: `${match.homeTeam.name} vs ${match.awayTeam.name}`, homeTeam: match.homeTeam.name, awayTeam: match.awayTeam.name, outcome, outcomeLabel, odd };
         return newSelections;
       }
-      return [...prev, { matchId, matchName: `${match.teams.home.name} vs ${match.teams.away.name}`, homeTeam: match.teams.home.name, awayTeam: match.teams.away.name, outcome, outcomeLabel, odd }];
+      return [...prev, { matchId, matchName: `${match.homeTeam.name} vs ${match.awayTeam.name}`, homeTeam: match.homeTeam.name, awayTeam: match.awayTeam.name, outcome, outcomeLabel, odd }];
     });
   };
 
@@ -111,11 +132,22 @@ export default function SportPage() {
     if (!userDocRef || !profile || selections.length === 0 || isProcessing) return;
     if (currentStake > (profile.totalPoints || 0)) { haptic.error(); toast({ variant: "destructive", title: "Lumière insuffisante" }); return; }
     setIsProcessing(true); haptic.medium();
-    const betData = { userId: user?.uid, username: profile.username, selections: selections.map(s => ({ matchId: s.matchId, matchName: s.matchName, outcome: s.outcome, odd: s.odd })), stake: currentStake, totalOdds, potentialWin, status: "pending", createdAt: serverTimestamp() };
+    
+    const betData = { 
+      userId: user?.uid, 
+      username: profile.username, 
+      selections: selections.map(s => ({ matchId: s.matchId, matchName: s.matchName, outcome: s.outcome, odd: s.odd })), 
+      stake: currentStake, 
+      totalOdds, 
+      potentialWin, 
+      status: "pending", 
+      createdAt: serverTimestamp() 
+    };
+
     try {
       await updateDoc(userDocRef, { totalPoints: increment(-currentStake), updatedAt: serverTimestamp() });
       await addDoc(collection(db!, "bets"), betData);
-      haptic.success(); toast({ title: "Coupon Scellé !" });
+      haptic.success(); toast({ title: "Pacte Scellé !", description: "Vos points sont mis en stase pour le défi." });
       setSelections([]); setIsCouponOpen(false); setTab("history");
     } catch (e) { toast({ variant: "destructive", title: "Dissonance Système" }); } finally { setIsProcessing(false); }
   };
@@ -127,7 +159,7 @@ export default function SportPage() {
           <ChevronLeft className="h-6 w-6" />
         </Button>
         <div className="flex flex-col items-center">
-          <p className="text-[8px] font-black uppercase tracking-[0.4em] opacity-40">Arènes Sportives</p>
+          <p className="text-[8px] font-black uppercase tracking-[0.4em] opacity-40">Arènes du Monde</p>
           <div className="flex items-center gap-2 px-4 py-1 bg-primary/5 rounded-full border border-primary/5">
             <Zap className="h-3 w-3 text-primary" />
             <span className="text-xs font-black tabular-nums">{profile?.totalPoints?.toLocaleString() || 0} PTS</span>
@@ -140,7 +172,7 @@ export default function SportPage() {
         <Tabs value={activeTab} onValueChange={setTab} className="w-full">
           <TabsList className="grid grid-cols-2 bg-primary/5 p-1 h-12 rounded-2xl mb-8">
             <TabsTrigger value="matches" className="rounded-xl font-black text-[10px] uppercase tracking-widest gap-2">
-              <TrendingUp className="h-3.5 w-3.5" /> Événements
+              <Globe className="h-3.5 w-3.5" /> Nations
             </TabsTrigger>
             <TabsTrigger value="history" className="rounded-xl font-black text-[10px] uppercase tracking-widest gap-2">
               <History className="h-3.5 w-3.5" /> Mes Paris
@@ -148,50 +180,145 @@ export default function SportPage() {
           </TabsList>
 
           <TabsContent value="matches" className="space-y-6 m-0">
-            <div className="py-32 text-center opacity-20 space-y-4">
-              <AlertCircle className="h-16 w-16 mx-auto" />
-              <div className="space-y-2">
-                <p className="text-xs font-black uppercase tracking-[0.2em]">Flux API Dissous</p>
-                <p className="text-[9px] font-medium leading-relaxed italic px-10">"Le Sanctuaire attend de nouvelles directives pour l'harmonisation des arènes."</p>
+            {isLoadingMatches ? (
+              <div className="py-24 flex flex-col items-center gap-4 opacity-40">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <p className="text-[10px] font-black uppercase tracking-widest">Génération des Arènes...</p>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-4">
+                {matches.map((match) => (
+                  <Card key={match.id} className="border-none bg-card/20 backdrop-blur-3xl rounded-[2.5rem] p-6 border border-primary/5 shadow-xl group">
+                    <div className="flex justify-between items-center mb-6">
+                      <div className="flex items-center gap-2">
+                        <Trophy className="h-3 w-3 opacity-20" />
+                        <span className="text-[10px] font-black uppercase tracking-widest opacity-40 italic">Coupe des Nations</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {match.status === 'live' ? (
+                          <div className="flex items-center gap-1.5 bg-red-500/10 px-2 py-0.5 rounded-full">
+                            <div className="h-1 w-1 bg-red-500 rounded-full animate-pulse" />
+                            <span className="text-[8px] font-black text-red-600 uppercase">En Direct</span>
+                          </div>
+                        ) : match.status === 'finished' ? (
+                          <span className="text-[8px] font-black opacity-30 uppercase tracking-widest">Terminé</span>
+                        ) : (
+                          <div className="flex items-center gap-1.5 opacity-40">
+                            <Clock className="h-3 w-3" />
+                            <span className="text-[9px] font-bold">{format(new Date(match.startTime), 'HH:mm')}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4 items-center mb-8">
+                      <div className="text-center space-y-3">
+                        <div className="h-16 w-16 bg-primary/5 rounded-[1.5rem] mx-auto flex items-center justify-center text-3xl shadow-inner border border-primary/5">
+                          <EmojiOracle text={match.homeTeam.emoji} forceStatic />
+                        </div>
+                        <p className="text-[10px] font-black uppercase truncate">{match.homeTeam.name}</p>
+                      </div>
+                      <div className="text-center">
+                        {match.status !== 'scheduled' ? (
+                          <div className="text-3xl font-black italic tracking-tighter tabular-nums flex justify-center gap-2">
+                            <span>{match.score.home}</span>
+                            <span className="opacity-20">-</span>
+                            <span>{match.score.away}</span>
+                          </div>
+                        ) : (
+                          <div className="text-sm font-black opacity-10 uppercase italic tracking-widest">VS</div>
+                        )}
+                      </div>
+                      <div className="text-center space-y-3">
+                        <div className="h-16 w-16 bg-primary/5 rounded-[1.5rem] mx-auto flex items-center justify-center text-3xl shadow-inner border border-primary/5">
+                          <EmojiOracle text={match.awayTeam.emoji} forceStatic />
+                        </div>
+                        <p className="text-[10px] font-black uppercase truncate">{match.awayTeam.name}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['1', 'X', '2'] as const).map((outcome) => {
+                        const isSelected = selections.find(s => s.matchId === match.id && s.outcome === outcome);
+                        const odd = match.odds[outcome];
+                        return (
+                          <button
+                            key={outcome}
+                            disabled={match.status !== 'scheduled'}
+                            onClick={() => toggleSelection(match, outcome)}
+                            className={cn(
+                              "flex flex-col items-center justify-center py-3 rounded-2xl border transition-all duration-500",
+                              isSelected 
+                                ? "bg-primary text-primary-foreground border-primary shadow-xl scale-105" 
+                                : match.status === 'scheduled'
+                                  ? "bg-primary/5 border-primary/5 hover:bg-primary/10 opacity-100"
+                                  : "bg-primary/5 border-transparent opacity-30 cursor-not-allowed"
+                            )}
+                          >
+                            <span className="text-[8px] font-black uppercase mb-1 opacity-40">{outcome === '1' ? 'Dom' : outcome === 'X' ? 'Nul' : 'Ext'}</span>
+                            <span className="text-sm font-black tabular-nums">{odd.toFixed(2)}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4 m-0">
             {userBets && userBets.length > 0 ? (
               userBets.map((bet) => (
-                <Card key={bet.id} className="border-none bg-card/20 backdrop-blur-3xl rounded-[2rem] p-5 border border-primary/5 shadow-lg">
-                  <div className="flex justify-between items-start mb-4">
+                <Card key={bet.id} className="border-none bg-card/20 backdrop-blur-3xl rounded-[2.5rem] p-6 border border-primary/5 shadow-lg">
+                  <div className="flex justify-between items-start mb-6">
                     <div className="space-y-1">
-                      <p className="text-[10px] font-black uppercase tracking-widest opacity-40">{bet.selections.length > 1 ? "Combiné" : "Simple"}</p>
-                      <p className="text-sm font-black tabular-nums">{bet.stake} PTS</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Pacte Combiné ({bet.selections.length})</p>
+                      <p className="text-base font-black tabular-nums">{bet.stake} PTS</p>
                     </div>
-                    <div className={cn("px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border", bet.status === "pending" ? "bg-orange-500/10 text-orange-600 border-orange-500/20" : "bg-green-500/10 text-green-600 border-green-500/20")}>{bet.status === "pending" ? "En cours" : "Gagné"}</div>
+                    <div className={cn(
+                      "px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm",
+                      bet.status === "pending" ? "bg-orange-500/10 text-orange-600 border-orange-500/20" : "bg-green-500/10 text-green-600 border-green-500/20"
+                    )}>
+                      {bet.status === "pending" ? "En Stase" : "Réalisé"}
+                    </div>
                   </div>
-                  <div className="space-y-3 pb-4 border-b border-primary/5">
+                  <div className="space-y-3 pb-6 border-b border-primary/5">
                     {bet.selections.map((sel: any, i: number) => (
-                      <div key={i} className="flex justify-between items-center bg-primary/5 p-2 rounded-xl">
-                        <p className="text-[9px] font-bold opacity-60 truncate max-w-[150px]">{sel.matchName}</p>
-                        <p className="text-[10px] font-black text-primary uppercase ml-4">@{parseFloat(sel.odd).toFixed(2)}</p>
+                      <div key={i} className="flex justify-between items-center bg-primary/5 p-3 rounded-2xl border border-primary/5">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[9px] font-bold opacity-40 uppercase truncate mb-0.5">{sel.matchName}</p>
+                          <p className="text-xs font-black text-primary truncate">{sel.outcome === '1' ? 'Victoire Dom.' : sel.outcome === 'X' ? 'Match Nul' : 'Victoire Ext.'}</p>
+                        </div>
+                        <p className="text-xs font-black italic ml-4">@{parseFloat(sel.odd).toFixed(2)}</p>
                       </div>
                     ))}
                   </div>
-                  <div className="flex justify-between items-center pt-4">
-                    <p className="text-[10px] font-black uppercase opacity-30">Cote: @{bet.totalOdds?.toFixed(2)}</p>
+                  <div className="flex justify-between items-center pt-6">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-primary opacity-20" />
+                      <p className="text-[10px] font-black uppercase opacity-30">Cote: @{bet.totalOdds?.toFixed(2)}</p>
+                    </div>
                     <p className="text-xl font-black text-primary tabular-nums">+{bet.potentialWin} PTS</p>
                   </div>
                 </Card>
               ))
             ) : (
-              <div className="py-20 text-center opacity-20 space-y-4">
-                <Ticket className="h-16 w-16 mx-auto" />
-                <p className="text-xs font-black uppercase tracking-[0.2em]">Aucun pari scellé</p>
+              <div className="py-32 text-center opacity-20 space-y-6">
+                <div className="h-20 w-20 bg-primary/5 rounded-full flex items-center justify-center mx-auto border border-primary/10">
+                  <Ticket className="h-10 w-10" />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-black uppercase tracking-[0.2em]">Aucun Pacte Scellé</p>
+                  <p className="text-[10px] italic font-medium px-12">"Les annales attendent vos premières intuitions sur les arènes mondiales."</p>
+                </div>
               </div>
             )}
           </TabsContent>
         </Tabs>
       </main>
 
+      {/* Barre de Flux Supérieure (Fixe et Superposée) */}
       <AnimatePresence>
         {selections.length > 0 && activeTab === "matches" && !isCouponOpen && (
           <div className="fixed top-24 left-0 right-0 z-[500] px-6 pointer-events-none flex justify-center">
@@ -213,13 +340,13 @@ export default function SportPage() {
                 />
                 <div className="flex flex-col items-start leading-none relative z-10">
                   <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Pacte de Flux</span>
+                    <Activity className="h-2.5 w-2.5 text-green-500 animate-pulse" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Pacte Actif</span>
                   </div>
                   <span className="text-sm font-black">{selections.length} Sélection{selections.length > 1 ? 's' : ''}</span>
                 </div>
                 <div className="flex items-center gap-4 relative z-10">
-                  <span className="text-sm font-black italic">@{totalOdds.toFixed(2)}</span>
+                  <span className="text-sm font-black italic tabular-nums">@{totalOdds.toFixed(2)}</span>
                   <ChevronRight className="h-5 w-5 opacity-60" />
                 </div>
               </button>
@@ -234,19 +361,28 @@ export default function SportPage() {
             <DialogHeader>
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Harmonisation</p>
-                  <DialogTitle className="text-2xl font-black tracking-tight italic">Votre Coupon</DialogTitle>
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Scellage du Flux</p>
+                  <DialogTitle className="text-2xl font-black tracking-tight italic uppercase">Votre Coupon</DialogTitle>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => { haptic.light(); setSelections([]); setIsCouponOpen(false); }} className="rounded-xl h-10 w-10 text-destructive hover:bg-destructive/10"><Trash2 className="h-5 w-5" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => { haptic.light(); setSelections([]); setIsCouponOpen(false); }} className="rounded-2xl h-12 w-12 text-destructive hover:bg-destructive/10"><Trash2 className="h-5 w-5" /></Button>
               </div>
             </DialogHeader>
-            <ScrollArea className="flex-1 pr-4">
-              <div className="space-y-4">
+            <ScrollArea className="flex-1 pr-4 -mr-4">
+              <div className="space-y-4 px-1">
                 {selections.map((sel) => (
-                  <motion.div key={sel.matchId} layout initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="relative p-5 bg-primary/5 rounded-[2rem] border border-primary/5 overflow-hidden">
+                  <motion.div key={sel.matchId} layout initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="relative p-5 bg-primary/5 rounded-[2rem] border border-primary/5 overflow-hidden group">
+                    <button 
+                      onClick={() => setSelections(prev => prev.filter(s => s.matchId !== sel.matchId))}
+                      className="absolute top-4 right-4 h-6 w-6 rounded-full bg-destructive/10 text-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                     <p className="text-[9px] font-black uppercase tracking-widest opacity-40 mb-2">{sel.matchName}</p>
                     <div className="flex justify-between items-end">
-                      <p className="font-black text-primary text-base truncate max-w-[180px]">{sel.outcomeLabel}</p>
+                      <div className="space-y-1">
+                        <p className="text-[8px] font-bold uppercase opacity-30">Votre choix</p>
+                        <p className="font-black text-primary text-base truncate max-w-[180px]">{sel.outcomeLabel}</p>
+                      </div>
                       <p className="text-2xl font-black tabular-nums italic">@{sel.odd.toFixed(2)}</p>
                     </div>
                   </motion.div>
@@ -256,20 +392,31 @@ export default function SportPage() {
             <div className="space-y-6 pt-4 border-t border-primary/5">
               <div className="space-y-4">
                 <div className="flex justify-between items-end px-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">Offrande de Lumière</Label>
+                  <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">Mise de Lumière</Label>
                   <span className="text-[9px] font-black uppercase opacity-20">Dispo: {profile?.totalPoints?.toLocaleString()} PTS</span>
                 </div>
-                <Input type="number" value={betAmount} onChange={(e) => setBetInput(e.target.value)} className="h-16 text-3xl font-black text-center rounded-2xl bg-primary/5 border-none shadow-inner" autoFocus />
+                <div className="relative">
+                  <Input type="number" value={betAmount} onChange={(e) => setBetInput(e.target.value)} className="h-16 text-3xl font-black text-center rounded-2xl bg-primary/5 border-none shadow-inner" autoFocus />
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 opacity-20"><Zap className="h-6 w-6 text-primary" /></div>
+                </div>
               </div>
-              <div className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/5 flex justify-between items-center">
-                <div className="flex flex-col"><p className="text-[9px] font-black uppercase opacity-30">Cote Totale</p><p className="text-xl font-black italic text-primary">@{totalOdds.toFixed(2)}</p></div>
-                <div className="text-right"><p className="text-[9px] font-black uppercase opacity-30">Gain Potentiel</p><p className="text-3xl font-black tabular-nums">+{potentialWin} PTS</p></div>
+              <div className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/5 flex justify-between items-center shadow-inner">
+                <div className="flex flex-col"><p className="text-[9px] font-black uppercase opacity-30">Multiplicateur</p><p className="text-2xl font-black italic text-primary tabular-nums">@{totalOdds.toFixed(2)}</p></div>
+                <div className="text-right"><p className="text-[9px] font-black uppercase opacity-30">Gain de Lumière</p><p className="text-3xl font-black tabular-nums tracking-tighter">+{potentialWin} <span className="text-xs opacity-20">PTS</span></p></div>
               </div>
-              <Button onClick={handlePlaceBet} disabled={isProcessing || selections.length === 0 || currentStake > (profile?.totalPoints || 0)} className="w-full h-20 rounded-[2.2rem] font-black text-sm uppercase shadow-2xl bg-primary text-primary-foreground gap-4 active:scale-95">{isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : <ShieldCheck className="h-6 w-6" />} Valider le Coupon</Button>
+              <Button onClick={handlePlaceBet} disabled={isProcessing || selections.length === 0 || currentStake > (profile?.totalPoints || 0)} className="w-full h-20 rounded-[2.2rem] font-black text-sm uppercase shadow-2xl bg-primary text-primary-foreground gap-4 active:scale-95">
+                {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : <ShieldCheck className="h-6 w-6" />} Sceller le Pacte
+              </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function X({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
   );
 }
