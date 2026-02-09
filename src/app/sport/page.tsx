@@ -23,6 +23,7 @@ import {
   History, 
   Globe,
   Trophy,
+  Lock
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { useSport } from "./SportContext";
@@ -195,18 +196,25 @@ export default function SportListPage() {
                         const isSelected = selections.find(s => s.matchId === match.id && s.outcome === outcome);
                         const odd = match.odds[outcome];
                         const label = outcome === '1' ? match.homeTeam.name : outcome === 'X' ? 'Match Nul' : match.awayTeam.name;
+                        const isLocked = match.status !== 'scheduled';
+
                         return (
                           <button
                             key={outcome}
-                            disabled={match.status !== 'scheduled'}
+                            disabled={isLocked}
                             onClick={() => toggleSelection(match.id, `${match.homeTeam.name} vs ${match.awayTeam.name}`, outcome, label, odd, match.status)}
                             className={cn(
-                              "flex flex-col items-center justify-center py-3 rounded-2xl border transition-all duration-500",
-                              isSelected ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" : "bg-primary/5 border-primary/5"
+                              "flex flex-col items-center justify-center py-3 rounded-2xl border transition-all duration-500 min-h-[64px]",
+                              isSelected ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" : "bg-primary/5 border-primary/5",
+                              isLocked && "opacity-50"
                             )}
                           >
                             <span className="text-[8px] font-black uppercase mb-1 opacity-40">{outcome}</span>
-                            <span className="text-sm font-black tabular-nums">{odd.toFixed(2)}</span>
+                            {isLocked ? (
+                              <Lock className="h-3.5 w-3.5 opacity-40" />
+                            ) : (
+                              <span className="text-sm font-black tabular-nums">{odd.toFixed(2)}</span>
+                            )}
                           </button>
                         );
                       })}

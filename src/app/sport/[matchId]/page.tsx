@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -16,7 +17,8 @@ import {
   ListOrdered, 
   ShieldCheck, 
   X,
-  AlertCircle
+  AlertCircle,
+  Lock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { haptic } from "@/lib/haptics";
@@ -72,6 +74,8 @@ export default function MatchDetailsPage() {
     );
   }
 
+  const isLocked = match.status !== 'scheduled';
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="fixed top-0 left-0 right-0 z-50 p-6 flex items-center justify-between bg-background/10 backdrop-blur-xl border-b border-primary/5">
@@ -92,7 +96,7 @@ export default function MatchDetailsPage() {
       </header>
 
       <main className="flex-1 flex flex-col pt-24">
-        {/* En-tête Score Score Score */}
+        {/* En-tête Score */}
         <div className="p-8 pb-10 relative overflow-hidden bg-primary/5 border-b border-primary/5">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(var(--primary-rgb),0.05),transparent_70%)] pointer-events-none" />
           
@@ -186,18 +190,24 @@ export default function MatchDetailsPage() {
                       const isSelected = selections.find(s => s.matchId === match.id && s.outcome === outcome);
                       const odd = match.odds[outcome];
                       const label = outcome === '1' ? match.homeTeam.name : outcome === 'X' ? 'Match Nul' : match.awayTeam.name;
+                      
                       return (
                         <button
                           key={outcome}
-                          disabled={match.status !== 'scheduled'}
+                          disabled={isLocked}
                           onClick={() => toggleSelection(match.id, `${match.homeTeam.name} vs ${match.awayTeam.name}`, outcome, label, odd, match.status)}
                           className={cn(
-                            "flex flex-col items-center justify-center py-5 rounded-[2rem] border transition-all duration-500",
-                            isSelected ? "bg-primary text-primary-foreground border-primary shadow-xl scale-105" : "bg-primary/5 border-primary/5"
+                            "flex flex-col items-center justify-center py-5 rounded-[2rem] border transition-all duration-500 min-h-[84px]",
+                            isSelected ? "bg-primary text-primary-foreground border-primary shadow-xl scale-105" : "bg-primary/5 border-primary/5",
+                            isLocked && "opacity-50"
                           )}
                         >
                           <span className="text-[9px] font-black uppercase mb-1 opacity-40">{outcome}</span>
-                          <span className="text-base font-black tabular-nums">{odd.toFixed(2)}</span>
+                          {isLocked ? (
+                            <Lock className="h-4 w-4 opacity-40" />
+                          ) : (
+                            <span className="text-base font-black tabular-nums">{odd.toFixed(2)}</span>
+                          )}
                         </button>
                       );
                     })}
@@ -213,15 +223,20 @@ export default function MatchDetailsPage() {
                         return (
                           <button
                             key={opt.type}
-                            disabled={match.status !== 'scheduled'}
+                            disabled={isLocked}
                             onClick={() => toggleSelection(match.id, `${match.homeTeam.name} vs ${match.awayTeam.name}`, opt.type, opt.label, opt.odd, match.status)}
                             className={cn(
-                              "flex flex-col items-center justify-center py-4 rounded-[1.5rem] border transition-all",
-                              isSelected ? "bg-primary text-primary-foreground border-primary shadow-lg" : "bg-primary/5 border-primary/5"
+                              "flex flex-col items-center justify-center py-4 rounded-[1.5rem] border transition-all min-h-[72px]",
+                              isSelected ? "bg-primary text-primary-foreground border-primary shadow-lg" : "bg-primary/5 border-primary/5",
+                              isLocked && "opacity-50"
                             )}
                           >
                             <span className="text-[9px] font-bold uppercase mb-1 opacity-40">{opt.label}</span>
-                            <span className="text-sm font-black">{opt.odd.toFixed(2)}</span>
+                            {isLocked ? (
+                              <Lock className="h-3.5 w-3.5 opacity-40" />
+                            ) : (
+                              <span className="text-sm font-black">{opt.odd.toFixed(2)}</span>
+                            )}
                           </button>
                         );
                       })}
