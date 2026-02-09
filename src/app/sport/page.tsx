@@ -9,7 +9,6 @@ import {
   doc, 
   addDoc, 
   updateDoc, 
-  setDoc,
   increment, 
   serverTimestamp, 
   query, 
@@ -27,41 +26,26 @@ import {
   ChevronLeft, 
   Zap, 
   Loader2, 
-  Trophy, 
   Clock, 
-  Plus, 
-  X, 
-  CheckCircle2, 
-  ShieldCheck,
+  History, 
   TrendingUp,
-  History,
   Ticket,
   ChevronRight,
   AlertCircle,
-  Dices,
-  RefreshCw,
-  ShoppingCart,
   Trash2,
-  Edit3,
-  ArrowUpRight,
-  Sparkles
+  ShieldCheck
 } from "lucide-react";
 import { 
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
-  DialogFooter
+  DialogTitle
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { EmojiOracle } from "@/components/EmojiOracle";
-import { getDailyMatches } from "@/app/actions/sport";
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
-import Image from "next/image";
 
 interface BetSelection {
   matchId: string;
@@ -81,7 +65,7 @@ export default function SportPage() {
 
   const [activeTab, setTab] = useState("matches");
   const [matches, setMatches] = useState<any[]>([]);
-  const [isLoadingMatches, setIsLoadingMatches] = useState(true);
+  const [isLoadingMatches, setIsLoadingMatches] = useState(false);
   
   const [selections, setSelections] = useState<BetSelection[]>([]);
   const [isCouponOpen, setIsCouponOpen] = useState(false);
@@ -90,37 +74,6 @@ export default function SportPage() {
 
   const userDocRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
-
-  useEffect(() => {
-    async function loadAndSync() {
-      setIsLoadingMatches(true);
-      try {
-        const data = await getDailyMatches();
-        if (data && data.length > 0) {
-          setMatches(data);
-          if (db) {
-            data.forEach((match: any) => {
-              const matchRef = doc(db, "matches", match.fixture.id.toString());
-              setDoc(matchRef, { ...match, updatedAt: serverTimestamp() }, { merge: true })
-              .catch(async (error) => {
-                const permissionError = new FirestorePermissionError({
-                  path: matchRef.path,
-                  operation: 'write',
-                  requestResourceData: match,
-                } satisfies SecurityRuleContext);
-                errorEmitter.emit('permission-error', permissionError);
-              });
-            });
-          }
-        }
-      } catch (e) {
-        console.error("Dissonance lors de la synchronisation");
-      } finally {
-        setIsLoadingMatches(false);
-      }
-    }
-    loadAndSync();
-  }, [db]);
 
   const betsQuery = useMemoFirebase(() => {
     if (!db || !user?.uid) return null;
@@ -183,7 +136,6 @@ export default function SportPage() {
         <div className="w-10 h-10" />
       </header>
 
-      {/* Zone de contenu défilant */}
       <main className="flex-1 p-6 pt-28 space-y-8 max-w-lg mx-auto w-full pb-48">
         <Tabs value={activeTab} onValueChange={setTab} className="w-full">
           <TabsList className="grid grid-cols-2 bg-primary/5 p-1 h-12 rounded-2xl mb-8">
@@ -196,61 +148,13 @@ export default function SportPage() {
           </TabsList>
 
           <TabsContent value="matches" className="space-y-6 m-0">
-            {isLoadingMatches ? (
-              <div className="py-32 flex flex-col items-center justify-center gap-6 text-center">
-                <RefreshCw className="h-12 w-12 text-primary animate-spin opacity-20" />
-                <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-40">Synchronisation des Arènes...</p>
+            <div className="py-32 text-center opacity-20 space-y-4">
+              <AlertCircle className="h-16 w-16 mx-auto" />
+              <div className="space-y-2">
+                <p className="text-xs font-black uppercase tracking-[0.2em]">Flux API Dissous</p>
+                <p className="text-[9px] font-medium leading-relaxed italic px-10">"Le Sanctuaire attend de nouvelles directives pour l'harmonisation des arènes."</p>
               </div>
-            ) : matches.length === 0 ? (
-              <div className="py-32 text-center opacity-20 space-y-4">
-                <AlertCircle className="h-16 w-16 mx-auto" />
-                <p className="text-xs font-black uppercase tracking-[0.2em]">Aucun flux sportif</p>
-              </div>
-            ) : (
-              matches.map((match) => (
-                <Card key={match.fixture.id} className="border-none bg-card/40 backdrop-blur-3xl rounded-[2.5rem] border border-primary/5 shadow-xl">
-                  <CardContent className="p-6 space-y-6">
-                    <div className="flex justify-between items-center px-2">
-                      <div className="flex items-center gap-2">
-                        <div className={cn("px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest border", match.isReal ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-primary/5 text-primary/40 border-primary/5")}>{match.isReal ? "Réel" : "Oracle"}</div>
-                        <span className="text-[8px] font-black uppercase tracking-widest opacity-40">{match.league.name}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 opacity-40">
-                        <Clock className="h-2.5 w-2.5" />
-                        <span className="text-[8px] font-black uppercase">{match.displayTime}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between gap-4 text-center">
-                      <div className="flex-1 space-y-2">
-                        <div className="relative h-12 w-12 bg-primary/5 rounded-xl mx-auto flex items-center justify-center overflow-hidden border border-primary/5 shadow-inner">
-                          {match.teams.home.logo ? <Image src={match.teams.home.logo} alt="" fill className="object-contain p-2" /> : <EmojiOracle text="⚽" forceStatic />}
-                        </div>
-                        <p className="text-[10px] font-black uppercase leading-tight h-8 line-clamp-2">{match.teams.home.name}</p>
-                      </div>
-                      <div className="text-[10px] font-black opacity-20 italic">VS</div>
-                      <div className="flex-1 space-y-2">
-                        <div className="relative h-12 w-12 bg-primary/5 rounded-xl mx-auto flex items-center justify-center overflow-hidden border border-primary/5 shadow-inner">
-                          {match.teams.away.logo ? <Image src={match.teams.away.logo} alt="" fill className="object-contain p-2" /> : <EmojiOracle text="⚽" forceStatic />}
-                        </div>
-                        <p className="text-[10px] font-black uppercase leading-tight h-8 line-clamp-2">{match.teams.away.name}</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      {["1", "X", "2"].map((outcome) => {
-                        const odd = parseFloat(match.odds[outcome as keyof typeof match.odds]);
-                        const isSelected = selections.some(s => s.matchId === match.fixture.id.toString() && s.outcome === outcome);
-                        return (
-                          <button key={outcome} onClick={() => toggleSelection(match, outcome as any)} className={cn("flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-300 active:scale-95", isSelected ? "bg-primary text-primary-foreground border-primary shadow-xl" : "bg-primary/5 border-transparent hover:bg-primary/10")}>
-                            <span className={cn("text-[8px] font-black uppercase mb-1", isSelected ? "text-primary-foreground/60" : "opacity-40")}>{outcome === "1" ? "Dom" : outcome === "X" ? "Nul" : "Ext"}</span>
-                            <span className="text-sm font-black tabular-nums">{odd.toFixed(2)}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
+            </div>
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4 m-0">
@@ -288,7 +192,6 @@ export default function SportPage() {
         </Tabs>
       </main>
 
-      {/* BARRE DE FLUX FIXE - SUPERPOSITION ABSOLUE EN HAUT */}
       <AnimatePresence>
         {selections.length > 0 && activeTab === "matches" && !isCouponOpen && (
           <div className="fixed top-24 left-0 right-0 z-[500] px-6 pointer-events-none flex justify-center">

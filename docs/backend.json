@@ -1,27 +1,6 @@
 
 {
   "entities": {
-    "Match": {
-      "title": "Match",
-      "description": "Un match de football réel synchronisé avec données complètes de l'API-Sports",
-      "type": "object",
-      "properties": {
-        "fixture": { "type": "object", "description": "Détails techniques du match (id, date, status, venue, etc.)" },
-        "league": { "type": "object", "description": "Informations sur la ligue et le pays" },
-        "teams": { "type": "object", "description": "Détails des équipes domicile et extérieur" },
-        "goals": { "type": "object", "description": "Nombre de buts marqués" },
-        "score": { "type": "object", "description": "Détails des scores par période et tirs au but" },
-        "odds": { 
-          "type": "object",
-          "properties": {
-            "1": { "type": "string" },
-            "X": { "type": "string" },
-            "2": { "type": "string" }
-          }
-        },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      }
-    },
     "UserFavorite": {
       "title": "UserFavorite",
       "description": "Favoris d'un utilisateur (Quiz ou défis)",
@@ -210,10 +189,6 @@
     "/duels/{duelId}": {
       "schema": "Duel",
       "description": "Arène de combat intellectuel"
-    },
-    "/matches/{matchId}": {
-      "schema": "Match",
-      "description": "Arène des rencontres mondiales avec données complètes"
     }
   }
 }
