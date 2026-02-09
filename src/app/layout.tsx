@@ -183,12 +183,12 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div>;
   }
 
-  const excludedNavPaths = ["/", "/login", "/autoriser", "/arcade"];
-  const excludedBottomNavPaths = ["/", "/login", "/autoriser", "/transfert", "/echange", "/duels", "/arcade"];
+  // Oracle: Harmonisation des chemins pour garantir l'affichage de la navigation sur /home
+  const excludedNavPaths = ["/login", "/autoriser", "/arcade"];
+  const excludedBottomNavPaths = ["/login", "/autoriser", "/transfert", "/echange", "/duels", "/arcade"];
 
-  // Oracle: Correction de la détection des chemins exclus pour éviter de masquer le header sur /home
-  const showNav = user && !excludedNavPaths.some(p => p === "/" ? pathname === p : pathname.startsWith(p));
-  const showBottomNav = user && !excludedBottomNavPaths.some(p => p === "/" ? pathname === p : pathname.startsWith(p));
+  const showNav = user && pathname !== "/" && !excludedNavPaths.some(p => pathname.startsWith(p));
+  const showBottomNav = user && pathname !== "/" && !excludedBottomNavPaths.some(p => pathname.startsWith(p));
 
   return (
     <div className={cn(isEcoMode && "reduced-motion")}>

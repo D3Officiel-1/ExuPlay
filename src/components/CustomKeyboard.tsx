@@ -60,6 +60,7 @@ export function CustomKeyboard() {
   const backspaceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const resizeStartY = useRef<number>(0);
   const resizeStartHeight = useRef<number>(0);
+  const keyboardRef = useRef<HTMLDivElement>(null);
 
   const isEcoMode = profile?.reducedMotion === true;
 
@@ -267,10 +268,12 @@ export function CustomKeyboard() {
     };
     const handleFocusOut = () => setTimeout(() => {
       const active = document.activeElement;
-      if (!active || (active.tagName !== "INPUT" && active.tagName !== "TEXTAREA")) {
+      // Oracle: Correction du bug de fermeture. On ne ferme que si le focus sort totalement du clavier ET de l'input.
+      const isInsideKeyboard = keyboardRef.current?.contains(active);
+      if (!active || (active.tagName !== "INPUT" && active.tagName !== "TEXTAREA" && !isInsideKeyboard)) {
         setIsVisible(false); setIsEmojiSearchActive(false);
       }
-    }, 100);
+    }, 150);
     document.addEventListener("focusin", handleFocus);
     document.addEventListener("focusout", handleFocusOut);
     return () => {
@@ -311,6 +314,7 @@ export function CustomKeyboard() {
     <AnimatePresence>
       {isVisible && (
         <motion.div
+          ref={keyboardRef}
           initial={{ y: "100%", opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: "100%", opacity: 0 }}
@@ -416,14 +420,14 @@ export function CustomKeyboard() {
                       <div className="flex flex-col h-full">
                         <div className="flex gap-1.5 p-1.5 mb-4 bg-primary/5 rounded-[2rem] overflow-x-auto no-scrollbar shrink-0">
                           {categories.map((cat, idx) => (
-                            <button key={cat.id} onClick={() => { haptic.light(); setEmojiCategory(idx); }} className={cn("relative flex items-center justify-center h-10 w-10 rounded-xl transition-colors", emojiCategory === idx ? "bg-primary text-primary-foreground shadow-lg" : "text-primary/30")}>
+                            <button key={cat.id} onPointerDown={(e) => e.preventDefault()} onClick={() => { haptic.light(); setEmojiCategory(idx); }} className={cn("relative flex items-center justify-center h-10 w-10 rounded-xl transition-colors", emojiCategory === idx ? "bg-primary text-primary-foreground shadow-lg" : "text-primary/30")}>
                               <cat.icon className="h-4 w-4" />
                             </button>
                           ))}
                         </div>
                         <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-8 gap-2 p-1 bg-primary/[0.02] rounded-3xl border border-primary/5">
                           {categories[emojiCategory].items.map((e, idx) => (
-                            <button key={idx} onClick={() => insertText(e.char)} className="flex items-center justify-center aspect-square bg-primary/[0.03] border border-primary/5 hover:bg-primary/10 transition-all rounded-xl text-lg">
+                            <button key={idx} onPointerDown={(e) => e.preventDefault()} onClick={() => insertText(e.char)} className="flex items-center justify-center aspect-square bg-primary/[0.03] border border-primary/5 hover:bg-primary/10 transition-all rounded-xl text-lg">
                               <EmojiOracle text={e.char} forceStatic />
                             </button>
                           ))}
