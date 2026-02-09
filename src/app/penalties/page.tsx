@@ -57,8 +57,18 @@ function OracleKeeper({
       </motion.div>
       <AnimatePresence>
         {(!isResult || (isResult && !isScored)) && (
-          <><motion.div className="absolute -left-8 top-10 z-30" animate={isIdle ? { y: [0, 5, 0], x: [0, -2, 0] } : { scale: 1.2, x: -10, y: -5 }} transition={{ duration: 3, repeat: isIdle ? Infinity : 0 }}><div className="w-8 h-8 bg-card rounded-xl border-2 border-primary/20 shadow-lg flex items-center justify-center"><Zap className="h-4 w-4 text-primary opacity-40" /></div></motion.div>
-          <motion.div className="absolute -right-8 top-10 z-30" animate={isIdle ? { y: [0, 5, 0], x: [0, 2, 0] } : { scale: 1.2, x: 10, y: -5 }} transition={{ duration: 3, repeat: isIdle ? Infinity : 0, delay: 0.5 }}><div className="w-8 h-8 bg-card rounded-xl border-2 border-primary/20 shadow-lg flex items-center justify-center"><Zap className="h-4 w-4 text-primary opacity-40" /></div></motion.div></>
+          <>
+            <motion.div className="absolute -left-8 top-10 z-30" animate={isIdle ? { y: [0, 5, 0], x: [0, -2, 0] } : { scale: 1.2, x: -10, y: -5 }} transition={{ duration: 3, repeat: isIdle ? Infinity : 0 }}>
+              <div className="w-8 h-8 bg-card rounded-xl border-2 border-primary/20 shadow-lg flex items-center justify-center">
+                <Zap className="h-4 w-4 text-primary opacity-40" />
+              </div>
+            </motion.div>
+            <motion.div className="absolute -right-8 top-10 z-30" animate={isIdle ? { y: [0, 5, 0], x: [0, 2, 0] } : { scale: 1.2, x: 10, y: -5 }} transition={{ duration: 3, repeat: isIdle ? Infinity : 0, delay: 0.5 }}>
+              <div className="w-8 h-8 bg-card rounded-xl border-2 border-primary/20 shadow-lg flex items-center justify-center">
+                <Zap className="h-4 w-4 text-primary opacity-40" />
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>
@@ -133,8 +143,16 @@ export default function PenaltiesPage() {
         setGameState('result');
         if (scored) {
           haptic.success();
-          confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#ffffff', '#000000', '#ffd700'] });
-          await updateDoc(userDocRef, { totalPoints: increment(currentBet * 2), updatedAt: serverTimestamp() });
+          confetti({ 
+            particleCount: 150, 
+            spread: 70, 
+            origin: { y: 0.6 }, 
+            colors: ['#ffffff', '#000000', '#ffd700'] 
+          });
+          await updateDoc(userDocRef, { 
+            totalPoints: increment(currentBet * 2), 
+            updatedAt: serverTimestamp() 
+          });
         } else {
           haptic.error();
         }
@@ -146,14 +164,35 @@ export default function PenaltiesPage() {
     }
   };
 
-  const resetGame = () => { haptic.light(); setGameState('idle'); setPlayerChoice(null); setKeeperChoice(null); setIsScored(null); };
+  const resetGame = () => { 
+    haptic.light(); 
+    setGameState('idle'); 
+    setPlayerChoice(null); 
+    setKeeperChoice(null); 
+    setIsScored(null); 
+  };
 
   const ballVariants = {
     idle: { y: 0, x: 0, scale: 1, filter: "blur(0px)", rotate: 0 },
     shooting: (direction: Direction) => {
-      const xMap: Record<Direction, number> = { "En haut à gauche": -115, "En haut": 0, "En haut à droite": 115, "À gauche": -115, "Centre": 0, "À droite": 115, "En bas à gauche": -115, "En bas": 0, "En bas à droite": 115 };
-      const yMap: Record<Direction, number> = { "En haut à gauche": -345, "En haut": -345, "En haut à droite": -345, "À gauche": -275, "Centre": -275, "À droite": -275, "En bas à gauche": -205, "En bas": -205, "En bas à droite": -205 };
-      return { y: yMap[direction], x: xMap[direction], scale: 0.35, rotate: 1080, filter: "blur(2px)", transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } };
+      const xMap: Record<Direction, number> = { 
+        "En haut à gauche": -115, "En haut": 0, "En haut à droite": 115, 
+        "À gauche": -115, "Centre": 0, "À droite": 115, 
+        "En bas à gauche": -115, "En bas": 0, "En bas à droite": 115 
+      };
+      const yMap: Record<Direction, number> = { 
+        "En haut à gauche": -345, "En haut": -345, "En haut à droite": -345, 
+        "À gauche": -275, "Centre": -275, "À droite": -275, 
+        "En bas à gauche": -205, "En bas": -205, "En bas à droite": -205 
+      };
+      return { 
+        y: yMap[direction], 
+        x: xMap[direction], 
+        scale: 0.35, 
+        rotate: 1080, 
+        filter: "blur(2px)", 
+        transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } 
+      };
     }
   };
 
@@ -161,10 +200,27 @@ export default function PenaltiesPage() {
     idle: { x: "-50%", y: 0, rotate: 0, scale: 1 },
     shooting: (direction: Direction | null) => {
       if (!direction) return {};
-      const xMap: Record<Direction, number> = { "En haut à gauche": -105, "En haut": 0, "En haut à droite": 105, "À gauche": -105, "Centre": 0, "À droite": 105, "En bas à gauche": -105, "En bas": 0, "En bas à droite": 105 };
-      const yMap: Record<Direction, number> = { "En haut à gauche": -15, "En haut": -15, "En haut à droite": -15, "À gauche": 50, "Centre": 40, "À droite": 50, "En bas à gauche": 115, "En bas": 115, "En bas à droite": 115 };
-      const rotateMap: Record<Direction, number> = { "En haut à gauche": -45, "En haut": 0, "En haut à droite": 45, "À gauche": -45, "Centre": 0, "À droite": 45, "En bas à gauche": -45, "En bas": 0, "En bas à droite": 45 };
-      return { x: `calc(-50% + ${xMap[direction]}px)`, y: yMap[direction as keyof typeof yMap] || 0, rotate: rotateMap[direction], transition: { duration: 0.6, type: "spring", stiffness: 120, damping: 12 } };
+      const xMap: Record<Direction, number> = { 
+        "En haut à gauche": -105, "En haut": 0, "En haut à droite": 105, 
+        "À gauche": -105, "Centre": 0, "À droite": 105, 
+        "En bas à gauche": -105, "En bas": 0, "En bas à droite": 105 
+      };
+      const yMap: Record<Direction, number> = { 
+        "En haut à gauche": -15, "En haut": -15, "En haut à droite": -15, 
+        "À gauche": 50, "Centre": 40, "À droite": 50, 
+        "En bas à gauche": 115, "En bas": 115, "En bas à droite": 115 
+      };
+      const rotateMap: Record<Direction, number> = { 
+        "En haut à gauche": -45, "En haut": 0, "En haut à droite": 45, 
+        "À gauche": -45, "Centre": 0, "À droite": 45, 
+        "En bas à gauche": -45, "En bas": 0, "En bas à droite": 45 
+      };
+      return { 
+        x: `calc(-50% + ${xMap[direction]}px)`, 
+        y: yMap[direction as keyof typeof yMap] || 0, 
+        rotate: rotateMap[direction], 
+        transition: { duration: 0.6, type: "spring", stiffness: 120, damping: 12 } 
+      };
     }
   };
 
@@ -217,7 +273,14 @@ export default function PenaltiesPage() {
                 </div>
                 <div className="flex justify-center gap-3">
                   {BET_PRESETS.map((amt) => (
-                    <button key={amt} onClick={() => { haptic.light(); setBetInput(amt.toString()); }} className={cn("px-6 py-3 rounded-2xl font-black text-sm transition-all border", betInput === amt.toString() ? "bg-primary text-primary-foreground border-primary shadow-xl scale-105" : "bg-primary/5 border-transparent opacity-40")}>
+                    <button 
+                      key={amt} 
+                      onClick={() => { haptic.light(); setBetInput(amt.toString()); }} 
+                      className={cn(
+                        "px-6 py-3 rounded-2xl font-black text-sm transition-all border", 
+                        betInput === amt.toString() ? "bg-primary text-primary-foreground border-primary shadow-xl scale-105" : "bg-primary/5 border-transparent opacity-40"
+                      )}
+                    >
                       {amt}
                     </button>
                   ))}
@@ -234,24 +297,59 @@ export default function PenaltiesPage() {
             <div className={cn("absolute top-[15%] left-1/2 -translate-x-1/2 w-72 h-40 border-x-4 border-t-4 border-primary/20 rounded-t-xl transition-all duration-300", gameState === 'idle' ? "z-[60]" : "z-10")}>
               <div className="absolute inset-0 bg-primary/[0.02] backdrop-blur-[1px]" />
               {gameState === 'idle' && DIRECTIONS.map((dir) => (
-                <button key={dir} onClick={() => handleShoot(dir)} disabled={loading} className={cn("absolute opacity-0 bg-primary transition-opacity cursor-crosshair", getTargetPosition(dir), (dir.includes("Haut") || dir.includes("Bas")) && dir !== "Centre" ? "h-1/3" : "w-1/3 h-1/3")} />
+                <button 
+                  key={dir} 
+                  onClick={() => handleShoot(dir)} 
+                  disabled={loading} 
+                  className={cn(
+                    "absolute opacity-0 bg-primary transition-opacity cursor-crosshair", 
+                    getTargetPosition(dir), 
+                    (dir.includes("Haut") || dir.includes("Bas")) && dir !== "Centre" ? "h-1/3" : "w-1/3 h-1/3"
+                  )} 
+                />
               ))}
             </div>
-            <motion.div variants={keeperVariants} animate={gameState === 'shooting' || gameState === 'result' ? "shooting" : "idle"} custom={keeperChoice} className="absolute top-[22%] left-1/2 z-20 origin-bottom">
+            <motion.div 
+              variants={keeperVariants} 
+              animate={gameState === 'shooting' || gameState === 'result' ? "shooting" : "idle"} 
+              custom={keeperChoice} 
+              className="absolute top-[22%] left-1/2 z-20 origin-bottom"
+            >
               <OracleKeeper gameState={gameState} keeperChoice={keeperChoice} isScored={isScored} />
             </motion.div>
             <div className="absolute bottom-[15%] left-1/2 -translate-x-1/2 z-30">
               <div className="w-6 h-6 bg-primary/10 rounded-full blur-[2px] mb-[-12px] mx-auto" />
               <motion.div variants={ballVariants} animate={gameState === 'shooting' || gameState === 'result' ? "shooting" : "idle"} custom={playerChoice} className="relative">
                 <div className="text-6xl drop-shadow-[0_10px_20px_rgba(0,0,0,0.3)] filter brightness-110 select-none">⚽</div>
-                {gameState === 'idle' && <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.5, 0.2] }} transition={{ duration: 2, repeat: Infinity }} className="absolute inset-0 bg-primary/20 rounded-full blur-xl -z-10" />}
+                {gameState === 'idle' && (
+                  <motion.div 
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.5, 0.2] }} 
+                    transition={{ duration: 2, repeat: Infinity }} 
+                    className="absolute inset-0 bg-primary/20 rounded-full blur-xl -z-10" 
+                  />
+                )}
               </motion.div>
             </div>
             <AnimatePresence>
               {gameState === 'result' && (
-                <motion.div initial={{ opacity: 0, scale: 0.5, filter: "blur(20px)" }} animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }} className="absolute inset-0 flex flex-col items-center justify-center z-[100] pointer-events-none bg-background/20 backdrop-blur-sm">
-                  <motion.h2 initial={{ y: 20 }} animate={{ y: 0 }} className={cn("text-8xl font-black uppercase italic tracking-tighter drop-shadow-2xl", isScored ? "text-green-500" : "text-destructive")}>{isScored ? "BUT !" : "ARRÊT !"}</motion.h2>
-                  <p className="text-2xl font-black mt-6 px-8 py-3 rounded-full bg-card border border-primary/10 shadow-2xl">{isScored ? `+${currentBet * 2} PTS` : `-${currentBet} PTS`}</p>
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.5, filter: "blur(20px)" }} 
+                  animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }} 
+                  className="absolute inset-0 flex flex-col items-center justify-center z-[100] pointer-events-none bg-background/20 backdrop-blur-sm"
+                >
+                  <motion.h2 
+                    initial={{ y: 20 }} 
+                    animate={{ y: 0 }} 
+                    className={cn(
+                      "text-8xl font-black uppercase italic tracking-tighter drop-shadow-2xl", 
+                      isScored ? "text-green-500" : "text-destructive"
+                    )}
+                  >
+                    {isScored ? "BUT !" : "ARRÊT !"}
+                  </motion.h2>
+                  <p className="text-2xl font-black mt-6 px-8 py-3 rounded-full bg-card border border-primary/10 shadow-2xl">
+                    {isScored ? `+${currentBet * 2} PTS` : `-${currentBet} PTS`}
+                  </p>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -259,8 +357,13 @@ export default function PenaltiesPage() {
 
           <AnimatePresence mode="wait">
             {gameState === 'result' ? (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0, x: -10 }} exit={{ opacity: 0 }} className="mt-4">
-                <Button onClick={resetGame} className="w-full h-20 rounded-[2.5rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-primary/20">Nouvelle Frappe</Button>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-4">
+                <Button 
+                  onClick={resetGame} 
+                  className="w-full h-20 rounded-[2.5rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-primary/20"
+                >
+                  Nouvelle Frappe
+                </Button>
               </motion.div>
             ) : (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/5 flex items-start gap-4">
