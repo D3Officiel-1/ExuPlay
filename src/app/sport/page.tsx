@@ -42,8 +42,16 @@ import {
   RefreshCw,
   Globe,
   ShoppingCart,
-  ArrowUpRight
+  ArrowUpRight,
+  Edit3
 } from "lucide-react";
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from "@/components/ui/dialog";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -53,10 +61,11 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import Image from "next/image";
 
-interface SelectedBet {
+interface BetPlacement {
   matchId: string;
   matchName: string;
   outcome: "1" | "X" | "2";
+  outcomeLabel: string;
   odd: number;
 }
 
@@ -69,10 +78,9 @@ export default function SportPage() {
   const [activeTab, setTab] = useState("matches");
   const [matches, setMatches] = useState<any[]>([]);
   const [isLoadingMatches, setIsLoadingMatches] = useState(true);
-  const [selectedBets, setSelectedBets] = useState<SelectedBet[]>([]);
-  const [betInput, setBetInput] = useState("100");
+  const [betToPlace, setBetToPlace] = useState<BetPlacement | null>(null);
+  const [betAmount, setBetInput] = useState("100");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showCoupon, setShowCoupon] = useState(false);
 
   const userDocRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
@@ -114,42 +122,33 @@ export default function SportPage() {
 
   const betsQuery = useMemoFirebase(() => {
     if (!db || !user?.uid) return null;
-    return query(collection(db, "bets"), where("userId", "==", user.uid), orderBy("createdAt", "desc"), limit(10));
+    return query(collection(db, "bets"), where("userId", "==", user.uid), orderBy("createdAt", "desc"), limit(15));
   }, [db, user?.uid]);
   const { data: userBets } = useCollection(betsQuery);
 
-  const currentBetAmount = Math.max(5, parseInt(betInput) || 0);
-  const totalOdds = useMemo(() => selectedBets.reduce((acc, b) => acc * b.odd, 1), [selectedBets]);
-  const potentialWin = Math.floor(currentBetAmount * totalOdds);
+  const currentStake = Math.max(5, parseInt(betAmount) || 0);
+  const potentialWin = betToPlace ? Math.floor(currentStake * betToPlace.odd) : 0;
 
-  const toggleBet = (match: any, outcome: "1" | "X" | "2") => {
+  const handleOpenBetDialog = (match: any, outcome: "1" | "X" | "2") => {
     haptic.light();
     const odd = parseFloat(match.odds[outcome]);
-    const matchName = `${match.teams.home.name} vs ${match.teams.away.name}`;
-    const mId = match.fixture.id.toString();
+    const outcomeLabel = outcome === "1" ? match.teams.home.name : outcome === "X" ? "Nul" : match.teams.away.name;
     
-    setSelectedBets(prev => {
-      const exists = prev.find(b => b.matchId === mId);
-      if (exists) {
-        if (exists.outcome === outcome) {
-          return prev.filter(b => b.matchId !== mId);
-        }
-        return prev.map(b => b.matchId === mId ? { ...b, outcome, odd } : b);
-      }
-      
-      // Auto-open coupon on first selection
-      if (prev.length === 0) setShowCoupon(true);
-      
-      return [...prev, { matchId: mId, matchName, outcome, odd }];
+    setBetToPlace({
+      matchId: match.fixture.id.toString(),
+      matchName: `${match.teams.home.name} vs ${match.teams.away.name}`,
+      outcome,
+      outcomeLabel,
+      odd
     });
   };
 
   const handlePlaceBet = async () => {
-    if (!userDocRef || !profile || selectedBets.length === 0 || isProcessing) return;
+    if (!userDocRef || !profile || !betToPlace || isProcessing) return;
 
-    if (currentBetAmount > (profile.totalPoints || 0)) {
+    if (currentStake > (profile.totalPoints || 0)) {
       haptic.error();
-      toast({ variant: "destructive", title: "Lumière insuffisante", description: "Accumulez plus de points pour valider ce coupon." });
+      toast({ variant: "destructive", title: "Lumière insuffisante", description: "Engagez moins de points pour valider ce pari." });
       return;
     }
 
@@ -159,9 +158,14 @@ export default function SportPage() {
     const betData = {
       userId: user?.uid,
       username: profile.username,
-      selections: selectedBets,
-      stake: currentBetAmount,
-      totalOdds: parseFloat(totalOdds.toFixed(2)),
+      selections: [{ 
+        matchId: betToPlace.matchId, 
+        matchName: betToPlace.matchName, 
+        outcome: betToPlace.outcome, 
+        odd: betToPlace.odd 
+      }],
+      stake: currentStake,
+      totalOdds: betToPlace.odd,
       potentialWin,
       status: "pending",
       createdAt: serverTimestamp(),
@@ -169,16 +173,15 @@ export default function SportPage() {
 
     try {
       await updateDoc(userDocRef, {
-        totalPoints: increment(-currentBetAmount),
+        totalPoints: increment(-currentStake),
         updatedAt: serverTimestamp()
       });
 
       await addDoc(collection(db!, "bets"), betData);
 
       haptic.success();
-      setSelectedBets([]);
-      setShowCoupon(false);
-      toast({ title: "Coupon Scellé !", description: "Votre intuition a été enregistrée dans les annales." });
+      toast({ title: "Pacte Scellé !", description: `Votre intuition sur ${betToPlace.matchName} a été enregistrée.` });
+      setBetToPlace(null);
       setTab("history");
     } catch (e) {
       toast({ variant: "destructive", title: "Dissonance Système" });
@@ -197,25 +200,10 @@ export default function SportPage() {
           <p className="text-[8px] font-black uppercase tracking-[0.4em] opacity-40">Arènes Sportives</p>
           <div className="flex items-center gap-2 px-4 py-1 bg-primary/5 rounded-full border border-primary/5">
             <Zap className="h-3 w-3 text-primary" />
-            <span className="text-xs font-black tabular-nums">{profile?.totalPoints?.toLocaleString()} PTS</span>
+            <span className="text-xs font-black tabular-nums">{profile?.totalPoints?.toLocaleString() || 0} PTS</span>
           </div>
         </div>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => { haptic.light(); setShowCoupon(true); }} 
-          className={cn(
-            "rounded-full transition-all duration-500",
-            selectedBets.length > 0 ? "bg-primary text-primary-foreground shadow-lg" : "bg-primary/5 text-primary"
-          )}
-        >
-          <Ticket className="h-5 w-5" />
-          {selectedBets.length > 0 && (
-            <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[8px] font-black border border-background">
-              {selectedBets.length}
-            </span>
-          )}
-        </Button>
+        <div className="w-10 h-10" />
       </header>
 
       <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
@@ -246,12 +234,17 @@ export default function SportPage() {
               </div>
             ) : (
               matches.map((match) => (
-                <Card key={match.fixture.id} className="border-none bg-card/40 backdrop-blur-3xl rounded-[2.5rem] overflow-hidden border border-primary/5 shadow-xl">
+                <Card key={match.fixture.id} className="border-none bg-card/40 backdrop-blur-3xl rounded-[2.5rem] overflow-hidden border border-primary/5 shadow-xl transition-all hover:bg-card/60">
                   <CardContent className="p-6 space-y-6">
                     <div className="flex justify-between items-center px-2">
-                      <div className="flex items-center gap-2 opacity-40">
-                        <Globe className="h-2.5 w-2.5" />
-                        <span className="text-[8px] font-black uppercase tracking-widest">{match.league.name}</span>
+                      <div className="flex items-center gap-2">
+                        <div className={cn(
+                          "px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest border",
+                          match.isReal ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-primary/5 text-primary/40 border-primary/5"
+                        )}>
+                          {match.isReal ? "Cotes API" : "Cotes Oracle"}
+                        </div>
+                        <span className="text-[8px] font-black uppercase tracking-widest opacity-40">{match.league.name}</span>
                       </div>
                       <div className="flex items-center gap-1.5 opacity-40">
                         <Clock className="h-2.5 w-2.5" />
@@ -261,7 +254,7 @@ export default function SportPage() {
 
                     <div className="flex items-center justify-between gap-4 text-center">
                       <div className="flex-1 space-y-2">
-                        <div className="relative h-12 w-12 bg-primary/5 rounded-xl mx-auto flex items-center justify-center overflow-hidden">
+                        <div className="relative h-12 w-12 bg-primary/5 rounded-xl mx-auto flex items-center justify-center overflow-hidden border border-primary/5 shadow-inner">
                           {match.teams.home.logo ? (
                             <Image src={match.teams.home.logo} alt="" fill className="object-contain p-2" />
                           ) : (
@@ -272,7 +265,7 @@ export default function SportPage() {
                       </div>
                       <div className="text-[10px] font-black opacity-20 italic">VS</div>
                       <div className="flex-1 space-y-2">
-                        <div className="relative h-12 w-12 bg-primary/5 rounded-xl mx-auto flex items-center justify-center overflow-hidden">
+                        <div className="relative h-12 w-12 bg-primary/5 rounded-xl mx-auto flex items-center justify-center overflow-hidden border border-primary/5 shadow-inner">
                           {match.teams.away.logo ? (
                             <Image src={match.teams.away.logo} alt="" fill className="object-contain p-2" />
                           ) : (
@@ -285,20 +278,14 @@ export default function SportPage() {
 
                     <div className="grid grid-cols-3 gap-2">
                       {["1", "X", "2"].map((outcome) => {
-                        const isSelected = selectedBets.some(b => b.matchId === match.fixture.id.toString() && b.outcome === outcome);
                         const odd = parseFloat(match.odds[outcome as keyof typeof match.odds]);
                         return (
                           <button
                             key={outcome}
-                            onClick={() => toggleBet(match, outcome as any)}
-                            className={cn(
-                              "flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-300",
-                              isSelected 
-                                ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" 
-                                : "bg-primary/5 border-transparent hover:border-primary/10"
-                            )}
+                            onClick={() => handleOpenBetDialog(match, outcome as any)}
+                            className="flex flex-col items-center justify-center p-3 rounded-2xl border border-transparent bg-primary/5 hover:bg-primary hover:text-primary-foreground hover:shadow-xl transition-all duration-300 active:scale-95 group"
                           >
-                            <span className="text-[8px] font-black uppercase opacity-40 mb-1">{outcome === "1" ? "Dom" : outcome === "X" ? "Nul" : "Ext"}</span>
+                            <span className="text-[8px] font-black uppercase opacity-40 mb-1 group-hover:text-primary-foreground/60">{outcome === "1" ? "Dom" : outcome === "X" ? "Nul" : "Ext"}</span>
                             <span className="text-sm font-black tabular-nums">{odd.toFixed(2)}</span>
                           </button>
                         );
@@ -318,7 +305,7 @@ export default function SportPage() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <Ticket className="h-3 w-3 text-primary opacity-40" />
-                        <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Combiné x{bet.selections.length}</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Pari Simple</p>
                       </div>
                       <p className="text-sm font-black tabular-nums">{bet.stake} <span className="text-[10px] opacity-30">PTS</span></p>
                     </div>
@@ -332,14 +319,17 @@ export default function SportPage() {
                   <div className="space-y-2 pb-4 border-b border-primary/5">
                     {bet.selections.map((sel: any, i: number) => (
                       <div key={i} className="flex justify-between items-center">
-                        <p className="text-[9px] font-bold opacity-60 truncate w-40">{sel.matchName}</p>
-                        <p className="text-[9px] font-black text-primary">({sel.outcome}) @{parseFloat(sel.odd).toFixed(2)}</p>
+                        <div className="flex flex-col">
+                          <p className="text-[9px] font-bold opacity-60 truncate w-40">{sel.matchName}</p>
+                          <p className="text-[10px] font-black text-primary uppercase">Flux: {sel.outcome === '1' ? 'Domicile' : sel.outcome === 'X' ? 'Nul' : 'Extérieur'}</p>
+                        </div>
+                        <p className="text-lg font-black text-primary">@{parseFloat(sel.odd).toFixed(2)}</p>
                       </div>
                     ))}
                   </div>
                   <div className="flex justify-between items-center pt-4">
                     <p className="text-[10px] font-black uppercase opacity-30">Gain Potentiel</p>
-                    <p className="text-base font-black text-primary tabular-nums">+{bet.potentialWin} <span className="text-[10px] opacity-40">PTS</span></p>
+                    <p className="text-xl font-black text-primary tabular-nums">+{bet.potentialWin} <span className="text-[10px] opacity-40">PTS</span></p>
                   </div>
                 </Card>
               ))
@@ -353,176 +343,86 @@ export default function SportPage() {
         </Tabs>
       </main>
 
-      {/* Résumé du Coupon Flottant (1xBet style) */}
-      <AnimatePresence>
-        {selectedBets.length > 0 && !showCoupon && (
-          <motion.div 
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-6 left-0 right-0 z-[100] px-6 pointer-events-none"
-          >
-            <Button 
-              onClick={() => { haptic.medium(); setShowCoupon(true); }}
-              className="max-w-md mx-auto w-full h-16 rounded-[2rem] bg-primary text-primary-foreground shadow-[0_20px_60px_-10px_rgba(0,0,0,0.4)] border border-white/10 flex items-center justify-between px-8 pointer-events-auto group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 bg-white/10 rounded-xl flex items-center justify-center relative">
-                  <ShoppingCart className="h-5 w-5" />
-                  <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] font-black border-2 border-primary">
-                    {selectedBets.length}
-                  </span>
+      {/* Portail de Mise Instantané */}
+      <Dialog open={!!betToPlace} onOpenChange={(open) => !open && setBetToPlace(null)}>
+        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-[45px] border-primary/10 rounded-[3rem] p-8 shadow-2xl overflow-hidden">
+          {betToPlace && (
+            <div className="space-y-8">
+              <DialogHeader>
+                <div className="space-y-1 text-center">
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Scellage de l'Intuition</p>
+                  <DialogTitle className="text-2xl font-black tracking-tight uppercase italic">{betToPlace.matchName}</DialogTitle>
                 </div>
-                <div className="text-left">
-                  <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Coupon Combiné</p>
-                  <p className="text-sm font-black italic">Cote: x{totalOdds.toFixed(2)}</p>
+              </DialogHeader>
+
+              <div className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/5 flex items-center justify-between relative overflow-hidden group">
+                <motion.div animate={{ x: ["-100%", "200%"] }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="absolute inset-0 skew-x-12 bg-gradient-to-r from-transparent via-primary/5 to-transparent" />
+                <div className="flex-1 min-w-0 pr-4">
+                  <p className="text-[9px] font-black uppercase opacity-40 mb-1">Votre Prédiction</p>
+                  <p className="font-black text-lg text-primary truncate uppercase">{betToPlace.outcomeLabel}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[9px] font-black uppercase opacity-40 mb-1">Cote du Flux</p>
+                  <p className="text-3xl font-black tabular-nums italic">x{betToPlace.odd.toFixed(2)}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-widest">Ouvrir</span>
-                <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </Button>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      <AnimatePresence>
-        {showCoupon && (
-          <>
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }}
-              onClick={() => setShowCoupon(false)}
-              className="fixed inset-0 bg-background/80 backdrop-blur-md z-[1000]"
-            />
-            <motion.div
-              initial={{ y: "100%" }} 
-              animate={{ y: 0 }} 
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-[1001] bg-card/95 backdrop-blur-[45px] rounded-t-[3.5rem] border-t border-primary/10 shadow-[0_-20px_100px_rgba(0,0,0,0.5)] max-h-[90vh] flex flex-col max-w-lg mx-auto"
-            >
-              <div className="p-8 pb-12 space-y-8 overflow-y-auto no-scrollbar flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Mon Coupon</p>
-                    <h3 className="text-2xl font-black italic tracking-tight uppercase">Le Pacte de Flux</h3>
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => setShowCoupon(false)} 
-                    className="rounded-full h-12 w-12 bg-primary/5 hover:bg-primary/10 transition-colors"
-                  >
-                    <X className="h-6 w-6" />
-                  </Button>
+              <div className="space-y-4">
+                <div className="flex justify-between items-end px-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">Offrande de Lumière</Label>
+                  <span className="text-[9px] font-black uppercase opacity-20">Dispo: {profile?.totalPoints?.toLocaleString()} PTS</span>
                 </div>
-
-                {selectedBets.length > 0 ? (
-                  <div className="space-y-8">
-                    <div className="space-y-3">
-                      {selectedBets.map((bet) => (
-                        <motion.div 
-                          key={bet.matchId}
-                          initial={{ x: -20, opacity: 0 }}
-                          animate={{ x: 0, opacity: 1 }}
-                          className="p-5 bg-primary/5 rounded-[2rem] border border-primary/5 flex items-center justify-between group relative overflow-hidden"
-                        >
-                          <div className="flex-1 min-w-0 pr-4">
-                            <p className="text-[9px] font-black uppercase opacity-40 mb-1 truncate">{bet.matchName}</p>
-                            <p className="font-bold text-sm">
-                              Flux: <span className="text-primary font-black uppercase">
-                                {bet.outcome === "1" ? "Dom." : bet.outcome === "X" ? "Nul" : "Ext."}
-                              </span>
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <span className="text-base font-black tabular-nums text-primary">@{bet.odd.toFixed(2)}</span>
-                            <button 
-                              onClick={() => setSelectedBets(prev => prev.filter(b => b.matchId !== bet.matchId))} 
-                              className="h-10 w-10 rounded-xl bg-destructive/5 text-destructive flex items-center justify-center transition-all active:scale-90"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-6 bg-background/50 backdrop-blur-md border border-primary/5 rounded-[2.5rem] space-y-1 shadow-inner">
-                        <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Multiplicateur</p>
-                        <p className="text-3xl font-black text-primary italic">x{totalOdds.toFixed(2)}</p>
-                      </div>
-                      <div className="p-6 bg-background/50 backdrop-blur-md border border-primary/5 rounded-[2.5rem] space-y-1 shadow-inner">
-                        <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Gain Estimé</p>
-                        <p className="text-3xl font-black tabular-nums">{potentialWin.toLocaleString()} <span className="text-xs opacity-30">PTS</span></p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-end px-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">Engagement de Lumière</Label>
-                        <span className="text-[9px] font-black opacity-20 uppercase">Dispo: {profile?.totalPoints?.toLocaleString()} PTS</span>
-                      </div>
-                      <div className="relative">
-                        <Input 
-                          type="number" 
-                          value={betInput} 
-                          onChange={(e) => setBetInput(e.target.value)} 
-                          className="h-20 text-4xl font-black text-center rounded-[2.5rem] bg-primary/5 border-none shadow-inner transition-all focus:ring-2 focus:ring-primary/20"
-                        />
-                        <Zap className="absolute right-8 top-1/2 -translate-y-1/2 h-8 w-8 text-primary opacity-20" />
-                      </div>
-                    </div>
-
-                    <Button 
-                      onClick={handlePlaceBet}
-                      disabled={isProcessing || currentBetAmount > (profile?.totalPoints || 0)}
-                      className="w-full h-24 rounded-[3rem] font-black text-sm uppercase tracking-[0.4em] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.4)] gap-4 transition-all active:scale-95 bg-primary text-primary-foreground"
-                    >
-                      {isProcessing ? <Loader2 className="h-8 w-8 animate-spin" /> : (
-                        <>
-                          <ShieldCheck className="h-8 w-8" />
-                          Sceller le Pari
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="py-24 text-center space-y-8">
-                    <div className="h-24 w-24 bg-primary/5 rounded-[3rem] flex items-center justify-center mx-auto relative">
-                      <Dices className="h-12 w-12 text-primary opacity-20" />
-                      <motion.div 
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-                        className="absolute inset-[-10px] border border-dashed border-primary/10 rounded-full"
-                      />
-                    </div>
-                    <div className="space-y-3 px-10">
-                      <p className="text-lg font-black uppercase italic tracking-tight">Coupon Vierge</p>
-                      <p className="text-xs font-medium opacity-40 leading-relaxed italic">"L'Oracle attend votre vision. Sélectionnez des flux sportifs pour initier la transmutation."</p>
-                    </div>
-                    <Button 
-                      variant="outline"
-                      onClick={() => setShowCoupon(false)} 
-                      className="rounded-[1.5rem] px-10 h-14 font-black text-[10px] uppercase tracking-widest border-primary/10"
-                    >
-                      Retour aux Arènes
-                    </Button>
-                  </div>
-                )}
+                <div className="relative">
+                  <Input 
+                    type="number" 
+                    value={betAmount} 
+                    onChange={(e) => setBetInput(e.target.value)} 
+                    className="h-20 text-4xl font-black text-center rounded-[2rem] bg-primary/5 border-none shadow-inner"
+                    autoFocus
+                  />
+                  <Edit3 className="absolute right-6 top-1/2 -translate-y-1/2 h-6 w-6 opacity-20" />
+                </div>
               </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-5 bg-background/50 rounded-[2rem] border border-primary/5 text-center shadow-inner">
+                  <p className="text-[9px] font-black uppercase opacity-30 mb-1">Gain Estimé</p>
+                  <p className="text-2xl font-black tabular-nums">+{potentialWin} <span className="text-[10px] opacity-30">PTS</span></p>
+                </div>
+                <div className="p-5 bg-background/50 rounded-[2rem] border border-primary/5 text-center shadow-inner">
+                  <p className="text-[9px] font-black uppercase opacity-30 mb-1">Solde Après</p>
+                  <p className="text-2xl font-black tabular-nums text-muted-foreground">{(profile?.totalPoints || 0) - currentStake}</p>
+                </div>
+              </div>
+
+              <DialogFooter className="pt-2 flex flex-col gap-3">
+                <Button 
+                  onClick={handlePlaceBet}
+                  disabled={isProcessing || currentStake > (profile?.totalPoints || 0) || currentStake < 5}
+                  className="w-full h-20 rounded-[2.2rem] font-black text-sm uppercase tracking-[0.3em] shadow-2xl shadow-primary/20 bg-primary text-primary-foreground gap-4 active:scale-95 transition-all"
+                >
+                  {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : (
+                    <>
+                      <ShieldCheck className="h-6 w-6" />
+                      Invoquer le Pari
+                    </>
+                  )}
+                </Button>
+                <button 
+                  onClick={() => setBetToPlace(null)}
+                  className="w-full py-2 text-[9px] font-black uppercase tracking-[0.4em] opacity-20 hover:opacity-100 transition-opacity"
+                >
+                  Refermer le Portail
+                </button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <div className="p-10 bg-primary/5 rounded-[3rem] border border-primary/5 text-center space-y-3 relative overflow-hidden mt-8 max-w-lg mx-auto w-full">
         <p className="text-[11px] leading-relaxed font-medium opacity-40 italic">
-          "Le sport est la danse physique du destin. Prédisez le rythme, récoltez la Lumière."
+          "Les cotes réelles sont les murmures de la réalité. Écoutez le monde, prédisez le flux, récoltez la Lumière."
         </p>
       </div>
     </div>
