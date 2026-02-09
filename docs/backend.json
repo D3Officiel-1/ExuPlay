@@ -1,6 +1,26 @@
 
 {
   "entities": {
+    "Match": {
+      "title": "Match",
+      "description": "Un match de football réel synchronisé",
+      "type": "object",
+      "properties": {
+        "league": { "type": "string" },
+        "home": { "type": "string" },
+        "away": { "type": "string" },
+        "time": { "type": "string" },
+        "odds": { 
+          "type": "object",
+          "properties": {
+            "1": { "type": "string" },
+            "X": { "type": "string" },
+            "2": { "type": "string" }
+          }
+        },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
     "UserFavorite": {
       "title": "UserFavorite",
       "description": "Favoris d'un utilisateur (Quiz ou défis)",
@@ -189,6 +209,10 @@
     "/duels/{duelId}": {
       "schema": "Duel",
       "description": "Arène de combat intellectuel"
+    },
+    "/matches/{matchId}": {
+      "schema": "Match",
+      "description": "Arène des rencontres mondiales"
     }
   }
 }

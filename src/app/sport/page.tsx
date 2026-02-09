@@ -9,6 +9,7 @@ import {
   doc, 
   addDoc, 
   updateDoc, 
+  setDoc,
   increment, 
   serverTimestamp, 
   query, 
@@ -45,6 +46,8 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { EmojiOracle } from "@/components/EmojiOracle";
 import { getDailyMatches } from "@/app/actions/sport";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 interface SelectedBet {
   matchId: string;
@@ -70,23 +73,42 @@ export default function SportPage() {
   const userDocRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
 
-  // Charger les matchs réels du jour via l'action serveur
+  // Charger et Persister les matchs dans Firestore
   useEffect(() => {
-    async function load() {
+    async function loadAndSync() {
       setIsLoadingMatches(true);
       try {
         const data = await getDailyMatches();
         if (data && data.length > 0) {
           setMatches(data);
+          
+          // Ancrage dans Firestore pour chaque match récupéré
+          if (db) {
+            data.forEach((match: any) => {
+              const matchRef = doc(db, "matches", match.id);
+              setDoc(matchRef, {
+                ...match,
+                updatedAt: serverTimestamp()
+              }, { merge: true })
+              .catch(async (error) => {
+                const permissionError = new FirestorePermissionError({
+                  path: matchRef.path,
+                  operation: 'write',
+                  requestResourceData: match,
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
+              });
+            });
+          }
         }
       } catch (e) {
-        console.error("Dissonance lors du chargement des arènes");
+        console.error("Dissonance lors de la synchronisation des arènes");
       } finally {
         setIsLoadingMatches(false);
       }
     }
-    load();
-  }, []);
+    loadAndSync();
+  }, [db]);
 
   const betsQuery = useMemoFirebase(() => {
     if (!db || !user?.uid) return null;
@@ -316,7 +338,7 @@ export default function SportPage() {
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="fixed bottom-0 left-0 right-0 z-[101] bg-card/95 backdrop-blur-[45px] rounded-t-[3rem] border-t border-primary/10 shadow-[0_-20px_80px_rgba(0,0,0,0.4)] max-h-[85vh] flex flex-col"
             >
-              <div className="p-8 space-y-8 overflow-y-auto no-scrollbar">
+              <div className="p-8 space-y-8 overflow-y-auto no-scrollbar flex-1">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Mon Coupon</p>
