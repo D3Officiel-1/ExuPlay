@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -33,6 +34,7 @@ import { cn } from "@/lib/utils";
 /**
  * @fileOverview Liste des Rencontres de l'Arène.
  * Affiche les matchs générés dynamiquement et permet la navigation vers les détails.
+ * Les positions sont générées en temps réel selon le statut (Live > Scheduled > Finished).
  */
 
 export default function SportListPage() {
@@ -58,15 +60,44 @@ export default function SportListPage() {
     const fetchMatches = async () => {
       try {
         const daily = await getDailyMatches();
-        setMatches(daily);
+        
+        // Oracle du Tri Dynamique en Temps Réel
+        const sortedMatches = [...daily].sort((a, b) => {
+          // Ordre des statuts : Live (0), Scheduled (1), Finished (2)
+          const statusOrder: Record<string, number> = { live: 0, scheduled: 1, finished: 2 };
+          const orderA = statusOrder[a.status];
+          const orderB = statusOrder[b.status];
+
+          if (orderA !== orderB) return orderA - orderB;
+
+          // Si même statut, on affine :
+          if (a.status === 'live') {
+            // Plus avancé en minutes d'abord
+            return (b.liveInfo?.minute || 0) - (a.liveInfo?.minute || 0);
+          }
+          if (a.status === 'scheduled') {
+            // Plus proche dans le futur d'abord
+            return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+          }
+          if (a.status === 'finished') {
+            // Plus récemment terminé d'abord
+            const endA = a.endTime ? new Date(a.endTime).getTime() : 0;
+            const endB = b.endTime ? new Date(b.endTime).getTime() : 0;
+            return endB - endA;
+          }
+          return 0;
+        });
+
+        setMatches(sortedMatches);
       } catch (e) {
         console.error(e);
       } finally {
         setIsLoadingMatches(false);
       }
     };
+    
     fetchMatches();
-    // Rafraîchissement toutes les 10 secondes pour simuler le temps réel
+    // Rafraîchissement sacré toutes les 10 secondes pour capter les mutations de l'arène
     const interval = setInterval(fetchMatches, 10000);
     return () => clearInterval(interval);
   }, []);
@@ -126,7 +157,7 @@ export default function SportListPage() {
                             <span className="text-[9px] font-black text-red-600 uppercase tabular-nums">{match.liveInfo?.display}</span>
                           </div>
                         ) : match.status === 'finished' ? (
-                          <span className="text-[8px] font-black opacity-30 uppercase">Terminé</span>
+                          <span className="text-[8px] font-black opacity-30 uppercase">Terminé à {match.endTime ? format(new Date(match.endTime), 'HH:mm') : format(new Date(match.startTime), 'HH:mm')}</span>
                         ) : (
                           <span className="text-[9px] font-bold opacity-40">{format(new Date(match.startTime), 'HH:mm')}</span>
                         )}
@@ -187,7 +218,12 @@ export default function SportListPage() {
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4 m-0">
-            {userBets?.map((bet) => (
+            {userBets?.length === 0 ? (
+              <div className="py-32 text-center opacity-20 space-y-4">
+                <History className="h-16 w-16 mx-auto" />
+                <p className="text-[10px] font-black uppercase tracking-widest">Aucun pacte scellé</p>
+              </div>
+            ) : userBets?.map((bet) => (
               <Card key={bet.id} className="border-none bg-card/20 backdrop-blur-3xl rounded-[2.5rem] p-6 border border-primary/5 shadow-lg">
                 <div className="flex justify-between items-start mb-6">
                   <div className="space-y-1">
