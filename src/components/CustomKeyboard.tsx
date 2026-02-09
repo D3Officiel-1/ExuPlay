@@ -90,8 +90,6 @@ export function CustomKeyboard() {
       const target = e.target as HTMLInputElement | HTMLTextAreaElement;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
         setActiveInput(target);
-        // Si on focus un nouvel input, on peut envisager de faire réapparaître le bouton
-        // setIsDismissed(false); 
       }
     };
     document.addEventListener("focusin", handleFocus);
@@ -144,14 +142,14 @@ export function CustomKeyboard() {
 
   return (
     <div ref={constraintsRef} className="fixed inset-0 z-[10002] pointer-events-none">
-      {/* Zone de Dissolution (Poubelle) */}
+      {/* Zone de Dissolution (Poubelle) - Centrée en bas de l'écran */}
       <AnimatePresence>
         {isDragging && (
           <motion.div
             initial={{ opacity: 0, y: 100 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
-            className="fixed bottom-10 left-1/2 -translate-x-1/2 pointer-events-none z-[10003]"
+            className="fixed inset-x-0 bottom-10 flex justify-center pointer-events-none z-[10003]"
           >
             <div 
               ref={trashRef}
