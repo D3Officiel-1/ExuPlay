@@ -31,7 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 /**
  * @fileOverview Oracle du Sceau Global.
  * Gère le bouton de coupon fixe au sommet et l'état des sélections pour toutes les pages sportives.
- * Le coupon est désormais scrollable pour éviter tout débordement visuel.
+ * Le coupon est désormais strictement confiné pour éviter tout débordement.
  */
 
 function CouponOverlay() {
@@ -109,8 +109,8 @@ function CouponOverlay() {
       </AnimatePresence>
 
       <Dialog open={isCouponOpen} onOpenChange={setIsCouponOpen}>
-        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-[45px] border-primary/10 rounded-[3rem] p-0 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-          <div className="p-8 flex flex-col h-full gap-8">
+        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-[45px] border-primary/10 rounded-[3rem] p-0 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+          <div className="p-8 flex flex-col h-full gap-6 overflow-hidden">
             <DialogHeader className="shrink-0">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
@@ -128,7 +128,7 @@ function CouponOverlay() {
               </div>
             </DialogHeader>
 
-            <ScrollArea className="flex-1 -mx-2 px-2 overflow-hidden min-h-0">
+            <ScrollArea className="flex-1 -mx-2 px-2 min-h-0">
               <div className="space-y-4 py-1">
                 {selections.map((sel) => (
                   <motion.div 
@@ -157,7 +157,7 @@ function CouponOverlay() {
               </div>
             </ScrollArea>
 
-            <div className="space-y-6 pt-4 border-t border-primary/5 shrink-0">
+            <div className="space-y-6 pt-4 border-t border-primary/5 shrink-0 bg-card/50">
               <div className="space-y-4">
                 <div className="flex justify-between items-end px-2">
                   <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">Mise de Lumière</Label>
