@@ -37,22 +37,14 @@ import {
   Ticket,
   ChevronRight,
   AlertCircle,
-  Dices
+  Dices,
+  RefreshCw
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { EmojiOracle } from "@/components/EmojiOracle";
-import confetti from "canvas-confetti";
-
-// --- DONNÉES SIMULÉES DE L'ORACLE ---
-const UPCOMING_MATCHES = [
-  { id: "m1", league: "Ligue 1 CIV", home: "ASEC Mimosas", away: "Africa Sports", time: "18:00", odds: { "1": 1.85, "X": 3.20, "2": 4.10 } },
-  { id: "m2", league: "Premier League", home: "Arsenal", away: "Man City", time: "20:00", odds: { "1": 2.45, "X": 3.50, "2": 2.15 } },
-  { id: "m3", league: "Ligue 1", home: "PSG", away: "Marseille", time: "21:00", odds: { "1": 1.55, "X": 4.40, "2": 5.80 } },
-  { id: "m4", league: "Champions League", home: "Real Madrid", away: "Bayern", time: "Demain", odds: { "1": 2.10, "X": 3.60, "2": 2.90 } },
-  { id: "m5", league: "Série A", home: "Inter", away: "Milan AC", time: "Demain", odds: { "1": 1.95, "X": 3.30, "2": 3.80 } },
-];
+import { getDailyMatches } from "@/app/actions/sport";
 
 interface SelectedBet {
   matchId: string;
@@ -68,6 +60,8 @@ export default function SportPage() {
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState("matches");
+  const [matches, setMatches] = useState<any[]>([]);
+  const [isLoadingMatches, setIsLoadingMatches] = useState(true);
   const [selectedBets, setSelectedBets] = useState<SelectedBet[]>([]);
   const [betInput, setBetInput] = useState("100");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -76,7 +70,24 @@ export default function SportPage() {
   const userDocRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
 
-  // Écouter les paris de l'utilisateur
+  // Charger les matchs réels du jour via l'action serveur
+  useEffect(() => {
+    async function load() {
+      setIsLoadingMatches(true);
+      try {
+        const data = await getDailyMatches();
+        if (data && data.length > 0) {
+          setMatches(data);
+        }
+      } catch (e) {
+        console.error("Dissonance lors du chargement des arènes");
+      } finally {
+        setIsLoadingMatches(false);
+      }
+    }
+    load();
+  }, []);
+
   const betsQuery = useMemoFirebase(() => {
     if (!db || !user?.uid) return null;
     return query(collection(db, "bets"), where("userId", "==", user.uid), orderBy("createdAt", "desc"), limit(10));
@@ -87,9 +98,9 @@ export default function SportPage() {
   const totalOdds = useMemo(() => selectedBets.reduce((acc, b) => acc * b.odd, 1), [selectedBets]);
   const potentialWin = Math.floor(currentBetAmount * totalOdds);
 
-  const toggleBet = (match: typeof UPCOMING_MATCHES[0], outcome: "1" | "X" | "2") => {
+  const toggleBet = (match: any, outcome: "1" | "X" | "2") => {
     haptic.light();
-    const odd = match.odds[outcome];
+    const odd = parseFloat(match.odds[outcome]);
     const matchName = `${match.home} vs ${match.away}`;
     
     setSelectedBets(prev => {
@@ -125,7 +136,7 @@ export default function SportPage() {
       stake: currentBetAmount,
       totalOdds: parseFloat(totalOdds.toFixed(2)),
       potentialWin,
-      status: "pending", // Dans un vrai système, l'Oracle attendrait les résultats
+      status: "pending",
       createdAt: serverTimestamp(),
     };
 
@@ -184,52 +195,69 @@ export default function SportPage() {
           </TabsList>
 
           <TabsContent value="matches" className="space-y-6 m-0">
-            {UPCOMING_MATCHES.map((match) => (
-              <Card key={match.id} className="border-none bg-card/40 backdrop-blur-3xl rounded-[2.5rem] overflow-hidden border border-primary/5 shadow-xl">
-                <CardContent className="p-6 space-y-6">
-                  <div className="flex justify-between items-center px-2">
-                    <span className="text-[8px] font-black uppercase tracking-widest opacity-30">{match.league}</span>
-                    <div className="flex items-center gap-1.5 opacity-40">
-                      <Clock className="h-2.5 w-2.5" />
-                      <span className="text-[8px] font-black uppercase">{match.time}</span>
+            {isLoadingMatches ? (
+              <div className="py-32 flex flex-col items-center justify-center gap-6 text-center">
+                <div className="relative">
+                  <RefreshCw className="h-12 w-12 text-primary animate-spin opacity-20" />
+                  <div className="absolute inset-0 bg-primary/5 rounded-full blur-2xl" />
+                </div>
+                <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-40">Interrogation des Arènes Mondiales...</p>
+              </div>
+            ) : matches.length === 0 ? (
+              <div className="py-32 text-center space-y-4 opacity-20">
+                <AlertCircle className="h-16 w-16 mx-auto" />
+                <p className="text-xs font-black uppercase tracking-[0.2em]">Silence dans les stades</p>
+                <p className="text-[10px] font-medium px-12">Aucun flux sportif n'a été détecté pour cette période.</p>
+              </div>
+            ) : (
+              matches.map((match) => (
+                <Card key={match.id} className="border-none bg-card/40 backdrop-blur-3xl rounded-[2.5rem] overflow-hidden border border-primary/5 shadow-xl">
+                  <CardContent className="p-6 space-y-6">
+                    <div className="flex justify-between items-center px-2">
+                      <span className="text-[8px] font-black uppercase tracking-widest opacity-30">{match.league}</span>
+                      <div className="flex items-center gap-1.5 opacity-40">
+                        <Clock className="h-2.5 w-2.5" />
+                        <span className="text-[8px] font-black uppercase">{match.time}</span>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center justify-between gap-4 text-center">
-                    <div className="flex-1 space-y-2">
-                      <div className="h-12 w-12 bg-primary/5 rounded-xl mx-auto flex items-center justify-center"><EmojiOracle text="⚽" forceStatic /></div>
-                      <p className="text-xs font-black uppercase leading-tight">{match.home}</p>
+                    <div className="flex items-center justify-between gap-4 text-center">
+                      <div className="flex-1 space-y-2">
+                        <div className="h-12 w-12 bg-primary/5 rounded-xl mx-auto flex items-center justify-center"><EmojiOracle text="⚽" forceStatic /></div>
+                        <p className="text-[10px] font-black uppercase leading-tight">{match.home}</p>
+                      </div>
+                      <div className="text-[10px] font-black opacity-20 italic">VS</div>
+                      <div className="flex-1 space-y-2">
+                        <div className="h-12 w-12 bg-primary/5 rounded-xl mx-auto flex items-center justify-center"><EmojiOracle text="⚽" forceStatic /></div>
+                        <p className="text-[10px] font-black uppercase leading-tight">{match.away}</p>
+                      </div>
                     </div>
-                    <div className="text-[10px] font-black opacity-20 italic">VS</div>
-                    <div className="flex-1 space-y-2">
-                      <div className="h-12 w-12 bg-primary/5 rounded-xl mx-auto flex items-center justify-center"><EmojiOracle text="⚽" forceStatic /></div>
-                      <p className="text-xs font-black uppercase leading-tight">{match.away}</p>
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-3 gap-2">
-                    {["1", "X", "2"].map((outcome) => {
-                      const isSelected = selectedBets.some(b => b.matchId === match.id && b.outcome === outcome);
-                      return (
-                        <button
-                          key={outcome}
-                          onClick={() => toggleBet(match, outcome as any)}
-                          className={cn(
-                            "flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-300",
-                            isSelected 
-                              ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" 
-                              : "bg-primary/5 border-transparent hover:border-primary/10"
-                          )}
-                        >
-                          <span className="text-[8px] font-black uppercase opacity-40 mb-1">{outcome === "1" ? "Dom" : outcome === "X" ? "Nul" : "Ext"}</span>
-                          <span className="text-sm font-black tabular-nums">{match.odds[outcome as keyof typeof match.odds].toFixed(2)}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                    <div className="grid grid-cols-3 gap-2">
+                      {["1", "X", "2"].map((outcome) => {
+                        const isSelected = selectedBets.some(b => b.matchId === match.id && b.outcome === outcome);
+                        const odd = parseFloat(match.odds[outcome as keyof typeof match.odds]);
+                        return (
+                          <button
+                            key={outcome}
+                            onClick={() => toggleBet(match, outcome as any)}
+                            className={cn(
+                              "flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-300",
+                              isSelected 
+                                ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" 
+                                : "bg-primary/5 border-transparent hover:border-primary/10"
+                            )}
+                          >
+                            <span className="text-[8px] font-black uppercase opacity-40 mb-1">{outcome === "1" ? "Dom" : outcome === "X" ? "Nul" : "Ext"}</span>
+                            <span className="text-sm font-black tabular-nums">{odd.toFixed(2)}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4 m-0">
@@ -255,7 +283,7 @@ export default function SportPage() {
                     {bet.selections.map((sel: any, i: number) => (
                       <div key={i} className="flex justify-between items-center">
                         <p className="text-[9px] font-bold opacity-60 truncate w-40">{sel.matchName}</p>
-                        <p className="text-[9px] font-black text-primary">({sel.outcome}) @{sel.odd.toFixed(2)}</p>
+                        <p className="text-[9px] font-black text-primary">({sel.outcome}) @{parseFloat(sel.odd).toFixed(2)}</p>
                       </div>
                     ))}
                   </div>
@@ -275,7 +303,6 @@ export default function SportPage() {
         </Tabs>
       </main>
 
-      {/* --- COUPON OVERLAY (1xBet Style) --- */}
       <AnimatePresence>
         {showCoupon && (
           <>
@@ -311,7 +338,7 @@ export default function SportPage() {
                           </div>
                           <div className="flex items-center gap-4">
                             <span className="text-sm font-black tabular-nums">@{bet.odd.toFixed(2)}</span>
-                            <button onClick={() => toggleBet(UPCOMING_MATCHES.find(m => m.id === bet.matchId)!, bet.outcome)} className="text-destructive opacity-20 hover:opacity-100 transition-opacity">
+                            <button onClick={() => setSelectedBets(prev => prev.filter(b => b.matchId !== bet.matchId))} className="text-destructive opacity-20 hover:opacity-100 transition-opacity">
                               <X className="h-4 w-4" />
                             </button>
                           </div>
