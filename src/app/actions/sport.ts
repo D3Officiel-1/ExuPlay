@@ -1,10 +1,8 @@
 'use server';
 
 /**
- * @fileOverview Oracle de la Destinée Sportive v5.0.
- * Génère des rencontres internationales avec événements détaillés (buts, cartons), 
- * stats évolutives et marchés de paris synchronisés sur le temps réel.
- * Le score est désormais calculé dynamiquement à partir des événements de buts passés.
+ * @fileOverview Oracle de la Destinée Sportive v6.0.
+ * Génère des rencontres internationales et fournit les outils de vérification des résultats.
  */
 
 export interface MatchEvent {
@@ -121,10 +119,7 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
       }
     }
 
-    // GÉNÉRATION DE TOUS LES ÉVÉNEMENTS POTENTIELS (Destinée absolue)
     const allPotentialEvents: MatchEvent[] = [];
-
-    // 1. Prédiction des Buts
     const maxGoals = Math.floor(seededRandom(matchSeed + 2) * 5);
     for(let g = 0; g < maxGoals; g++) {
       const min = Math.floor(seededRandom(matchSeed + 10 + g) * 90);
@@ -134,7 +129,6 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
       allPotentialEvents.push({ minute: min, type: "goal", player, team: side });
     }
 
-    // 2. Prédiction des Cartons
     const maxCards = Math.floor(seededRandom(matchSeed + 3) * 6);
     for(let c = 0; c < maxCards; c++) {
       const min = Math.floor(seededRandom(matchSeed + 40 + c) * 90);
@@ -145,14 +139,11 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
       allPotentialEvents.push({ minute: min, type, player, team: side });
     }
 
-    // FILTRAGE TEMPOREL ET CALCUL DU SCORE COHÉRENT
     const events: MatchEvent[] = [];
     const score = { home: 0, away: 0 };
-
     allPotentialEvents.sort((a, b) => a.minute - b.minute);
 
     allPotentialEvents.forEach(event => {
-      // Si le match est fini, on voit tout. Si c'est en direct, on ne voit que ce qui est déjà arrivé.
       if (status === "finished" || (status === "live" && event.minute <= currentMin)) {
         events.push(event);
         if (event.type === "goal") {
@@ -161,15 +152,12 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
       }
     });
 
-    // LOGIQUE DE STATISTIQUES DYNAMIQUES
     const matchMin = Math.min(90, currentMin);
     const progressFactor = matchMin / 90;
-
     const maxShotsHome = Math.floor(seededRandom(matchSeed + 41) * 18) + 5;
     const maxShotsAway = Math.floor(seededRandom(matchSeed + 42) * 15) + 3;
     const maxCornersHome = Math.floor(seededRandom(matchSeed + 43) * 10) + 2;
     const maxCornersAway = Math.floor(seededRandom(matchSeed + 44) * 8) + 1;
-
     const basePossessionHome = 40 + seededRandom(matchSeed + 40) * 20;
     const timeForFluctuation = (now.getTime() - startTimeTime) / 10000;
     const fluctuation = Math.sin(timeForFluctuation) * 3;
@@ -239,4 +227,25 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
 export async function getMatchById(id: string): Promise<GeneratedMatch | null> {
   const matches = await getDailyMatches();
   return matches.find(m => m.id === id) || null;
+}
+
+/**
+ * Oracle de Vérification des Pronostics.
+ * Détermine si une sélection spécifique est correcte par rapport à l'issue finale d'un match.
+ */
+export async function checkOutcome(match: GeneratedMatch, outcome: string): Promise<boolean> {
+  const { home, away } = match.score;
+  const total = home + away;
+
+  switch (outcome) {
+    case '1': return home > away;
+    case 'X': return home === away;
+    case '2': return away > home;
+    case 'DC1X': return home >= away;
+    case 'DC12': return home !== away;
+    case 'DCX2': return away >= home;
+    case 'O2.5': return total > 2.5;
+    case 'U2.5': return total < 2.5;
+    default: return false;
+  }
 }

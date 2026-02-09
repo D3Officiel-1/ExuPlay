@@ -1,8 +1,7 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from "@/firebase";
 import { 
   collection, 
@@ -10,7 +9,10 @@ import {
   query, 
   where, 
   orderBy,
-  limit
+  limit,
+  updateDoc,
+  increment,
+  serverTimestamp
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -23,72 +25,120 @@ import {
   History, 
   Globe,
   Trophy,
-  Lock
+  Lock,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Sparkles
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { useSport } from "./SportContext";
-import { getDailyMatches, type GeneratedMatch } from "@/app/actions/sport";
+import { getDailyMatches, type GeneratedMatch, checkOutcome, getMatchById } from "@/app/actions/sport";
 import { format } from "date-fns";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 /**
- * @fileOverview Liste des Rencontres de l'Arène.
- * Affiche les matchs générés dynamiquement et permet la navigation vers les détails.
- * Les positions sont générées en temps réel selon le statut (Live > Scheduled > Finished).
+ * @fileOverview Liste des Rencontres et Historique des Paris.
+ * Gère désormais la résolution automatique des coupons terminés.
  */
 
 export default function SportListPage() {
   const { user } = useUser();
   const db = useFirestore();
   const router = useRouter();
+  const { toast } = useToast();
   const { selections, toggleSelection } = useSport();
 
   const [activeTab, setTab] = useState("matches");
   const [matches, setMatches] = useState<GeneratedMatch[]>([]);
   const [isLoadingMatches, setIsLoadingMatches] = useState(true);
+  const [resolvingIds, setResolvingIds] = useState<Set<string>>(new Set());
 
   const userDocRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
 
   const betsQuery = useMemoFirebase(() => {
     if (!db || !user?.uid) return null;
-    return query(collection(db, "bets"), where("userId", "==", user.uid), orderBy("createdAt", "desc"), limit(15));
+    return query(collection(db, "bets"), where("userId", "==", user.uid), orderBy("createdAt", "desc"), limit(20));
   }, [db, user?.uid]);
+  
   const { data: userBets } = useCollection(betsQuery);
+
+  // --- LOGIQUE DE RÉSOLUTION DES COUPONS ---
+  useEffect(() => {
+    if (!userBets || activeTab !== 'history' || !db || !userDocRef) return;
+
+    const resolvePendingBets = async () => {
+      const pendingBets = userBets.filter(bet => bet.status === 'pending');
+      
+      for (const bet of pendingBets) {
+        if (resolvingIds.has(bet.id)) continue;
+
+        // Récupérer les états actuels des matchs du coupon
+        const matchPromises = bet.selections.map((s: any) => getMatchById(s.matchId));
+        const resolvedMatches = await Promise.all(matchPromises);
+
+        // Vérifier si TOUS les matchs du coupon sont terminés
+        const allFinished = resolvedMatches.every(m => m?.status === 'finished');
+        
+        if (allFinished) {
+          setResolvingIds(prev => new Set(prev).add(bet.id));
+          
+          // Vérifier chaque sélection
+          const results = await Promise.all(bet.selections.map(async (sel: any, idx: number) => {
+            const match = resolvedMatches[idx];
+            return match ? await checkOutcome(match, sel.outcome) : false;
+          }));
+
+          const isWon = results.every(r => r === true);
+          const newStatus = isWon ? 'won' : 'lost';
+
+          try {
+            const betRef = doc(db, "bets", bet.id);
+            await updateDoc(betRef, { status: newStatus, resolvedAt: serverTimestamp() });
+
+            if (isWon) {
+              haptic.success();
+              await updateDoc(userDocRef, {
+                totalPoints: increment(bet.potentialWin),
+                updatedAt: serverTimestamp()
+              });
+              toast({ 
+                title: "Triomphe Sportif !", 
+                description: `Votre pacte de ${bet.stake} PTS a généré ${bet.potentialWin} PTS.` 
+              });
+            }
+          } catch (e) {
+            console.error("Dissonance lors de l'arbitrage:", e);
+          }
+        }
+      }
+    };
+
+    resolvePendingBets();
+  }, [userBets, activeTab, db, userDocRef, resolvingIds]);
+  // -----------------------------------------
 
   useEffect(() => {
     const fetchMatches = async () => {
       try {
         const daily = await getDailyMatches();
-        
-        // Oracle du Tri Dynamique en Temps Réel
         const sortedMatches = [...daily].sort((a, b) => {
-          // Ordre des statuts : Live (0), Scheduled (1), Finished (2)
           const statusOrder: Record<string, number> = { live: 0, scheduled: 1, finished: 2 };
           const orderA = statusOrder[a.status];
           const orderB = statusOrder[b.status];
-
           if (orderA !== orderB) return orderA - orderB;
-
-          // Si même statut, on affine :
-          if (a.status === 'live') {
-            // Plus avancé en minutes d'abord
-            return (b.liveInfo?.minute || 0) - (a.liveInfo?.minute || 0);
-          }
-          if (a.status === 'scheduled') {
-            // Plus proche dans le futur d'abord
-            return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
-          }
+          if (a.status === 'live') return (b.liveInfo?.minute || 0) - (a.liveInfo?.minute || 0);
+          if (a.status === 'scheduled') return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
           if (a.status === 'finished') {
-            // Plus récemment terminé d'abord
             const endA = a.endTime ? new Date(a.endTime).getTime() : 0;
             const endB = b.endTime ? new Date(b.endTime).getTime() : 0;
             return endB - endA;
           }
           return 0;
         });
-
         setMatches(sortedMatches);
       } catch (e) {
         console.error(e);
@@ -98,7 +148,6 @@ export default function SportListPage() {
     };
     
     fetchMatches();
-    // Rafraîchissement sacré toutes les 10 secondes pour capter les mutations de l'arène
     const interval = setInterval(fetchMatches, 10000);
     return () => clearInterval(interval);
   }, []);
@@ -158,7 +207,7 @@ export default function SportListPage() {
                             <span className="text-[9px] font-black text-red-600 uppercase tabular-nums">{match.liveInfo?.display}</span>
                           </div>
                         ) : match.status === 'finished' ? (
-                          <span className="text-[8px] font-black opacity-30 uppercase">Terminé à {match.endTime ? format(new Date(match.endTime), 'HH:mm') : format(new Date(match.startTime), 'HH:mm')}</span>
+                          <span className="text-[8px] font-black opacity-30 uppercase">Terminé • {match.score.home}-{match.score.away}</span>
                         ) : (
                           <span className="text-[9px] font-bold opacity-40">{format(new Date(match.startTime), 'HH:mm')}</span>
                         )}
@@ -232,16 +281,35 @@ export default function SportListPage() {
                 <p className="text-[10px] font-black uppercase tracking-widest">Aucun pacte scellé</p>
               </div>
             ) : userBets?.map((bet) => (
-              <Card key={bet.id} className="border-none bg-card/20 backdrop-blur-3xl rounded-[2.5rem] p-6 border border-primary/5 shadow-lg">
+              <Card key={bet.id} className={cn(
+                "border-none bg-card/20 backdrop-blur-3xl rounded-[2.5rem] p-6 border border-primary/5 shadow-lg relative overflow-hidden",
+                bet.status === 'won' && "border-green-500/20 bg-green-500/[0.02]",
+                bet.status === 'lost' && "opacity-60"
+              )}>
+                {bet.status === 'won' && (
+                  <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <Sparkles className="h-12 w-12 text-green-500" />
+                  </div>
+                )}
+                
                 <div className="flex justify-between items-start mb-6">
                   <div className="space-y-1">
                     <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Combiné ({bet.selections.length})</p>
                     <p className="text-base font-black tabular-nums">{bet.stake} PTS</p>
                   </div>
-                  <div className="px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border bg-primary/5">
-                    {bet.status === "pending" ? "En Stase" : "Réalisé"}
+                  <div className={cn(
+                    "px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border flex items-center gap-2",
+                    bet.status === "pending" ? "bg-primary/5 border-primary/10 text-primary/60" :
+                    bet.status === "won" ? "bg-green-500/10 border-green-500/20 text-green-600" :
+                    "bg-red-500/10 border-red-500/20 text-red-600"
+                  )}>
+                    {bet.status === "pending" && <Clock className="h-3 w-3 animate-spin" />}
+                    {bet.status === "won" && <CheckCircle2 className="h-3 w-3" />}
+                    {bet.status === "lost" && <XCircle className="h-3 w-3" />}
+                    {bet.status === "pending" ? "En Stase" : bet.status === "won" ? "Succès" : "Échec"}
                   </div>
                 </div>
+
                 <div className="space-y-3 pb-6 border-b border-primary/5">
                   {bet.selections.map((sel: any, i: number) => (
                     <div key={i} className="flex justify-between items-center bg-primary/5 p-3 rounded-2xl">
@@ -253,9 +321,23 @@ export default function SportListPage() {
                     </div>
                   ))}
                 </div>
+
                 <div className="flex justify-between items-center pt-6">
-                  <p className="text-[10px] font-black uppercase opacity-30">Cote: @{bet.totalOdds?.toFixed(2)}</p>
-                  <p className="text-xl font-black text-primary tabular-nums">+{bet.potentialWin} PTS</p>
+                  <div className="flex flex-col">
+                    <p className="text-[10px] font-black uppercase opacity-30">Cote Totale</p>
+                    <p className="text-sm font-black italic tabular-nums">@{bet.totalOdds?.toFixed(2)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black uppercase opacity-30">
+                      {bet.status === 'won' ? 'Récompense Reçue' : 'Gain Potential'}
+                    </p>
+                    <p className={cn(
+                      "text-xl font-black tabular-nums",
+                      bet.status === 'won' ? "text-green-600" : "text-primary"
+                    )}>
+                      {bet.status === 'lost' ? '-' : `+${bet.potentialWin}`} <span className="text-[10px] opacity-40">PTS</span>
+                    </p>
+                  </div>
                 </div>
               </Card>
             ))}
