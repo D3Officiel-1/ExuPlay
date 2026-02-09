@@ -1,8 +1,9 @@
 'use server';
 
 /**
- * @fileOverview Oracle de la Destinée Sportive.
- * Génère des rencontres internationales de manière autonome et déterministe.
+ * @fileOverview Oracle de la Destinée Sportive v2.0.
+ * Génère des rencontres internationales avec une chronologie de buts déterministe
+ * pour une mise à jour en temps réel absolue.
  */
 
 export interface GeneratedMatch {
@@ -10,6 +11,7 @@ export interface GeneratedMatch {
   homeTeam: { name: string; emoji: string; code: string };
   awayTeam: { name: string; emoji: string; code: string };
   startTime: string;
+  endTime?: string;
   odds: { "1": number; "X": number; "2": number };
   status: "scheduled" | "live" | "finished";
   score: { home: number; away: number };
@@ -66,7 +68,8 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
   const dateSeed = dateStr.split('-').reduce((acc, val) => acc + parseInt(val), 0);
   
   const matches: GeneratedMatch[] = [];
-  const hours = [10, 13, 15, 16, 18, 19, 20, 21, 22, 23];
+  // Heures de coup d'envoi réparties sur la journée
+  const hours = [0, 8, 10, 12, 14, 16, 18, 20, 21, 22];
 
   for (let i = 0; i < 10; i++) {
     const matchSeed = dateSeed + i * 100;
@@ -90,48 +93,55 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
     const HALFTIME = 15 * 60 * 1000;
     const SECOND_HALF = 45 * 60 * 1000;
     const STOPPAGE = 5 * 60 * 1000;
-    const EXTRA_TIME = 30 * 60 * 1000;
+    const TOTAL_DURATION = FIRST_HALF + HALFTIME + SECOND_HALF + STOPPAGE * 2;
 
     let status: "scheduled" | "live" | "finished" = "scheduled";
     let score = { home: 0, away: 0 };
     let liveInfo: GeneratedMatch["liveInfo"];
+    let endTime: string | undefined;
 
     const elapsed = currentTime - startTimeTime;
+
+    // Prédétermination déterministe des buts
+    const maxGoals = Math.floor(seededRandom(matchSeed + 2) * 6); // 0 à 5 buts
+    const goalEvents: { min: number, side: 'home' | 'away' }[] = [];
+    for(let g = 0; g < maxGoals; g++) {
+      const min = Math.floor(seededRandom(matchSeed + 10 + g) * 90);
+      const side = seededRandom(matchSeed + 20 + g) > 0.5 ? 'home' : 'away';
+      goalEvents.push({ min, side });
+    }
 
     if (elapsed > 0) {
       if (elapsed < FIRST_HALF) {
         status = "live";
-        liveInfo = { minute: Math.floor(elapsed / 60000), phase: "1H", display: `${Math.floor(elapsed / 60000)}'` };
+        const currentMin = Math.floor(elapsed / 60000);
+        liveInfo = { minute: currentMin, phase: "1H", display: `${currentMin}'` };
+        // Calcul du score live
+        goalEvents.filter(e => e.min <= currentMin).forEach(e => score[e.side]++);
       } else if (elapsed < FIRST_HALF + STOPPAGE) {
         status = "live";
-        liveInfo = { minute: 45, phase: "TA", display: `45'+${Math.floor((elapsed - FIRST_HALF) / 60000)}` };
+        const extraMin = Math.floor((elapsed - FIRST_HALF) / 60000);
+        liveInfo = { minute: 45, phase: "TA", display: `45'+${extraMin}` };
+        goalEvents.filter(e => e.min <= 45).forEach(e => score[e.side]++);
       } else if (elapsed < FIRST_HALF + STOPPAGE + HALFTIME) {
         status = "live";
         liveInfo = { minute: 45, phase: "HT", display: "MT" };
+        goalEvents.filter(e => e.min <= 45).forEach(e => score[e.side]++);
       } else if (elapsed < FIRST_HALF + STOPPAGE + HALFTIME + SECOND_HALF) {
         status = "live";
-        const min = 45 + Math.floor((elapsed - (FIRST_HALF + STOPPAGE + HALFTIME)) / 60000);
-        liveInfo = { minute: min, phase: "2H", display: `${min}'` };
-      } else if (elapsed < FIRST_HALF + STOPPAGE + HALFTIME + SECOND_HALF + STOPPAGE) {
+        const currentMin = 45 + Math.floor((elapsed - (FIRST_HALF + STOPPAGE + HALFTIME)) / 60000);
+        liveInfo = { minute: currentMin, phase: "2H", display: `${currentMin}'` };
+        goalEvents.filter(e => e.min <= currentMin).forEach(e => score[e.side]++);
+      } else if (elapsed < TOTAL_DURATION) {
         status = "live";
-        liveInfo = { minute: 90, phase: "TA", display: `90'+${Math.floor((elapsed - (FIRST_HALF + STOPPAGE + HALFTIME + SECOND_HALF)) / 60000)}` };
-      } else if (elapsed < FIRST_HALF + STOPPAGE + HALFTIME + SECOND_HALF + STOPPAGE + EXTRA_TIME && seededRandom(matchSeed + 9) > 0.8) {
-        // Simulation rare de prolongations si le score est serré
-        status = "live";
-        const min = 90 + Math.floor((elapsed - (FIRST_HALF + STOPPAGE * 2 + HALFTIME + SECOND_HALF)) / 60000);
-        liveInfo = { minute: min, phase: "ET", display: `${min}' PR` };
+        const extraMin = Math.floor((elapsed - (FIRST_HALF + STOPPAGE + HALFTIME + SECOND_HALF)) / 60000);
+        liveInfo = { minute: 90, phase: "TA", display: `90'+${extraMin}` };
+        goalEvents.forEach(e => score[e.side]++);
       } else {
         status = "finished";
-      }
-
-      // Calcul du score basé sur le temps écoulé
-      if (status !== "scheduled") {
-        const totalPossibleGoals = Math.floor(seededRandom(matchSeed + 2) * 5);
-        const goalProbability = Math.min(1, elapsed / (105 * 60 * 1000));
-        const currentGoals = Math.floor(totalPossibleGoals * goalProbability);
-        
-        score.home = Math.floor(currentGoals * seededRandom(matchSeed + 3));
-        score.away = currentGoals - score.home;
+        goalEvents.forEach(e => score[e.side]++);
+        const end = new Date(matchDate.getTime() + TOTAL_DURATION);
+        endTime = end.toISOString();
       }
     }
 
@@ -146,6 +156,7 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
       homeTeam: home,
       awayTeam: away,
       startTime: startTimeStr,
+      endTime,
       odds,
       status,
       score,

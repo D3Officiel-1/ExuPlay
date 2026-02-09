@@ -100,9 +100,10 @@ export default function SportPage() {
         setIsLoadingMatches(false);
       }
     };
+    
     fetchMatches();
-    // Rafraîchir toutes les minutes pour l'horloge
-    const interval = setInterval(fetchMatches, 60000);
+    // Rafraîchir toutes les 10 secondes pour un effet "temps réel"
+    const interval = setInterval(fetchMatches, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -246,7 +247,12 @@ export default function SportPage() {
                             </span>
                           </div>
                         ) : match.status === 'finished' ? (
-                          <span className="text-[8px] font-black opacity-30 uppercase tracking-widest">Terminé</span>
+                          <div className="flex flex-col items-end">
+                            <span className="text-[8px] font-black opacity-30 uppercase tracking-widest leading-none">Terminé</span>
+                            {match.endTime && (
+                              <span className="text-[7px] font-bold opacity-20 tabular-nums">à {format(new Date(match.endTime), 'HH:mm')}</span>
+                            )}
+                          </div>
                         ) : (
                           <div className="flex items-center gap-1.5 opacity-40">
                             <Clock className="h-3 w-3" />
@@ -275,15 +281,20 @@ export default function SportPage() {
                       <div className="text-center">
                         {match.status !== 'scheduled' ? (
                           <div className="flex flex-col items-center gap-1">
-                            <div className="text-3xl font-black italic tracking-tighter tabular-nums flex justify-center gap-2">
+                            <motion.div 
+                              key={`${match.score.home}-${match.score.away}`}
+                              initial={{ scale: 1.2, filter: "brightness(1.5)" }}
+                              animate={{ scale: 1, filter: "brightness(1)" }}
+                              className="text-3xl font-black italic tracking-tighter tabular-nums flex justify-center gap-2"
+                            >
                               <span>{match.score.home}</span>
                               <span className="opacity-20">-</span>
                               <span>{match.score.away}</span>
-                            </div>
+                            </motion.div>
                             {match.status === 'live' && (
                               <div className="flex items-center gap-1 opacity-20">
-                                <Timer className="h-2.5 w-2.5" />
-                                <span className="text-[7px] font-black uppercase tracking-tighter">Live Flow</span>
+                                <Timer className="h-2.5 w-2.5 animate-spin" style={{ animationDuration: '3s' }} />
+                                <span className="text-[7px] font-black uppercase tracking-tighter">Flux Live</span>
                               </div>
                             )}
                           </div>
