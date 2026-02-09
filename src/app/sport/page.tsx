@@ -28,6 +28,12 @@ import { useSport } from "./SportContext";
 import { getDailyMatches, type GeneratedMatch } from "@/app/actions/sport";
 import { format } from "date-fns";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
+
+/**
+ * @fileOverview Liste des Rencontres de l'Arène.
+ * Affiche les matchs générés dynamiquement et permet la navigation vers les détails.
+ */
 
 export default function SportListPage() {
   const { user } = useUser();
@@ -60,6 +66,7 @@ export default function SportListPage() {
       }
     };
     fetchMatches();
+    // Rafraîchissement toutes les 10 secondes pour simuler le temps réel
     const interval = setInterval(fetchMatches, 10000);
     return () => clearInterval(interval);
   }, []);
