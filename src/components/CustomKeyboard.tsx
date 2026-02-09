@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Smile, Dog, Pizza, Plane, Heart, Gamepad2, LayoutGrid, Flag, 
-  Search, X, Delete
+  Search, X, Delete, GripHorizontal
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -25,8 +25,8 @@ import { EmojiOracle } from "./EmojiOracle";
 const BASE_HEIGHT = 320;
 
 /**
- * @fileOverview Voûte des Essences v4.0.
- * Désormais un sélecteur d'emojis pur, laissant le clavier natif gérer le texte.
+ * @fileOverview Voûte des Essences v5.0.
+ * Sélecteur d'emojis nomade et draggable.
  */
 export function CustomKeyboard() {
   const [activeInput, setActiveInput] = useState<HTMLInputElement | HTMLTextAreaElement | null>(null);
@@ -35,11 +35,10 @@ export function CustomKeyboard() {
   const [keyboardHeight, setKeyboardHeight] = useState(BASE_HEIGHT);
   const [isResizing, setIsResizing] = useState(false);
   const [emojiSearchQuery, setEmojiSearchQuery] = useState("");
-  const [isEmojiSearchActive, setIsEmojiSearchActive] = useState(false);
   
   const resizeStartY = useRef<number>(0);
   const resizeStartHeight = useRef<number>(0);
-  const keyboardRef = useRef<HTMLDivElement>(null);
+  const constraintsRef = useRef<HTMLDivElement>(null);
 
   const categories = useMemo(() => [
     { id: "people", icon: Smile, items: parseEmojiString(RAW_EMOJI_PEOPLE) },
@@ -87,18 +86,10 @@ export function CustomKeyboard() {
       const target = e.target as HTMLInputElement | HTMLTextAreaElement;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
         setActiveInput(target);
-        // On n'affiche pas automatiquement pour ne pas gêner le clavier natif
       }
     };
-    const handleFocusOut = () => {
-      // Garder l'input actif en mémoire mais ne pas fermer violemment
-    };
     document.addEventListener("focusin", handleFocus);
-    document.addEventListener("focusout", handleFocusOut);
-    return () => {
-      document.removeEventListener("focusin", handleFocus);
-      document.removeEventListener("focusout", handleFocusOut);
-    };
+    return () => document.removeEventListener("focusin", handleFocus);
   }, []);
 
   const handleResizeStart = (e: React.PointerEvent) => {
@@ -121,82 +112,99 @@ export function CustomKeyboard() {
   }, [isResizing]);
 
   return (
-    <div className="fixed bottom-24 right-6 z-[10002] pointer-events-none">
+    <div ref={constraintsRef} className="fixed inset-0 z-[10002] pointer-events-none">
       <AnimatePresence>
         {activeInput && (
-          <motion.button
-            initial={{ scale: 0, rotate: -45 }}
-            animate={{ scale: 1, rotate: 0 }}
-            exit={{ scale: 0, rotate: 45 }}
-            onClick={() => { haptic.medium(); setIsVisible(!isVisible); }}
-            className="pointer-events-auto h-14 w-14 rounded-2xl bg-card/80 backdrop-blur-3xl border border-primary/10 shadow-2xl flex items-center justify-center text-primary"
-          >
-            {isVisible ? <X className="h-6 w-6" /> : <Smile className="h-6 w-6" />}
-          </motion.button>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {isVisible && activeInput && (
           <motion.div
-            ref={keyboardRef}
-            initial={{ y: 20, opacity: 0, scale: 0.9 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: 20, opacity: 0, scale: 0.9 }}
-            className="absolute bottom-20 right-0 w-[85vw] max-w-sm pointer-events-auto"
+            drag
+            dragConstraints={constraintsRef}
+            dragMomentum={false}
+            dragElastic={0.1}
+            initial={{ x: window.innerWidth - 80, y: window.innerHeight - 160 }}
+            className="absolute pointer-events-auto flex flex-col items-end"
           >
-            <div 
-              style={{ height: `${keyboardHeight}px` }}
-              className="bg-card/90 backdrop-blur-[45px] border border-primary/10 rounded-[2.5rem] shadow-[0_20px_100px_-20px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col p-4"
-            >
-              <div 
-                onPointerDown={handleResizeStart}
-                className="h-1.5 w-12 bg-primary/10 rounded-full mx-auto mb-4 cursor-ns-resize shrink-0"
-              />
+            {/* Clavier Emoji (s'affiche au-dessus du bouton) */}
+            <AnimatePresence>
+              {isVisible && (
+                <motion.div
+                  initial={{ y: 20, opacity: 0, scale: 0.9, originX: "100%", originY: "100%" }}
+                  animate={{ y: 0, opacity: 1, scale: 1 }}
+                  exit={{ y: 20, opacity: 0, scale: 0.9 }}
+                  className="mb-4 w-[85vw] max-w-sm"
+                >
+                  <div 
+                    style={{ height: `${keyboardHeight}px` }}
+                    className="bg-card/90 backdrop-blur-[45px] border border-primary/10 rounded-[2.5rem] shadow-[0_20px_100px_-20px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col p-4"
+                  >
+                    <div 
+                      onPointerDown={handleResizeStart}
+                      className="h-1.5 w-12 bg-primary/10 rounded-full mx-auto mb-4 cursor-ns-resize shrink-0"
+                    />
 
-              <div className="flex items-center gap-2 mb-4">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-30" />
-                  <input 
-                    placeholder="Chercher..." 
-                    value={emojiSearchQuery}
-                    onChange={(e) => setEmojiSearchQuery(e.target.value)}
-                    className="w-full h-10 pl-10 pr-4 bg-primary/5 border-none rounded-xl text-xs font-bold focus:ring-1 focus:ring-primary/20 outline-none"
-                  />
-                </div>
-                {emojiSearchQuery && (
-                  <button onClick={() => setEmojiSearchQuery("")} className="p-2 opacity-40"><Delete className="h-4 w-4" /></button>
-                )}
-              </div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="flex-1 relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-30" />
+                        <input 
+                          placeholder="Chercher..." 
+                          value={emojiSearchQuery}
+                          onChange={(e) => setEmojiSearchQuery(e.target.value)}
+                          className="w-full h-10 pl-10 pr-4 bg-primary/5 border-none rounded-xl text-xs font-bold focus:ring-1 focus:ring-primary/20 outline-none"
+                        />
+                      </div>
+                      {emojiSearchQuery && (
+                        <button onClick={() => setEmojiSearchQuery("")} className="p-2 opacity-40"><Delete className="h-4 w-4" /></button>
+                      )}
+                    </div>
 
-              <div className="flex-1 overflow-hidden flex flex-col">
-                {emojiSearchQuery ? (
-                  <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-6 gap-2 p-1">
-                    {filteredEmojis.map((e, i) => (
-                      <button key={i} onClick={() => insertText(e.char)} className="flex items-center justify-center aspect-square bg-primary/5 rounded-xl text-lg">
-                        <EmojiOracle text={e.char} forceStatic />
-                      </button>
-                    ))}
+                    <div className="flex-1 overflow-hidden flex flex-col">
+                      {emojiSearchQuery ? (
+                        <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-6 gap-2 p-1">
+                          {filteredEmojis.map((e, i) => (
+                            <button key={i} onClick={() => insertText(e.char)} className="flex items-center justify-center aspect-square bg-primary/5 rounded-xl text-lg">
+                              <EmojiOracle text={e.char} forceStatic />
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex gap-1 mb-4 overflow-x-auto no-scrollbar shrink-0 p-1 bg-primary/5 rounded-2xl">
+                            {categories.map((cat, idx) => (
+                              <button key={cat.id} onClick={() => { haptic.light(); setEmojiCategory(idx); }} className={cn("flex items-center justify-center h-10 w-10 rounded-xl transition-all", emojiCategory === idx ? "bg-primary text-primary-foreground shadow-lg" : "text-primary/30")}>
+                                <cat.icon className="h-4 w-4" />
+                              </button>
+                            ))}
+                          </div>
+                          <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-6 gap-2 p-1">
+                            {categories[emojiCategory].items.map((e, idx) => (
+                              <button key={idx} onClick={() => insertText(e.char)} className="flex items-center justify-center aspect-square bg-primary/[0.03] border border-primary/5 hover:bg-primary/10 rounded-xl text-lg">
+                                <EmojiOracle text={e.char} forceStatic />
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
-                ) : (
-                  <>
-                    <div className="flex gap-1 mb-4 overflow-x-auto no-scrollbar shrink-0 p-1 bg-primary/5 rounded-2xl">
-                      {categories.map((cat, idx) => (
-                        <button key={cat.id} onClick={() => { haptic.light(); setEmojiCategory(idx); }} className={cn("flex items-center justify-center h-10 w-10 rounded-xl transition-all", emojiCategory === idx ? "bg-primary text-primary-foreground shadow-lg" : "text-primary/30")}>
-                          <cat.icon className="h-4 w-4" />
-                        </button>
-                      ))}
-                    </div>
-                    <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-6 gap-2 p-1">
-                      {categories[emojiCategory].items.map((e, idx) => (
-                        <button key={idx} onClick={() => insertText(e.char)} className="flex items-center justify-center aspect-square bg-primary/[0.03] border border-primary/5 hover:bg-primary/10 rounded-xl text-lg">
-                          <EmojiOracle text={e.char} forceStatic />
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Bouton de déclenchement draggable */}
+            <div className="flex flex-col items-center gap-2">
+              <div className="bg-primary/5 h-1 w-8 rounded-full opacity-20" />
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => { haptic.medium(); setIsVisible(!isVisible); }}
+                className="h-14 w-14 rounded-2xl bg-card/80 backdrop-blur-3xl border border-primary/10 shadow-2xl flex items-center justify-center text-primary relative group"
+              >
+                {isVisible ? <X className="h-6 w-6" /> : <Smile className="h-6 w-6" />}
+                
+                {/* Indicateur de drag */}
+                <div className="absolute -top-1 -left-1 opacity-0 group-hover:opacity-40 transition-opacity bg-primary rounded-full p-1">
+                  <GripHorizontal className="h-2 w-2 text-white" />
+                </div>
+              </motion.button>
             </div>
           </motion.div>
         )}
