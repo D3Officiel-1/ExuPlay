@@ -140,23 +140,6 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const enforceKeyboardShield = () => {
-      const inputs = document.querySelectorAll('input, textarea');
-      inputs.forEach(el => {
-        if (el.getAttribute('inputmode') !== 'none') {
-          el.setAttribute('inputmode', 'none');
-        }
-      });
-    };
-
-    enforceKeyboardShield();
-    const observer = new MutationObserver(enforceKeyboardShield);
-    observer.observe(document.body, { childList: true, subtree: true });
-    
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
     if (isAuthLoading) return;
     const publicPaths = ["/", "/login", "/autoriser"];
     if (!user && !publicPaths.includes(pathname)) {
