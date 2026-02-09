@@ -40,10 +40,10 @@ import {
   AlertCircle,
   Dices,
   RefreshCw,
-  Globe,
   ShoppingCart,
-  ArrowUpRight,
-  Edit3
+  Trash2,
+  Edit3,
+  ArrowUpRight
 } from "lucide-react";
 import { 
   Dialog,
@@ -52,6 +52,7 @@ import {
   DialogTitle,
   DialogFooter
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -61,9 +62,11 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import Image from "next/image";
 
-interface BetPlacement {
+interface BetSelection {
   matchId: string;
   matchName: string;
+  homeTeam: string;
+  awayTeam: string;
   outcome: "1" | "X" | "2";
   outcomeLabel: string;
   odd: number;
@@ -78,7 +81,10 @@ export default function SportPage() {
   const [activeTab, setTab] = useState("matches");
   const [matches, setMatches] = useState<any[]>([]);
   const [isLoadingMatches, setIsLoadingMatches] = useState(true);
-  const [betToPlace, setBetToPlace] = useState<BetPlacement | null>(null);
+  
+  // Système de Coupon (Selections)
+  const [selections, setSelections] = useState<BetSelection[]>([]);
+  const [isCouponOpen, setIsCouponOpen] = useState(false);
   const [betAmount, setBetInput] = useState("100");
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -126,29 +132,67 @@ export default function SportPage() {
   }, [db, user?.uid]);
   const { data: userBets } = useCollection(betsQuery);
 
-  const currentStake = Math.max(5, parseInt(betAmount) || 0);
-  const potentialWin = betToPlace ? Math.floor(currentStake * betToPlace.odd) : 0;
+  const totalOdds = useMemo(() => {
+    if (selections.length === 0) return 0;
+    return parseFloat(selections.reduce((acc, sel) => acc * sel.odd, 1).toFixed(2));
+  }, [selections]);
 
-  const handleOpenBetDialog = (match: any, outcome: "1" | "X" | "2") => {
+  const currentStake = Math.max(5, parseInt(betAmount) || 0);
+  const potentialWin = Math.floor(currentStake * totalOdds);
+
+  const toggleSelection = (match: any, outcome: "1" | "X" | "2") => {
     haptic.light();
     const odd = parseFloat(match.odds[outcome]);
     const outcomeLabel = outcome === "1" ? match.teams.home.name : outcome === "X" ? "Nul" : match.teams.away.name;
-    
-    setBetToPlace({
-      matchId: match.fixture.id.toString(),
-      matchName: `${match.teams.home.name} vs ${match.teams.away.name}`,
-      outcome,
-      outcomeLabel,
-      odd
+    const matchId = match.fixture.id.toString();
+
+    setSelections(prev => {
+      // Si le match est déjà sélectionné
+      const existingIdx = prev.findIndex(s => s.matchId === matchId);
+      
+      if (existingIdx !== -1) {
+        // Si c'est la même issue, on l'enlève
+        if (prev[existingIdx].outcome === outcome) {
+          return prev.filter(s => s.matchId !== matchId);
+        }
+        // Sinon on remplace l'issue pour ce match
+        const newSelections = [...prev];
+        newSelections[existingIdx] = {
+          matchId,
+          matchName: `${match.teams.home.name} vs ${match.teams.away.name}`,
+          homeTeam: match.teams.home.name,
+          awayTeam: match.teams.away.name,
+          outcome,
+          outcomeLabel,
+          odd
+        };
+        return newSelections;
+      }
+
+      // Nouveau match ajouté
+      return [...prev, {
+        matchId,
+        matchName: `${match.teams.home.name} vs ${match.teams.away.name}`,
+        homeTeam: match.teams.home.name,
+        awayTeam: match.teams.away.name,
+        outcome,
+        outcomeLabel,
+        odd
+      }];
     });
   };
 
+  const removeSelection = (matchId: string) => {
+    haptic.light();
+    setSelections(prev => prev.filter(s => s.matchId !== matchId));
+  };
+
   const handlePlaceBet = async () => {
-    if (!userDocRef || !profile || !betToPlace || isProcessing) return;
+    if (!userDocRef || !profile || selections.length === 0 || isProcessing) return;
 
     if (currentStake > (profile.totalPoints || 0)) {
       haptic.error();
-      toast({ variant: "destructive", title: "Lumière insuffisante", description: "Engagez moins de points pour valider ce pari." });
+      toast({ variant: "destructive", title: "Lumière insuffisante", description: "Engagez moins de points pour valider ce coupon." });
       return;
     }
 
@@ -158,14 +202,14 @@ export default function SportPage() {
     const betData = {
       userId: user?.uid,
       username: profile.username,
-      selections: [{ 
-        matchId: betToPlace.matchId, 
-        matchName: betToPlace.matchName, 
-        outcome: betToPlace.outcome, 
-        odd: betToPlace.odd 
-      }],
+      selections: selections.map(s => ({
+        matchId: s.matchId,
+        matchName: s.matchName,
+        outcome: s.outcome,
+        odd: s.odd
+      })),
       stake: currentStake,
-      totalOdds: betToPlace.odd,
+      totalOdds,
       potentialWin,
       status: "pending",
       createdAt: serverTimestamp(),
@@ -180,8 +224,9 @@ export default function SportPage() {
       await addDoc(collection(db!, "bets"), betData);
 
       haptic.success();
-      toast({ title: "Pacte Scellé !", description: `Votre intuition sur ${betToPlace.matchName} a été enregistrée.` });
-      setBetToPlace(null);
+      toast({ title: "Coupon Scellé !", description: `Votre pacte sur ${selections.length} événements a été validé.` });
+      setSelections([]);
+      setIsCouponOpen(false);
       setTab("history");
     } catch (e) {
       toast({ variant: "destructive", title: "Dissonance Système" });
@@ -242,7 +287,7 @@ export default function SportPage() {
                           "px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest border",
                           match.isReal ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-primary/5 text-primary/40 border-primary/5"
                         )}>
-                          {match.isReal ? "Cotes API" : "Cotes Oracle"}
+                          {match.isReal ? "Réel" : "Oracle"}
                         </div>
                         <span className="text-[8px] font-black uppercase tracking-widest opacity-40">{match.league.name}</span>
                       </div>
@@ -279,13 +324,25 @@ export default function SportPage() {
                     <div className="grid grid-cols-3 gap-2">
                       {["1", "X", "2"].map((outcome) => {
                         const odd = parseFloat(match.odds[outcome as keyof typeof match.odds]);
+                        const isSelected = selections.some(s => s.matchId === match.fixture.id.toString() && s.outcome === outcome);
+                        
                         return (
                           <button
                             key={outcome}
-                            onClick={() => handleOpenBetDialog(match, outcome as any)}
-                            className="flex flex-col items-center justify-center p-3 rounded-2xl border border-transparent bg-primary/5 hover:bg-primary hover:text-primary-foreground hover:shadow-xl transition-all duration-300 active:scale-95 group"
+                            onClick={() => toggleSelection(match, outcome as any)}
+                            className={cn(
+                              "flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-300 active:scale-95 group",
+                              isSelected 
+                                ? "bg-primary text-primary-foreground border-primary shadow-[0_10px_20px_rgba(var(--primary-rgb),0.2)]" 
+                                : "bg-primary/5 border-transparent hover:bg-primary/10"
+                            )}
                           >
-                            <span className="text-[8px] font-black uppercase opacity-40 mb-1 group-hover:text-primary-foreground/60">{outcome === "1" ? "Dom" : outcome === "X" ? "Nul" : "Ext"}</span>
+                            <span className={cn(
+                              "text-[8px] font-black uppercase mb-1",
+                              isSelected ? "text-primary-foreground/60" : "opacity-40"
+                            )}>
+                              {outcome === "1" ? "Dom" : outcome === "X" ? "Nul" : "Ext"}
+                            </span>
                             <span className="text-sm font-black tabular-nums">{odd.toFixed(2)}</span>
                           </button>
                         );
@@ -300,12 +357,14 @@ export default function SportPage() {
           <TabsContent value="history" className="space-y-4 m-0">
             {userBets && userBets.length > 0 ? (
               userBets.map((bet) => (
-                <Card key={bet.id} className="border-none bg-card/20 backdrop-blur-3xl rounded-[2rem] p-5 border border-primary/5">
+                <Card key={bet.id} className="border-none bg-card/20 backdrop-blur-3xl rounded-[2rem] p-5 border border-primary/5 shadow-lg">
                   <div className="flex justify-between items-start mb-4">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <Ticket className="h-3 w-3 text-primary opacity-40" />
-                        <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Pari Simple</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest opacity-40">
+                          {bet.selections.length > 1 ? "Coupon Combiné" : "Pari Simple"}
+                        </p>
                       </div>
                       <p className="text-sm font-black tabular-nums">{bet.stake} <span className="text-[10px] opacity-30">PTS</span></p>
                     </div>
@@ -316,20 +375,26 @@ export default function SportPage() {
                       {bet.status === "pending" ? "En cours" : "Gagné"}
                     </div>
                   </div>
-                  <div className="space-y-2 pb-4 border-b border-primary/5">
+                  <div className="space-y-3 pb-4 border-b border-primary/5">
                     {bet.selections.map((sel: any, i: number) => (
-                      <div key={i} className="flex justify-between items-center">
-                        <div className="flex flex-col">
-                          <p className="text-[9px] font-bold opacity-60 truncate w-40">{sel.matchName}</p>
-                          <p className="text-[10px] font-black text-primary uppercase">Flux: {sel.outcome === '1' ? 'Domicile' : sel.outcome === 'X' ? 'Nul' : 'Extérieur'}</p>
+                      <div key={i} className="flex justify-between items-center bg-primary/5 p-2 rounded-xl">
+                        <div className="flex flex-col min-w-0">
+                          <p className="text-[9px] font-bold opacity-60 truncate">{sel.matchName}</p>
+                          <p className="text-[10px] font-black text-primary uppercase">Flux: {sel.outcome === '1' ? 'Dom' : sel.outcome === 'X' ? 'Nul' : 'Ext'}</p>
                         </div>
-                        <p className="text-lg font-black text-primary">@{parseFloat(sel.odd).toFixed(2)}</p>
+                        <p className="text-base font-black text-primary ml-4">@{parseFloat(sel.odd).toFixed(2)}</p>
                       </div>
                     ))}
                   </div>
                   <div className="flex justify-between items-center pt-4">
-                    <p className="text-[10px] font-black uppercase opacity-30">Gain Potentiel</p>
-                    <p className="text-xl font-black text-primary tabular-nums">+{bet.potentialWin} <span className="text-[10px] opacity-40">PTS</span></p>
+                    <div className="flex flex-col">
+                      <p className="text-[10px] font-black uppercase opacity-30">Total Cote</p>
+                      <p className="font-black">@{bet.totalOdds?.toFixed(2)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-black uppercase opacity-30">Gain Potentiel</p>
+                      <p className="text-xl font-black text-primary tabular-nums">+{bet.potentialWin} <span className="text-[10px] opacity-40">PTS</span></p>
+                    </div>
                   </div>
                 </Card>
               ))
@@ -343,30 +408,90 @@ export default function SportPage() {
         </Tabs>
       </main>
 
-      {/* Portail de Mise Instantané */}
-      <Dialog open={!!betToPlace} onOpenChange={(open) => !open && setBetToPlace(null)}>
-        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-[45px] border-primary/10 rounded-[3rem] p-8 shadow-2xl overflow-hidden">
-          {betToPlace && (
-            <div className="space-y-8">
-              <DialogHeader>
-                <div className="space-y-1 text-center">
-                  <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Scellage de l'Intuition</p>
-                  <DialogTitle className="text-2xl font-black tracking-tight uppercase italic">{betToPlace.matchName}</DialogTitle>
+      {/* Barre de Flux Flottante (Ouvre le Coupon) */}
+      <AnimatePresence>
+        {selections.length > 0 && activeTab === "matches" && !isCouponOpen && (
+          <motion.div 
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-24 left-6 right-6 z-[100] pointer-events-none"
+          >
+            <button 
+              onClick={() => { haptic.medium(); setIsCouponOpen(true); }}
+              className="w-full max-w-md mx-auto pointer-events-auto flex items-center justify-between p-4 bg-primary text-primary-foreground rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] group active:scale-95 transition-all"
+            >
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 bg-primary-foreground/20 rounded-xl flex items-center justify-center font-black">
+                  {selections.length}
                 </div>
-              </DialogHeader>
-
-              <div className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/5 flex items-center justify-between relative overflow-hidden group">
-                <motion.div animate={{ x: ["-100%", "200%"] }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="absolute inset-0 skew-x-12 bg-gradient-to-r from-transparent via-primary/5 to-transparent" />
-                <div className="flex-1 min-w-0 pr-4">
-                  <p className="text-[9px] font-black uppercase opacity-40 mb-1">Votre Prédiction</p>
-                  <p className="font-black text-lg text-primary truncate uppercase">{betToPlace.outcomeLabel}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[9px] font-black uppercase opacity-40 mb-1">Cote du Flux</p>
-                  <p className="text-3xl font-black tabular-nums italic">x{betToPlace.odd.toFixed(2)}</p>
+                <div className="flex flex-col items-start">
+                  <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Coupon de Pari</p>
+                  <p className="text-sm font-black">Cote Totale: @{totalOdds.toFixed(2)}</p>
                 </div>
               </div>
+              <div className="h-10 w-10 bg-primary-foreground/10 rounded-full flex items-center justify-center">
+                <ShoppingCart className="h-5 w-5" />
+              </div>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
+      {/* Portail du Coupon (Modal de Création) */}
+      <Dialog open={isCouponOpen} onOpenChange={setIsCouponOpen}>
+        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-[45px] border-primary/10 rounded-[3rem] p-0 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="p-8 flex flex-col h-full gap-8">
+            <DialogHeader>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Harmonisation</p>
+                  <DialogTitle className="text-2xl font-black tracking-tight italic">Votre Coupon</DialogTitle>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => { haptic.light(); setSelections([]); setIsCouponOpen(false); }}
+                  className="rounded-xl h-10 w-10 text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-5 w-5" />
+                </Button>
+              </div>
+            </DialogHeader>
+
+            <ScrollArea className="flex-1 pr-4">
+              <div className="space-y-4">
+                {selections.map((sel) => (
+                  <motion.div 
+                    key={sel.matchId}
+                    layout
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="relative p-5 bg-primary/5 rounded-[2rem] border border-primary/5 overflow-hidden group"
+                  >
+                    <button 
+                      onClick={() => removeSelection(sel.matchId)}
+                      className="absolute top-4 right-4 h-8 w-8 bg-background/50 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-4 w-4 text-destructive" />
+                    </button>
+                    
+                    <div className="space-y-2 pr-8">
+                      <p className="text-[9px] font-black uppercase tracking-widest opacity-40">{sel.matchName}</p>
+                      <div className="flex justify-between items-end">
+                        <div className="flex flex-col">
+                          <p className="text-[10px] font-bold opacity-30 uppercase">Votre Choix</p>
+                          <p className="font-black text-primary text-base truncate max-w-[180px]">{sel.outcomeLabel}</p>
+                        </div>
+                        <p className="text-2xl font-black tabular-nums italic">@{sel.odd.toFixed(2)}</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </ScrollArea>
+
+            <div className="space-y-6 pt-4 border-t border-primary/5">
               <div className="space-y-4">
                 <div className="flex justify-between items-end px-2">
                   <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">Offrande de Lumière</Label>
@@ -377,52 +502,47 @@ export default function SportPage() {
                     type="number" 
                     value={betAmount} 
                     onChange={(e) => setBetInput(e.target.value)} 
-                    className="h-20 text-4xl font-black text-center rounded-[2rem] bg-primary/5 border-none shadow-inner"
+                    className="h-16 text-3xl font-black text-center rounded-2xl bg-primary/5 border-none shadow-inner"
                     autoFocus
                   />
-                  <Edit3 className="absolute right-6 top-1/2 -translate-y-1/2 h-6 w-6 opacity-20" />
+                  <Edit3 className="absolute right-6 top-1/2 -translate-y-1/2 h-5 w-5 opacity-20" />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-5 bg-background/50 rounded-[2rem] border border-primary/5 text-center shadow-inner">
-                  <p className="text-[9px] font-black uppercase opacity-30 mb-1">Gain Estimé</p>
-                  <p className="text-2xl font-black tabular-nums">+{potentialWin} <span className="text-[10px] opacity-30">PTS</span></p>
+              <div className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/5 space-y-4 relative overflow-hidden group">
+                <motion.div animate={{ x: ["-100%", "200%"] }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="absolute inset-0 skew-x-12 bg-gradient-to-r from-transparent via-primary/5 to-transparent" />
+                
+                <div className="flex justify-between items-center">
+                  <p className="text-[10px] font-black uppercase tracking-widest opacity-30">Cote Totale</p>
+                  <p className="text-xl font-black italic text-primary">@{totalOdds.toFixed(2)}</p>
                 </div>
-                <div className="p-5 bg-background/50 rounded-[2rem] border border-primary/5 text-center shadow-inner">
-                  <p className="text-[9px] font-black uppercase opacity-30 mb-1">Solde Après</p>
-                  <p className="text-2xl font-black tabular-nums text-muted-foreground">{(profile?.totalPoints || 0) - currentStake}</p>
+                <div className="h-px bg-primary/10 w-12 mx-auto" />
+                <div className="flex justify-between items-center">
+                  <p className="text-[10px] font-black uppercase tracking-widest opacity-30">Gain Estimé</p>
+                  <p className="text-3xl font-black tabular-nums">+{potentialWin} <span className="text-[10px] opacity-30">PTS</span></p>
                 </div>
               </div>
 
-              <DialogFooter className="pt-2 flex flex-col gap-3">
-                <Button 
-                  onClick={handlePlaceBet}
-                  disabled={isProcessing || currentStake > (profile?.totalPoints || 0) || currentStake < 5}
-                  className="w-full h-20 rounded-[2.2rem] font-black text-sm uppercase tracking-[0.3em] shadow-2xl shadow-primary/20 bg-primary text-primary-foreground gap-4 active:scale-95 transition-all"
-                >
-                  {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : (
-                    <>
-                      <ShieldCheck className="h-6 w-6" />
-                      Invoquer le Pari
-                    </>
-                  )}
-                </Button>
-                <button 
-                  onClick={() => setBetToPlace(null)}
-                  className="w-full py-2 text-[9px] font-black uppercase tracking-[0.4em] opacity-20 hover:opacity-100 transition-opacity"
-                >
-                  Refermer le Portail
-                </button>
-              </DialogFooter>
+              <Button 
+                onClick={handlePlaceBet}
+                disabled={isProcessing || selections.length === 0 || currentStake > (profile?.totalPoints || 0)}
+                className="w-full h-20 rounded-[2.2rem] font-black text-sm uppercase tracking-[0.3em] shadow-2xl shadow-primary/20 bg-primary text-primary-foreground gap-4 active:scale-95 transition-all"
+              >
+                {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : (
+                  <>
+                    <ShieldCheck className="h-6 w-6" />
+                    Valider le Coupon
+                  </>
+                )}
+              </Button>
             </div>
-          )}
+          </div>
         </DialogContent>
       </Dialog>
 
       <div className="p-10 bg-primary/5 rounded-[3rem] border border-primary/5 text-center space-y-3 relative overflow-hidden mt-8 max-w-lg mx-auto w-full">
         <p className="text-[11px] leading-relaxed font-medium opacity-40 italic">
-          "Les cotes réelles sont les murmures de la réalité. Écoutez le monde, prédisez le flux, récoltez la Lumière."
+          "Combinez les flux des arènes pour magnifier votre prospérité. L'Oracle favorise les esprits audacieux."
         </p>
       </div>
     </div>
