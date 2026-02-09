@@ -236,7 +236,7 @@ export default function SportPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col pb-32">
+    <div className="min-h-screen bg-background flex flex-col pb-48">
       <header className="fixed top-0 left-0 right-0 z-50 p-6 flex items-center justify-between">
         <Button variant="ghost" size="icon" onClick={() => router.push("/home")} className="rounded-full bg-card/40 backdrop-blur-xl border border-primary/5">
           <ChevronLeft className="h-6 w-6" />
@@ -408,31 +408,44 @@ export default function SportPage() {
         </Tabs>
       </main>
 
-      {/* Barre de Flux Superposée (Déclencheur du Coupon) */}
+      {/* Barre de Flux Superposée (Type Barre de Navigation Fixe) */}
       <AnimatePresence>
         {selections.length > 0 && activeTab === "matches" && !isCouponOpen && (
-          <motion.div 
-            initial={{ scale: 0.8, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.8, opacity: 0, y: 20 }}
-            className="fixed bottom-28 left-0 right-0 z-[150] flex justify-center px-6 pointer-events-none"
-          >
-            <button 
-              onClick={() => { haptic.medium(); setIsCouponOpen(true); }}
-              className="pointer-events-auto flex items-center gap-4 px-8 h-16 bg-primary text-primary-foreground rounded-full shadow-[0_32px_128px_-16px_rgba(0,0,0,0.5)] border border-white/10 active:scale-95 transition-all group"
+          <div className="fixed bottom-0 left-0 right-0 z-[150] p-6 pb-8 bg-gradient-to-t from-background via-background/90 to-transparent pointer-events-none">
+            <motion.div 
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="max-w-lg mx-auto pointer-events-auto"
             >
-              <div className="flex flex-col items-start leading-none">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Pacte</span>
-                <span className="text-sm font-black">{selections.length} Sélection{selections.length > 1 ? 's' : ''}</span>
-              </div>
-              <div className="h-8 w-[1px] bg-white/10 mx-1" />
-              <div className="flex flex-col items-end leading-none">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Flux</span>
-                <span className="text-sm font-black italic">@{totalOdds.toFixed(2)}</span>
-              </div>
-              <ChevronRight className="h-5 w-5 ml-2 opacity-20 group-hover:translate-x-1 group-hover:opacity-100 transition-all" />
-            </button>
-          </motion.div>
+              <button 
+                onClick={() => { haptic.medium(); setIsCouponOpen(true); }}
+                className="w-full flex items-center justify-between px-8 h-16 bg-primary text-primary-foreground rounded-full shadow-[0_32px_128px_-16px_rgba(0,0,0,0.5)] border border-white/10 active:scale-95 transition-all group overflow-hidden relative"
+              >
+                <motion.div 
+                  animate={{ x: ["-100%", "200%"] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 pointer-events-none"
+                />
+                
+                <div className="flex flex-col items-start leading-none relative z-10">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Pacte Combiné</span>
+                  <span className="text-sm font-black">{selections.length} Sélection{selections.length > 1 ? 's' : ''}</span>
+                </div>
+
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="flex flex-col items-end leading-none">
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Flux Total</span>
+                    <span className="text-sm font-black italic">@{totalOdds.toFixed(2)}</span>
+                  </div>
+                  <div className="h-8 w-8 rounded-xl bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                    <ChevronRight className="h-5 w-5 opacity-60 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </div>
+              </button>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
