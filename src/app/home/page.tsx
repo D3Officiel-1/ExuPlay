@@ -19,60 +19,6 @@ import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 import { EmojiOracle } from "@/components/EmojiOracle";
 
-function OracleThought() {
-  const [thought, setThought] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const thoughts = [
-      "Le savoir est une lumière qui ne s'éteint jamais. 🕯️",
-      "Chaque défi est un pas de plus vers l'Éveil Suprême. ✨",
-      "L'esprit en paix voit la vérité à travers l'illusion. 🧘",
-      "Votre résonance actuelle perturbe positivement l'éther. 🌀",
-      "L'Oracle voit en vous un potentiel de Sage immense. 💎",
-      "La patience est la clé qui ouvre les portes de l'Inconnu. 🔑",
-      "Une pensée pure transmute le plomb en or spirituel. ⚗️"
-    ];
-    
-    const timer = setTimeout(() => {
-      setThought(thoughts[Math.floor(Math.random() * thoughts.length)]);
-      setLoading(false);
-    }, 1500);
-    
-    return () => clearTimeout(timer);
-  }, []);
-
-  return (
-    <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2.5rem] p-8 relative overflow-hidden group shadow-2xl border border-primary/5">
-      <motion.div 
-        animate={{ opacity: [0.3, 0.6, 0.3], scale: [1, 1.1, 1] }} 
-        transition={{ duration: 6, repeat: Infinity }} 
-        className="absolute -right-6 -top-6 text-primary opacity-5"
-      >
-        <Brain className="h-32 w-32" />
-      </motion.div>
-      <div className="relative z-10 space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="h-6 w-6 bg-primary/10 rounded-lg flex items-center justify-center">
-            <Sparkles className="h-3.5 w-3.5 text-primary animate-pulse" />
-          </div>
-          <span className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Oracle des Pensées</span>
-        </div>
-        {loading ? (
-          <div className="space-y-2">
-            <div className="h-4 w-full bg-primary/5 animate-pulse rounded-full" />
-            <div className="h-4 w-3/4 bg-primary/5 animate-pulse rounded-full" />
-          </div>
-        ) : (
-          <p className="text-base font-black italic leading-tight tracking-tight opacity-80">
-            <EmojiOracle text={thought} />
-          </p>
-        )}
-      </div>
-    </Card>
-  );
-}
-
 function GlobalActivityTicker() {
   const db = useFirestore();
   const transfersQuery = useMemo(() => {
@@ -99,7 +45,7 @@ function GlobalActivityTicker() {
           <p className="text-[9px] font-black uppercase tracking-widest opacity-60">
             <span className="text-primary">@<EmojiOracle text={transfer.fromName} /></span> a transmis <span className="text-primary">{transfer.amount} PTS</span>
           </p>
-          <Zap className="h-2.5 w-2.5 text-primary animate-pulse" />
+          <zap className="h-2.5 w-2.5 text-primary animate-pulse" />
         </motion.div>
       )}
     </AnimatePresence>
@@ -225,9 +171,17 @@ export default function HomePage() {
             <CommunityGoalProgress appStatus={appStatus} />
           </div>
           
-          <div className="w-full">
-            <OracleThought />
-          </div>
+          <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2.5rem] p-8 relative overflow-hidden group shadow-2xl border border-primary/5 w-full">
+            <div className="relative z-10 flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Bienvenue dans le Sanctuaire</p>
+                <h2 className="text-2xl font-black italic tracking-tight">@<EmojiOracle text={profile?.username || "Esprit"} /></h2>
+              </div>
+              <div className="h-12 w-12 bg-primary/5 rounded-2xl flex items-center justify-center border border-primary/5">
+                <Sparkles className="h-6 w-6 text-primary" />
+              </div>
+            </div>
+          </Card>
         </motion.div>
 
         <div className="w-full space-y-6">

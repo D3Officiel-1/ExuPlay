@@ -17,6 +17,7 @@ import { DuelInvitationListener } from "@/components/DuelInvitationListener";
 import { IncomingTransferOverlay } from "@/components/IncomingTransferOverlay";
 import { CustomKeyboard } from "@/components/CustomKeyboard";
 import { TextSelectionMenu } from "@/components/TextSelectionMenu";
+import { QuizAutoGenerator } from "@/components/QuizAutoGenerator";
 import { doc, getDoc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/Logo";
@@ -182,6 +183,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
         <AdminPendingExchangeOverlay />
         <IncomingTransferOverlay />
         <DuelInvitationListener />
+        <QuizAutoGenerator />
         {isMobile && <CustomKeyboard />}
         <TextSelectionMenu />
         {showNav && <Header />}
