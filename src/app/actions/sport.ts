@@ -1,13 +1,14 @@
 'use server';
 
 /**
- * @fileOverview Oracle de la Destinée Sportive v3.2.
- * Génère des rencontres internationales avec événements, buteurs, stats évolutives et marchés de paris.
+ * @fileOverview Oracle de la Destinée Sportive v4.0.
+ * Génère des rencontres internationales avec événements détaillés (buts, cartons), 
+ * stats évolutives et marchés de paris synchronisés sur le temps réel.
  */
 
 export interface MatchEvent {
   minute: number;
-  type: "goal" | "yellow_card" | "red_goal";
+  type: "goal" | "yellow_card" | "red_card";
   player: string;
   team: 'home' | 'away';
 }
@@ -44,21 +45,17 @@ export interface GeneratedMatch {
 }
 
 const COUNTRIES = [
-  { name: "Côte d'Ivoire", emoji: "🇨🇮", code: "ci", players: ["S. Haller", "F. Kessié", "S. Adingra", "N. Pépé", "I. Sangaré"] },
-  { name: "France", emoji: "🇫🇷", code: "fr", players: ["K. Mbappé", "A. Griezmann", "O. Dembélé", "M. Thuram", "B. Barcola"] },
-  { name: "Brésil", emoji: "🇧🇷", code: "br", players: ["Vinícius Jr", "Rodrygo", "Raphinha", "Endrick", "Paquetá"] },
-  { name: "Argentine", emoji: "🇦🇷", code: "ar", players: ["L. Messi", "J. Álvarez", "L. Martínez", "R. De Paul", "E. Fernández"] },
-  { name: "Maroc", emoji: "🇲🇦", code: "ma", players: ["Y. En-Nesyri", "A. Hakimi", "H. Ziyech", "B. Díaz", "S. Amrabat"] },
-  { name: "Sénégal", emoji: "🇸🇳", code: "sn", players: ["S. Mané", "N. Jackson", "I. Sarr", "P. Gueye", "K. Diatta"] },
-  { name: "Espagne", emoji: "🇪🇸", code: "es", players: ["L. Yamal", "N. Williams", "Á. Morata", "Dani Olmo", "Pedri"] },
-  { name: "Portugal", emoji: "🇵🇹", code: "pt", players: ["C. Ronaldo", "Rafael Leão", "B. Fernandes", "João Félix", "Diogo Jota"] },
-  { name: "Angleterre", emoji: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", code: "gb-eng", players: ["H. Kane", "J. Bellingham", "P. Foden", "B. Saka", "C. Palmer"] },
-  { name: "Allemagne", emoji: "🇩🇪", code: "de", players: ["F. Wirtz", "J. Musiala", "K. Havertz", "N. Füllkrug", "L. Sané"] },
-  { name: "Italie", emoji: "🇮🇹", code: "it", players: ["F. Chiesa", "N. Barella", "G. Scamacca", "D. Frattesi", "A. Bastoni"] },
-  { name: "Belgique", emoji: "🇧🇪", code: "be", players: ["K. De Bruyne", "R. Lukaku", "J. Doku", "L. Trossard", "Y. Tielemans"] },
-  { name: "Pays-Bas", emoji: "🇳🇱", code: "nl", players: ["C. Gakpo", "X. Simons", "M. Depay", "V. van Dijk", "F. de Jong"] },
-  { name: "Japon", emoji: "🇯🇵", code: "jp", players: ["K. Mitoma", "T. Kubo", "W. Endo", "T. Minamino", "R. Doan"] },
-  { name: "Nigeria", emoji: "🇳🇬", code: "ng", players: ["V. Osimhen", "A. Lookman", "A. Iwobi", "S. Chukwueze", "W. Ndidi"] }
+  { name: "Côte d'Ivoire", emoji: "🇨🇮", code: "ci", players: ["S. Haller", "F. Kessié", "S. Adingra", "N. Pépé", "I. Sangaré", "O. Diakité"] },
+  { name: "France", emoji: "🇫🇷", code: "fr", players: ["K. Mbappé", "A. Griezmann", "O. Dembélé", "M. Thuram", "B. Barcola", "W. Saliba"] },
+  { name: "Brésil", emoji: "🇧🇷", code: "br", players: ["Vinícius Jr", "Rodrygo", "Raphinha", "Endrick", "Paquetá", "Casemiro"] },
+  { name: "Argentine", emoji: "🇦🇷", code: "ar", players: ["L. Messi", "J. Álvarez", "L. Martínez", "R. De Paul", "E. Fernández", "A. Di María"] },
+  { name: "Maroc", emoji: "🇲🇦", code: "ma", players: ["Y. En-Nesyri", "A. Hakimi", "H. Ziyech", "B. Díaz", "S. Amrabat", "A. Ounahi"] },
+  { name: "Sénégal", emoji: "🇸🇳", code: "sn", players: ["S. Mané", "N. Jackson", "I. Sarr", "P. Gueye", "K. Diatta", "K. Koulibaly"] },
+  { name: "Espagne", emoji: "🇪🇸", code: "es", players: ["L. Yamal", "N. Williams", "Á. Morata", "Dani Olmo", "Pedri", "Rodri"] },
+  { name: "Portugal", emoji: "🇵🇹", code: "pt", players: ["C. Ronaldo", "Rafael Leão", "B. Fernandes", "João Félix", "Diogo Jota", "Bernardo Silva"] },
+  { name: "Angleterre", emoji: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", code: "gb-eng", players: ["H. Kane", "J. Bellingham", "P. Foden", "B. Saka", "C. Palmer", "D. Rice"] },
+  { name: "Allemagne", emoji: "🇩🇪", code: "de", players: ["F. Wirtz", "J. Musiala", "K. Havertz", "N. Füllkrug", "L. Sané", "I. Gündoğan"] },
+  { name: "Nigeria", emoji: "🇳🇬", code: "ng", players: ["V. Osimhen", "A. Lookman", "A. Iwobi", "S. Chukwueze", "W. Ndidi", "T. Ekong"] }
 ];
 
 function seededRandom(seed: number) {
@@ -119,47 +116,62 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
         liveInfo = { minute: currentMin, phase: "2H", display: `${currentMin}'` };
       } else {
         status = "finished";
-        currentMin = 100; // Cap pour le calcul des stats finales
+        currentMin = 100;
       }
     }
 
-    const maxGoals = Math.floor(seededRandom(matchSeed + 2) * 5);
+    // GÉNÉRATION D'ÉVÉNEMENTS DÉTAILLÉS (BUTS, CARTONS)
     const events: MatchEvent[] = [];
     const score = { home: 0, away: 0 };
 
+    // 1. Buts
+    const maxGoals = Math.floor(seededRandom(matchSeed + 2) * 5);
     for(let g = 0; g < maxGoals; g++) {
       const min = Math.floor(seededRandom(matchSeed + 10 + g) * 90);
       const side = seededRandom(matchSeed + 20 + g) > 0.5 ? 'home' : 'away';
       const playerPool = side === 'home' ? home.players : away.players;
       const player = playerPool[Math.floor(seededRandom(matchSeed + 30 + g) * playerPool.length)];
       
-      const event: MatchEvent = { minute: min, type: "goal", player, team: side };
-      events.push(event);
+      events.push({ minute: min, type: "goal", player, team: side });
       
+      // Mise à jour du score si l'événement a déjà eu lieu dans le temps réel
       if (status === "finished" || (status === "live" && min <= currentMin)) {
         score[side]++;
       }
     }
+
+    // 2. Cartons
+    const maxCards = Math.floor(seededRandom(matchSeed + 3) * 6);
+    for(let c = 0; c < maxCards; c++) {
+      const min = Math.floor(seededRandom(matchSeed + 40 + c) * 90);
+      const side = seededRandom(matchSeed + 50 + c) > 0.5 ? 'home' : 'away';
+      const type = seededRandom(matchSeed + 60 + c) > 0.85 ? "red_card" : "yellow_card";
+      const playerPool = side === 'home' ? home.players : away.players;
+      const player = playerPool[Math.floor(seededRandom(matchSeed + 70 + c) * playerPool.length)];
+      
+      // On ne garde l'événement que s'il a eu lieu dans le présent ou le passé
+      if (status === "finished" || (status === "live" && min <= currentMin)) {
+        events.push({ minute: min, type, player, team: side });
+      }
+    }
+
     events.sort((a, b) => a.minute - b.minute);
 
     // LOGIQUE DE STATISTIQUES DYNAMIQUES
     const matchMin = Math.min(90, currentMin);
     const progressFactor = matchMin / 90;
 
-    // Détermination des plafonds statistiques pour ce match (basé sur la seed)
     const maxShotsHome = Math.floor(seededRandom(matchSeed + 41) * 18) + 5;
     const maxShotsAway = Math.floor(seededRandom(matchSeed + 42) * 15) + 3;
     const maxCornersHome = Math.floor(seededRandom(matchSeed + 43) * 10) + 2;
     const maxCornersAway = Math.floor(seededRandom(matchSeed + 44) * 8) + 1;
 
-    // Possession de base avec oscillation en temps réel
     const basePossessionHome = 40 + seededRandom(matchSeed + 40) * 20;
-    // On utilise la minute actuelle + les secondes pour créer une oscillation fluide
-    const timeForFluctuation = (now.getTime() - startTimeTime) / 10000; // Unité de 10s
-    const fluctuation = Math.sin(timeForFluctuation) * 3; // Oscillation de +/- 3%
+    const timeForFluctuation = (now.getTime() - startTimeTime) / 10000;
+    const fluctuation = Math.sin(timeForFluctuation) * 3;
     
     let currentPossessionHome = Math.round(basePossessionHome + (status === 'live' ? fluctuation : 0));
-    currentPossessionHome = Math.max(30, Math.min(70, currentPossessionHome)); // Limites de réalisme
+    currentPossessionHome = Math.max(30, Math.min(70, currentPossessionHome));
 
     const stats: MatchStats = {
       possession: { 
@@ -193,14 +205,6 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
         options: [
           { label: "Plus de 2.5", odd: parseFloat((1.5 + seededRandom(matchSeed + 54) * 1.5).toFixed(2)), type: "O2.5" },
           { label: "Moins de 2.5", odd: parseFloat((1.5 + seededRandom(matchSeed + 55) * 1.5).toFixed(2)), type: "U2.5" }
-        ]
-      },
-      {
-        id: "btts",
-        name: "Les deux marquent",
-        options: [
-          { label: "Oui", odd: parseFloat((1.4 + seededRandom(matchSeed + 56) * 1.2).toFixed(2)), type: "BTTS_Y" },
-          { label: "Non", odd: parseFloat((1.4 + seededRandom(matchSeed + 57) * 1.2).toFixed(2)), type: "BTTS_N" }
         ]
       }
     ];

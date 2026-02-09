@@ -15,17 +15,17 @@ import {
   BarChart3, 
   ListOrdered, 
   ShieldCheck, 
-  X 
+  X,
+  AlertCircle
 } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { haptic } from "@/lib/haptics";
 import Image from "next/image";
 
 /**
  * @fileOverview Oracle des Détails de Match.
- * Une page dédiée offrant une vue profonde sur une rencontre spécifique.
+ * Une page dédiée offrant une vue profonde et vivante sur une rencontre spécifique.
+ * Synchronisation en temps réel des événements (buts, cartons) et du score.
  */
 
 export default function MatchDetailsPage() {
@@ -45,7 +45,9 @@ export default function MatchDetailsPage() {
       }
       setLoading(false);
     };
+    
     fetchMatch();
+    // Synchronisation sacrée toutes les 10 secondes pour capter les mutations de l'instant
     const interval = setInterval(fetchMatch, 10000);
     return () => clearInterval(interval);
   }, [matchId]);
@@ -78,8 +80,12 @@ export default function MatchDetailsPage() {
         </Button>
         <div className="flex flex-col items-center">
           <p className="text-[8px] font-black uppercase tracking-[0.3em] opacity-40">Arène de Match</p>
-          {match.status === 'live' && (
+          {match.status === 'live' ? (
             <span className="text-[9px] font-black text-red-600 animate-pulse uppercase mt-1">{match.liveInfo?.display}</span>
+          ) : match.status === 'finished' ? (
+            <span className="text-[9px] font-black opacity-40 uppercase mt-1">Terminé</span>
+          ) : (
+            <span className="text-[9px] font-black opacity-40 uppercase mt-1">À Venir</span>
           )}
         </div>
         <div className="w-10 h-10" />
@@ -103,21 +109,24 @@ export default function MatchDetailsPage() {
             </div>
 
             <div className="text-center space-y-2">
-              <motion.div 
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                className="text-6xl font-black italic tracking-tighter tabular-nums flex justify-center gap-3"
-              >
-                {match.status !== 'scheduled' ? (
-                  <>
-                    <span>{match.score.home}</span>
-                    <span className="opacity-10">-</span>
-                    <span>{match.score.away}</span>
-                  </>
-                ) : (
-                  <span className="text-2xl opacity-20 not-italic uppercase">VS</span>
-                )}
-              </motion.div>
+              <AnimatePresence mode="wait">
+                <motion.div 
+                  key={`${match.score.home}-${match.score.away}`}
+                  initial={{ y: 20, opacity: 0, scale: 0.8 }}
+                  animate={{ y: 0, opacity: 1, scale: 1 }}
+                  className="text-6xl font-black italic tracking-tighter tabular-nums flex justify-center gap-3"
+                >
+                  {match.status !== 'scheduled' ? (
+                    <>
+                      <span>{match.score.home}</span>
+                      <span className="opacity-10">-</span>
+                      <span>{match.score.away}</span>
+                    </>
+                  ) : (
+                    <span className="text-2xl opacity-20 not-italic uppercase">VS</span>
+                  )}
+                </motion.div>
+              </AnimatePresence>
               <div className="h-1 w-12 bg-primary/10 mx-auto rounded-full" />
             </div>
 
@@ -134,20 +143,19 @@ export default function MatchDetailsPage() {
           </div>
         </div>
 
-        {/* Navigation Onglets 1xBet Style */}
+        {/* Navigation Onglets */}
         <div className="bg-background/40 backdrop-blur-md sticky top-20 z-40 border-b border-primary/5 overflow-x-auto no-scrollbar">
           <div className="flex max-w-lg mx-auto p-1">
             {[
               { id: 'bet', label: 'Parier', icon: Zap },
               { id: 'timeline', label: 'Détails', icon: ListOrdered },
-              { id: 'stats', label: 'Stats', icon: BarChart3 },
-              { id: 'ranking', label: 'Position', icon: Trophy }
+              { id: 'stats', label: 'Stats', icon: BarChart3 }
             ].map(tab => (
               <button 
                 key={tab.id}
                 onClick={() => { haptic.light(); setDetailsTab(tab.id); }}
                 className={cn(
-                  "flex-1 py-4 flex flex-col items-center gap-1.5 transition-all min-w-[80px]",
+                  "flex-1 py-4 flex flex-col items-center gap-1.5 transition-all min-w-[100px] relative",
                   detailsTab === tab.id ? "text-primary opacity-100" : "opacity-30"
                 )}
               >
@@ -171,7 +179,6 @@ export default function MatchDetailsPage() {
                 exit={{ opacity: 0, x: 20 }}
                 className="p-6 space-y-8"
               >
-                {/* Marché Principal 1X2 */}
                 <div className="space-y-4">
                   <p className="text-[10px] font-black uppercase tracking-widest opacity-40 px-2">Vainqueur du Match</p>
                   <div className="grid grid-cols-3 gap-2">
@@ -197,11 +204,10 @@ export default function MatchDetailsPage() {
                   </div>
                 </div>
 
-                {/* Marchés Secondaires */}
                 {match.markets.map(market => (
                   <div key={market.id} className="space-y-4">
                     <p className="text-[10px] font-black uppercase tracking-widest opacity-40 px-2">{market.name}</p>
-                    <div className={cn("grid gap-2", market.options.length === 3 ? "grid-cols-3" : "grid-cols-2")}>
+                    <div className="grid grid-cols-2 gap-2">
                       {market.options.map(opt => {
                         const isSelected = selections.find(s => s.matchId === match.id && s.outcome === opt.type);
                         return (
@@ -239,21 +245,33 @@ export default function MatchDetailsPage() {
                     <p className="text-[10px] font-black uppercase tracking-widest">Le destin est en cours d'écriture</p>
                   </div>
                 ) : (
-                  match.events.map((event, idx) => (
-                    <div key={idx} className={cn("flex items-center gap-6", event.team === 'away' && "flex-row-reverse text-right")}>
-                      <div className="text-lg font-black tabular-nums w-10 opacity-20 italic">{event.minute}'</div>
-                      <div className={cn(
-                        "h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 border border-primary/5 shadow-xl",
-                        event.type === 'goal' ? "bg-green-500/10 text-green-600" : "bg-orange-500/10 text-orange-600"
-                      )}>
-                        {event.type === 'goal' ? <Zap className="h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-black uppercase tracking-tight">{event.player}</p>
-                        <p className="text-[9px] font-bold opacity-40 uppercase">{event.type === 'goal' ? "But Magistral" : "Action Défensive"}</p>
-                      </div>
-                    </div>
-                  ))
+                  <div className="space-y-4">
+                    {match.events.map((event, idx) => (
+                      <motion.div 
+                        key={idx} 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={cn("flex items-center gap-6", event.team === 'away' && "flex-row-reverse text-right")}
+                      >
+                        <div className="text-lg font-black tabular-nums w-10 opacity-20 italic">{event.minute}'</div>
+                        <div className={cn(
+                          "h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 border border-primary/5 shadow-xl transition-all duration-500",
+                          event.type === 'goal' ? "bg-green-500/10 text-green-600 scale-110" : 
+                          event.type === 'yellow_card' ? "bg-yellow-500/10 text-yellow-600" :
+                          "bg-red-500/10 text-red-600"
+                        )}>
+                          {event.type === 'goal' ? <Zap className="h-6 w-6" /> : <AlertCircle className="h-6 w-6" />}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-black uppercase tracking-tight">{event.player}</p>
+                          <p className="text-[9px] font-bold opacity-40 uppercase">
+                            {event.type === 'goal' ? "But Magistral" : 
+                             event.type === 'yellow_card' ? "Avertissement" : "Exclusion"}
+                          </p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
                 )}
               </motion.div>
             )}
@@ -284,48 +302,19 @@ export default function MatchDetailsPage() {
                   <div className="p-8 bg-primary/5 rounded-[2.5rem] text-center space-y-3 shadow-inner border border-primary/5">
                     <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Tirs Totaux</p>
                     <div className="flex items-center justify-center gap-6">
-                      <span className="text-3xl font-black italic">{match.stats.shots.home}</span>
+                      <span className="text-3xl font-black italic tabular-nums">{match.stats.shots.home}</span>
                       <BarChart3 className="h-5 w-5 opacity-20" />
-                      <span className="text-3xl font-black italic">{match.stats.shots.away}</span>
+                      <span className="text-3xl font-black italic tabular-nums">{match.stats.shots.away}</span>
                     </div>
                   </div>
                   <div className="p-8 bg-primary/5 rounded-[2.5rem] text-center space-y-3 shadow-inner border border-primary/5">
                     <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Corners</p>
                     <div className="flex items-center justify-center gap-6">
-                      <span className="text-3xl font-black italic">{match.stats.corners.home}</span>
+                      <span className="text-3xl font-black italic tabular-nums">{match.stats.corners.home}</span>
                       <Activity className="h-5 w-5 opacity-20" />
-                      <span className="text-3xl font-black italic">{match.stats.corners.away}</span>
+                      <span className="text-3xl font-black italic tabular-nums">{match.stats.corners.away}</span>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            )}
-
-            {detailsTab === 'ranking' && (
-              <motion.div 
-                key="ranking"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="p-6 space-y-4"
-              >
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-40 px-2">Simulateur de Position Mondiale</p>
-                <div className="space-y-3">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="flex items-center justify-between p-5 bg-primary/5 rounded-[1.5rem] border border-primary/5 group hover:bg-primary/10 transition-colors">
-                      <div className="flex items-center gap-4">
-                        <span className="text-xs font-black opacity-20 w-4">#{i}</span>
-                        <div className="h-8 w-8 rounded-lg bg-background border border-primary/5 overflow-hidden flex items-center justify-center">
-                          <Trophy className="h-4 w-4 opacity-10" />
-                        </div>
-                        <p className="text-sm font-black uppercase tracking-tight">Esprit de l'Arène {i}</p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span className="text-xs font-black tabular-nums opacity-40">{(10 - i) * 3} PTS</span>
-                        <span className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
-                      </div>
-                    </div>
-                  ))}
                 </div>
               </motion.div>
             )}
