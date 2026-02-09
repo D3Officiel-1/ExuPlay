@@ -41,7 +41,7 @@ interface Car {
 }
 
 const CARS: Car[] = [
-  { id: 0, name: "Vitesse Azur", color: "bg-blue-500", aura: "bg-blue-500/20", emoji: "🚙" },
+  { id: 0, name: "Vitesse Azur", color: "bg-blue-500", aura: "bg-blue-500/20", emoji: "🏎️" },
   { id: 1, name: "Flux Émeraude", color: "bg-green-500", aura: "bg-green-500/20", emoji: "🏎️" },
   { id: 2, name: "Éclat Ambre", color: "bg-yellow-500", aura: "bg-yellow-500/20", emoji: "🚗" },
   { id: 3, name: "Feu Rubis", color: "bg-red-500", aura: "bg-red-500/20", emoji: "🏎️" },
