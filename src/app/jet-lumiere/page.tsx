@@ -22,14 +22,15 @@ import {
   Globe,
   Users,
   ShieldCheck,
-  X
+  X,
+  Clock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { doc, updateDoc, serverTimestamp, increment, setDoc, Timestamp } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp, increment, setDoc, Timestamp, getDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from "framer-motion";
 import { haptic } from '@/lib/haptics';
 import { EmojiOracle } from '@/components/EmojiOracle';
@@ -393,7 +394,7 @@ export default function JetLumierePage() {
   const { toast } = useToast();
 
   const userDocRef = useMemo(() => (db && user?.uid) ? doc(db, "users", user.uid) : null, [db, user?.uid]);
-  const jetConfigRef = useMemo(() => doc(db, "appConfig", "jet"), [db]);
+  const jetConfigRef = useMemo(() => (db ? doc(db, "appConfig", "jet") : null), [db]);
   
   const { data: profile } = useDoc(userDocRef);
   const { data: globalState } = useDoc(jetConfigRef);
@@ -414,10 +415,11 @@ export default function JetLumierePage() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const bet1DataRef = useRef(bet1Data);
   const bet2DataRef = useRef(bet2Data);
-  const lastStateRef = useRef<string>('');
+  const globalStateRef = useRef<any>(null);
   
   useEffect(() => { bet1DataRef.current = bet1Data; }, [bet1Data]);
   useEffect(() => { bet2DataRef.current = bet2Data; }, [bet2Data]);
+  useEffect(() => { globalStateRef.current = globalState; }, [globalState]);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages]);
 
@@ -439,11 +441,31 @@ export default function JetLumierePage() {
 
   // --- MOTEUR DE SYNCHRONISATION UNIVERSEL ---
   useEffect(() => {
-    if (!globalState || !db) return;
+    if (!db || !jetConfigRef) return;
+
+    // Initialisation si le document n'existe pas
+    const initDoc = async () => {
+        const snap = await getDoc(jetConfigRef);
+        if (!snap.exists()) {
+            await setDoc(jetConfigRef, {
+                status: 'waiting',
+                crashPoint: 1.5,
+                startTime: new Date().toISOString(),
+                roundId: `JET-INIT-${Date.now()}`,
+                lastUpdate: serverTimestamp()
+            });
+        }
+    };
+    initDoc();
+
+    if (!globalState) return;
 
     const status = globalState.status as GameState;
     const roundId = globalState.roundId;
-    const startTime = (globalState.startTime as any)?.toDate?.()?.getTime() || new Date(globalState.startTime).getTime();
+    const startTimeStr = globalState.startTime;
+    const startTime = (globalState.startTime instanceof Timestamp) 
+        ? globalState.startTime.toDate().getTime() 
+        : new Date(startTimeStr).getTime();
     const crashPoint = globalState.crashPoint;
 
     // Reset local bets if a new round starts
@@ -452,6 +474,8 @@ export default function JetLumierePage() {
         setBet2Data(prev => ({ ...prev, betState: 'IDLE', lastRoundId: roundId, winAmount: 0 }));
         setSimulatedPlayers(generateFakePlayers(12));
     }
+
+    let growthFrameId: number;
 
     if (status === 'in_progress') {
         const growthLoop = () => {
@@ -476,39 +500,46 @@ export default function JetLumierePage() {
                     handleCashout(2, bet2DataRef.current.autoCashoutValue);
                 }
 
-                requestAnimationFrame(growthLoop);
+                growthFrameId = requestAnimationFrame(growthLoop);
             }
         };
-        requestAnimationFrame(growthLoop);
-    } else if (status === 'crashed') {
-        setMultiplier(crashPoint);
-        haptic.error();
-        // Transition vers 'waiting' après 4s de stase
-        const timer = setTimeout(() => handleGlobalStateTransition('waiting'), 4000);
-        return () => clearTimeout(timer);
-    } else if (status === 'waiting') {
-        setMultiplier(1.00);
-        const timer = setTimeout(() => handleGlobalStateTransition('betting'), 3000);
-        return () => clearTimeout(timer);
-    } else if (status === 'betting') {
-        setMultiplier(1.00);
-        // Auto-pari logic
-        if (bet1DataRef.current.isAutoBet && bet1DataRef.current.betState === 'IDLE' && (profile?.totalPoints || 0) >= bet1DataRef.current.betAmount) handleBet(1, bet1DataRef.current.betAmount);
-        if (bet2DataRef.current.isAutoBet && bet2DataRef.current.betState === 'IDLE' && (profile?.totalPoints || 0) >= bet2DataRef.current.betAmount) handleBet(2, bet2DataRef.current.betAmount);
+        growthFrameId = requestAnimationFrame(growthLoop);
+    } else {
+        setMultiplier(status === 'crashed' ? crashPoint : 1.00);
+        
+        // Timers de transition pour le "Leader"
+        let timer: NodeJS.Timeout;
+        if (status === 'crashed') {
+            timer = setTimeout(() => handleGlobalStateTransition('waiting'), 4000);
+        } else if (status === 'waiting') {
+            timer = setTimeout(() => handleGlobalStateTransition('betting'), 3000);
+        } else if (status === 'betting') {
+            // Auto-pari logic
+            if (bet1DataRef.current.isAutoBet && bet1DataRef.current.betState === 'IDLE' && (profile?.totalPoints || 0) >= bet1DataRef.current.betAmount) handleBet(1, bet1DataRef.current.betAmount);
+            if (bet2DataRef.current.isAutoBet && bet2DataRef.current.betState === 'IDLE' && (profile?.totalPoints || 0) >= bet2DataRef.current.betAmount) handleBet(2, bet2DataRef.current.betAmount);
 
-        const timer = setTimeout(() => handleGlobalStateTransition('in_progress'), 8000);
-        return () => clearTimeout(timer);
+            timer = setTimeout(() => handleGlobalStateTransition('in_progress'), 8000);
+        }
+        return () => {
+            if (timer) clearTimeout(timer);
+            if (growthFrameId) cancelAnimationFrame(growthFrameId);
+        };
     }
 
-  }, [globalState, db]);
+    return () => { if (growthFrameId) cancelAnimationFrame(growthFrameId); };
+  }, [globalState, db, profile?.totalPoints]);
 
   const handleGlobalStateTransition = async (nextStatus: GameState) => {
-    if (!db || !jetConfigRef) return;
+    if (!db || !jetConfigRef || !globalStateRef.current) return;
     
-    // Pour éviter que 1000 clients écrivent en même temps, seul le premier réussit
-    // L'Oracle serveur est sollicité pour les données sensibles
+    const currentStatus = globalStateRef.current.status;
+    
+    // Protection anti-race condition : on ne fait rien si le document a été mis à jour très récemment (par un autre leader)
+    const lastUpdate = (globalStateRef.current.lastUpdate as Timestamp)?.toDate().getTime() || 0;
+    if (Date.now() - lastUpdate < 1000) return;
+
     try {
-        if (nextStatus === 'in_progress' && globalState?.status === 'betting') {
+        if (nextStatus === 'in_progress' && currentStatus === 'betting') {
             const nextRound = await triggerNextJetRound();
             await updateDoc(jetConfigRef, {
                 status: 'in_progress',
@@ -517,20 +548,21 @@ export default function JetLumierePage() {
                 roundId: nextRound.id,
                 lastUpdate: serverTimestamp()
             });
-            // Mark user bets as PLACED
+            // Validation locale immédiate des paris en attente
             setBet1Data(b => b.betState === 'PENDING' ? { ...b, betState: 'PLACED' } : b);
             setBet2Data(b => b.betState === 'PENDING' ? { ...b, betState: 'PLACED' } : b);
-        } else if (nextStatus === 'crashed' && globalState?.status === 'in_progress') {
+        } else if (nextStatus === 'crashed' && currentStatus === 'in_progress') {
             await updateDoc(jetConfigRef, { status: 'crashed', lastUpdate: serverTimestamp() });
             setBet1Data(b => b.betState === 'PLACED' ? {...b, betState: 'LOST'} : b);
             setBet2Data(b => b.betState === 'PLACED' ? {...b, betState: 'LOST'} : b);
-        } else if (nextStatus === 'waiting' && globalState?.status === 'crashed') {
+            haptic.impact();
+        } else if (nextStatus === 'waiting' && currentStatus === 'crashed') {
             await updateDoc(jetConfigRef, { status: 'waiting', lastUpdate: serverTimestamp() });
-        } else if (nextStatus === 'betting' && globalState?.status === 'waiting') {
+        } else if (nextStatus === 'betting' && currentStatus === 'waiting') {
             await updateDoc(jetConfigRef, { status: 'betting', lastUpdate: serverTimestamp() });
         }
     } catch (e) {
-        // Ignorer silencieusement si un autre client a déjà fait la transition
+        // Ignorer les erreurs de permissions ou de conflits
     }
   };
 
@@ -574,7 +606,7 @@ export default function JetLumierePage() {
   }, [userDocRef, isProcessing]);
 
   const handleCashout = useCallback(async (id: number, cashoutMultiplier?: number) => {
-      if (!userDocRef || isProcessing || !globalState) return;
+      if (!userDocRef || isProcessing || !globalStateRef.current) return;
       const betData = id === 1 ? bet1DataRef.current : bet2DataRef.current;
       const betSetter = id === 1 ? setBet1Data : setBet2Data;
       
@@ -596,12 +628,21 @@ export default function JetLumierePage() {
       } finally {
         setIsProcessing(false);
       }
-  }, [multiplier, userDocRef, isProcessing, toast, globalState]);
+  }, [multiplier, userDocRef, isProcessing, toast]);
   
   const handleUpdateBet = useCallback((id: number, data: Partial<BetPanelData>) => {
       const betSetter = id === 1 ? setBet1Data : setBet2Data;
       betSetter(prev => ({...prev, ...data}));
   }, []);
+
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    const newMessage: ChatMessage = { id: `${Date.now()}-${user?.uid}`, user: profile?.username || 'Anonyme', text: chatInput, color: 'hsl(var(--primary))', isUser: true };
+    setChatMessages(prev => [...prev.slice(-12), newMessage]);
+    setChatInput('');
+    haptic.light();
+  };
 
   useEffect(() => {
     if (isLoading) {
