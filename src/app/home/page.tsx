@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -45,7 +44,7 @@ function GlobalActivityTicker() {
           <p className="text-[9px] font-black uppercase tracking-widest opacity-60">
             <span className="text-primary">@<EmojiOracle text={transfer.fromName} /></span> a transmis <span className="text-primary">{transfer.amount} PTS</span>
           </p>
-          <zap className="h-2.5 w-2.5 text-primary animate-pulse" />
+          <Zap className="h-2.5 w-2.5 text-primary animate-pulse" />
         </motion.div>
       )}
     </AnimatePresence>
