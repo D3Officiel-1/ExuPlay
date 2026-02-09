@@ -33,7 +33,7 @@ const BASE_HEIGHT = 280;
 /**
  * @fileOverview Clavier Chroma Flux v3.5.
  * L'instrument de saisie ultime du Sanctuaire, doté de lévitation haptique, 
- * de navigation spatiale et d'un mode de stase universelle.
+ * de navigation spatiale (Barre d'Espace Étendue) et du Sceau de Stase.
  */
 export function CustomKeyboard() {
   const { user } = useUser();
@@ -268,7 +268,6 @@ export function CustomKeyboard() {
     };
     const handleFocusOut = () => setTimeout(() => {
       const active = document.activeElement;
-      // Oracle: Correction du bug de fermeture. On ne ferme que si le focus sort totalement du clavier ET de l'input.
       const isInsideKeyboard = keyboardRef.current?.contains(active);
       if (!active || (active.tagName !== "INPUT" && active.tagName !== "TEXTAREA" && !isInsideKeyboard)) {
         setIsVisible(false); setIsEmojiSearchActive(false);

@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { hexToHsl, hexToRgb, getContrastColor } from "@/lib/colors";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 function SystemBarSync() {
   const { resolvedTheme } = useTheme();
@@ -175,15 +176,13 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const showMaintenance = appStatus?.maintenanceMode === true && profile?.role === 'user';
-  const showOffline = isOffline && !["/", "/login", "/autoriser"].includes(pathname);
   const isEcoMode = profile?.reducedMotion === true;
 
   if (isAuthLoading && !["/", "/login", "/autoriser"].includes(pathname)) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div>;
   }
 
-  // Oracle: Harmonisation des chemins pour garantir l'affichage de la navigation sur /home
+  // Oracle: Harmonisation des chemins. Les composants Nav/Header s'affichent sur /home
   const excludedNavPaths = ["/login", "/autoriser", "/arcade"];
   const excludedBottomNavPaths = ["/login", "/autoriser", "/transfert", "/echange", "/duels", "/arcade"];
 
@@ -207,6 +206,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
         <PageTransition>{children}</PageTransition>
         {showBottomNav && <BottomNav />}
         <Analytics />
+        <SpeedInsights />
       </MotionConfig>
     </div>
   );

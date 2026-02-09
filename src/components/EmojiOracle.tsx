@@ -13,19 +13,19 @@ interface SingleEmojiProps {
 
 /**
  * @fileOverview SingleEmoji - Rendu individuel avec gestion de stase.
- * Transmute les symboles en essences 3D animées ou statiques selon le mode.
+ * Transmute les symboles en essences 3D animées ou statiques selon le contexte.
  */
 function SingleEmoji({ emoji, hex, className, forceStatic = false }: SingleEmojiProps) {
   const [stage, setStage] = useState<'animated' | 'static' | 'text'>('animated');
 
-  // Oracle: Si forcé statique (clavier) ou repli, on utilise WebP
+  // Oracle: Les emojis du clavier sont statiques pour la performance.
+  // Ceux de l'application s'animent sauf en mode stase.
   const currentStage = forceStatic ? 'static' : stage;
 
   if (stage === 'text') {
     return <span className={className}>{emoji}</span>;
   }
 
-  // Animated = GIF, Static = WebP (haute performance)
   const ext = currentStage === 'animated' ? 'gif' : 'webp';
   const src = `https://fonts.gstatic.com/s/e/notoemoji/latest/${hex}/512.${ext}`;
 
