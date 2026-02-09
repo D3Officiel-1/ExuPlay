@@ -27,6 +27,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { cn } from "@/lib/utils";
 import { hexToHsl, hexToRgb, getContrastColor } from "@/lib/colors";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Analytics } from "@vercel/analytics/next";
 
 function SystemBarSync() {
   const { resolvedTheme } = useTheme();
@@ -204,6 +205,7 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
         {showNav && <Header />}
         <PageTransition>{children}</PageTransition>
         {showBottomNav && <BottomNav />}
+        <Analytics />
       </MotionConfig>
     </div>
   );
