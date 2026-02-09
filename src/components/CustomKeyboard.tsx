@@ -25,8 +25,8 @@ import { EmojiOracle } from "./EmojiOracle";
 const BASE_HEIGHT = 320;
 
 /**
- * @fileOverview Voûte des Essences v6.0.
- * Sélecteur d'emojis nomade, draggable et destructible.
+ * @fileOverview Voûte des Essences v6.5.
+ * Sélecteur d'emojis nomade, draggable et doté d'une zone de dissolution centrée.
  */
 export function CustomKeyboard() {
   const [activeInput, setActiveInput] = useState<HTMLInputElement | HTMLTextAreaElement | null>(null);
