@@ -1,8 +1,8 @@
 'use server';
 
 /**
- * @fileOverview Oracle de la Destinée Sportive v3.1.
- * Génère des rencontres internationales avec événements, buteurs, stats et marchés de paris.
+ * @fileOverview Oracle de la Destinée Sportive v3.2.
+ * Génère des rencontres internationales avec événements, buteurs, stats évolutives et marchés de paris.
  */
 
 export interface MatchEvent {
@@ -53,7 +53,12 @@ const COUNTRIES = [
   { name: "Espagne", emoji: "🇪🇸", code: "es", players: ["L. Yamal", "N. Williams", "Á. Morata", "Dani Olmo", "Pedri"] },
   { name: "Portugal", emoji: "🇵🇹", code: "pt", players: ["C. Ronaldo", "Rafael Leão", "B. Fernandes", "João Félix", "Diogo Jota"] },
   { name: "Angleterre", emoji: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", code: "gb-eng", players: ["H. Kane", "J. Bellingham", "P. Foden", "B. Saka", "C. Palmer"] },
-  { name: "Allemagne", emoji: "🇩🇪", code: "de", players: ["F. Wirtz", "J. Musiala", "K. Havertz", "N. Füllkrug", "L. Sané"] }
+  { name: "Allemagne", emoji: "🇩🇪", code: "de", players: ["F. Wirtz", "J. Musiala", "K. Havertz", "N. Füllkrug", "L. Sané"] },
+  { name: "Italie", emoji: "🇮🇹", code: "it", players: ["F. Chiesa", "N. Barella", "G. Scamacca", "D. Frattesi", "A. Bastoni"] },
+  { name: "Belgique", emoji: "🇧🇪", code: "be", players: ["K. De Bruyne", "R. Lukaku", "J. Doku", "L. Trossard", "Y. Tielemans"] },
+  { name: "Pays-Bas", emoji: "🇳🇱", code: "nl", players: ["C. Gakpo", "X. Simons", "M. Depay", "V. van Dijk", "F. de Jong"] },
+  { name: "Japon", emoji: "🇯🇵", code: "jp", players: ["K. Mitoma", "T. Kubo", "W. Endo", "T. Minamino", "R. Doan"] },
+  { name: "Nigeria", emoji: "🇳🇬", code: "ng", players: ["V. Osimhen", "A. Lookman", "A. Iwobi", "S. Chukwueze", "W. Ndidi"] }
 ];
 
 function seededRandom(seed: number) {
@@ -67,6 +72,7 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
   const dateSeed = dateStr.split('-').reduce((acc, val) => acc + parseInt(val), 0);
   
   const matches: GeneratedMatch[] = [];
+  // Étalement des heures de match pour couvrir la journée
   const hours = [0, 8, 10, 12, 14, 16, 18, 20, 21, 22];
 
   for (let i = 0; i < 10; i++) {
@@ -113,7 +119,7 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
         liveInfo = { minute: currentMin, phase: "2H", display: `${currentMin}'` };
       } else {
         status = "finished";
-        currentMin = 100;
+        currentMin = 100; // Cap pour le calcul des stats finales
       }
     }
 
@@ -136,21 +142,39 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
     }
     events.sort((a, b) => a.minute - b.minute);
 
+    // LOGIQUE DE STATISTIQUES DYNAMIQUES
+    const matchMin = Math.min(90, currentMin);
+    const progressFactor = matchMin / 90;
+
+    // Détermination des plafonds statistiques pour ce match (basé sur la seed)
+    const maxShotsHome = Math.floor(seededRandom(matchSeed + 41) * 18) + 5;
+    const maxShotsAway = Math.floor(seededRandom(matchSeed + 42) * 15) + 3;
+    const maxCornersHome = Math.floor(seededRandom(matchSeed + 43) * 10) + 2;
+    const maxCornersAway = Math.floor(seededRandom(matchSeed + 44) * 8) + 1;
+
+    // Possession de base avec oscillation en temps réel
+    const basePossessionHome = 40 + seededRandom(matchSeed + 40) * 20;
+    // On utilise la minute actuelle + les secondes pour créer une oscillation fluide
+    const timeForFluctuation = (now.getTime() - startTimeTime) / 10000; // Unité de 10s
+    const fluctuation = Math.sin(timeForFluctuation) * 3; // Oscillation de +/- 3%
+    
+    let currentPossessionHome = Math.round(basePossessionHome + (status === 'live' ? fluctuation : 0));
+    currentPossessionHome = Math.max(30, Math.min(70, currentPossessionHome)); // Limites de réalisme
+
     const stats: MatchStats = {
       possession: { 
-        home: Math.floor(40 + seededRandom(matchSeed + 40) * 20),
-        away: 0 
+        home: status === 'scheduled' ? 0 : currentPossessionHome,
+        away: status === 'scheduled' ? 0 : (100 - currentPossessionHome)
       },
       shots: {
-        home: Math.floor(seededRandom(matchSeed + 41) * 15),
-        away: Math.floor(seededRandom(matchSeed + 42) * 12)
+        home: status === 'scheduled' ? 0 : Math.floor(maxShotsHome * progressFactor),
+        away: status === 'scheduled' ? 0 : Math.floor(maxShotsAway * progressFactor)
       },
       corners: {
-        home: Math.floor(seededRandom(matchSeed + 43) * 8),
-        away: Math.floor(seededRandom(matchSeed + 44) * 6)
+        home: status === 'scheduled' ? 0 : Math.floor(maxCornersHome * progressFactor),
+        away: status === 'scheduled' ? 0 : Math.floor(maxCornersAway * progressFactor)
       }
     };
-    stats.possession.away = 100 - stats.possession.home;
 
     const baseOdd = 1.1 + seededRandom(matchSeed + 50) * 3;
     const markets: BettingMarket[] = [
