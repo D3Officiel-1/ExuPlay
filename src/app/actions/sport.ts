@@ -1,9 +1,10 @@
 'use server';
 
 /**
- * @fileOverview Oracle de la Destinée Sportive v4.0.
+ * @fileOverview Oracle de la Destinée Sportive v5.0.
  * Génère des rencontres internationales avec événements détaillés (buts, cartons), 
  * stats évolutives et marchés de paris synchronisés sur le temps réel.
+ * Le score est désormais calculé dynamiquement à partir des événements de buts passés.
  */
 
 export interface MatchEvent {
@@ -120,27 +121,20 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
       }
     }
 
-    // GÉNÉRATION D'ÉVÉNEMENTS DÉTAILLÉS (BUTS, CARTONS)
-    const events: MatchEvent[] = [];
-    const score = { home: 0, away: 0 };
+    // GÉNÉRATION DE TOUS LES ÉVÉNEMENTS POTENTIELS (Destinée absolue)
+    const allPotentialEvents: MatchEvent[] = [];
 
-    // 1. Buts
+    // 1. Prédiction des Buts
     const maxGoals = Math.floor(seededRandom(matchSeed + 2) * 5);
     for(let g = 0; g < maxGoals; g++) {
       const min = Math.floor(seededRandom(matchSeed + 10 + g) * 90);
       const side = seededRandom(matchSeed + 20 + g) > 0.5 ? 'home' : 'away';
       const playerPool = side === 'home' ? home.players : away.players;
       const player = playerPool[Math.floor(seededRandom(matchSeed + 30 + g) * playerPool.length)];
-      
-      events.push({ minute: min, type: "goal", player, team: side });
-      
-      // Mise à jour du score si l'événement a déjà eu lieu dans le temps réel
-      if (status === "finished" || (status === "live" && min <= currentMin)) {
-        score[side]++;
-      }
+      allPotentialEvents.push({ minute: min, type: "goal", player, team: side });
     }
 
-    // 2. Cartons
+    // 2. Prédiction des Cartons
     const maxCards = Math.floor(seededRandom(matchSeed + 3) * 6);
     for(let c = 0; c < maxCards; c++) {
       const min = Math.floor(seededRandom(matchSeed + 40 + c) * 90);
@@ -148,14 +142,24 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
       const type = seededRandom(matchSeed + 60 + c) > 0.85 ? "red_card" : "yellow_card";
       const playerPool = side === 'home' ? home.players : away.players;
       const player = playerPool[Math.floor(seededRandom(matchSeed + 70 + c) * playerPool.length)];
-      
-      // On ne garde l'événement que s'il a eu lieu dans le présent ou le passé
-      if (status === "finished" || (status === "live" && min <= currentMin)) {
-        events.push({ minute: min, type, player, team: side });
-      }
+      allPotentialEvents.push({ minute: min, type, player, team: side });
     }
 
-    events.sort((a, b) => a.minute - b.minute);
+    // FILTRAGE TEMPOREL ET CALCUL DU SCORE COHÉRENT
+    const events: MatchEvent[] = [];
+    const score = { home: 0, away: 0 };
+
+    allPotentialEvents.sort((a, b) => a.minute - b.minute);
+
+    allPotentialEvents.forEach(event => {
+      // Si le match est fini, on voit tout. Si c'est en direct, on ne voit que ce qui est déjà arrivé.
+      if (status === "finished" || (status === "live" && event.minute <= currentMin)) {
+        events.push(event);
+        if (event.type === "goal") {
+          score[event.team]++;
+        }
+      }
+    });
 
     // LOGIQUE DE STATISTIQUES DYNAMIQUES
     const matchMin = Math.min(90, currentMin);
