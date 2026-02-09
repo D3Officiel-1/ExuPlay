@@ -39,7 +39,8 @@ import {
   ChevronRight,
   AlertCircle,
   Dices,
-  RefreshCw
+  RefreshCw,
+  Globe
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
@@ -48,6 +49,7 @@ import { EmojiOracle } from "@/components/EmojiOracle";
 import { getDailyMatches } from "@/app/actions/sport";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import Image from "next/image";
 
 interface SelectedBet {
   matchId: string;
@@ -62,7 +64,7 @@ export default function SportPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [activeTab, setActiveTab] = useState("matches");
+  const [activeTab, setTab] = useState("matches");
   const [matches, setMatches] = useState<any[]>([]);
   const [isLoadingMatches, setIsLoadingMatches] = useState(true);
   const [selectedBets, setSelectedBets] = useState<SelectedBet[]>([]);
@@ -73,7 +75,6 @@ export default function SportPage() {
   const userDocRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
 
-  // Charger et Persister les matchs dans Firestore
   useEffect(() => {
     async function loadAndSync() {
       setIsLoadingMatches(true);
@@ -82,10 +83,12 @@ export default function SportPage() {
         if (data && data.length > 0) {
           setMatches(data);
           
-          // Ancrage dans Firestore pour chaque match récupéré
           if (db) {
             data.forEach((match: any) => {
-              const matchRef = doc(db, "matches", match.id);
+              // L'ID unique de l'API est utilisé comme ancre Firestore
+              const matchRef = doc(db, "matches", match.fixture.id.toString());
+              
+              // On enregistre l'objet COMPLET tel que demandé
               setDoc(matchRef, {
                 ...match,
                 updatedAt: serverTimestamp()
@@ -123,17 +126,18 @@ export default function SportPage() {
   const toggleBet = (match: any, outcome: "1" | "X" | "2") => {
     haptic.light();
     const odd = parseFloat(match.odds[outcome]);
-    const matchName = `${match.home} vs ${match.away}`;
+    const matchName = `${match.teams.home.name} vs ${match.teams.away.name}`;
+    const mId = match.fixture.id.toString();
     
     setSelectedBets(prev => {
-      const exists = prev.find(b => b.matchId === match.id);
+      const exists = prev.find(b => b.matchId === mId);
       if (exists) {
         if (exists.outcome === outcome) {
-          return prev.filter(b => b.matchId !== match.id);
+          return prev.filter(b => b.matchId !== mId);
         }
-        return prev.map(b => b.matchId === match.id ? { ...b, outcome, odd } : b);
+        return prev.map(b => b.matchId === mId ? { ...b, outcome, odd } : b);
       }
-      return [...prev, { matchId: match.id, matchName, outcome, odd }];
+      return [...prev, { matchId: mId, matchName, outcome, odd }];
     });
     
     if (!showCoupon && selectedBets.length === 0) setShowCoupon(true);
@@ -174,7 +178,7 @@ export default function SportPage() {
       setSelectedBets([]);
       setShowCoupon(false);
       toast({ title: "Coupon Scellé !", description: "Votre intuition a été enregistrée dans les annales." });
-      setActiveTab("history");
+      setTab("history");
     } catch (e) {
       toast({ variant: "destructive", title: "Dissonance Système" });
     } finally {
@@ -206,7 +210,7 @@ export default function SportPage() {
       </header>
 
       <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={setTab} className="w-full">
           <TabsList className="grid grid-cols-2 bg-primary/5 p-1 h-12 rounded-2xl mb-8">
             <TabsTrigger value="matches" className="rounded-xl font-black text-[10px] uppercase tracking-widest gap-2">
               <TrendingUp className="h-3.5 w-3.5" /> Événements
@@ -233,31 +237,46 @@ export default function SportPage() {
               </div>
             ) : (
               matches.map((match) => (
-                <Card key={match.id} className="border-none bg-card/40 backdrop-blur-3xl rounded-[2.5rem] overflow-hidden border border-primary/5 shadow-xl">
+                <Card key={match.fixture.id} className="border-none bg-card/40 backdrop-blur-3xl rounded-[2.5rem] overflow-hidden border border-primary/5 shadow-xl">
                   <CardContent className="p-6 space-y-6">
                     <div className="flex justify-between items-center px-2">
-                      <span className="text-[8px] font-black uppercase tracking-widest opacity-30">{match.league}</span>
+                      <div className="flex items-center gap-2 opacity-40">
+                        <Globe className="h-2.5 w-2.5" />
+                        <span className="text-[8px] font-black uppercase tracking-widest">{match.league.name}</span>
+                      </div>
                       <div className="flex items-center gap-1.5 opacity-40">
                         <Clock className="h-2.5 w-2.5" />
-                        <span className="text-[8px] font-black uppercase">{match.time}</span>
+                        <span className="text-[8px] font-black uppercase">{match.displayTime}</span>
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between gap-4 text-center">
                       <div className="flex-1 space-y-2">
-                        <div className="h-12 w-12 bg-primary/5 rounded-xl mx-auto flex items-center justify-center"><EmojiOracle text="⚽" forceStatic /></div>
-                        <p className="text-[10px] font-black uppercase leading-tight">{match.home}</p>
+                        <div className="relative h-12 w-12 bg-primary/5 rounded-xl mx-auto flex items-center justify-center overflow-hidden">
+                          {match.teams.home.logo ? (
+                            <Image src={match.teams.home.logo} alt="" fill className="object-contain p-2" />
+                          ) : (
+                            <EmojiOracle text="⚽" forceStatic />
+                          )}
+                        </div>
+                        <p className="text-[10px] font-black uppercase leading-tight h-8 line-clamp-2">{match.teams.home.name}</p>
                       </div>
                       <div className="text-[10px] font-black opacity-20 italic">VS</div>
                       <div className="flex-1 space-y-2">
-                        <div className="h-12 w-12 bg-primary/5 rounded-xl mx-auto flex items-center justify-center"><EmojiOracle text="⚽" forceStatic /></div>
-                        <p className="text-[10px] font-black uppercase leading-tight">{match.away}</p>
+                        <div className="relative h-12 w-12 bg-primary/5 rounded-xl mx-auto flex items-center justify-center overflow-hidden">
+                          {match.teams.away.logo ? (
+                            <Image src={match.teams.away.logo} alt="" fill className="object-contain p-2" />
+                          ) : (
+                            <EmojiOracle text="⚽" forceStatic />
+                          )}
+                        </div>
+                        <p className="text-[10px] font-black uppercase leading-tight h-8 line-clamp-2">{match.teams.away.name}</p>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-2">
                       {["1", "X", "2"].map((outcome) => {
-                        const isSelected = selectedBets.some(b => b.matchId === match.id && b.outcome === outcome);
+                        const isSelected = selectedBets.some(b => b.matchId === match.fixture.id.toString() && b.outcome === outcome);
                         const odd = parseFloat(match.odds[outcome as keyof typeof match.odds]);
                         return (
                           <button

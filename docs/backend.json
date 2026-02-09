@@ -3,13 +3,14 @@
   "entities": {
     "Match": {
       "title": "Match",
-      "description": "Un match de football réel synchronisé",
+      "description": "Un match de football réel synchronisé avec données complètes de l'API-Sports",
       "type": "object",
       "properties": {
-        "league": { "type": "string" },
-        "home": { "type": "string" },
-        "away": { "type": "string" },
-        "time": { "type": "string" },
+        "fixture": { "type": "object", "description": "Détails techniques du match (id, date, status, venue, etc.)" },
+        "league": { "type": "object", "description": "Informations sur la ligue et le pays" },
+        "teams": { "type": "object", "description": "Détails des équipes domicile et extérieur" },
+        "goals": { "type": "object", "description": "Nombre de buts marqués" },
+        "score": { "type": "object", "description": "Détails des scores par période et tirs au but" },
         "odds": { 
           "type": "object",
           "properties": {
@@ -212,7 +213,7 @@
     },
     "/matches/{matchId}": {
       "schema": "Match",
-      "description": "Arène des rencontres mondiales"
+      "description": "Arène des rencontres mondiales avec données complètes"
     }
   }
 }

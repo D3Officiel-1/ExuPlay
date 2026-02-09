@@ -2,8 +2,8 @@
 'use server';
 
 /**
- * @fileOverview Oracle de Transmission Sportive.
- * Gère la liaison avec l'API Football mondiale pour importer les flux réels.
+ * @fileOverview Oracle de Transmission Sportive Intégrale.
+ * Récupère l'intégralité des données de l'API Football mondiale.
  */
 
 import { format } from 'date-fns';
@@ -15,7 +15,6 @@ export async function getDailyMatches() {
   const today = format(new Date(), 'yyyy-MM-dd');
   
   try {
-    // Appel à l'API avec mise en cache de 24h (86400 secondes)
     const response = await fetch(`${API_URL}?date=${today}&status=NS`, {
       method: 'GET',
       headers: {
@@ -33,14 +32,11 @@ export async function getDailyMatches() {
     const result = await response.json();
     const fixtures = result.response || [];
 
-    // On transforme les données brutes pour l'interface du Sanctuaire
+    // On renvoie l'objet complet de l'API, en ajoutant simplement les cotes générées
     return fixtures.slice(0, 20).map((f: any) => ({
-      id: f.fixture.id.toString(),
-      league: f.league.name,
-      home: f.teams.home.name,
-      away: f.teams.away.name,
-      time: format(new Date(f.fixture.date), 'HH:mm'),
-      // Génération de cotes plausibles basées sur un algorithme d'aléa contrôlé
+      ...f,
+      // On conserve ces champs pour une lecture simplifiée dans l'interface si besoin
+      displayTime: format(new Date(f.fixture.date), 'HH:mm'),
       odds: {
         "1": (1.4 + Math.random() * 2.5).toFixed(2),
         "X": (2.8 + Math.random() * 1.5).toFixed(2),
