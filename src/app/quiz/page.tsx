@@ -162,26 +162,69 @@ export default function QuizPage() {
     const currentQuiz = sessionQuizzes[currentQuestionIdx];
     const isCorrect = index === currentQuiz.correctIndex;
     const isTimeout = index === -1;
+    
     let pointsEarned = isCorrect ? (isRoyalActive ? 100 : (currentQuiz.points || 10)) : 0;
     if (isCorrect && isMultiplied) pointsEarned *= 2;
-    let penalty = (isTimeout && profile && (profile.totalPoints || 0) > 10 && !isProtected) ? -10 : 0;
+    
+    // Logique de pénalités
+    let penalty = 0;
+    
+    // 1. Pénalité de Temps Mort
+    if (isTimeout && profile && (profile.totalPoints || 0) > 10 && !isProtected) {
+      penalty = -10;
+    }
+    
+    // 2. Pénalité de Précipitation (Réponse avant 10s sur le compte à rebours de 15s)
+    if (!isTimeout && timeLeft > 10 && profile && !isProtected) {
+      const precipitancyPenalty = Math.floor((profile.totalPoints || 0) / 4);
+      if (precipitancyPenalty > 0) {
+        penalty -= precipitancyPenalty;
+        toast({ 
+          variant: "destructive", 
+          title: "Précipitation !", 
+          description: `Réponse trop rapide. Pénalité de ${precipitancyPenalty} PTS (1/4 de votre énergie).` 
+        });
+      }
+    }
+
     if (isCorrect) haptic.success(); else haptic.error();
     setSelectedOption(index);
     setIsAnswered(true);
+    
     if (isCorrect) setScore(prev => prev + pointsEarned);
+    
     const attemptRef = doc(db, "users", user.uid, "attempts", currentQuiz.id);
-    updateDoc(attemptRef, { isPlayed: true, status: 'completed', score: pointsEarned, userAnswerIndex: index, updatedAt: serverTimestamp() });
+    updateDoc(attemptRef, { 
+      isPlayed: true, 
+      status: 'completed', 
+      score: pointsEarned, 
+      userAnswerIndex: index, 
+      updatedAt: serverTimestamp() 
+    });
+    
     const totalChange = pointsEarned + penalty;
+    
     if (totalChange !== 0) {
-      updateDoc(doc(db, "users", user.uid), { totalPoints: increment(totalChange), lastQuizAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      updateDoc(doc(db, "users", user.uid), { 
+        totalPoints: increment(totalChange), 
+        lastQuizAt: serverTimestamp(), 
+        updatedAt: serverTimestamp() 
+      });
+      
+      // Mise à jour de l'objectif communautaire
       if (pointsEarned > 0 && appStatusRef && appStatus) {
         const currentProgress = (appStatus.communityGoalPoints || 0) + pointsEarned;
         const target = appStatus.communityGoalTarget || 10000;
         let updateData: any = { communityGoalPoints: increment(pointsEarned), updatedAt: serverTimestamp() };
+        
         if (currentProgress >= target && !isRoyalActive) {
-          const expiry = new Date(); expiry.setMinutes(expiry.getMinutes() + 10);
+          const expiry = new Date(); 
+          expiry.setMinutes(expiry.getMinutes() + 10);
           updateData.royalChallengeActiveUntil = expiry;
-          toast({ title: "Éveil Royal Activé !", description: "+100 PTS par défi pendant 10 minutes !" });
+          toast({ 
+            title: "Éveil Royal Activé !", 
+            description: "+100 PTS par défi pendant 10 minutes !" 
+          });
         }
         updateDoc(appStatusRef, updateData);
       }
@@ -191,8 +234,18 @@ export default function QuizPage() {
   const nextQuestion = () => {
     haptic.light();
     if (currentQuestionIdx < sessionQuizzes.length - 1) {
-      setCurrentQuestionIdx(prev => prev + 1); setSelectedOption(null); setIsAnswered(false); setQuizStarted(false); setHiddenIndices([]); setTimeLeft(15); setIsProtected(false); setIsMultiplied(false);
-    } else { setQuizComplete(true); haptic.impact(); }
+      setCurrentQuestionIdx(prev => prev + 1); 
+      setSelectedOption(null); 
+      setIsAnswered(false); 
+      setQuizStarted(false); 
+      setHiddenIndices([]); 
+      setTimeLeft(15); 
+      setIsProtected(false); 
+      setIsMultiplied(false);
+    } else { 
+      setQuizComplete(true); 
+      haptic.impact(); 
+    }
   };
 
   if (quizzesLoading || attemptsLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin opacity-20" /></div>;
