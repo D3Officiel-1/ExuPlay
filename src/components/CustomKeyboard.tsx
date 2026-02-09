@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Smile, Dog, Pizza, Plane, Heart, Gamepad2, LayoutGrid, Flag, 
-  Search, X, Delete, GripHorizontal
+  Search, X, Delete, GripHorizontal, Trash2
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -25,12 +25,15 @@ import { EmojiOracle } from "./EmojiOracle";
 const BASE_HEIGHT = 320;
 
 /**
- * @fileOverview Voûte des Essences v5.0.
- * Sélecteur d'emojis nomade et draggable.
+ * @fileOverview Voûte des Essences v6.0.
+ * Sélecteur d'emojis nomade, draggable et destructible.
  */
 export function CustomKeyboard() {
   const [activeInput, setActiveInput] = useState<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isOverTrash, setIsOverTrash] = useState(false);
   const [emojiCategory, setEmojiCategory] = useState(0);
   const [keyboardHeight, setKeyboardHeight] = useState(BASE_HEIGHT);
   const [isResizing, setIsResizing] = useState(false);
@@ -39,6 +42,7 @@ export function CustomKeyboard() {
   const resizeStartY = useRef<number>(0);
   const resizeStartHeight = useRef<number>(0);
   const constraintsRef = useRef<HTMLDivElement>(null);
+  const trashRef = useRef<HTMLDivElement>(null);
 
   const categories = useMemo(() => [
     { id: "people", icon: Smile, items: parseEmojiString(RAW_EMOJI_PEOPLE) },
@@ -86,6 +90,8 @@ export function CustomKeyboard() {
       const target = e.target as HTMLInputElement | HTMLTextAreaElement;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
         setActiveInput(target);
+        // Si on focus un nouvel input, on peut envisager de faire réapparaître le bouton
+        // setIsDismissed(false); 
       }
     };
     document.addEventListener("focusin", handleFocus);
@@ -111,19 +117,78 @@ export function CustomKeyboard() {
     return () => { window.removeEventListener("pointermove", handleMove); window.removeEventListener("pointerup", handleUp); };
   }, [isResizing]);
 
+  const handleDrag = (_: any, info: any) => {
+    if (!trashRef.current) return;
+    const trashRect = trashRef.current.getBoundingClientRect();
+    const isOver = (
+      info.point.x >= trashRect.left &&
+      info.point.x <= trashRect.right &&
+      info.point.y >= trashRect.top &&
+      info.point.y <= trashRect.bottom
+    );
+    if (isOver !== isOverTrash) {
+      setIsOverTrash(isOver);
+      if (isOver) haptic.medium();
+    }
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    if (isOverTrash) {
+      haptic.impact();
+      setIsDismissed(true);
+      setIsVisible(false);
+    }
+    setIsOverTrash(false);
+  };
+
   return (
     <div ref={constraintsRef} className="fixed inset-0 z-[10002] pointer-events-none">
+      {/* Zone de Dissolution (Poubelle) */}
       <AnimatePresence>
-        {activeInput && (
+        {isDragging && (
+          <motion.div
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            className="fixed bottom-10 left-1/2 -translate-x-1/2 pointer-events-none z-[10003]"
+          >
+            <div 
+              ref={trashRef}
+              className={cn(
+                "h-24 w-24 rounded-full flex flex-col items-center justify-center transition-all duration-300 backdrop-blur-2xl border-2",
+                isOverTrash 
+                  ? "bg-red-500/20 border-red-500 scale-125 shadow-[0_0_50px_rgba(239,68,68,0.4)]" 
+                  : "bg-card/40 border-primary/10 scale-100"
+              )}
+            >
+              <Trash2 className={cn(
+                "h-8 w-8 transition-colors duration-300",
+                isOverTrash ? "text-red-500 animate-bounce" : "text-primary opacity-40"
+              )} />
+              <p className={cn(
+                "text-[8px] font-black uppercase tracking-widest mt-2 transition-colors",
+                isOverTrash ? "text-red-500" : "text-primary opacity-40"
+              )}>Dissoudre</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {activeInput && !isDismissed && (
           <motion.div
             drag
             dragConstraints={constraintsRef}
             dragMomentum={false}
             dragElastic={0.1}
+            onDragStart={() => setIsDragging(true)}
+            onDrag={handleDrag}
+            onDragEnd={handleDragEnd}
             initial={{ x: window.innerWidth - 80, y: window.innerHeight - 160 }}
             className="absolute pointer-events-auto flex flex-col items-end"
           >
-            {/* Clavier Emoji (s'affiche au-dessus du bouton) */}
+            {/* Clavier Emoji */}
             <AnimatePresence>
               {isVisible && (
                 <motion.div
@@ -196,11 +261,13 @@ export function CustomKeyboard() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => { haptic.medium(); setIsVisible(!isVisible); }}
-                className="h-14 w-14 rounded-2xl bg-card/80 backdrop-blur-3xl border border-primary/10 shadow-2xl flex items-center justify-center text-primary relative group"
+                className={cn(
+                  "h-14 w-14 rounded-2xl bg-card/80 backdrop-blur-3xl border border-primary/10 shadow-2xl flex items-center justify-center text-primary relative group transition-all",
+                  isOverTrash && "scale-50 opacity-0 blur-xl"
+                )}
               >
                 {isVisible ? <X className="h-6 w-6" /> : <Smile className="h-6 w-6" />}
                 
-                {/* Indicateur de drag */}
                 <div className="absolute -top-1 -left-1 opacity-0 group-hover:opacity-40 transition-opacity bg-primary rounded-full p-1">
                   <GripHorizontal className="h-2 w-2 text-white" />
                 </div>
