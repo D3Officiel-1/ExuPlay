@@ -288,14 +288,14 @@ export default function SportPage() {
         </Tabs>
       </main>
 
-      {/* BARRE DE FLUX FIXE - SUPERPOSITION ABSOLUE */}
+      {/* BARRE DE FLUX FIXE - SUPERPOSITION ABSOLUE EN HAUT */}
       <AnimatePresence>
         {selections.length > 0 && activeTab === "matches" && !isCouponOpen && (
-          <div className="fixed bottom-10 left-0 right-0 z-[500] px-6 pointer-events-none flex justify-center">
+          <div className="fixed top-24 left-0 right-0 z-[500] px-6 pointer-events-none flex justify-center">
             <motion.div 
-              initial={{ y: 100, opacity: 0, scale: 0.8 }}
+              initial={{ y: -100, opacity: 0, scale: 0.8 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
-              exit={{ y: 100, opacity: 0, scale: 0.8 }}
+              exit={{ y: -100, opacity: 0, scale: 0.8 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="w-full max-w-sm pointer-events-auto"
             >
