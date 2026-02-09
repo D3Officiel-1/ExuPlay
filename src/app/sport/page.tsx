@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -37,7 +36,8 @@ import {
   Globe,
   Trophy,
   Activity,
-  X
+  X,
+  Timer
 } from "lucide-react";
 import { 
   Dialog,
@@ -101,6 +101,9 @@ export default function SportPage() {
       }
     };
     fetchMatches();
+    // Rafraîchir toutes les minutes pour l'horloge
+    const interval = setInterval(fetchMatches, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   const totalOdds = useMemo(() => {
@@ -172,7 +175,6 @@ export default function SportPage() {
         <div className="w-10 h-10" />
       </header>
 
-      {/* Barre de Flux Supérieure (Ancrée à sa position fixe) */}
       <AnimatePresence>
         {selections.length > 0 && activeTab === "matches" && !isCouponOpen && (
           <div className="fixed top-24 left-0 right-0 z-[500] px-6 pointer-events-none flex justify-center">
@@ -237,9 +239,11 @@ export default function SportPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         {match.status === 'live' ? (
-                          <div className="flex items-center gap-1.5 bg-red-500/10 px-2 py-0.5 rounded-full">
-                            <div className="h-1 w-1 bg-red-500 rounded-full animate-pulse" />
-                            <span className="text-[8px] font-black text-red-600 uppercase">En Direct</span>
+                          <div className="flex items-center gap-2 bg-red-500/10 px-3 py-1 rounded-full">
+                            <div className="h-1.5 w-1.5 bg-red-500 rounded-full animate-pulse" />
+                            <span className="text-[9px] font-black text-red-600 uppercase tabular-nums">
+                              {match.liveInfo?.display || "En Direct"}
+                            </span>
                           </div>
                         ) : match.status === 'finished' ? (
                           <span className="text-[8px] font-black opacity-30 uppercase tracking-widest">Terminé</span>
@@ -270,10 +274,18 @@ export default function SportPage() {
                       </div>
                       <div className="text-center">
                         {match.status !== 'scheduled' ? (
-                          <div className="text-3xl font-black italic tracking-tighter tabular-nums flex justify-center gap-2">
-                            <span>{match.score.home}</span>
-                            <span className="opacity-20">-</span>
-                            <span>{match.score.away}</span>
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="text-3xl font-black italic tracking-tighter tabular-nums flex justify-center gap-2">
+                              <span>{match.score.home}</span>
+                              <span className="opacity-20">-</span>
+                              <span>{match.score.away}</span>
+                            </div>
+                            {match.status === 'live' && (
+                              <div className="flex items-center gap-1 opacity-20">
+                                <Timer className="h-2.5 w-2.5" />
+                                <span className="text-[7px] font-black uppercase tracking-tighter">Live Flow</span>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <div className="text-sm font-black opacity-10 uppercase italic tracking-widest">VS</div>
