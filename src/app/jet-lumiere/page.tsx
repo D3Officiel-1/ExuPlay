@@ -16,7 +16,10 @@ import {
   Edit3,
   Flame,
   History,
-  Target
+  Target,
+  TrendingUp,
+  AlertCircle,
+  Trophy
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -52,6 +55,7 @@ interface SimulatedPlayer {
     name: string;
     avatar: string;
     bet: number;
+    target: number;
     status: PlayerStatus;
     cashoutMultiplier?: number;
 }
@@ -62,17 +66,6 @@ interface ChatMessage {
     text: string;
     color: string;
     isUser?: boolean;
-}
-
-interface BetPanelProps {
-  balance: number;
-  gameState: GameState;
-  betData: BetPanelData;
-  onBet: (amount: number) => void;
-  onCancel: () => void;
-  onUpdate: (data: Partial<BetPanelData>) => void;
-  multiplier: number;
-  isProcessing: boolean;
 }
 
 const MIN_BET = 5;
@@ -92,7 +85,8 @@ const generateFakePlayers = (count: number): SimulatedPlayer[] => {
             id: i,
             name: name,
             avatar: name.slice(0, 2).toUpperCase(),
-            bet: 0,
+            bet: Math.floor(Math.random() * 500) + 10,
+            target: parseFloat((1.1 + Math.random() * 4).toFixed(2)),
             status: 'waiting' as PlayerStatus,
         });
     }
@@ -101,7 +95,7 @@ const generateFakePlayers = (count: number): SimulatedPlayer[] => {
 
 const fakeMessages = [
     { text: "L'ascension est magnifique ! ✨", color: "#60a5fa" },
-    { text: "Retrait à 2.0x, prudence est sagesse. 🧘", color: "#4ade80" },
+    { text: "Ma cible est à 2.5x, croisons les doigts. 🧘", color: "#4ade80" },
     { text: "On vise les étoiles aujourd'hui ! 🚀", color: "#f472b6" },
     { text: "Le flux est instable, attention... ⚠️", color: "#fbbf24" },
     { text: "TO THE MOON! 💎", color: "#22d3ee" }
@@ -255,15 +249,23 @@ const JetCanvasAnimation: FC<{ multiplier: number; gameState: GameState }> = ({ 
     return <canvas ref={canvasRef} width={1200} height={600} className="absolute inset-0 w-full h-full object-cover opacity-60" />;
 };
 
-const BetPanel: FC<BetPanelProps> = ({ balance, gameState, betData, onBet, onCancel, onUpdate, multiplier, isProcessing }) => {
-  const { betState, betAmount, autoCashoutValue } = betData;
+const BetPanel: FC<{
+  balance: number;
+  gameState: GameState;
+  betData: BetPanelData;
+  onBet: (amount: number) => void;
+  onCancel: () => void;
+  onUpdate: (data: Partial<BetPanelData>) => void;
+  isProcessing: boolean;
+}> = ({ balance, gameState, betData, onBet, onCancel, onUpdate, isProcessing }) => {
+  const { betState, betAmount, autoCashoutValue, winAmount } = betData;
   const { toast } = useToast();
 
   const handleAction = () => {
     if (isProcessing) return;
     if (betState === 'IDLE') {
         if (gameState !== 'betting' && gameState !== 'waiting') {
-            toast({ variant: 'destructive', title: "Attendez le prochain flux" });
+            toast({ variant: 'destructive', title: "Attendez le prochain cycle" });
             return;
         }
         if (betAmount < MIN_BET) return;
@@ -277,57 +279,55 @@ const BetPanel: FC<BetPanelProps> = ({ balance, gameState, betData, onBet, onCan
     }
   };
 
-  const isLocked = betState === 'CASHED_OUT' || betState === 'LOST';
-
   return (
-    <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[2rem] p-6 space-y-6 border border-primary/5 shadow-2xl relative overflow-hidden group">
+    <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[2.5rem] p-8 space-y-8 border border-primary/10 shadow-2xl relative overflow-hidden group">
         <div className="flex justify-between items-center px-1">
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Commandant de Flux</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Poste de Commandement</span>
             {betState === 'PLACED' && (
-                <div className="flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full border border-primary/10">
-                    <Rocket className="h-3 w-3 text-primary animate-pulse" />
-                    <span className="text-[9px] font-black text-primary uppercase">Extraction Auto Activée</span>
+                <div className="flex items-center gap-2 bg-primary/10 px-4 py-1.5 rounded-full border border-primary/10">
+                    <TrendingUp className="h-3 w-3 text-primary animate-pulse" />
+                    <span className="text-[9px] font-black text-primary uppercase tracking-widest">Oracle de Stase Actif</span>
                 </div>
             )}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase tracking-widest opacity-30 ml-2">Mise (PTS)</Label>
-                <div className="relative">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="space-y-3">
+                <Label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 ml-2">Énergie Engagée</Label>
+                <div className="relative group">
                     <Input 
                         type="number" 
                         value={betAmount} 
                         onChange={e => onUpdate({ betAmount: Number(e.target.value) })}
                         disabled={betState !== 'IDLE'}
-                        className="h-14 bg-primary/5 border-none rounded-2xl text-center font-black text-xl shadow-inner"
+                        className="h-16 bg-primary/5 border-none rounded-3xl text-center font-black text-2xl shadow-inner transition-all focus:bg-primary/10"
                     />
-                    <Edit3 className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-20" />
+                    <Zap className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-20" />
                 </div>
             </div>
-            <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase tracking-widest opacity-30 ml-2 text-primary">Cible de Retrait</Label>
-                <div className="relative">
+            <div className="space-y-3">
+                <Label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 ml-2 text-primary">Cible de Récupération</Label>
+                <div className="relative group">
                     <Input 
                         type="number" 
                         step="0.1"
                         value={autoCashoutValue} 
                         onChange={e => onUpdate({ autoCashoutValue: Number(e.target.value) })}
                         disabled={betState !== 'IDLE'}
-                        className="h-14 bg-primary/10 border-primary/20 rounded-2xl text-center font-black text-xl shadow-inner text-primary"
+                        className="h-16 bg-primary/10 border-2 border-primary/20 rounded-3xl text-center font-black text-2xl shadow-inner text-primary transition-all focus:border-primary/40"
                     />
-                    <Target className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                    <Target className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-40" />
                 </div>
             </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 gap-3">
             {[10, 50, 100, 500].map(v => (
                 <button 
                     key={v}
                     disabled={betState !== 'IDLE'}
-                    onClick={() => onUpdate({ betAmount: betAmount + v })}
-                    className="h-10 rounded-xl bg-primary/5 text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 disabled:opacity-20 transition-all"
+                    onClick={() => { haptic.light(); onUpdate({ betAmount: betAmount + v }); }}
+                    className="h-12 rounded-2xl bg-primary/5 text-[11px] font-black uppercase tracking-widest hover:bg-primary/10 disabled:opacity-20 transition-all border border-transparent hover:border-primary/10"
                 >
                     +{v}
                 </button>
@@ -336,25 +336,58 @@ const BetPanel: FC<BetPanelProps> = ({ balance, gameState, betData, onBet, onCan
 
         <Button 
             onClick={handleAction}
-            disabled={isLocked || isProcessing || (betState === 'IDLE' && gameState === 'in_progress') || betState === 'PLACED'}
+            disabled={isProcessing || (betState === 'IDLE' && gameState === 'in_progress') || betState === 'PLACED' || betState === 'CASHED_OUT' || betState === 'LOST'}
             className={cn(
-                "w-full h-20 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] shadow-xl transition-all duration-500",
+                "w-full h-24 rounded-[2.5rem] font-black text-sm uppercase tracking-[0.4em] shadow-2xl transition-all duration-500 active:scale-95 group relative overflow-hidden",
                 betState === 'IDLE' ? "bg-primary text-primary-foreground shadow-primary/20" :
-                betState === 'PENDING' ? "bg-orange-500/10 text-orange-600 border border-orange-500/20 shadow-none" :
-                betState === 'PLACED' ? "bg-primary/5 text-primary/40 border border-primary/10" :
-                "opacity-40 grayscale"
+                betState === 'PENDING' ? "bg-orange-500/10 text-orange-600 border-2 border-orange-500/20 shadow-none" :
+                betState === 'PLACED' ? "bg-primary/5 text-primary/40 border-2 border-primary/10" :
+                betState === 'CASHED_OUT' ? "bg-green-500/10 text-green-600 border-2 border-green-500/20" :
+                "bg-red-500/10 text-red-600 border-2 border-red-500/20"
             )}
         >
-            {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : 
-             betState === 'IDLE' ? "Invoquer le Flux" :
-             betState === 'PENDING' ? "Révoquer" :
-             betState === 'PLACED' ? "Vol en cours..." :
-             betState === 'CASHED_OUT' ? "Récupéré" : "Dissonance"}
+            <div className="relative z-10 flex items-center gap-4">
+                {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : 
+                 betState === 'IDLE' ? (
+                    <>
+                        <Rocket className="h-6 w-6 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                        Invoquer le Flux
+                    </>
+                 ) :
+                 betState === 'PENDING' ? "Annuler le Pacte" :
+                 betState === 'PLACED' ? (
+                    <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.5, repeat: Infinity }}>
+                        Ascension en cours...
+                    </motion.div>
+                 ) :
+                 betState === 'CASHED_OUT' ? (
+                    <div className="flex flex-col items-center leading-none">
+                        <span className="text-[10px] mb-1 opacity-60">Triomphe</span>
+                        <span>+{winAmount} PTS</span>
+                    </div>
+                 ) : (
+                    <div className="flex flex-col items-center leading-none">
+                        <span className="text-[10px] mb-1 opacity-60">Dissonance</span>
+                        <span>PERDU</span>
+                    </div>
+                 )}
+            </div>
+            {betState === 'IDLE' && (
+                <motion.div 
+                    animate={{ x: ["-100%", "200%"] }} 
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12"
+                />
+            )}
         </Button>
 
-        <div className="p-4 bg-primary/5 rounded-2xl border border-primary/5">
-            <p className="text-[10px] font-medium opacity-40 italic text-center leading-tight">
-                "Définissez votre cible. L'Oracle matérialisera vos gains automatiquement dès que le Jet l'atteindra."
+        <div className="p-6 bg-primary/5 rounded-[2rem] border border-primary/5 text-center space-y-2">
+            <p className="text-[11px] font-bold text-primary uppercase tracking-widest flex items-center justify-center gap-2">
+                <ShieldCheck className="h-3 w-3" />
+                Loi de l'Oracle
+            </p>
+            <p className="text-[10px] font-medium opacity-40 italic leading-relaxed px-4">
+                "Le gain est matérialisé si le Jet dépasse strictement votre cible. S'il s'arrête avant ou exactement dessus, l'énergie est consumée."
             </p>
         </div>
     </Card>
@@ -431,7 +464,10 @@ export default function JetLumierePage() {
           updatedAt: serverTimestamp()
         });
         setBetData(prev => ({ ...prev, betState: 'CASHED_OUT', winAmount }));
-        toast({ title: "Flux Extrait !", description: `+${winAmount} PTS (Cible x${cashoutMultiplier.toFixed(2)} atteinte)` });
+        toast({ 
+            title: "Cible Atteinte !", 
+            description: `+${winAmount} PTS (Extraction auto à x${cashoutMultiplier.toFixed(2)})` 
+        });
       } finally {
         setIsProcessing(false);
       }
@@ -475,19 +511,28 @@ export default function JetLumierePage() {
         const growthLoop = () => {
             const now = Date.now();
             const elapsedMs = now - startTime;
-            // Croissance exponentielle immuable
+            // Croissance exponentielle immuable pour une accélération type Aviator
             const currentMultiplier = Math.pow(1.002, elapsedMs / 10);
             
+            // LA LOI : Si on touche ou dépasse le crashPoint, c'est fini.
             if (currentMultiplier >= crashPoint) {
                 setMultiplier(crashPoint);
                 handleGlobalStateTransition('crashed');
             } else {
                 setMultiplier(currentMultiplier);
                 
-                // Retrait automatique systématique
+                // RETRAIT AUTO : Uniquement si on dépasse la cible AVANT le crashPoint
                 if (betDataRef.current.betState === 'PLACED' && currentMultiplier >= betDataRef.current.autoCashoutValue) {
                     handleCashout(betDataRef.current.autoCashoutValue);
                 }
+
+                // Cohorte simulée
+                setSimulatedPlayers(prev => prev.map(p => {
+                    if (p.status === 'betting' && currentMultiplier >= p.target) {
+                        return { ...p, status: 'cashed_out', cashoutMultiplier: p.target };
+                    }
+                    return p;
+                }));
 
                 growthFrameId = requestAnimationFrame(growthLoop);
             }
@@ -496,6 +541,12 @@ export default function JetLumierePage() {
     } else {
         setMultiplier(status === 'crashed' ? crashPoint : 1.00);
         
+        if (status === 'crashed') {
+            setSimulatedPlayers(prev => prev.map(p => p.status === 'betting' ? { ...p, status: 'lost' } : p));
+        } else if (status === 'betting') {
+            setSimulatedPlayers(prev => prev.map(p => ({ ...p, status: 'betting' })));
+        }
+
         let timer: NodeJS.Timeout;
         if (status === 'crashed') {
             timer = setTimeout(() => handleGlobalStateTransition('waiting'), 4000);
@@ -517,7 +568,9 @@ export default function JetLumierePage() {
     if (!db || !jetConfigRef || !globalStateRef.current) return;
     const currentStatus = globalStateRef.current.status;
     const lastUpdate = (globalStateRef.current.lastUpdate as Timestamp)?.toDate().getTime() || 0;
-    if (Date.now() - lastUpdate < 1000) return;
+    
+    // Protection anti-spam pour les transitions
+    if (Date.now() - lastUpdate < 800) return;
 
     try {
         if (nextStatus === 'in_progress' && currentStatus === 'betting') {
@@ -553,7 +606,7 @@ export default function JetLumierePage() {
       });
       setBetData(prev => ({ ...prev, betState: 'PENDING', betAmount: amount }));
     } catch (error) {
-      toast({ variant: 'destructive', title: "Erreur de mise" });
+      toast({ variant: 'destructive', title: "Dissonance lors de la mise" });
     } finally {
       setIsProcessing(false);
     }
@@ -642,9 +695,9 @@ export default function JetLumierePage() {
             <div className="space-y-1">
                 <div className="flex items-center gap-2 mb-1">
                     <Users className="h-3 w-3 text-primary opacity-40" />
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Dimension</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Esprits du Flux</p>
                 </div>
-                <h3 className="text-2xl font-black italic tracking-tighter">Les Esprits</h3>
+                <h3 className="text-2xl font-black italic tracking-tighter">La Cohorte</h3>
             </div>
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-3">
                 <PlayerList players={simulatedPlayers} profile={profile} />
@@ -691,7 +744,7 @@ export default function JetLumierePage() {
                                 <div className="relative inline-block">
                                     <motion.div animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }} className="absolute inset-[-20px] border border-dashed border-primary/20 rounded-full" />
                                     <p className="text-sm font-black uppercase tracking-[0.6em] text-primary/60 animate-pulse">
-                                        {gameState === 'waiting' ? "Attente du Flux" : "Phase de Mise"}
+                                        {gameState === 'waiting' ? "Attente du Flux" : "Phase de Sceau"}
                                     </p>
                                 </div>
                                 {gameState === 'betting' && (
@@ -735,7 +788,6 @@ export default function JetLumierePage() {
                     onBet={handleBet} 
                     onCancel={handleCancel} 
                     onUpdate={handleUpdateBet} 
-                    multiplier={multiplier} 
                     isProcessing={isProcessing} 
                 />
             </div>
@@ -753,7 +805,7 @@ export default function JetLumierePage() {
                     <Globe className="h-3 w-3 text-primary opacity-40" />
                     <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Flux Universel</p>
                 </div>
-                <h3 className="text-2xl font-black italic tracking-tighter">Le Grand Chat</h3>
+                <h3 className="text-2xl font-black italic tracking-tighter">Pensées en Vol</h3>
            </div>
            <div className="flex-1 overflow-hidden">
                 <ChatPanel messages={chatMessages} profile={profile} chatInput={chatInput} setChatInput={setChatInput} handleSendMessage={handleSendMessage} chatEndRef={chatEndRef} />
@@ -783,7 +835,10 @@ function PlayerList({ players, profile }: { players: SimulatedPlayer[], profile:
                     <div className="h-9 w-9 rounded-xl bg-background flex items-center justify-center text-[10px] font-black border border-primary/10 relative overflow-hidden">
                         {isMe ? <EmojiOracle text="🧘" forceStatic /> : <span className="opacity-40">{p.avatar}</span>}
                     </div>
-                    <span className="truncate w-24">@{p.name}</span>
+                    <div className="flex flex-col">
+                        <span className="truncate w-24">@{p.name}</span>
+                        {p.status === 'betting' && <span className="text-[8px] opacity-40 uppercase">Cible: {p.target}x</span>}
+                    </div>
                 </div>
                 <div className="text-right">
                     {p.status === 'cashed_out' ? (
@@ -798,7 +853,7 @@ function PlayerList({ players, profile }: { players: SimulatedPlayer[], profile:
                             <Flame className="h-3 w-3 animate-pulse" />
                             <span className="tabular-nums">{p.bet}</span>
                         </div>
-                    ) : <span className="opacity-20">Attente</span>}
+                    ) : <span className="opacity-20">Repos</span>}
                 </div>
             </motion.div>
         );
