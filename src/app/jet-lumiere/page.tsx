@@ -15,11 +15,11 @@ import {
   Loader2, 
   Edit3,
   Flame,
-  History
+  History,
+  Target
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { doc, updateDoc, serverTimestamp, increment, setDoc, Timestamp, getDoc } from 'firebase/firestore';
@@ -36,8 +36,6 @@ interface BetPanelData {
   betState: BetState;
   betAmount: number;
   winAmount: number;
-  isAutoBet: boolean;
-  isAutoCashout: boolean;
   autoCashoutValue: number;
   lastRoundId: string;
 }
@@ -72,7 +70,6 @@ interface BetPanelProps {
   betData: BetPanelData;
   onBet: (amount: number) => void;
   onCancel: () => void;
-  onCashout: (cashoutMultiplier?: number) => void;
   onUpdate: (data: Partial<BetPanelData>) => void;
   multiplier: number;
   isProcessing: boolean;
@@ -96,7 +93,7 @@ const generateFakePlayers = (count: number): SimulatedPlayer[] => {
             name: name,
             avatar: name.slice(0, 2).toUpperCase(),
             bet: 0,
-            status: 'waiting',
+            status: 'waiting' as PlayerStatus,
         });
     }
     return players;
@@ -258,7 +255,7 @@ const JetCanvasAnimation: FC<{ multiplier: number; gameState: GameState }> = ({ 
     return <canvas ref={canvasRef} width={1200} height={600} className="absolute inset-0 w-full h-full object-cover opacity-60" />;
 };
 
-const BetPanel: FC<BetPanelProps> = ({ balance, gameState, betData, onBet, onCancel, onCashout, onUpdate, multiplier, isProcessing }) => {
+const BetPanel: FC<BetPanelProps> = ({ balance, gameState, betData, onBet, onCancel, onUpdate, multiplier, isProcessing }) => {
   const { betState, betAmount, autoCashoutValue } = betData;
   const { toast } = useToast();
 
@@ -277,9 +274,6 @@ const BetPanel: FC<BetPanelProps> = ({ balance, gameState, betData, onBet, onCan
         onBet(betAmount);
     } else if (betState === 'PENDING') {
         onCancel();
-    } else if (betState === 'PLACED') {
-        if (gameState !== 'in_progress') return;
-        onCashout();
     }
   };
 
@@ -288,11 +282,11 @@ const BetPanel: FC<BetPanelProps> = ({ balance, gameState, betData, onBet, onCan
   return (
     <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[2rem] p-6 space-y-6 border border-primary/5 shadow-2xl relative overflow-hidden group">
         <div className="flex justify-between items-center px-1">
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Poste de Flux Sacré</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Commandant de Flux</span>
             {betState === 'PLACED' && (
                 <div className="flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full border border-primary/10">
-                    <Zap className="h-3 w-3 text-primary animate-pulse" />
-                    <span className="text-[9px] font-black text-primary uppercase">Vol en Cours</span>
+                    <Rocket className="h-3 w-3 text-primary animate-pulse" />
+                    <span className="text-[9px] font-black text-primary uppercase">Extraction Auto Activée</span>
                 </div>
             )}
         </div>
@@ -312,7 +306,7 @@ const BetPanel: FC<BetPanelProps> = ({ balance, gameState, betData, onBet, onCan
                 </div>
             </div>
             <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase tracking-widest opacity-30 ml-2">Retrait Auto</Label>
+                <Label className="text-[9px] font-black uppercase tracking-widest opacity-30 ml-2 text-primary">Cible de Retrait</Label>
                 <div className="relative">
                     <Input 
                         type="number" 
@@ -320,9 +314,9 @@ const BetPanel: FC<BetPanelProps> = ({ balance, gameState, betData, onBet, onCan
                         value={autoCashoutValue} 
                         onChange={e => onUpdate({ autoCashoutValue: Number(e.target.value) })}
                         disabled={betState !== 'IDLE'}
-                        className="h-14 bg-primary/5 border-none rounded-2xl text-center font-black text-xl shadow-inner"
+                        className="h-14 bg-primary/10 border-primary/20 rounded-2xl text-center font-black text-xl shadow-inner text-primary"
                     />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black opacity-20">X</span>
+                    <Target className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
                 </div>
             </div>
         </div>
@@ -340,40 +334,29 @@ const BetPanel: FC<BetPanelProps> = ({ balance, gameState, betData, onBet, onCan
             ))}
         </div>
 
-        <div className="flex items-center justify-between px-4 py-2 bg-primary/5 rounded-2xl border border-primary/5">
-            <div className="flex items-center gap-3">
-                <Switch 
-                    checked={betData.isAutoBet} 
-                    onCheckedChange={checked => onUpdate({ isAutoBet: checked })} 
-                />
-                <span className="text-[9px] font-black uppercase tracking-widest opacity-40">Auto Pari</span>
-            </div>
-            <div className="flex items-center gap-3">
-                <Switch 
-                    checked={betData.isAutoCashout} 
-                    onCheckedChange={checked => onUpdate({ isAutoCashout: checked })} 
-                />
-                <span className="text-[9px] font-black uppercase tracking-widest opacity-40">Auto Retrait</span>
-            </div>
-        </div>
-
         <Button 
             onClick={handleAction}
-            disabled={isLocked || isProcessing || (betState === 'IDLE' && gameState === 'in_progress')}
+            disabled={isLocked || isProcessing || (betState === 'IDLE' && gameState === 'in_progress') || betState === 'PLACED'}
             className={cn(
                 "w-full h-20 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] shadow-xl transition-all duration-500",
                 betState === 'IDLE' ? "bg-primary text-primary-foreground shadow-primary/20" :
                 betState === 'PENDING' ? "bg-orange-500/10 text-orange-600 border border-orange-500/20 shadow-none" :
-                betState === 'PLACED' ? "bg-green-600 hover:bg-green-700 text-white shadow-green-600/30 scale-[1.02]" :
+                betState === 'PLACED' ? "bg-primary/5 text-primary/40 border border-primary/10" :
                 "opacity-40 grayscale"
             )}
         >
             {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : 
              betState === 'IDLE' ? "Invoquer le Flux" :
              betState === 'PENDING' ? "Révoquer" :
-             betState === 'PLACED' ? `Encaisser ${(betAmount * multiplier).toFixed(0)} PTS` :
-             betState === 'CASHED_OUT' ? "Succès" : "Échec"}
+             betState === 'PLACED' ? "Vol en cours..." :
+             betState === 'CASHED_OUT' ? "Récupéré" : "Dissonance"}
         </Button>
+
+        <div className="p-4 bg-primary/5 rounded-2xl border border-primary/5">
+            <p className="text-[10px] font-medium opacity-40 italic text-center leading-tight">
+                "Définissez votre cible. L'Oracle matérialisera vos gains automatiquement dès que le Jet l'atteindra."
+            </p>
+        </div>
     </Card>
   );
 };
@@ -400,8 +383,6 @@ export default function JetLumierePage() {
     betState: 'IDLE', 
     betAmount: 100, 
     winAmount: 0, 
-    isAutoBet: false, 
-    isAutoCashout: false, 
     autoCashoutValue: 2.00, 
     lastRoundId: '' 
   });
@@ -434,6 +415,27 @@ export default function JetLumierePage() {
       }, Math.random() * 6000 + 4000);
       return () => clearInterval(chatInterval);
   }, []);
+
+  const handleCashout = useCallback(async (cashoutMultiplier: number) => {
+      if (!userDocRef || isProcessing || !globalStateRef.current) return;
+      if (betDataRef.current.betState !== 'PLACED') return;
+
+      setIsProcessing(true);
+      haptic.success();
+
+      const winAmount = Math.floor(betDataRef.current.betAmount * cashoutMultiplier);
+
+      try {
+        await updateDoc(userDocRef, {
+          totalPoints: increment(winAmount),
+          updatedAt: serverTimestamp()
+        });
+        setBetData(prev => ({ ...prev, betState: 'CASHED_OUT', winAmount }));
+        toast({ title: "Flux Extrait !", description: `+${winAmount} PTS (Cible x${cashoutMultiplier.toFixed(2)} atteinte)` });
+      } finally {
+        setIsProcessing(false);
+      }
+  }, [userDocRef, isProcessing, toast]);
 
   useEffect(() => {
     if (!db || !jetConfigRef) return;
@@ -473,6 +475,7 @@ export default function JetLumierePage() {
         const growthLoop = () => {
             const now = Date.now();
             const elapsedMs = now - startTime;
+            // Croissance exponentielle immuable
             const currentMultiplier = Math.pow(1.002, elapsedMs / 10);
             
             if (currentMultiplier >= crashPoint) {
@@ -481,7 +484,8 @@ export default function JetLumierePage() {
             } else {
                 setMultiplier(currentMultiplier);
                 
-                if (betDataRef.current.betState === 'PLACED' && betDataRef.current.isAutoCashout && currentMultiplier >= betDataRef.current.autoCashoutValue) {
+                // Retrait automatique systématique
+                if (betDataRef.current.betState === 'PLACED' && currentMultiplier >= betDataRef.current.autoCashoutValue) {
                     handleCashout(betDataRef.current.autoCashoutValue);
                 }
 
@@ -498,7 +502,6 @@ export default function JetLumierePage() {
         } else if (status === 'waiting') {
             timer = setTimeout(() => handleGlobalStateTransition('betting'), 3000);
         } else if (status === 'betting') {
-            if (betDataRef.current.isAutoBet && betDataRef.current.betState === 'IDLE' && (profile?.totalPoints || 0) >= betDataRef.current.betAmount) handleBet(betDataRef.current.betAmount);
             timer = setTimeout(() => handleGlobalStateTransition('in_progress'), 8000);
         }
         return () => {
@@ -508,7 +511,7 @@ export default function JetLumierePage() {
     }
 
     return () => { if (growthFrameId) cancelAnimationFrame(growthFrameId); };
-  }, [globalState, db, profile?.totalPoints]);
+  }, [globalState, db, handleCashout]);
 
   const handleGlobalStateTransition = async (nextStatus: GameState) => {
     if (!db || !jetConfigRef || !globalStateRef.current) return;
@@ -570,28 +573,6 @@ export default function JetLumierePage() {
         setIsProcessing(false);
       }
   }, [userDocRef, isProcessing]);
-
-  const handleCashout = useCallback(async (cashoutMultiplier?: number) => {
-      if (!userDocRef || isProcessing || !globalStateRef.current) return;
-      if (betDataRef.current.betState !== 'PLACED') return;
-
-      setIsProcessing(true);
-      haptic.success();
-
-      const finalMultiplier = cashoutMultiplier || multiplier;
-      const winAmount = Math.floor(betDataRef.current.betAmount * finalMultiplier);
-
-      try {
-        await updateDoc(userDocRef, {
-          totalPoints: increment(winAmount),
-          updatedAt: serverTimestamp()
-        });
-        setBetData(prev => ({ ...prev, betState: 'CASHED_OUT', winAmount }));
-        toast({ title: "Flux Récupéré !", description: `+${winAmount} PTS (x${finalMultiplier.toFixed(2)})` });
-      } finally {
-        setIsProcessing(false);
-      }
-  }, [multiplier, userDocRef, isProcessing, toast]);
   
   const handleUpdateBet = useCallback((data: Partial<BetPanelData>) => {
       setBetData(prev => ({...prev, ...data}));
@@ -753,7 +734,6 @@ export default function JetLumierePage() {
                     betData={betData} 
                     onBet={handleBet} 
                     onCancel={handleCancel} 
-                    onCashout={handleCashout} 
                     onUpdate={handleUpdateBet} 
                     multiplier={multiplier} 
                     isProcessing={isProcessing} 
