@@ -31,7 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 /**
  * @fileOverview Oracle du Sceau Global.
  * Gère le bouton de coupon fixe au sommet et l'état des sélections pour toutes les pages sportives.
- * Le coupon est désormais strictement confiné pour éviter tout débordement de la liste de sélections.
+ * Le coupon est désormais strictement optimisé avec une mise sur une ligne.
  */
 
 function CouponOverlay() {
@@ -133,8 +133,8 @@ function CouponOverlay() {
 
             {/* Zone de Sélection Scrollable (Cœur du Confinement) */}
             <div className="flex-1 min-h-0 px-8">
-              <ScrollArea className="h-full w-full">
-                <div className="space-y-4 py-2 pr-4">
+              <div className="h-full w-full overflow-y-auto no-scrollbar pr-1">
+                <div className="space-y-4 py-2">
                   {selections.map((sel) => (
                     <motion.div 
                       key={sel.matchId} 
@@ -160,50 +160,53 @@ function CouponOverlay() {
                     </motion.div>
                   ))}
                 </div>
-              </ScrollArea>
+              </div>
             </div>
 
-            {/* Footer de Mise Fixe */}
+            {/* Footer de Mise Consolidé (Une seule ligne pour Input + Bouton) */}
             <div className="p-8 pt-6 border-t border-primary/5 shrink-0 bg-card/50 space-y-6">
-              <div className="space-y-4">
-                <div className="flex justify-between items-end px-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest opacity-40">Mise de Lumière</Label>
-                  <span className="text-[9px] font-black uppercase opacity-20">Dispo: {profile?.totalPoints?.toLocaleString()} PTS</span>
-                </div>
-                <div className="relative">
-                  <Input 
-                    type="number" 
-                    value={betAmount} 
-                    onChange={(e) => setBetAmount(e.target.value)} 
-                    className="h-16 text-3xl font-black text-center rounded-2xl bg-primary/5 border-none shadow-inner" 
-                    autoFocus 
-                  />
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 opacity-20">
-                    <Zap className="h-6 w-6 text-primary" />
-                  </div>
-                </div>
-              </div>
-              
-              <div className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/5 flex justify-between items-center shadow-inner">
+              {/* Résumé des Gains */}
+              <div className="flex justify-between items-center px-2">
                 <div className="flex flex-col">
-                  <p className="text-[9px] font-black uppercase opacity-30">Multiplicateur</p>
-                  <p className="text-2xl font-black italic text-primary tabular-nums">@{totalOdds.toFixed(2)}</p>
+                  <p className="text-[8px] font-black uppercase opacity-30">Cote Totale</p>
+                  <p className="text-xl font-black italic text-primary tabular-nums">@{totalOdds.toFixed(2)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[9px] font-black uppercase opacity-30">Gain de Lumière</p>
-                  <p className="text-3xl font-black tabular-nums tracking-tighter">
-                    +{potentialWin} <span className="text-xs opacity-20">PTS</span>
-                  </p>
+                  <p className="text-[8px] font-black uppercase opacity-30">Gain Potential</p>
+                  <p className="text-xl font-black tabular-nums text-primary">+{potentialWin} <span className="text-[10px] opacity-40">PTS</span></p>
                 </div>
               </div>
 
-              <Button 
-                onClick={handlePlaceBet} 
-                disabled={isProcessing || selections.length === 0 || currentStake > (profile?.totalPoints || 0)} 
-                className="w-full h-20 rounded-[2.2rem] font-black text-sm uppercase shadow-2xl bg-primary text-primary-foreground gap-4 active:scale-95"
-              >
-                {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : <ShieldCheck className="h-6 w-6" />} Sceller le Pacte
-              </Button>
+              {/* Ligne Unique de Contrôle */}
+              <div className="flex gap-3 items-end">
+                <div className="flex-1 space-y-2">
+                  <div className="flex justify-between items-center px-1">
+                    <Label className="text-[9px] font-black uppercase opacity-40">Mise</Label>
+                    <span className="text-[8px] font-black opacity-20 tabular-nums">Solde: {profile?.totalPoints?.toLocaleString()}</span>
+                  </div>
+                  <div className="relative">
+                    <Input 
+                      type="number" 
+                      value={betAmount} 
+                      onChange={(e) => setBetAmount(e.target.value)} 
+                      className="h-14 text-xl font-black pl-10 rounded-2xl bg-primary/5 border-none shadow-inner" 
+                      autoFocus 
+                    />
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 opacity-20">
+                      <Zap className="h-4 w-4 text-primary" />
+                    </div>
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={handlePlaceBet} 
+                  disabled={isProcessing || selections.length === 0 || currentStake > (profile?.totalPoints || 0)} 
+                  className="h-14 px-6 rounded-2xl font-black text-xs uppercase shadow-xl bg-primary text-primary-foreground gap-2 shrink-0 active:scale-95 transition-all"
+                >
+                  {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />} 
+                  Sceller
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
