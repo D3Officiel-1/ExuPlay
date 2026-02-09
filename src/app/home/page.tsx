@@ -13,7 +13,7 @@ import {
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Zap, Users, Sparkles, Brain, Trophy, Swords, Flag, ChevronRight, Rocket } from "lucide-react";
+import { Zap, Users, Sparkles, Brain, Trophy, Swords, Flag, ChevronRight, Rocket, Bomb } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -161,6 +161,15 @@ export default function HomePage() {
       color: "text-blue-500",
       bg: "bg-blue-500/5",
       path: "/quiz"
+    },
+    {
+      id: "mines",
+      title: "Mines de l'Éveil",
+      description: "Purifiez les cristaux et évitez le vide.",
+      icon: Bomb,
+      color: "text-amber-500",
+      bg: "bg-amber-500/5",
+      path: "/mines"
     },
     {
       id: "jet-lumiere",
