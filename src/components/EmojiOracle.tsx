@@ -8,22 +8,23 @@ interface SingleEmojiProps {
   emoji: string;
   hex: string;
   className?: string;
+  forceStatic?: boolean;
 }
 
 /**
- * @fileOverview SingleEmoji - Composant de rendu individuel avec cascade de secours.
- * 1. Tente le GIF animé (3D).
- * 2. Repli sur le WebP statique (3D).
- * 3. Repli final sur le caractère Unicode (Texte).
+ * @fileOverview SingleEmoji - Rendu individuel avec gestion de stase.
  */
-function SingleEmoji({ emoji, hex, className }: SingleEmojiProps) {
+function SingleEmoji({ emoji, hex, className, forceStatic = false }: SingleEmojiProps) {
   const [stage, setStage] = useState<'animated' | 'static' | 'text'>('animated');
+
+  // Si forcé statique (clavier) ou repli, on utilise WebP
+  const currentStage = forceStatic ? 'static' : stage;
 
   if (stage === 'text') {
     return <span className={className}>{emoji}</span>;
   }
 
-  const ext = stage === 'animated' ? 'gif' : 'webp';
+  const ext = currentStage === 'animated' ? 'gif' : 'webp';
   const src = `https://fonts.gstatic.com/s/e/notoemoji/latest/${hex}/512.${ext}`;
 
   return (
@@ -47,14 +48,13 @@ interface EmojiOracleProps {
   text: string;
   className?: string;
   emojiClassName?: string;
+  forceStatic?: boolean;
 }
 
 /**
- * @fileOverview EmojiOracle - Le Sceau de Transmutation v3.0.
- * Détecte les emojis unicode et les remplace par leurs versions 3D (animées ou statiques).
+ * @fileOverview EmojiOracle - Détecte les emojis et les transmute en 3D.
  */
-export function EmojiOracle({ text, className, emojiClassName }: EmojiOracleProps) {
-  // Regex robuste pour capturer les emojis simples et les séquences complexes
+export function EmojiOracle({ text, className, emojiClassName, forceStatic = false }: EmojiOracleProps) {
   const emojiRegex = /(\p{Emoji_Presentation}|\p{Emoji}\uFE0F|\p{Emoji_Modifier_Base}\p{Emoji_Modifier}?|[\u2600-\u27BF]\uFE0F?|[\uD83C-\uD83E][\uDC00-\uDFFF](?:\u200D[\uD83C-\uD83E][\uDC00-\uDFFF])*)/gu;
 
   const nodes = useMemo(() => {
@@ -83,6 +83,7 @@ export function EmojiOracle({ text, className, emojiClassName }: EmojiOracleProp
           emoji={emoji}
           hex={hex}
           className={emojiClassName}
+          forceStatic={forceStatic}
         />
       );
       
@@ -94,7 +95,7 @@ export function EmojiOracle({ text, className, emojiClassName }: EmojiOracleProp
     }
 
     return parts;
-  }, [text, emojiClassName]);
+  }, [text, emojiClassName, forceStatic]);
 
   if (!text) return null;
 

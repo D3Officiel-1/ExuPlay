@@ -68,7 +68,7 @@
   }
 }
 
-/* Oracle du Mode Éco-Éther */
+/* Oracle du Mode Éco-Éther : Fige la réalité */
 .reduced-motion * {
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
@@ -78,11 +78,12 @@
 
 .reduced-motion .animate-pulse,
 .reduced-motion .animate-spin,
-.reduced-motion .animate-bounce {
+.reduced-motion .animate-bounce,
+.reduced-motion .animate-in,
+.reduced-motion .animate-out {
   animation: none !important;
 }
 
-/* Adaptation pour le clavier personnalisé */
 .pb-safe-area-inset-bottom {
   padding-bottom: env(safe-area-inset-bottom);
 }

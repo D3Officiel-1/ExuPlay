@@ -2,11 +2,11 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   Delete, ArrowUp, Check, Smile, Dog, Pizza, 
-  Plane, Heart, Gamepad2, LayoutGrid, Flag, Sparkles, Wand2,
-  Search, X, Zap, ZapOff, ChevronLeft, ChevronRight, GripHorizontal
+  Plane, Heart, Gamepad2, LayoutGrid, Flag, Sparkles,
+  Search, X, Zap, ZapOff, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -24,47 +24,11 @@ import {
 import { getSmartSuggestions } from "@/lib/spell-checker";
 import { useUser, useFirestore, useDoc } from "@/firebase";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { EmojiOracle } from "./EmojiOracle";
 
 type KeyboardLayout = "alpha" | "numeric" | "emoji";
 
-// Stase de Hauteur Unifiée
 const BASE_HEIGHT = 280;
-
-function KeyboardEmoji({ emoji, hex, isEcoMode, onClick }: { emoji: string, hex: string, isEcoMode: boolean, onClick: (char: string) => void }) {
-  const [stage, setStage] = useState<'animated' | 'static' | 'text'>('animated');
-
-  // Si mode éco activé, on force la version statique
-  const currentStage = isEcoMode ? 'static' : stage;
-
-  const getUrl = () => {
-    const ext = currentStage === 'animated' ? 'gif' : 'webp';
-    return `https://fonts.gstatic.com/s/e/notoemoji/latest/${hex}/512.${ext}`;
-  };
-
-  return (
-    <motion.button
-      whileTap={{ scale: 0.85 }}
-      onPointerDown={(e) => e.preventDefault()}
-      onClick={() => { haptic.light(); onClick(emoji); }}
-      className="flex items-center justify-center aspect-square w-full bg-primary/[0.03] border border-primary/5 hover:bg-primary/10 transition-all p-1 group overflow-hidden relative rounded-xl"
-    >
-      {currentStage === 'text' ? (
-        <span className="text-xl">{emoji}</span>
-      ) : (
-        <img 
-          src={getUrl()} 
-          alt={emoji} 
-          className="w-[85%] h-[85%] object-contain relative z-10" 
-          loading="lazy"
-          onError={() => {
-            if (stage === 'animated') setStage('static');
-            else if (stage === 'static') setStage('text');
-          }}
-        />
-      )}
-    </motion.button>
-  );
-}
 
 export function CustomKeyboard() {
   const { user } = useUser();
@@ -84,7 +48,6 @@ export function CustomKeyboard() {
   const [isEmojiSearchActive, setIsEmojiSearchActive] = useState(false);
   const [emojiSearchQuery, setEmojiSearchQuery] = useState("");
 
-  // États pour le déplacement du curseur via l'espace
   const [isSpaceDragging, setIsSpaceDragging] = useState(false);
   const [dragStartX, setDragStartX] = useState(0);
   const [dragLastX, setDragLastX] = useState(0);
@@ -137,6 +100,7 @@ export function CustomKeyboard() {
     const value = activeInput.value;
     const newValue = value.substring(0, start) + text + value.substring(end);
     
+    // Calcul de la nouvelle position du curseur en tenant compte des emojis
     const newCursorPos = start + Array.from(text).length;
 
     const prototype = activeInput instanceof HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
@@ -357,9 +321,9 @@ export function CustomKeyboard() {
                 className="w-full max-w-md bg-card/80 backdrop-blur-3xl rounded-3xl border border-primary/10 shadow-2xl p-2 mb-2 flex gap-2 overflow-x-auto no-scrollbar pointer-events-auto h-16 items-center"
               >
                 {filteredEmojis.length > 0 ? filteredEmojis.map((emoji, i) => (
-                  <div key={i} className="h-12 w-12 shrink-0">
-                    <KeyboardEmoji emoji={emoji.char} hex={emoji.hex} isEcoMode={isEcoMode} onClick={(char) => insertText(char)} />
-                  </div>
+                  <button key={i} onClick={() => insertText(emoji.char)} className="h-12 w-12 shrink-0 flex items-center justify-center bg-primary/5 rounded-xl text-xl">
+                    <EmojiOracle text={emoji.char} forceStatic />
+                  </button>
                 )) : <div className="w-full text-center opacity-30 text-[8px] font-black uppercase tracking-[0.4em]">Essence introuvable</div>}
               </motion.div>
             )}
@@ -382,7 +346,7 @@ export function CustomKeyboard() {
             style={{ height: `${currentHeight}px`, transition: (isResizing || isSpaceDragging) ? 'none' : 'height 0.5s cubic-bezier(0.22, 1, 0.36, 1)' }}
             className="w-full max-w-md bg-card/60 backdrop-blur-[55px] border-t border-x border-primary/5 rounded-t-[3rem] p-4 shadow-[0_-20px_100px_-20px_rgba(0,0,0,0.5)] pointer-events-auto overflow-hidden flex flex-col"
           >
-            {/* Barre de Suggestions Unifiée */}
+            {/* Barre de Suggestions Fusionnée */}
             {layout !== "emoji" && !isEmojiSearchActive && !isSpaceDragging && (
               <div className="h-10 flex items-center justify-center gap-3 overflow-hidden px-4 shrink-0">
                 <AnimatePresence mode="popLayout">
@@ -453,7 +417,9 @@ export function CustomKeyboard() {
                         </div>
                         <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-8 gap-2 p-1 bg-primary/[0.02] rounded-3xl border border-primary/5">
                           {categories[emojiCategory].items.map((e, idx) => (
-                            <KeyboardEmoji key={idx} emoji={e.char} hex={e.hex} isEcoMode={isEcoMode} onClick={(char) => insertText(char)} />
+                            <button key={idx} onClick={() => insertText(e.char)} className="flex items-center justify-center aspect-square bg-primary/[0.03] border border-primary/5 hover:bg-primary/10 transition-all rounded-xl text-lg">
+                              <EmojiOracle text={e.char} forceStatic />
+                            </button>
                           ))}
                         </div>
                         <div className="flex gap-3 mt-4 h-14 shrink-0 border-t border-primary/5 pt-3">
