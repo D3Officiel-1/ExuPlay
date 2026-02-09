@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -29,8 +28,7 @@ export function QuizAutoGenerator() {
     if (!db || !status || isGenerating || !user) return;
 
     const checkAndGenerate = async () => {
-      // On ne tente la génération que si l'esprit est un administrateur ou un adepte actif
-      // pour éviter de saturer les flux de pensée (API Quotas) si trop d'esprits sont connectés.
+      // On vérifie si 5 minutes se sont écoulées depuis la dernière génération
       const now = Date.now();
       const lastGen = status.lastAutoGenerationAt 
         ? (status.lastAutoGenerationAt as Timestamp).toDate().getTime() 
@@ -44,6 +42,7 @@ export function QuizAutoGenerator() {
 
         try {
           // 1. Marquer immédiatement le début de la génération pour verrouiller le slot
+          // Cela empêche plusieurs utilisateurs de déclencher la génération simultanément
           await updateDoc(statusRef!, {
             lastAutoGenerationAt: serverTimestamp()
           });
@@ -68,8 +67,8 @@ export function QuizAutoGenerator() {
       }
     };
 
-    // Vérification toutes les minutes
-    const interval = setInterval(checkAndGenerate, 60000);
+    // Vérification périodique du flux temporel
+    const interval = setInterval(checkAndGenerate, 60000); // Toutes les minutes
     checkAndGenerate();
 
     return () => clearInterval(interval);

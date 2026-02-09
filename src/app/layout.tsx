@@ -1,4 +1,3 @@
-
 "use client";
 
 import "./globals.css";
@@ -7,8 +6,7 @@ import { FirebaseClientProvider, useUser, useFirestore, useDoc } from "@/firebas
 import { Toaster } from "@/components/ui/toaster";
 import { ToastProvider } from "@/components/ui/toast";
 import { useEffect, useState, useMemo } from "react";
-import { WifiOff, ShieldAlert, Loader2 } from "lucide-react";
-import { motion, AnimatePresence, MotionConfig } from "framer-motion";
+import { motion, MotionConfig } from "framer-motion";
 import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
 import { BiometricLock } from "@/components/BiometricLock";
 import { SuccessfulExchangeOverlay } from "@/components/SuccessfulExchangeOverlay";
@@ -18,7 +16,7 @@ import { IncomingTransferOverlay } from "@/components/IncomingTransferOverlay";
 import { CustomKeyboard } from "@/components/CustomKeyboard";
 import { TextSelectionMenu } from "@/components/TextSelectionMenu";
 import { QuizAutoGenerator } from "@/components/QuizAutoGenerator";
-import { doc, getDoc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/Logo";
 import { usePathname, useRouter } from "next/navigation";
@@ -30,6 +28,7 @@ import { hexToHsl, hexToRgb, getContrastColor } from "@/lib/colors";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Loader2 } from "lucide-react";
 
 function SystemBarSync() {
   const { resolvedTheme } = useTheme();
@@ -121,18 +120,14 @@ function ColorInjector() {
 }
 
 function SecurityWrapper({ children }: { children: React.ReactNode }) {
-  const [isOffline, setIsOffline] = useState(false);
   const { user, isLoading: isAuthLoading } = useUser();
   const db = useFirestore();
   const pathname = usePathname();
   const router = useRouter();
   const isMobile = useIsMobile();
 
-  const appConfigRef = useMemo(() => db ? doc(db, "appConfig", "status") : null, [db]);
   const userDocRef = useMemo(() => (db && user?.uid) ? doc(db, "users", user.uid) : null, [db, user?.uid]);
-
   const { data: profile } = useDoc(userDocRef);
-  const { data: appStatus } = useDoc(appConfigRef);
 
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => e.preventDefault();
@@ -147,18 +142,6 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
       router.push("/login");
     }
   }, [user, isAuthLoading, pathname, router]);
-
-  useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    setIsOffline(!navigator.onLine);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
 
   const isEcoMode = profile?.reducedMotion === true;
 
