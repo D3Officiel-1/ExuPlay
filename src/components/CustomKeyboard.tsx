@@ -30,6 +30,11 @@ type KeyboardLayout = "alpha" | "numeric" | "emoji";
 
 const BASE_HEIGHT = 280;
 
+/**
+ * @fileOverview Clavier Chroma Flux v3.5.
+ * L'instrument de saisie ultime du Sanctuaire, doté de lévitation haptique, 
+ * de navigation spatiale et d'un mode de stase universelle.
+ */
 export function CustomKeyboard() {
   const { user } = useUser();
   const db = useFirestore();
@@ -49,7 +54,6 @@ export function CustomKeyboard() {
   const [emojiSearchQuery, setEmojiSearchQuery] = useState("");
 
   const [isSpaceDragging, setIsSpaceDragging] = useState(false);
-  const [dragStartX, setDragStartX] = useState(0);
   const [dragLastX, setDragLastX] = useState(0);
   
   const backspaceIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -187,11 +191,11 @@ export function CustomKeyboard() {
     }
   }, [activeInput, isShift, layout, updateSuggestions, isEmojiSearchActive, insertText, isEcoMode, userDocRef]);
 
+  // Sceau de Navigation (Espace)
   const handleSpaceDown = (e: React.PointerEvent) => {
     e.preventDefault();
     if (!activeInput || isEmojiSearchActive) return;
     setIsSpaceDragging(true);
-    setDragStartX(e.clientX);
     setDragLastX(e.clientX);
     haptic.medium();
   };
@@ -213,8 +217,7 @@ export function CustomKeyboard() {
         }
       }
     };
-    const handleUp = (e: PointerEvent) => {
-      if (Math.abs(e.clientX - dragStartX) < 10) handleKeyPress("space");
+    const handleUp = () => {
       setIsSpaceDragging(false);
       haptic.light();
     };
@@ -224,8 +227,37 @@ export function CustomKeyboard() {
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
     };
-  }, [isSpaceDragging, dragLastX, dragStartX, activeInput, handleKeyPress]);
+  }, [isSpaceDragging, dragLastX, activeInput]);
 
+  // Lévitation Haptique (Redimensionnement)
+  const handleResizeStart = (e: React.PointerEvent) => {
+    if (isEmojiSearchActive) return;
+    setIsResizing(true);
+    resizeStartY.current = e.clientY;
+    resizeStartHeight.current = keyboardHeight;
+    document.body.style.overflow = "hidden"; // Sceau de Stase arrière-plan
+    haptic.medium();
+  };
+
+  useEffect(() => {
+    const handleMove = (e: PointerEvent) => {
+      if (!isResizing) return;
+      const deltaY = e.clientY - resizeStartY.current;
+      const newHeight = Math.max(BASE_HEIGHT, Math.min(window.innerHeight - 100, resizeStartHeight.current - deltaY));
+      setKeyboardHeight(newHeight);
+    };
+    const handleUp = () => { 
+      if (isResizing) { 
+        setIsResizing(false); 
+        document.body.style.overflow = "";
+        haptic.light(); 
+      } 
+    };
+    if (isResizing) { window.addEventListener("pointermove", handleMove); window.addEventListener("pointerup", handleUp); } 
+    return () => { window.removeEventListener("pointermove", handleMove); window.removeEventListener("pointerup", handleUp); };
+  }, [isResizing]);
+
+  // Écouteurs de Focus
   useEffect(() => {
     const handleFocus = (e: FocusEvent) => {
       const target = e.target as HTMLInputElement | HTMLTextAreaElement;
@@ -250,12 +282,6 @@ export function CustomKeyboard() {
     };
   }, [updateSuggestions]);
 
-  useEffect(() => {
-    if (isResizing) document.body.style.overflow = "hidden";
-    else document.body.style.overflow = "";
-    return () => { document.body.style.overflow = ""; };
-  }, [isResizing]);
-
   const startBackspace = useCallback(() => {
     handleKeyPress("backspace");
     backspaceTimeoutRef.current = setTimeout(() => {
@@ -267,26 +293,6 @@ export function CustomKeyboard() {
     if (backspaceTimeoutRef.current) clearTimeout(backspaceTimeoutRef.current);
     if (backspaceIntervalRef.current) clearInterval(backspaceIntervalRef.current);
   }, []);
-
-  const handleResizeStart = (e: React.PointerEvent) => {
-    if (isEmojiSearchActive) return;
-    setIsResizing(true);
-    resizeStartY.current = e.clientY;
-    resizeStartHeight.current = keyboardHeight;
-    haptic.medium();
-  };
-
-  useEffect(() => {
-    const handleMove = (e: PointerEvent) => {
-      if (!isResizing) return;
-      const deltaY = e.clientY - resizeStartY.current;
-      const newHeight = Math.max(BASE_HEIGHT, Math.min(window.innerHeight - 100, resizeStartHeight.current - deltaY));
-      setKeyboardHeight(newHeight);
-    };
-    const handleUp = () => { if (isResizing) { setIsResizing(false); haptic.light(); } };
-    if (isResizing) { window.addEventListener("pointermove", handleMove); window.addEventListener("pointerup", handleUp); } 
-    return () => { window.removeEventListener("pointermove", handleMove); window.removeEventListener("pointerup", handleUp); };
-  }, [isResizing]);
 
   const ALPHA_KEYS = [
     ["A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P"],
@@ -311,6 +317,7 @@ export function CustomKeyboard() {
           initial={{ y: "100%", opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: "100%", opacity: 0 }}
+          transition={{ type: "spring", damping: 30, stiffness: 300 }}
           className="fixed bottom-0 left-0 right-0 z-[10002] px-2 pb-safe-area-inset-bottom pointer-events-none flex flex-col items-center"
         >
           {/* Cristal de Résultats Recherche Emoji */}
@@ -320,10 +327,10 @@ export function CustomKeyboard() {
                 initial={{ opacity: 0, y: 20, scale: 0.9, filter: "blur(10px)" }}
                 animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
                 exit={{ opacity: 0, y: 20, filter: "blur(10px)" }}
-                className="w-full max-w-md bg-card/80 backdrop-blur-3xl rounded-3xl border border-primary/10 shadow-2xl p-2 mb-2 flex gap-2 overflow-x-auto no-scrollbar pointer-events-auto h-16 items-center"
+                className="w-full max-w-md bg-card/80 backdrop-blur-3xl rounded-[2.5rem] border border-primary/10 shadow-2xl p-2 mb-2 flex gap-2 overflow-x-auto no-scrollbar pointer-events-auto h-16 items-center"
               >
                 {filteredEmojis.length > 0 ? filteredEmojis.map((emoji, i) => (
-                  <button key={i} onClick={() => insertText(emoji.char)} className="h-12 w-12 shrink-0 flex items-center justify-center bg-primary/5 rounded-xl text-xl">
+                  <button key={i} onClick={() => insertText(emoji.char)} className="h-12 w-12 shrink-0 flex items-center justify-center bg-primary/5 rounded-2xl text-xl">
                     <EmojiOracle text={emoji.char} forceStatic />
                   </button>
                 )) : <div className="w-full text-center opacity-30 text-[8px] font-black uppercase tracking-[0.4em]">Essence introuvable</div>}
@@ -331,7 +338,7 @@ export function CustomKeyboard() {
             )}
           </AnimatePresence>
 
-          {/* Poignée de Lévitation */}
+          {/* Poignée de Lévitation (Emoji uniquement) */}
           {!isEmojiSearchActive && layout === "emoji" && (
             <motion.div 
               onPointerDown={handleResizeStart}
@@ -345,10 +352,13 @@ export function CustomKeyboard() {
           )}
 
           <div 
-            style={{ height: `${currentHeight}px`, transition: (isResizing || isSpaceDragging) ? 'none' : 'height 0.5s cubic-bezier(0.22, 1, 0.36, 1)' }}
+            style={{ 
+              height: `${currentHeight}px`, 
+              transition: (isResizing || isSpaceDragging) ? 'none' : 'height 0.5s cubic-bezier(0.22, 1, 0.36, 1)' 
+            }}
             className="w-full max-w-md bg-card/60 backdrop-blur-[55px] border-t border-x border-primary/5 rounded-t-[3rem] p-4 shadow-[0_-20px_100px_-20px_rgba(0,0,0,0.5)] pointer-events-auto overflow-hidden flex flex-col"
           >
-            {/* Barre de Suggestions / Recherche */}
+            {/* Suggestions / Recherche */}
             {layout !== "emoji" && !isEmojiSearchActive && !isSpaceDragging && (
               <div className="h-10 flex items-center justify-center gap-3 overflow-hidden px-4 shrink-0">
                 <AnimatePresence mode="popLayout">
@@ -401,7 +411,7 @@ export function CustomKeyboard() {
                                     key === "space" && "flex-[4]"
                                   )}
                                 >
-                                  {key === "backspace" ? <Delete className="h-5 w-5" /> : key === "enter" ? <Check className="h-5 w-5" /> : key === "shift" ? <ArrowUp className="h-5 w-5" /> : key === "space" ? "ESPACE" : key === "eco-toggle" ? (isEcoMode ? <ZapOff className="h-4 w-4" /> : <Zap className="h-4 w-4" />) : (isShift ? key.toUpperCase() : key.toLowerCase())}
+                                  {key === "backspace" ? <Delete className="h-5 w-5" /> : key === "enter" ? <Check className="h-5 w-5" /> : key === "shift" ? <ArrowUp className="h-5 w-5" /> : key === "space" ? "ESPACE" : key === "eco-toggle" ? (isEcoMode ? <ZapOff className="h-4 w-4 text-primary" /> : <Zap className="h-4 w-4 opacity-40" />) : (isShift ? key.toUpperCase() : key.toLowerCase())}
                                 </motion.button>
                               ))}
                             </div>
@@ -438,7 +448,7 @@ export function CustomKeyboard() {
                       <div key={i} className="flex justify-center gap-1.5 h-[18%] relative">
                         {row.map((key) => {
                           const isSpecial = ["shift", "backspace", "enter", "?123", "abc", "space", "emoji-switch", "eco-toggle"].includes(key);
-                          const isOtherInSpaceRow = isSpaceDragging && key !== "space" && row.includes("space");
+                          const isAdjacentInSpaceRow = isSpaceDragging && key !== "space" && row.includes("space");
                           
                           if (key === "space") return (
                             <motion.button 
@@ -465,13 +475,13 @@ export function CustomKeyboard() {
                           return (
                             <motion.button
                               key={key}
-                              whileTap={isOtherInSpaceRow ? {} : { scale: 0.92 }}
+                              whileTap={isAdjacentInSpaceRow ? {} : { scale: 0.92 }}
                               animate={{ 
-                                opacity: isOtherInSpaceRow ? 0 : 1, 
-                                scale: isOtherInSpaceRow ? 0.8 : 1,
-                                filter: isOtherInSpaceRow ? "blur(5px)" : "blur(0px)"
+                                opacity: isAdjacentInSpaceRow ? 0 : 1, 
+                                scale: isAdjacentInSpaceRow ? 0.8 : 1,
+                                filter: isAdjacentInSpaceRow ? "blur(5px)" : "blur(0px)"
                               }}
-                              onPointerDown={(e) => { if (isOtherInSpaceRow) return; e.preventDefault(); if (key === "backspace") startBackspace(); else handleKeyPress(key); }}
+                              onPointerDown={(e) => { if (isAdjacentInSpaceRow) return; e.preventDefault(); if (key === "backspace") startBackspace(); else handleKeyPress(key); }}
                               onPointerUp={stopBackspace}
                               className={cn(
                                 "relative flex items-center justify-center rounded-2xl font-black transition-all border",

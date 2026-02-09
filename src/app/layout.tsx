@@ -15,7 +15,6 @@ import { SuccessfulExchangeOverlay } from "@/components/SuccessfulExchangeOverla
 import { AdminPendingExchangeOverlay } from "@/components/AdminPendingExchangeOverlay";
 import { DuelInvitationListener } from "@/components/DuelInvitationListener";
 import { IncomingTransferOverlay } from "@/components/IncomingTransferOverlay";
-import { RewardQuickView } from "@/components/RewardQuickView";
 import { CustomKeyboard } from "@/components/CustomKeyboard";
 import { TextSelectionMenu } from "@/components/TextSelectionMenu";
 import { doc, getDoc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
@@ -49,14 +48,6 @@ function SystemBarSync() {
         document.head.appendChild(metaThemeColor);
       }
       metaThemeColor.setAttribute('content', computedBg);
-
-      let metaApple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-      if (!metaApple) {
-        metaApple = document.createElement('meta');
-        metaApple.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
-        document.head.appendChild(metaApple);
-      }
-      metaApple.setAttribute('content', 'default');
     };
 
     applySync();
@@ -126,66 +117,6 @@ function ColorInjector() {
   return <style dangerouslySetInnerHTML={{ __html: cssVariables }} />;
 }
 
-function CommunityFluxPulsar() {
-  const { user } = useUser();
-  const db = useFirestore();
-  useEffect(() => {
-    if (!user || !db) return;
-    const pulseFlux = async () => {
-      try {
-        const appConfigRef = doc(db, "appConfig", "status");
-        await updateDoc(appConfigRef, { communityGoalPoints: increment(1), updatedAt: serverTimestamp() });
-      } catch (error) {}
-    };
-    const interval = setInterval(pulseFlux, 120000);
-    return () => clearInterval(interval);
-  }, [user, db]);
-  return null;
-}
-
-function MaintenanceOverlay({ message }: { message?: string }) {
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[1000] bg-background flex flex-col items-center justify-center p-8 text-center">
-      <div className="absolute inset-0 pointer-events-none opacity-20 overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-primary/10 blur-[120px]" />
-      </div>
-      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="space-y-12 max-w-sm">
-        <div className="flex justify-center"><Logo className="scale-125" /></div>
-        <div className="space-y-6">
-          <div className="mx-auto w-24 h-24 bg-primary/5 rounded-[2.5rem] flex items-center justify-center border border-primary/10 shadow-2xl relative">
-            <ShieldAlert className="h-10 w-10 text-primary" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-3xl font-black tracking-tight uppercase">Éveil en Pause</h2>
-            <p className="text-sm font-medium opacity-40 leading-relaxed px-4">{message || "Nous harmonisons l'éther numérique. Revenez bientôt."}</p>
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-function OfflineOverlay() {
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, filter: "blur(20px)" }} className="fixed inset-0 z-[1100] bg-background flex flex-col items-center justify-center p-8 text-center">
-      <div className="space-y-12 max-w-sm z-10">
-        <div className="flex justify-center"><Logo className="scale-110" /></div>
-        <div className="space-y-8">
-          <div className="relative mx-auto w-24 h-24">
-            <div className="relative h-full w-full bg-card/40 backdrop-blur-2xl border border-destructive/10 rounded-[2.5rem] flex items-center justify-center shadow-2xl overflow-hidden">
-              <WifiOff className="h-10 w-10 text-destructive" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-3xl font-black tracking-tight uppercase text-destructive italic">Signal Perdu</h2>
-            <p className="text-sm font-medium opacity-40 px-4">L'éther est silencieux. Votre esprit est déconnecté.</p>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
 function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const [isOffline, setIsOffline] = useState(false);
   const { user, isLoading: isAuthLoading } = useUser();
@@ -213,53 +144,21 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
         if (el.getAttribute('inputmode') !== 'none') {
           el.setAttribute('inputmode', 'none');
         }
-        if (el.getAttribute('virtualKeyboardPolicy') !== 'manual') {
-          el.setAttribute('virtualKeyboardPolicy', 'manual');
-        }
-        if (el.getAttribute('autocomplete') !== 'off') {
-          el.setAttribute('autocomplete', 'off');
-        }
       });
     };
 
     enforceKeyboardShield();
     const observer = new MutationObserver(enforceKeyboardShield);
     observer.observe(document.body, { childList: true, subtree: true });
-
-    const handleFocusIn = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
-        target.setAttribute('inputmode', 'none');
-        target.setAttribute('virtualKeyboardPolicy', 'manual');
-      }
-    };
-
-    const handleWindowFocus = () => {
-      enforceKeyboardShield();
-      if (document.activeElement instanceof HTMLElement && 
-         (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
-        document.activeElement.blur();
-        setTimeout(() => (document.activeElement as HTMLElement)?.focus(), 10);
-      }
-    };
-
-    window.addEventListener('focusin', handleFocusIn);
-    window.addEventListener('focus', handleWindowFocus);
     
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('focusin', handleFocusIn);
-      window.removeEventListener('focus', handleWindowFocus);
-    };
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
     if (isAuthLoading) return;
-    const publicPaths = ["/", "/login", "/offline", "/autoriser"];
+    const publicPaths = ["/", "/login", "/autoriser"];
     if (!user && !publicPaths.includes(pathname)) {
       router.push("/login");
-    } else if (user && pathname === "/login") {
-      router.push("/home");
     }
   }, [user, isAuthLoading, pathname, router]);
 
@@ -275,30 +174,23 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const isMaintenanceActive = appStatus?.maintenanceMode === true;
-  const isStandardUser = profile?.role === 'user';
-  const showMaintenance = isMaintenanceActive && isStandardUser;
-  const showOffline = isOffline && !["/", "/login", "/autoriser", "/offline"].includes(pathname);
+  const showMaintenance = appStatus?.maintenanceMode === true && profile?.role === 'user';
+  const showOffline = isOffline && !["/", "/login", "/autoriser"].includes(pathname);
+  const isEcoMode = profile?.reducedMotion === true;
 
-  if (isAuthLoading && !["/", "/login", "/autoriser", "/offline"].includes(pathname)) {
+  if (isAuthLoading && !["/", "/login", "/autoriser"].includes(pathname)) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div>;
   }
 
-  const excludedNavPaths = ["/", "/login", "/autoriser", "/offline", "/transfert", "/duels", "/arcade", "/_not-found"];
-  const excludedBottomNavPaths = ["/", "/login", "/autoriser", "/offline", "/transfert", "/echange", "/duels", "/arcade", "/_not-found"];
+  const excludedNavPaths = ["/", "/login", "/autoriser", "/arcade"];
+  const excludedBottomNavPaths = ["/", "/login", "/autoriser", "/transfert", "/echange", "/duels", "/arcade"];
 
-  const isPathExcluded = (path: string, exclusions: string[]) => exclusions.some(p => p === "/" ? path === "/" : path.startsWith(p));
-
-  const showNav = user && !isPathExcluded(pathname, excludedNavPaths);
-  const showBottomNav = user && !isPathExcluded(pathname, excludedBottomNavPaths);
-  const isEcoMode = profile?.reducedMotion === true;
+  const showNav = user && !excludedNavPaths.some(p => pathname === p || pathname.startsWith(p));
+  const showBottomNav = user && !excludedBottomNavPaths.some(p => pathname === p || pathname.startsWith(p));
 
   return (
     <div className={cn(isEcoMode && "reduced-motion")}>
       <MotionConfig reducedMotion={isEcoMode ? "always" : "no-preference"}>
-        <AnimatePresence mode="wait">
-          {showOffline ? <OfflineOverlay key="offline" /> : showMaintenance ? <MaintenanceOverlay key="maintenance" message={appStatus?.maintenanceMessage} /> : null}
-        </AnimatePresence>
         <ThemeSync />
         <ColorInjector />
         <SystemBarSync />
@@ -307,8 +199,6 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
         <AdminPendingExchangeOverlay />
         <IncomingTransferOverlay />
         <DuelInvitationListener />
-        <CommunityFluxPulsar />
-        <RewardQuickView />
         {isMobile && <CustomKeyboard />}
         <TextSelectionMenu />
         {showNav && <Header />}
@@ -325,7 +215,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="antialiased font-sans overflow-x-hidden">
         <FirebaseClientProvider>

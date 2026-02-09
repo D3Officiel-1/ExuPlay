@@ -13,6 +13,7 @@ interface SingleEmojiProps {
 
 /**
  * @fileOverview SingleEmoji - Rendu individuel avec gestion de stase.
+ * Transmute les symboles en essences 3D animées ou statiques selon le mode.
  */
 function SingleEmoji({ emoji, hex, className, forceStatic = false }: SingleEmojiProps) {
   const [stage, setStage] = useState<'animated' | 'static' | 'text'>('animated');
@@ -24,6 +25,7 @@ function SingleEmoji({ emoji, hex, className, forceStatic = false }: SingleEmoji
     return <span className={className}>{emoji}</span>;
   }
 
+  // Animated = GIF, Static = WebP (haute performance)
   const ext = currentStage === 'animated' ? 'gif' : 'webp';
   const src = `https://fonts.gstatic.com/s/e/notoemoji/latest/${hex}/512.${ext}`;
 
@@ -52,7 +54,7 @@ interface EmojiOracleProps {
 }
 
 /**
- * @fileOverview EmojiOracle - Détecte les emojis et les transmute en 3D.
+ * @fileOverview EmojiOracle - Détecte les emojis et les transmute en essences 3D.
  */
 export function EmojiOracle({ text, className, emojiClassName, forceStatic = false }: EmojiOracleProps) {
   const emojiRegex = /(\p{Emoji_Presentation}|\p{Emoji}\uFE0F|\p{Emoji_Modifier_Base}\p{Emoji_Modifier}?|[\u2600-\u27BF]\uFE0F?|[\uD83C-\uD83E][\uDC00-\uDFFF](?:\u200D[\uD83C-\uD83E][\uDC00-\uDFFF])*)/gu;

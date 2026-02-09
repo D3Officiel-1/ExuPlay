@@ -5,13 +5,13 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%; /* White */
-    --foreground: 0 0% 0%; /* Black */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 0%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 0%;
-    --primary: 0 0% 0%; /* Black primary in light mode */
+    --primary: 0 0% 0%;
     --primary-rgb: 0, 0, 0;
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 96%;
@@ -28,13 +28,13 @@
     --radius: 0.5rem;
   }
   .dark {
-    --background: 0 0% 0%; /* Black */
-    --foreground: 0 0% 100%; /* White */
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
     --card: 0 0% 3.9%;
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 3.9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 100%; /* White primary in dark mode */
+    --primary: 0 0% 100%;
     --primary-rgb: 255, 255, 255;
     --primary-foreground: 0 0% 0%;
     --secondary: 0 0% 14.9%;
@@ -86,4 +86,12 @@
 
 .pb-safe-area-inset-bottom {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
