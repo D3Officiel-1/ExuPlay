@@ -8,8 +8,8 @@
 
 export interface GeneratedMatch {
   id: string;
-  homeTeam: { name: string; emoji: string };
-  awayTeam: { name: string; emoji: string };
+  homeTeam: { name: string; emoji: string; code: string };
+  awayTeam: { name: string; emoji: string; code: string };
   startTime: string;
   odds: { "1": number; "X": number; "2": number };
   status: "scheduled" | "live" | "finished";
@@ -17,38 +17,38 @@ export interface GeneratedMatch {
 }
 
 const COUNTRIES = [
-  { name: "Côte d'Ivoire", emoji: "🇨🇮" },
-  { name: "France", emoji: "🇫🇷" },
-  { name: "Brésil", emoji: "🇧🇷" },
-  { name: "Argentine", emoji: "🇦🇷" },
-  { name: "Maroc", emoji: "🇲🇦" },
-  { name: "Sénégal", emoji: "🇸🇳" },
-  { name: "Japon", emoji: "🇯🇵" },
-  { name: "Allemagne", emoji: "🇩🇪" },
-  { name: "Espagne", emoji: "🇪🇸" },
-  { name: "Italie", emoji: "🇮🇹" },
-  { name: "Portugal", emoji: "🇵🇹" },
-  { name: "Nigeria", emoji: "🇳🇬" },
-  { name: "Cameroun", emoji: "🇨🇲" },
-  { name: "Égypte", emoji: "🇪🇬" },
-  { name: "USA", emoji: "🇺🇸" },
-  { name: "Mexique", emoji: "🇲🇽" },
-  { name: "Angleterre", emoji: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" },
-  { name: "Belgique", emoji: "🇧🇪" },
-  { name: "Croatie", emoji: "🇭🇷" },
-  { name: "Pays-Bas", emoji: "🇳🇱" },
-  { name: "Suisse", emoji: "🇨🇭" },
-  { name: "Uruguay", emoji: "🇺🇾" },
-  { name: "Corée du Sud", emoji: "🇰🇷" },
-  { name: "Algérie", emoji: "🇩🇿" },
-  { name: "Mali", emoji: "🇲🇱" },
-  { name: "Ghana", emoji: "🇬🇭" },
-  { name: "Colombie", emoji: "🇨🇴" },
-  { name: "Suède", emoji: "🇸🇪" },
-  { name: "Danemark", emoji: "🇩🇰" },
-  { name: "Tunisie", emoji: "🇹🇳" },
-  { name: "Canada", emoji: "🇨🇦" },
-  { name: "Australie", emoji: "🇦🇺" }
+  { name: "Côte d'Ivoire", emoji: "🇨🇮", code: "ci" },
+  { name: "France", emoji: "🇫🇷", code: "fr" },
+  { name: "Brésil", emoji: "🇧🇷", code: "br" },
+  { name: "Argentine", emoji: "🇦🇷", code: "ar" },
+  { name: "Maroc", emoji: "🇲🇦", code: "ma" },
+  { name: "Sénégal", emoji: "🇸🇳", code: "sn" },
+  { name: "Japon", emoji: "🇯🇵", code: "jp" },
+  { name: "Allemagne", emoji: "🇩🇪", code: "de" },
+  { name: "Espagne", emoji: "🇪🇸", code: "es" },
+  { name: "Italie", emoji: "🇮🇹", code: "it" },
+  { name: "Portugal", emoji: "🇵🇹", code: "pt" },
+  { name: "Nigeria", emoji: "🇳🇬", code: "ng" },
+  { name: "Cameroun", emoji: "🇨🇲", code: "cm" },
+  { name: "Égypte", emoji: "🇪🇬", code: "eg" },
+  { name: "USA", emoji: "🇺🇸", code: "us" },
+  { name: "Mexique", emoji: "🇲🇽", code: "mx" },
+  { name: "Angleterre", emoji: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", code: "gb-eng" },
+  { name: "Belgique", emoji: "🇧🇪", code: "be" },
+  { name: "Croatie", emoji: "🇭🇷", code: "hr" },
+  { name: "Pays-Bas", emoji: "🇳🇱", code: "nl" },
+  { name: "Suisse", emoji: "🇨🇭", code: "ch" },
+  { name: "Uruguay", emoji: "🇺🇾", code: "uy" },
+  { name: "Corée du Sud", emoji: "🇰🇷", code: "kr" },
+  { name: "Algérie", emoji: "🇩🇿", code: "dz" },
+  { name: "Mali", emoji: "🇲🇱", code: "ml" },
+  { name: "Ghana", emoji: "🇬🇭", code: "gh" },
+  { name: "Colombie", emoji: "🇨🇴", code: "co" },
+  { name: "Suède", emoji: "🇸🇪", code: "se" },
+  { name: "Danemark", emoji: "🇩🇰", code: "dk" },
+  { name: "Tunisie", emoji: "🇹🇳", code: "tn" },
+  { name: "Canada", emoji: "🇨🇦", code: "ca" },
+  { name: "Australie", emoji: "🇦🇺", code: "au" }
 ];
 
 // Fonction de hasard déterministe basée sur une graine

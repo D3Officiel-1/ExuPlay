@@ -36,7 +36,8 @@ import {
   ShieldCheck,
   Globe,
   Trophy,
-  Activity
+  Activity,
+  X
 } from "lucide-react";
 import { 
   Dialog,
@@ -52,6 +53,7 @@ import { EmojiOracle } from "@/components/EmojiOracle";
 import { getDailyMatches, type GeneratedMatch } from "@/app/actions/sport";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import Image from "next/image";
 
 interface BetSelection {
   matchId: string;
@@ -152,6 +154,8 @@ export default function SportPage() {
     } catch (e) { toast({ variant: "destructive", title: "Dissonance Système" }); } finally { setIsProcessing(false); }
   };
 
+  const getFlagUrl = (code: string) => `https://www.drapeauxdespays.fr/data/flags/h80/${code}.png`;
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="fixed top-0 left-0 right-0 z-50 p-6 flex items-center justify-between bg-background/10 backdrop-blur-xl border-b border-primary/5">
@@ -167,6 +171,43 @@ export default function SportPage() {
         </div>
         <div className="w-10 h-10" />
       </header>
+
+      {/* Barre de Flux Supérieure (Ancrée à sa position fixe) */}
+      <AnimatePresence>
+        {selections.length > 0 && activeTab === "matches" && !isCouponOpen && (
+          <div className="fixed top-24 left-0 right-0 z-[500] px-6 pointer-events-none flex justify-center">
+            <motion.div 
+              initial={{ y: -100, opacity: 0, scale: 0.8 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: -100, opacity: 0, scale: 0.8 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="w-full max-w-sm pointer-events-auto"
+            >
+              <button 
+                onClick={() => { haptic.medium(); setIsCouponOpen(true); }}
+                className="w-full flex items-center justify-between px-8 h-16 bg-primary text-primary-foreground rounded-full shadow-[0_32px_128px_-16px_rgba(0,0,0,0.8)] border border-white/10 active:scale-95 transition-all overflow-hidden relative"
+              >
+                <motion.div 
+                  animate={{ x: ["-100%", "200%"] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12"
+                />
+                <div className="flex flex-col items-start leading-none relative z-10">
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-2.5 w-2.5 text-green-500 animate-pulse" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Pacte Actif</span>
+                  </div>
+                  <span className="text-sm font-black">{selections.length} Sélection{selections.length > 1 ? 's' : ''}</span>
+                </div>
+                <div className="flex items-center gap-4 relative z-10">
+                  <span className="text-sm font-black italic tabular-nums">@{totalOdds.toFixed(2)}</span>
+                  <ChevronRight className="h-5 w-5 opacity-60" />
+                </div>
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <main className="flex-1 p-6 pt-28 space-y-8 max-w-lg mx-auto w-full pb-48">
         <Tabs value={activeTab} onValueChange={setTab} className="w-full">
@@ -213,8 +254,17 @@ export default function SportPage() {
 
                     <div className="grid grid-cols-3 gap-4 items-center mb-8">
                       <div className="text-center space-y-3">
-                        <div className="h-16 w-16 bg-primary/5 rounded-[1.5rem] mx-auto flex items-center justify-center text-3xl shadow-inner border border-primary/5">
-                          <EmojiOracle text={match.homeTeam.emoji} forceStatic />
+                        <div className="relative h-16 w-16 bg-primary/5 rounded-[1.5rem] mx-auto flex items-center justify-center shadow-inner border border-primary/5 overflow-hidden">
+                          <Image 
+                            src={getFlagUrl(match.homeTeam.code)} 
+                            alt={match.homeTeam.name} 
+                            fill 
+                            className="object-cover scale-110" 
+                            unoptimized
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <EmojiOracle text={match.homeTeam.emoji} forceStatic />
+                          </div>
                         </div>
                         <p className="text-[10px] font-black uppercase truncate">{match.homeTeam.name}</p>
                       </div>
@@ -230,8 +280,17 @@ export default function SportPage() {
                         )}
                       </div>
                       <div className="text-center space-y-3">
-                        <div className="h-16 w-16 bg-primary/5 rounded-[1.5rem] mx-auto flex items-center justify-center text-3xl shadow-inner border border-primary/5">
-                          <EmojiOracle text={match.awayTeam.emoji} forceStatic />
+                        <div className="relative h-16 w-16 bg-primary/5 rounded-[1.5rem] mx-auto flex items-center justify-center shadow-inner border border-primary/5 overflow-hidden">
+                          <Image 
+                            src={getFlagUrl(match.awayTeam.code)} 
+                            alt={match.awayTeam.name} 
+                            fill 
+                            className="object-cover scale-110" 
+                            unoptimized
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <EmojiOracle text={match.awayTeam.emoji} forceStatic />
+                          </div>
                         </div>
                         <p className="text-[10px] font-black uppercase truncate">{match.awayTeam.name}</p>
                       </div>
@@ -318,43 +377,6 @@ export default function SportPage() {
         </Tabs>
       </main>
 
-      {/* Barre de Flux Supérieure (Fixe et Superposée) */}
-      <AnimatePresence>
-        {selections.length > 0 && activeTab === "matches" && !isCouponOpen && (
-          <div className="fixed top-24 left-0 right-0 z-[500] px-6 pointer-events-none flex justify-center">
-            <motion.div 
-              initial={{ y: -100, opacity: 0, scale: 0.8 }}
-              animate={{ y: 0, opacity: 1, scale: 1 }}
-              exit={{ y: -100, opacity: 0, scale: 0.8 }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="w-full max-w-sm pointer-events-auto"
-            >
-              <button 
-                onClick={() => { haptic.medium(); setIsCouponOpen(true); }}
-                className="w-full flex items-center justify-between px-8 h-16 bg-primary text-primary-foreground rounded-full shadow-[0_32px_128px_-16px_rgba(0,0,0,0.8)] border border-white/10 active:scale-95 transition-all overflow-hidden relative"
-              >
-                <motion.div 
-                  animate={{ x: ["-100%", "200%"] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12"
-                />
-                <div className="flex flex-col items-start leading-none relative z-10">
-                  <div className="flex items-center gap-2">
-                    <Activity className="h-2.5 w-2.5 text-green-500 animate-pulse" />
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Pacte Actif</span>
-                  </div>
-                  <span className="text-sm font-black">{selections.length} Sélection{selections.length > 1 ? 's' : ''}</span>
-                </div>
-                <div className="flex items-center gap-4 relative z-10">
-                  <span className="text-sm font-black italic tabular-nums">@{totalOdds.toFixed(2)}</span>
-                  <ChevronRight className="h-5 w-5 opacity-60" />
-                </div>
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
       <Dialog open={isCouponOpen} onOpenChange={setIsCouponOpen}>
         <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-[45px] border-primary/10 rounded-[3rem] p-0 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
           <div className="p-8 flex flex-col h-full gap-8">
@@ -412,11 +434,5 @@ export default function SportPage() {
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-function X({ className }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
   );
 }
