@@ -13,7 +13,7 @@ import {
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Zap, Users, Sparkles, Brain, Trophy, Swords, Flag, ChevronRight } from "lucide-react";
+import { Zap, Users, Sparkles, Brain, Trophy, Swords, Flag, ChevronRight, Rocket } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -161,6 +161,15 @@ export default function HomePage() {
       color: "text-blue-500",
       bg: "bg-blue-500/5",
       path: "/quiz"
+    },
+    {
+      id: "jet-lumiere",
+      title: "Jet de Lumière",
+      description: "Prédisez l'ascension du flux avant la chute.",
+      icon: Rocket,
+      color: "text-purple-500",
+      bg: "bg-purple-500/5",
+      path: "/jet-lumiere"
     },
     {
       id: "penalties",
