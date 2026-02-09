@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, FC, useRef, useMemo } from 'react';
-import { useUser, useFirestore, useDoc } from '@/firebase';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -28,13 +29,13 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { doc, updateDoc, serverTimestamp, increment } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp, increment, setDoc, Timestamp } from 'firebase/firestore';
 import { motion, AnimatePresence } from "framer-motion";
 import { haptic } from '@/lib/haptics';
 import { EmojiOracle } from '@/components/EmojiOracle';
-import { generateJetResult, getJetHistory } from '@/app/actions/jet-lumiere';
+import { triggerNextJetRound, getJetHistory } from '@/app/actions/jet-lumiere';
 
-type GameState = 'IDLE' | 'WAITING' | 'BETTING' | 'IN_PROGRESS' | 'CRASHED';
+type GameState = 'waiting' | 'betting' | 'in_progress' | 'crashed';
 type BetState = 'IDLE' | 'PENDING' | 'PLACED' | 'CASHED_OUT' | 'LOST';
 type PlayerStatus = 'waiting' | 'betting' | 'cashed_out' | 'lost';
 
@@ -45,6 +46,7 @@ interface BetPanelData {
   isAutoBet: boolean;
   isAutoCashout: boolean;
   autoCashoutValue: number;
+  lastRoundId: string;
 }
 
 const loadingTexts = [
@@ -84,7 +86,6 @@ interface BetPanelProps {
   isProcessing: boolean;
 }
 
-const BETTING_TIME = 8000; 
 const MIN_BET = 5;
 
 const generateRandomName = (): string => {
@@ -154,29 +155,26 @@ const JetCanvasAnimation: FC<{ multiplier: number; gameState: GameState }> = ({ 
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Background
         const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
         gradient.addColorStop(0, '#020617');
         gradient.addColorStop(1, '#0f172a');
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Stars
         ctx.fillStyle = 'white';
         starsRef.current.forEach(star => {
-            const speed = (gameState === 'IN_PROGRESS' ? multiplier * 0.5 : 0.2) * deltaTime;
+            const speed = (gameState === 'in_progress' ? multiplier * 0.5 : 0.2) * deltaTime;
             star.y += speed;
             if (star.y > canvas.height) {
                 star.y = 0;
                 star.x = Math.random() * canvas.width;
             }
-            ctx.globalAlpha = star.opacity * (gameState === 'IN_PROGRESS' ? 0.8 : 0.3);
+            ctx.globalAlpha = star.opacity * (gameState === 'in_progress' ? 0.8 : 0.3);
             ctx.beginPath();
             ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
             ctx.fill();
         });
 
-        // Path / Jet Position
         const visualProgress = Math.min(multiplier, 20) / 20;
         const startX = 100;
         const startY = canvas.height - 100;
@@ -186,8 +184,7 @@ const JetCanvasAnimation: FC<{ multiplier: number; gameState: GameState }> = ({ 
         const currentX = startX + (endX - startX) * visualProgress;
         const currentY = startY + (endY - startY) * Math.pow(visualProgress, 1.5);
 
-        if (gameState === 'IN_PROGRESS' || gameState === 'CRASHED') {
-            // Draw Path
+        if (gameState === 'in_progress' || gameState === 'crashed') {
             ctx.beginPath();
             ctx.strokeStyle = 'rgba(59, 130, 246, 0.2)';
             ctx.lineWidth = 4;
@@ -197,8 +194,7 @@ const JetCanvasAnimation: FC<{ multiplier: number; gameState: GameState }> = ({ 
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // Particles
-            if (gameState === 'IN_PROGRESS') {
+            if (gameState === 'in_progress') {
                 for (let i = 0; i < 3; i++) {
                     const life = Math.random() * 40 + 20;
                     particlesRef.current.push({
@@ -232,8 +228,7 @@ const JetCanvasAnimation: FC<{ multiplier: number; gameState: GameState }> = ({ 
             ctx.fill();
         });
 
-        // Main Jet / Point of Light
-        if (gameState === 'IN_PROGRESS') {
+        if (gameState === 'in_progress') {
             const glowSize = 20 + Math.sin(time / 100) * 5;
             const radial = ctx.createRadialGradient(currentX, currentY, 0, currentX, currentY, glowSize);
             const mainColor = multiplier > 10 ? '168, 85, 247' : multiplier > 2 ? '16, 185, 129' : '59, 130, 246';
@@ -252,7 +247,7 @@ const JetCanvasAnimation: FC<{ multiplier: number; gameState: GameState }> = ({ 
             ctx.fill();
         }
 
-        if (gameState === 'CRASHED') {
+        if (gameState === 'crashed') {
             ctx.globalAlpha = 1;
             ctx.fillStyle = '#ef4444';
             ctx.beginPath();
@@ -278,7 +273,7 @@ const BetPanel: FC<BetPanelProps> = ({ id, balance, gameState, betData, onBet, o
   const handleAction = () => {
     if (isProcessing) return;
     if (betState === 'IDLE') {
-        if (gameState !== 'BETTING' && gameState !== 'WAITING') {
+        if (gameState !== 'betting' && gameState !== 'waiting') {
             toast({ variant: 'destructive', title: "Attendez le prochain flux" });
             return;
         }
@@ -291,7 +286,7 @@ const BetPanel: FC<BetPanelProps> = ({ id, balance, gameState, betData, onBet, o
     } else if (betState === 'PENDING') {
         onCancel(id);
     } else if (betState === 'PLACED') {
-        if (gameState !== 'IN_PROGRESS') return;
+        if (gameState !== 'in_progress') return;
         onCashout(id);
     }
   };
@@ -372,7 +367,7 @@ const BetPanel: FC<BetPanelProps> = ({ id, balance, gameState, betData, onBet, o
 
         <Button 
             onClick={handleAction}
-            disabled={isLocked || isProcessing || (betState === 'IDLE' && gameState === 'IN_PROGRESS')}
+            disabled={isLocked || isProcessing || (betState === 'IDLE' && gameState === 'in_progress')}
             className={cn(
                 "w-full h-16 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl transition-all duration-500",
                 betState === 'IDLE' ? "bg-primary text-primary-foreground shadow-primary/20" :
@@ -398,18 +393,19 @@ export default function JetLumierePage() {
   const { toast } = useToast();
 
   const userDocRef = useMemo(() => (db && user?.uid) ? doc(db, "users", user.uid) : null, [db, user?.uid]);
+  const jetConfigRef = useMemo(() => doc(db, "appConfig", "jet"), [db]);
+  
   const { data: profile } = useDoc(userDocRef);
+  const { data: globalState } = useDoc(jetConfigRef);
 
-  const [gameState, setGameState] = useState<GameState>('IDLE');
   const [multiplier, setMultiplier] = useState(1.00);
-  const [crashPoint, setCrashPoint] = useState(0);
   const [history, setHistory] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadingTextIndex, setLoadingTextIndex] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const [bet1Data, setBet1Data] = useState<BetPanelData>({ betState: 'IDLE', betAmount: 100, winAmount: 0, isAutoBet: false, isAutoCashout: false, autoCashoutValue: 2.00 });
-  const [bet2Data, setBet2Data] = useState<BetPanelData>({ betState: 'IDLE', betAmount: 100, winAmount: 0, isAutoBet: false, isAutoCashout: false, autoCashoutValue: 2.00 });
+  const [bet1Data, setBet1Data] = useState<BetPanelData>({ betState: 'IDLE', betAmount: 100, winAmount: 0, isAutoBet: false, isAutoCashout: false, autoCashoutValue: 2.00, lastRoundId: '' });
+  const [bet2Data, setBet2Data] = useState<BetPanelData>({ betState: 'IDLE', betAmount: 100, winAmount: 0, isAutoBet: false, isAutoCashout: false, autoCashoutValue: 2.00, lastRoundId: '' });
   
   const [simulatedPlayers, setSimulatedPlayers] = useState<SimulatedPlayer[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -418,6 +414,7 @@ export default function JetLumierePage() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const bet1DataRef = useRef(bet1Data);
   const bet2DataRef = useRef(bet2Data);
+  const lastStateRef = useRef<string>('');
   
   useEffect(() => { bet1DataRef.current = bet1Data; }, [bet1Data]);
   useEffect(() => { bet2DataRef.current = bet2Data; }, [bet2Data]);
@@ -440,12 +437,101 @@ export default function JetLumierePage() {
       return () => clearInterval(chatInterval);
   }, []);
 
-  const handleSendMessage = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (chatInput.trim() === '' || !profile) return;
-      const newMessage: ChatMessage = { id: `${Date.now()}-${Math.random()}`, user: profile.username, text: chatInput, color: '#a855f7', isUser: true };
-      setChatMessages(prev => [...prev.slice(-12), newMessage]); setChatInput('');
-      haptic.light();
+  // --- MOTEUR DE SYNCHRONISATION UNIVERSEL ---
+  useEffect(() => {
+    if (!globalState || !db) return;
+
+    const status = globalState.status as GameState;
+    const roundId = globalState.roundId;
+    const startTime = (globalState.startTime as any)?.toDate?.()?.getTime() || new Date(globalState.startTime).getTime();
+    const crashPoint = globalState.crashPoint;
+
+    // Reset local bets if a new round starts
+    if (roundId !== bet1DataRef.current.lastRoundId) {
+        setBet1Data(prev => ({ ...prev, betState: 'IDLE', lastRoundId: roundId, winAmount: 0 }));
+        setBet2Data(prev => ({ ...prev, betState: 'IDLE', lastRoundId: roundId, winAmount: 0 }));
+        setSimulatedPlayers(generateFakePlayers(12));
+    }
+
+    if (status === 'in_progress') {
+        const growthLoop = () => {
+            const now = Date.now();
+            const elapsedMs = now - startTime;
+            
+            // Formule déterministe partagée : m = 1.002 ^ (t / 10)
+            const currentMultiplier = Math.pow(1.002, elapsedMs / 10);
+            
+            if (currentMultiplier >= crashPoint) {
+                // Détection locale du crash synchrone
+                setMultiplier(crashPoint);
+                handleGlobalStateTransition('crashed');
+            } else {
+                setMultiplier(currentMultiplier);
+                
+                // Auto-Cashout Sync
+                if (bet1DataRef.current.betState === 'PLACED' && bet1DataRef.current.isAutoCashout && currentMultiplier >= bet1DataRef.current.autoCashoutValue) {
+                    handleCashout(1, bet1DataRef.current.autoCashoutValue);
+                }
+                if (bet2DataRef.current.betState === 'PLACED' && bet2DataRef.current.isAutoCashout && currentMultiplier >= bet2DataRef.current.autoCashoutValue) {
+                    handleCashout(2, bet2DataRef.current.autoCashoutValue);
+                }
+
+                requestAnimationFrame(growthLoop);
+            }
+        };
+        requestAnimationFrame(growthLoop);
+    } else if (status === 'crashed') {
+        setMultiplier(crashPoint);
+        haptic.error();
+        // Transition vers 'waiting' après 4s de stase
+        const timer = setTimeout(() => handleGlobalStateTransition('waiting'), 4000);
+        return () => clearTimeout(timer);
+    } else if (status === 'waiting') {
+        setMultiplier(1.00);
+        const timer = setTimeout(() => handleGlobalStateTransition('betting'), 3000);
+        return () => clearTimeout(timer);
+    } else if (status === 'betting') {
+        setMultiplier(1.00);
+        // Auto-pari logic
+        if (bet1DataRef.current.isAutoBet && bet1DataRef.current.betState === 'IDLE' && (profile?.totalPoints || 0) >= bet1DataRef.current.betAmount) handleBet(1, bet1DataRef.current.betAmount);
+        if (bet2DataRef.current.isAutoBet && bet2DataRef.current.betState === 'IDLE' && (profile?.totalPoints || 0) >= bet2DataRef.current.betAmount) handleBet(2, bet2DataRef.current.betAmount);
+
+        const timer = setTimeout(() => handleGlobalStateTransition('in_progress'), 8000);
+        return () => clearTimeout(timer);
+    }
+
+  }, [globalState, db]);
+
+  const handleGlobalStateTransition = async (nextStatus: GameState) => {
+    if (!db || !jetConfigRef) return;
+    
+    // Pour éviter que 1000 clients écrivent en même temps, seul le premier réussit
+    // L'Oracle serveur est sollicité pour les données sensibles
+    try {
+        if (nextStatus === 'in_progress' && globalState?.status === 'betting') {
+            const nextRound = await triggerNextJetRound();
+            await updateDoc(jetConfigRef, {
+                status: 'in_progress',
+                crashPoint: nextRound.crashPoint,
+                startTime: serverTimestamp(),
+                roundId: nextRound.id,
+                lastUpdate: serverTimestamp()
+            });
+            // Mark user bets as PLACED
+            setBet1Data(b => b.betState === 'PENDING' ? { ...b, betState: 'PLACED' } : b);
+            setBet2Data(b => b.betState === 'PENDING' ? { ...b, betState: 'PLACED' } : b);
+        } else if (nextStatus === 'crashed' && globalState?.status === 'in_progress') {
+            await updateDoc(jetConfigRef, { status: 'crashed', lastUpdate: serverTimestamp() });
+            setBet1Data(b => b.betState === 'PLACED' ? {...b, betState: 'LOST'} : b);
+            setBet2Data(b => b.betState === 'PLACED' ? {...b, betState: 'LOST'} : b);
+        } else if (nextStatus === 'waiting' && globalState?.status === 'crashed') {
+            await updateDoc(jetConfigRef, { status: 'waiting', lastUpdate: serverTimestamp() });
+        } else if (nextStatus === 'betting' && globalState?.status === 'waiting') {
+            await updateDoc(jetConfigRef, { status: 'betting', lastUpdate: serverTimestamp() });
+        }
+    } catch (e) {
+        // Ignorer silencieusement si un autre client a déjà fait la transition
+    }
   };
 
   const handleBet = useCallback(async (id: number, amount: number) => {
@@ -460,21 +546,13 @@ export default function JetLumierePage() {
         totalPoints: increment(-amount),
         updatedAt: serverTimestamp()
       });
-
-      betSetter(prev => ({ ...prev, betState: 'PENDING', betAmount: amount, winAmount: 0 }));
-      
-      if (profile?.username) {
-        setSimulatedPlayers(players => {
-            const userPlayer: SimulatedPlayer = { id: `user-${id}`, name: profile.username, avatar: profile.username.slice(0, 2).toUpperCase(), bet: amount, status: 'betting' };
-            return [userPlayer, ...players.filter(p => p.id !== `user-${id}`)];
-        });
-      }
+      betSetter(prev => ({ ...prev, betState: 'PENDING', betAmount: amount }));
     } catch (error) {
       toast({ variant: 'destructive', title: "Erreur de mise" });
     } finally {
       setIsProcessing(false);
     }
-  }, [profile, userDocRef, isProcessing, toast]);
+  }, [userDocRef, isProcessing, toast]);
 
   const handleCancel = useCallback(async (id: number) => {
       if (!userDocRef || isProcessing) return;
@@ -490,14 +568,13 @@ export default function JetLumierePage() {
           updatedAt: serverTimestamp()
         });
         betSetter(prev => ({ ...prev, betState: 'IDLE' }));
-        setSimulatedPlayers(players => players.filter(p => p.id !== `user-${id}`));
       } finally {
         setIsProcessing(false);
       }
   }, [userDocRef, isProcessing]);
 
   const handleCashout = useCallback(async (id: number, cashoutMultiplier?: number) => {
-      if (!userDocRef || isProcessing) return;
+      if (!userDocRef || isProcessing || !globalState) return;
       const betData = id === 1 ? bet1DataRef.current : bet2DataRef.current;
       const betSetter = id === 1 ? setBet1Data : setBet2Data;
       
@@ -519,89 +596,12 @@ export default function JetLumierePage() {
       } finally {
         setIsProcessing(false);
       }
-  }, [multiplier, userDocRef, isProcessing, toast]);
+  }, [multiplier, userDocRef, isProcessing, toast, globalState]);
   
   const handleUpdateBet = useCallback((id: number, data: Partial<BetPanelData>) => {
       const betSetter = id === 1 ? setBet1Data : setBet2Data;
       betSetter(prev => ({...prev, ...data}));
   }, []);
-
-  const gameLoop = useCallback(async () => {
-    setGameState('WAITING'); 
-    setMultiplier(1.00); 
-    setSimulatedPlayers(generateFakePlayers(12));
-    
-    const waitTimer = setTimeout(async () => {
-        setGameState('BETTING');
-        haptic.medium();
-
-        // Auto-pari logic
-        const currentPoints = profile?.totalPoints || 0;
-        if (bet1DataRef.current.isAutoBet && currentPoints >= bet1DataRef.current.betAmount) handleBet(1, bet1DataRef.current.betAmount);
-        if (bet2DataRef.current.isAutoBet && currentPoints >= bet2DataRef.current.betAmount) handleBet(2, bet2DataRef.current.betAmount);
-
-        // Simulated players betting
-        let bettingInterval = setInterval(() => {
-          setSimulatedPlayers(players => {
-            const idlePlayers = players.filter(p => p.status === 'waiting');
-            if (idlePlayers.length === 0) { clearInterval(bettingInterval); return players; }
-            const target = idlePlayers[Math.floor(Math.random() * idlePlayers.length)];
-            return players.map(p => p.id === target.id ? { ...p, status: 'betting', bet: Math.floor(Math.random() * 200) + 10 } : p);
-          });
-        }, 500);
-
-        const bettingTimer = setTimeout(async () => {
-            clearInterval(bettingInterval);
-            
-            // Invocation de l'Oracle Server Action pour le résultat
-            const newCrashPoint = await generateJetResult(); 
-            setCrashPoint(newCrashPoint); 
-            setGameState('IN_PROGRESS');
-            
-            setBet1Data(b => b.betState === 'PENDING' ? { ...b, betState: 'PLACED' } : b);
-            setBet2Data(b => b.betState === 'PENDING' ? { ...b, betState: 'PLACED' } : b);
-
-            let currentMultiplier = 1.00;
-            const animate = () => {
-                const step = 0.01 + (Math.pow(currentMultiplier, 1.2) * 0.005);
-                currentMultiplier += step;
-                setMultiplier(currentMultiplier);
-
-                // Simulated players cashing out
-                setSimulatedPlayers(players => players.map(p => {
-                    if (p.status === 'betting' && typeof p.id === 'number' && Math.random() < 0.015) {
-                        return { ...p, status: 'cashed_out', cashoutMultiplier: currentMultiplier };
-                    }
-                    return p;
-                }));
-
-                // Auto cashout check
-                if (bet1DataRef.current.betState === 'PLACED' && bet1DataRef.current.isAutoCashout && currentMultiplier >= bet1DataRef.current.autoCashoutValue) handleCashout(1, bet1DataRef.current.autoCashoutValue);
-                if (bet2DataRef.current.betState === 'PLACED' && bet2DataRef.current.isAutoCashout && currentMultiplier >= bet2DataRef.current.autoCashoutValue) handleCashout(2, bet2DataRef.current.autoCashoutValue);
-
-                if (currentMultiplier >= newCrashPoint) {
-                    setGameState('CRASHED');
-                    setHistory(h => [newCrashPoint, ...h.slice(0, 11)]);
-                    haptic.error();
-                    setBet1Data(b => b.betState === 'PLACED' ? {...b, betState: 'LOST'} : b);
-                    setBet2Data(b => b.betState === 'PLACED' ? {...b, betState: 'LOST'} : b);
-                    setSimulatedPlayers(players => players.map(p => p.status === 'betting' ? {...p, status: 'lost'} : p));
-                    
-                    setTimeout(() => {
-                        setBet1Data(b => ({ ...b, betState: 'IDLE', winAmount: 0 }));
-                        setBet2Data(b => ({ ...b, betState: 'IDLE', winAmount: 0 }));
-                        gameLoop();
-                    }, 4000);
-                } else {
-                    requestAnimationFrame(animate);
-                }
-            };
-            requestAnimationFrame(animate);
-        }, BETTING_TIME);
-    }, 4000);
-  }, [handleBet, handleCashout, profile?.totalPoints]);
-
-  useEffect(() => { if (gameState === 'IDLE') setTimeout(gameLoop, 500); }, [gameState, gameLoop]);
 
   useEffect(() => {
     if (isLoading) {
@@ -611,7 +611,7 @@ export default function JetLumierePage() {
     }
   }, [isLoading]);
 
-  if (isLoading || !user) {
+  if (isLoading || !user || !globalState) {
     return (
        <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#020617] p-8 text-center relative overflow-hidden">
         <motion.div animate={{ scale: [1, 1.5, 1], opacity: [0.1, 0.3, 0.1] }} transition={{ duration: 10, repeat: Infinity }} className="absolute inset-0 bg-primary/10 blur-[150px] rounded-full" />
@@ -635,6 +635,8 @@ export default function JetLumierePage() {
     );
   }
 
+  const gameState = globalState.status as GameState;
+
   return (
     <div className="min-h-screen bg-[#020617] text-white flex flex-col pb-32 lg:pb-0">
       <header className="fixed top-0 left-0 right-0 z-50 p-6 flex items-center justify-between bg-background/5 backdrop-blur-xl border-b border-primary/5">
@@ -642,7 +644,7 @@ export default function JetLumierePage() {
           <ChevronLeft className="h-6 w-6" />
         </Button>
         <div className="flex flex-col items-center">
-          <p className="text-[8px] font-black uppercase tracking-[0.4em] opacity-40">Oracle du Flux</p>
+          <p className="text-[8px] font-black uppercase tracking-[0.4em] opacity-40">Oracle du Flux Universel</p>
           <div className="flex items-center gap-2 px-4 py-1.5 bg-primary/5 rounded-full border border-primary/10">
             <Zap className="h-3.5 w-3.5 text-primary" />
             <span className="text-xs font-black tabular-nums tracking-tighter">{(profile?.totalPoints || 0).toLocaleString()} <span className="opacity-40 text-[9px]">PTS</span></span>
@@ -698,7 +700,7 @@ export default function JetLumierePage() {
                 {/* Multiplicateur Central */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                     <AnimatePresence mode="wait">
-                        {gameState === 'WAITING' || gameState === 'BETTING' ? (
+                        {gameState === 'waiting' || gameState === 'betting' ? (
                             <motion.div 
                                 key="waiting"
                                 initial={{ opacity: 0, scale: 0.9 }}
@@ -709,10 +711,10 @@ export default function JetLumierePage() {
                                 <div className="relative inline-block">
                                     <motion.div animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }} className="absolute inset-[-20px] border border-dashed border-primary/20 rounded-full" />
                                     <p className="text-sm font-black uppercase tracking-[0.6em] text-primary/60 animate-pulse">
-                                        {gameState === 'WAITING' ? "Attente du Flux" : "Phase de Mise"}
+                                        {gameState === 'waiting' ? "Attente du Flux" : "Phase de Mise"}
                                     </p>
                                 </div>
-                                {gameState === 'BETTING' && (
+                                {gameState === 'betting' && (
                                     <motion.div initial={{ width: 0 }} animate={{ width: 240 }} className="h-1 bg-primary/10 rounded-full overflow-hidden mx-auto">
                                         <motion.div animate={{ x: ["-100%", "100%"] }} transition={{ duration: 2, repeat: Infinity }} className="h-full bg-primary" />
                                     </motion.div>
@@ -725,18 +727,18 @@ export default function JetLumierePage() {
                                 animate={{ scale: 1, opacity: 1 }}
                                 className={cn(
                                     "flex flex-col items-center justify-center transition-colors duration-500",
-                                    gameState === 'CRASHED' ? "text-red-500" : 
+                                    gameState === 'crashed' ? "text-red-500" : 
                                     multiplier > 10 ? "text-purple-400" : 
                                     multiplier > 2 ? "text-green-400" : "text-white"
                                 )}
                             >
                                 <motion.span 
-                                    style={{ textShadow: gameState === 'CRASHED' ? '0 0 40px rgba(239, 68, 68, 0.5)' : '0 0 60px currentColor' }}
+                                    style={{ textShadow: gameState === 'crashed' ? '0 0 40px rgba(239, 68, 68, 0.5)' : '0 0 60px currentColor' }}
                                     className="text-8xl sm:text-9xl font-black italic tracking-tighter tabular-nums"
                                 >
                                     {multiplier.toFixed(2)}x
                                 </motion.span>
-                                {gameState === 'CRASHED' && (
+                                {gameState === 'crashed' && (
                                     <motion.p initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-xl font-black uppercase tracking-[0.4em] opacity-60">STASE</motion.p>
                                 )}
                             </motion.div>
@@ -772,7 +774,6 @@ export default function JetLumierePage() {
                 />
             </div>
 
-            {/* Chat sur mobile (collapsible ou fixe) */}
             <div className="lg:hidden">
                  <Card className="bg-card/10 backdrop-blur-3xl border-none rounded-[2.5rem] p-6 h-80 flex flex-col border border-primary/5 shadow-2xl">
                     <ChatPanel messages={chatMessages} profile={profile} chatInput={chatInput} setChatInput={setChatInput} handleSendMessage={handleSendMessage} chatEndRef={chatEndRef} />

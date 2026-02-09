@@ -78,6 +78,19 @@
         "dailyTransferLimitTrusted": { "type": "integer", "default": 2500 }
       }
     },
+    "JetState": {
+      "title": "JetState",
+      "description": "État global synchronisé du jeu Jet de Lumière",
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "enum": ["waiting", "betting", "in_progress", "crashed"] },
+        "crashPoint": { "type": "number" },
+        "startTime": { "type": "string", "format": "date-time" },
+        "roundId": { "type": "string" },
+        "lastUpdate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["status", "crashPoint", "startTime", "roundId"]
+    },
     "Quiz": {
       "title": "Quiz",
       "description": "Une question de quiz avec options et réponse",
@@ -173,6 +186,10 @@
     "/appConfig/status": {
       "schema": "AppStatus",
       "description": "Statut global du système (Maintenance, objectifs communautaires, etc.)"
+    },
+    "/appConfig/jet": {
+      "schema": "JetState",
+      "description": "État synchronisé du Jet de Lumière"
     },
     "/quizzes/{quizId}": {
       "schema": "Quiz",
