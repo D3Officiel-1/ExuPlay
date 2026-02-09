@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, FC, useRef, useMemo } from 'react';
@@ -30,7 +31,7 @@ import { doc, updateDoc, serverTimestamp, increment, setDoc, Timestamp, getDoc }
 import { motion, AnimatePresence } from "framer-motion";
 import { haptic } from '@/lib/haptics';
 import { EmojiOracle } from '@/components/EmojiOracle';
-import { triggerNextJetRound, getJetHistory } from '@/app/actions/jet-lumiere';
+import { triggerNextJetRound, getJetHistory, validateJetCashout } from '@/app/actions/jet-lumiere';
 
 type GameState = 'waiting' | 'betting' | 'in_progress' | 'crashed';
 type BetState = 'IDLE' | 'PENDING' | 'PLACED' | 'CASHED_OUT' | 'LOST';
@@ -452,6 +453,7 @@ export default function JetLumierePage() {
 
   const handleCashout = useCallback(async (cashoutMultiplier: number) => {
       if (!userDocRef || isProcessing || !globalStateRef.current) return;
+      // Protection stricte : on ne cashout que si le pari est PLACED
       if (betDataRef.current.betState !== 'PLACED') return;
 
       setIsProcessing(true);
@@ -503,9 +505,21 @@ export default function JetLumierePage() {
         : new Date(startTimeStr).getTime();
     const crashPoint = globalState.crashPoint;
 
+    // Gestion du changement de round
     if (roundId !== betDataRef.current.lastRoundId) {
-        setBetData(prev => ({ ...prev, betState: 'IDLE', lastRoundId: roundId, winAmount: 0 }));
+        // On ne reset à IDLE que si on n'est pas déjà dans un processus de mise (PENDING ou PLACED)
+        // ou si le round précédent est fini
+        if (betDataRef.current.betState === 'CASHED_OUT' || betDataRef.current.betState === 'LOST') {
+            setBetData(prev => ({ ...prev, betState: 'IDLE', lastRoundId: roundId, winAmount: 0 }));
+        } else {
+            setBetData(prev => ({ ...prev, lastRoundId: roundId }));
+        }
         setSimulatedPlayers(generateFakePlayers(12));
+    }
+
+    // Passage automatique de PENDING à PLACED pour TOUS les utilisateurs quand le vol commence
+    if (status === 'in_progress' && betDataRef.current.betState === 'PENDING') {
+        setBetData(prev => ({ ...prev, betState: 'PLACED' }));
     }
 
     let growthFrameId: number;
@@ -514,17 +528,16 @@ export default function JetLumierePage() {
         const growthLoop = () => {
             const now = Date.now();
             const elapsedMs = now - startTime;
-            // Croissance exponentielle immuable
+            // Courbe exponentielle : M(t) = 1.002^(t/10)
             const currentMultiplier = Math.pow(1.002, elapsedMs / 10);
             
-            // LA LOI : Si on touche ou dépasse le crashPoint, c'est fini.
             if (currentMultiplier >= crashPoint) {
                 setMultiplier(crashPoint);
                 handleGlobalStateTransition('crashed');
             } else {
                 setMultiplier(currentMultiplier);
                 
-                // RETRAIT AUTO : Uniquement si on dépasse la cible AVANT le crashPoint
+                // RETRAIT AUTO : Dès que le multiplicateur local atteint la cible
                 if (betDataRef.current.betState === 'PLACED' && currentMultiplier >= betDataRef.current.autoCashoutValue) {
                     handleCashout(betDataRef.current.autoCashoutValue);
                 }
@@ -544,13 +557,11 @@ export default function JetLumierePage() {
     } else {
         setMultiplier(status === 'crashed' ? crashPoint : 1.00);
         
-        // ARBITRAGE FINAL AU CRASH POUR LE JOUEUR
+        // ARBITRAGE AU CRASH : Si le crash a dépassé la cible, gain validé
         if (status === 'crashed' && betDataRef.current.betState === 'PLACED') {
             if (crashPoint > betDataRef.current.autoCashoutValue) {
-                // Le crash a dépassé la cible : gain validé (sécurité si le cashout n'a pas fini de process)
                 handleCashout(betDataRef.current.autoCashoutValue);
             } else {
-                // Le crash est avant ou sur la cible : perte
                 setBetData(prev => ({ ...prev, betState: 'LOST' }));
                 haptic.error();
             }
@@ -560,6 +571,10 @@ export default function JetLumierePage() {
             setSimulatedPlayers(prev => prev.map(p => p.status === 'betting' ? { ...p, status: 'lost' } : p));
         } else if (status === 'betting') {
             setSimulatedPlayers(prev => prev.map(p => ({ ...p, status: 'betting' })));
+            // Reset du panneau pour le nouveau cycle si on avait fini le précédent
+            if (betDataRef.current.betState === 'CASHED_OUT' || betDataRef.current.betState === 'LOST') {
+                setBetData(prev => ({ ...prev, betState: 'IDLE', winAmount: 0 }));
+            }
         }
 
         let timer: NodeJS.Timeout;
@@ -584,7 +599,7 @@ export default function JetLumierePage() {
     const currentStatus = globalStateRef.current.status;
     const lastUpdate = (globalStateRef.current.lastUpdate as Timestamp)?.toDate().getTime() || 0;
     
-    // Protection anti-spam pour les transitions
+    // Protection anti-spam et lock temporel (800ms)
     if (Date.now() - lastUpdate < 800) return;
 
     try {
@@ -597,8 +612,6 @@ export default function JetLumierePage() {
                 roundId: nextRound.id,
                 lastUpdate: serverTimestamp()
             });
-            // Passage en mode PLACED uniquement si on avait un pari en attente
-            setBetData(b => b.betState === 'PENDING' ? { ...b, betState: 'PLACED' } : b);
         } else if (nextStatus === 'crashed' && currentStatus === 'in_progress') {
             await updateDoc(jetConfigRef, { status: 'crashed', lastUpdate: serverTimestamp() });
             haptic.impact();
