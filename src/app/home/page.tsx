@@ -17,11 +17,12 @@ import {
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Trophy, ArrowRight, Loader2, Timer, Zap, Users, Star, Eye, Clock, ShieldCheck, X } from "lucide-react";
+import { Trophy, ArrowRight, Loader2, Timer, Zap, Users, Star, Eye, Clock, ShieldCheck, X, Sparkles, Brain } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { EmojiOracle } from "@/components/EmojiOracle";
 
 export function SpoilerOverlay() {
   return (
@@ -38,6 +39,48 @@ export function SpoilerOverlay() {
         className="absolute top-[-20%] left-[-10%] w-[80%] h-[80%] bg-primary/5 rounded-full blur-[100px] z-20"
       />
     </motion.div>
+  );
+}
+
+function OracleThought({ points }: { points: number }) {
+  const [thought, setThought] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulation d'une pensée de l'Oracle en attendant le flux Genkit complet
+    const thoughts = [
+      "Le savoir est une lumière qui ne s'éteint jamais. 🕯️",
+      "Chaque défi est un pas de plus vers l'Éveil Suprême. ✨",
+      "L'esprit en paix voit la vérité à travers l'illusion. 🧘",
+      "Votre résonance actuelle perturbe positivement l'éther. 🌀",
+      "L'Oracle voit en vous un potentiel de Sage immense. 💎"
+    ];
+    
+    const timer = setTimeout(() => {
+      setThought(thoughts[Math.floor(Math.random() * thoughts.length)]);
+      setLoading(false);
+    }, 1500);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <Card className="border-none bg-primary/5 rounded-[2rem] p-6 relative overflow-hidden group">
+      <motion.div animate={{ opacity: [0.3, 0.6, 0.3] }} transition={{ duration: 4, repeat: Infinity }} className="absolute -right-4 -top-4 text-primary opacity-10"><Brain className="h-24 w-24" /></motion.div>
+      <div className="relative z-10 space-y-3">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-3 w-3 text-primary animate-pulse" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Réflexion du Jour</span>
+        </div>
+        {loading ? (
+          <div className="h-4 w-3/4 bg-primary/5 animate-pulse rounded-full" />
+        ) : (
+          <p className="text-sm font-medium italic leading-relaxed opacity-70">
+            <EmojiOracle text={thought} />
+          </p>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -315,7 +358,13 @@ export default function HomePage() {
                   </Button>
                 </div>
               </div>
+              
               <CommunityGoalProgress appStatus={appStatus} />
+              
+              {/* Nouvelle Amélioration: Oracle Thought */}
+              <div className="w-full max-w-lg">
+                <OracleThought points={profile?.totalPoints || 0} />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
