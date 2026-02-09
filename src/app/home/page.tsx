@@ -7,6 +7,7 @@ import { useUser, useFirestore, useCollection, useDoc } from "@/firebase";
 import { 
   collection, 
   doc, 
+  query,
   orderBy, 
   limit
 } from "firebase/firestore";
@@ -96,7 +97,7 @@ function GlobalActivityTicker() {
             <Users className="h-2 w-2 text-primary" />
           </div>
           <p className="text-[9px] font-black uppercase tracking-widest opacity-60">
-            <span className="text-primary">@{transfer.fromName}</span> a transmis <span className="text-primary">{transfer.amount} PTS</span>
+            <span className="text-primary">@<EmojiOracle text={transfer.fromName} /></span> a transmis <span className="text-primary">{transfer.amount} PTS</span>
           </p>
           <Zap className="h-2.5 w-2.5 text-primary animate-pulse" />
         </motion.div>

@@ -182,10 +182,11 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div>;
   }
 
-  // Oracle: Harmonisation des chemins. Les composants Nav/Header s'affichent sur /home
+  // Configuration des exclusions pour la navigation
   const excludedNavPaths = ["/login", "/autoriser", "/arcade", "/quiz", "/penalties"];
   const excludedBottomNavPaths = ["/login", "/autoriser", "/transfert", "/echange", "/duels", "/arcade", "/quiz", "/penalties"];
 
+  // Correction: On affiche la nav si on est sur /home ou toute autre page non exclue (sauf le splash à /)
   const showNav = user && pathname !== "/" && !excludedNavPaths.some(p => pathname.startsWith(p));
   const showBottomNav = user && pathname !== "/" && !excludedBottomNavPaths.some(p => pathname.startsWith(p));
 
