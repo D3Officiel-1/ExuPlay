@@ -32,8 +32,7 @@ import { doc, updateDoc, serverTimestamp, increment } from 'firebase/firestore';
 import { motion, AnimatePresence } from "framer-motion";
 import { haptic } from '@/lib/haptics';
 import { EmojiOracle } from '@/components/EmojiOracle';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import { generateJetResult, getJetHistory } from '@/app/actions/jet-lumiere';
 
 type GameState = 'IDLE' | 'WAITING' | 'BETTING' | 'IN_PROGRESS' | 'CRASHED';
 type BetState = 'IDLE' | 'PENDING' | 'PLACED' | 'CASHED_OUT' | 'LOST';
@@ -88,13 +87,6 @@ interface BetPanelProps {
 const BETTING_TIME = 8000; 
 const MIN_BET = 5;
 
-const generateCrashPoint = (): number => {
-  const r = Math.random();
-  if (r < 0.5) return 1 + r * 1.5;       
-  if (r < 0.85) return 1.8 + (r - 0.5) * 8; 
-  return 4.5 + (r - 0.85) * 50; 
-};
-
 const generateRandomName = (): string => {
     const beginnings = ["Art", "Neo", "Flux", "Zon", "Zen", "Void", "Lux", "Kry", "Eon", "Vex"];
     const middles = ["-", "_", "X", "0", "1", "V", "S"];
@@ -124,8 +116,6 @@ const fakeMessages = [
     { text: "Le flux est instable, attention... ⚠️", color: "#fbbf24" },
     { text: "TO THE MOON! 💎", color: "#22d3ee" }
 ];
-
-const initialHistory = [1.25, 4.50, 1.08, 2.10, 15.42, 1.95, 3.20, 1.15, 5.80, 2.45];
 
 interface Particle {
   x: number; y: number; size: number; opacity: number; vx: number; vy: number; life: number; maxLife: number; color: string;
@@ -413,7 +403,7 @@ export default function JetLumierePage() {
   const [gameState, setGameState] = useState<GameState>('IDLE');
   const [multiplier, setMultiplier] = useState(1.00);
   const [crashPoint, setCrashPoint] = useState(0);
-  const [history, setHistory] = useState<number[]>(initialHistory);
+  const [history, setHistory] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadingTextIndex, setLoadingTextIndex] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -435,6 +425,12 @@ export default function JetLumierePage() {
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages]);
 
   useEffect(() => {
+      const initHistory = async () => {
+        const hist = await getJetHistory(10);
+        setHistory(hist);
+      };
+      initHistory();
+
       const chatInterval = setInterval(() => {
           const randomMessage = fakeMessages[Math.floor(Math.random() * fakeMessages.length)];
           const randomName = generateRandomName();
@@ -530,12 +526,12 @@ export default function JetLumierePage() {
       betSetter(prev => ({...prev, ...data}));
   }, []);
 
-  const gameLoop = useCallback(() => {
+  const gameLoop = useCallback(async () => {
     setGameState('WAITING'); 
     setMultiplier(1.00); 
     setSimulatedPlayers(generateFakePlayers(12));
     
-    const waitTimer = setTimeout(() => {
+    const waitTimer = setTimeout(async () => {
         setGameState('BETTING');
         haptic.medium();
 
@@ -554,9 +550,11 @@ export default function JetLumierePage() {
           });
         }, 500);
 
-        const bettingTimer = setTimeout(() => {
+        const bettingTimer = setTimeout(async () => {
             clearInterval(bettingInterval);
-            const newCrashPoint = generateCrashPoint(); 
+            
+            // Invocation de l'Oracle Server Action pour le résultat
+            const newCrashPoint = await generateJetResult(); 
             setCrashPoint(newCrashPoint); 
             setGameState('IN_PROGRESS');
             
