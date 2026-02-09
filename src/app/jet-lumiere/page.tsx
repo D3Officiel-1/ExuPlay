@@ -469,6 +469,8 @@ export default function JetLumierePage() {
             title: "Cible Atteinte !", 
             description: `+${winAmount} PTS (Extraction auto à x${cashoutMultiplier.toFixed(2)})` 
         });
+      } catch (e) {
+        console.error("Dissonance lors du cashout:", e);
       } finally {
         setIsProcessing(false);
       }
@@ -512,7 +514,7 @@ export default function JetLumierePage() {
         const growthLoop = () => {
             const now = Date.now();
             const elapsedMs = now - startTime;
-            // Croissance exponentielle immuable pour une accélération type Aviator
+            // Croissance exponentielle immuable
             const currentMultiplier = Math.pow(1.002, elapsedMs / 10);
             
             // LA LOI : Si on touche ou dépasse le crashPoint, c'est fini.
@@ -542,6 +544,18 @@ export default function JetLumierePage() {
     } else {
         setMultiplier(status === 'crashed' ? crashPoint : 1.00);
         
+        // ARBITRAGE FINAL AU CRASH POUR LE JOUEUR
+        if (status === 'crashed' && betDataRef.current.betState === 'PLACED') {
+            if (crashPoint > betDataRef.current.autoCashoutValue) {
+                // Le crash a dépassé la cible : gain validé (sécurité si le cashout n'a pas fini de process)
+                handleCashout(betDataRef.current.autoCashoutValue);
+            } else {
+                // Le crash est avant ou sur la cible : perte
+                setBetData(prev => ({ ...prev, betState: 'LOST' }));
+                haptic.error();
+            }
+        }
+
         if (status === 'crashed') {
             setSimulatedPlayers(prev => prev.map(p => p.status === 'betting' ? { ...p, status: 'lost' } : p));
         } else if (status === 'betting') {
@@ -583,10 +597,10 @@ export default function JetLumierePage() {
                 roundId: nextRound.id,
                 lastUpdate: serverTimestamp()
             });
+            // Passage en mode PLACED uniquement si on avait un pari en attente
             setBetData(b => b.betState === 'PENDING' ? { ...b, betState: 'PLACED' } : b);
         } else if (nextStatus === 'crashed' && currentStatus === 'in_progress') {
             await updateDoc(jetConfigRef, { status: 'crashed', lastUpdate: serverTimestamp() });
-            setBetData(b => b.betState === 'PLACED' ? {...b, betState: 'LOST'} : b);
             haptic.impact();
         } else if (nextStatus === 'waiting' && currentStatus === 'crashed') {
             await updateDoc(jetConfigRef, { status: 'waiting', lastUpdate: serverTimestamp() });
