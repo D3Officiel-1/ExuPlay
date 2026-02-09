@@ -19,7 +19,8 @@ import {
   Target,
   TrendingUp,
   AlertCircle,
-  Trophy
+  Trophy,
+  ShieldCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
