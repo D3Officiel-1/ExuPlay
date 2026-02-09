@@ -183,8 +183,8 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   }
 
   // Oracle: Harmonisation des chemins. Les composants Nav/Header s'affichent sur /home
-  const excludedNavPaths = ["/login", "/autoriser", "/arcade"];
-  const excludedBottomNavPaths = ["/login", "/autoriser", "/transfert", "/echange", "/duels", "/arcade"];
+  const excludedNavPaths = ["/login", "/autoriser", "/arcade", "/quiz", "/penalties"];
+  const excludedBottomNavPaths = ["/login", "/autoriser", "/transfert", "/echange", "/duels", "/arcade", "/quiz", "/penalties"];
 
   const showNav = user && pathname !== "/" && !excludedNavPaths.some(p => pathname.startsWith(p));
   const showBottomNav = user && pathname !== "/" && !excludedBottomNavPaths.some(p => pathname.startsWith(p));
