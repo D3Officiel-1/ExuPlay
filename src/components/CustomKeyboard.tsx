@@ -100,7 +100,6 @@ export function CustomKeyboard() {
     const value = activeInput.value;
     const newValue = value.substring(0, start) + text + value.substring(end);
     
-    // Calcul de la nouvelle position du curseur en tenant compte des emojis
     const newCursorPos = start + Array.from(text).length;
 
     const prototype = activeInput instanceof HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
@@ -121,7 +120,10 @@ export function CustomKeyboard() {
     if (isEmojiSearchActive) {
       haptic.light();
       if (key === "backspace" || key === "backspace_continuous") setEmojiSearchQuery(prev => prev.slice(0, -1));
-      else if (key === "enter") setIsEmojiSearchActive(false);
+      else if (key === "enter") {
+        setIsEmojiSearchActive(false);
+        setKeyboardHeight(BASE_HEIGHT);
+      }
       else if (key === "space") setEmojiSearchQuery(prev => prev + " ");
       else if (!["shift", "?123", "abc", "emoji-switch", "eco-toggle"].includes(key)) {
         const char = isShift ? key.toUpperCase() : key.toLowerCase();
@@ -180,7 +182,7 @@ export function CustomKeyboard() {
     }
     else if (key === "space") insertText(" ");
     else {
-      const char = (isShift && layout === "alpha") ? key.toUpperCase() : key;
+      const char = (isShift && (layout === "alpha" || isEmojiSearchActive)) ? key.toUpperCase() : key;
       insertText(char);
     }
   }, [activeInput, isShift, layout, updateSuggestions, isEmojiSearchActive, insertText, isEcoMode, userDocRef]);
@@ -346,7 +348,7 @@ export function CustomKeyboard() {
             style={{ height: `${currentHeight}px`, transition: (isResizing || isSpaceDragging) ? 'none' : 'height 0.5s cubic-bezier(0.22, 1, 0.36, 1)' }}
             className="w-full max-w-md bg-card/60 backdrop-blur-[55px] border-t border-x border-primary/5 rounded-t-[3rem] p-4 shadow-[0_-20px_100px_-20px_rgba(0,0,0,0.5)] pointer-events-auto overflow-hidden flex flex-col"
           >
-            {/* Barre de Suggestions Fusionnée */}
+            {/* Barre de Suggestions / Recherche */}
             {layout !== "emoji" && !isEmojiSearchActive && !isSpaceDragging && (
               <div className="h-10 flex items-center justify-center gap-3 overflow-hidden px-4 shrink-0">
                 <AnimatePresence mode="popLayout">
@@ -382,7 +384,7 @@ export function CustomKeyboard() {
                         <div className="h-14 flex items-center gap-4 px-6 bg-primary/5 rounded-[2rem] border border-primary/10 shrink-0">
                           <Search className="h-5 w-5 text-primary opacity-40" />
                           <div className="flex-1 text-sm font-black italic truncate">{emojiSearchQuery || "Chercher une essence..."}</div>
-                          <button onClick={() => setIsEmojiSearchActive(false)} className="p-2 opacity-40"><X className="h-5 w-5" /></button>
+                          <button onClick={() => { setIsEmojiSearchActive(false); setKeyboardHeight(BASE_HEIGHT); }} className="p-2 opacity-40"><X className="h-5 w-5" /></button>
                         </div>
                         <div className="flex-1 flex flex-col justify-end gap-2 pb-2">
                           {ALPHA_KEYS.map((row, i) => (
@@ -424,7 +426,7 @@ export function CustomKeyboard() {
                         </div>
                         <div className="flex gap-3 mt-4 h-14 shrink-0 border-t border-primary/5 pt-3">
                           <button onClick={() => { haptic.medium(); setLayout("alpha"); }} className="flex-[2] bg-primary/10 text-primary font-black text-xs uppercase rounded-2xl">ABC</button>
-                          <button onClick={() => { haptic.medium(); setIsEmojiSearchActive(true); setEmojiSearchQuery(""); }} className="flex-[4] bg-primary/5 border border-primary/10 text-primary/40 rounded-2xl flex items-center justify-center"><Search className="h-5 w-5" /></button>
+                          <button onClick={() => { haptic.medium(); setIsEmojiSearchActive(true); setEmojiSearchQuery(""); setKeyboardHeight(BASE_HEIGHT); }} className="flex-[4] bg-primary/5 border border-primary/10 text-primary/40 rounded-2xl flex items-center justify-center"><Search className="h-5 w-5" /></button>
                           <button onPointerDown={(e) => { e.preventDefault(); startBackspace(); }} onPointerUp={stopBackspace} className="flex-[2] bg-primary/5 text-primary/60 rounded-2xl flex items-center justify-center"><Delete className="h-5 w-5" /></button>
                         </div>
                       </div>
@@ -439,16 +441,36 @@ export function CustomKeyboard() {
                           const isOtherInSpaceRow = isSpaceDragging && key !== "space" && row.includes("space");
                           
                           if (key === "space") return (
-                            <motion.button key={key} layout onPointerDown={handleSpaceDown} className={cn("relative flex items-center justify-center rounded-2xl transition-all border bg-primary/5 border-primary/5 text-primary/60 overflow-hidden", isSpaceDragging ? "absolute inset-x-0 h-full z-50 bg-primary/10 border-primary/20 shadow-2xl" : "flex-[4]")}>
-                              {isSpaceDragging ? <div className="flex items-center gap-6"><ChevronLeft className="h-5 w-5 animate-pulse" /><span className="text-[10px] font-black uppercase tracking-[0.3em]">Navigation</span><ChevronRight className="h-5 w-5 animate-pulse" /></div> : <div className="w-16 h-1 bg-primary/20 rounded-full" />}
+                            <motion.button 
+                              key={key} 
+                              layout 
+                              onPointerDown={handleSpaceDown} 
+                              className={cn(
+                                "relative flex items-center justify-center rounded-2xl transition-all border bg-primary/5 border-primary/5 text-primary/60 overflow-hidden", 
+                                isSpaceDragging ? "absolute inset-x-0 h-full z-50 bg-primary/10 border-primary/20 shadow-2xl" : "flex-[4]"
+                              )}
+                            >
+                              {isSpaceDragging ? (
+                                <div className="flex items-center gap-6">
+                                  <ChevronLeft className="h-5 w-5 animate-pulse" />
+                                  <span className="text-[10px] font-black uppercase tracking-[0.3em]">Navigation</span>
+                                  <ChevronRight className="h-5 w-5 animate-pulse" />
+                                </div>
+                              ) : (
+                                <div className="w-16 h-1 bg-primary/20 rounded-full" />
+                              )}
                             </motion.button>
                           );
 
                           return (
                             <motion.button
                               key={key}
-                              whileTap={{ scale: 0.92 }}
-                              animate={{ opacity: isOtherInSpaceRow ? 0 : 1, scale: isOtherInSpaceRow ? 0.8 : 1 }}
+                              whileTap={isOtherInSpaceRow ? {} : { scale: 0.92 }}
+                              animate={{ 
+                                opacity: isOtherInSpaceRow ? 0 : 1, 
+                                scale: isOtherInSpaceRow ? 0.8 : 1,
+                                filter: isOtherInSpaceRow ? "blur(5px)" : "blur(0px)"
+                              }}
                               onPointerDown={(e) => { if (isOtherInSpaceRow) return; e.preventDefault(); if (key === "backspace") startBackspace(); else handleKeyPress(key); }}
                               onPointerUp={stopBackspace}
                               className={cn(

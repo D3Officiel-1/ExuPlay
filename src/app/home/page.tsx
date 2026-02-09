@@ -47,13 +47,14 @@ function OracleThought({ points }: { points: number }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simulation d'une pensée de l'Oracle en attendant le flux Genkit complet
     const thoughts = [
       "Le savoir est une lumière qui ne s'éteint jamais. 🕯️",
       "Chaque défi est un pas de plus vers l'Éveil Suprême. ✨",
       "L'esprit en paix voit la vérité à travers l'illusion. 🧘",
       "Votre résonance actuelle perturbe positivement l'éther. 🌀",
-      "L'Oracle voit en vous un potentiel de Sage immense. 💎"
+      "L'Oracle voit en vous un potentiel de Sage immense. 💎",
+      "La patience est la clé qui ouvre les portes de l'Inconnu. 🔑",
+      "Une pensée pure transmute le plomb en or spirituel. ⚗️"
     ];
     
     const timer = setTimeout(() => {
@@ -65,17 +66,28 @@ function OracleThought({ points }: { points: number }) {
   }, []);
 
   return (
-    <Card className="border-none bg-primary/5 rounded-[2rem] p-6 relative overflow-hidden group">
-      <motion.div animate={{ opacity: [0.3, 0.6, 0.3] }} transition={{ duration: 4, repeat: Infinity }} className="absolute -right-4 -top-4 text-primary opacity-10"><Brain className="h-24 w-24" /></motion.div>
-      <div className="relative z-10 space-y-3">
+    <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2.5rem] p-8 relative overflow-hidden group shadow-2xl border border-primary/5">
+      <motion.div 
+        animate={{ opacity: [0.3, 0.6, 0.3], scale: [1, 1.1, 1] }} 
+        transition={{ duration: 6, repeat: Infinity }} 
+        className="absolute -right-6 -top-6 text-primary opacity-5"
+      >
+        <Brain className="h-32 w-32" />
+      </motion.div>
+      <div className="relative z-10 space-y-4">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-3 w-3 text-primary animate-pulse" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Réflexion du Jour</span>
+          <div className="h-6 w-6 bg-primary/10 rounded-lg flex items-center justify-center">
+            <Sparkles className="h-3.5 w-3.5 text-primary animate-pulse" />
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Oracle des Pensées</span>
         </div>
         {loading ? (
-          <div className="h-4 w-3/4 bg-primary/5 animate-pulse rounded-full" />
+          <div className="space-y-2">
+            <div className="h-4 w-full bg-primary/5 animate-pulse rounded-full" />
+            <div className="h-4 w-3/4 bg-primary/5 animate-pulse rounded-full" />
+          </div>
         ) : (
-          <p className="text-sm font-medium italic leading-relaxed opacity-70">
+          <p className="text-base font-black italic leading-tight tracking-tight opacity-80">
             <EmojiOracle text={thought} />
           </p>
         )}
@@ -361,7 +373,6 @@ export default function HomePage() {
               
               <CommunityGoalProgress appStatus={appStatus} />
               
-              {/* Nouvelle Amélioration: Oracle Thought */}
               <div className="w-full max-w-lg">
                 <OracleThought points={profile?.totalPoints || 0} />
               </div>
