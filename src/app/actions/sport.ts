@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview Oracle de la Destinée Sportive v3.0.
+ * @fileOverview Oracle de la Destinée Sportive v3.1.
  * Génère des rencontres internationales avec événements, buteurs, stats et marchés de paris.
  */
 
@@ -117,7 +117,6 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
       }
     }
 
-    // Génération déterministe des buts et événements
     const maxGoals = Math.floor(seededRandom(matchSeed + 2) * 5);
     const events: MatchEvent[] = [];
     const score = { home: 0, away: 0 };
@@ -137,7 +136,6 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
     }
     events.sort((a, b) => a.minute - b.minute);
 
-    // Stats déterministes
     const stats: MatchStats = {
       possession: { 
         home: Math.floor(40 + seededRandom(matchSeed + 40) * 20),
@@ -154,7 +152,6 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
     };
     stats.possession.away = 100 - stats.possession.home;
 
-    // Marchés de paris
     const baseOdd = 1.1 + seededRandom(matchSeed + 50) * 3;
     const markets: BettingMarket[] = [
       {
@@ -205,4 +202,9 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
   }
 
   return matches;
+}
+
+export async function getMatchById(id: string): Promise<GeneratedMatch | null> {
+  const matches = await getDailyMatches();
+  return matches.find(m => m.id === id) || null;
 }
