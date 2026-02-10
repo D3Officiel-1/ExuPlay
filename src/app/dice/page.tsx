@@ -29,8 +29,9 @@ import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 
 /**
- * @fileOverview Harshad Dice v5.0 - L'Équilibre Pur.
+ * @fileOverview Harshad Dice v5.1 - L'Équilibre Pur & Responsive.
  * Interface de précision avec piste de flux horizontale et historique des sorts.
+ * Optimisé pour une lisibilité parfaite sur tous les terminaux.
  */
 
 const MIN_BET = 5;
@@ -158,25 +159,26 @@ export default function DicePage() {
         <div className="w-10 h-10" />
       </header>
 
-      <main className="flex-1 p-6 pt-28 flex flex-col gap-8 max-w-4xl mx-auto w-full">
+      <main className="flex-1 p-4 sm:p-6 pt-28 flex flex-col gap-8 max-w-4xl mx-auto w-full">
         {/* L'Arène de Piste Pure Harshad */}
-        <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[3rem] p-8 sm:p-12 border border-white/5 shadow-2xl relative overflow-hidden flex flex-col gap-12">
+        <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[2.5rem] sm:rounded-[3rem] p-6 sm:p-12 border border-white/5 shadow-2xl relative overflow-hidden flex flex-col gap-8 sm:gap-12">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.05),transparent_70%)] pointer-events-none" />
           
-          <div className="flex justify-between items-end relative z-10 px-2">
+          <div className="flex justify-between items-end relative z-10 px-1 sm:px-2 gap-2">
             <div className="space-y-1">
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-30">Multiplicateur</p>
-              <p className="text-4xl font-black italic tabular-nums text-white">x{multiplier.toFixed(2)}</p>
+              <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest opacity-30">Multiplicateur</p>
+              <p className="text-2xl sm:text-4xl font-black italic tabular-nums text-white">x{multiplier.toFixed(2)}</p>
             </div>
-            <div className="text-center space-y-1 bg-white/5 px-6 py-2 rounded-2xl border border-white/5 backdrop-blur-md">
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-30">Résultat</p>
+            
+            <div className="text-center space-y-1 bg-white/5 px-3 py-1.5 sm:px-6 sm:py-2 rounded-2xl border border-white/5 backdrop-blur-md min-w-[80px] sm:min-w-[120px]">
+              <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest opacity-30">Résultat</p>
               <AnimatePresence mode="wait">
                 <motion.p 
                   key={rolledNumber ?? 'none'}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   className={cn(
-                    "text-3xl font-black tabular-nums",
+                    "text-xl sm:text-3xl font-black tabular-nums",
                     rolledNumber === null ? "opacity-10" : 
                     ( (mode === 'over' ? rolledNumber > targetNumber : rolledNumber < targetNumber) ? "text-green-500" : "text-red-500")
                   )}
@@ -185,14 +187,15 @@ export default function DicePage() {
                 </motion.p>
               </AnimatePresence>
             </div>
+
             <div className="text-right space-y-1">
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-30">Chance</p>
-              <p className="text-4xl font-black italic tabular-nums text-white">{winChance.toFixed(2)}%</p>
+              <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest opacity-30">Chance</p>
+              <p className="text-2xl sm:text-4xl font-black italic tabular-nums text-white">{winChance.toFixed(2)}%</p>
             </div>
           </div>
 
           {/* La Piste Horizontale Harshad */}
-          <div className="relative h-12 w-full bg-black/40 rounded-full border border-white/5 shadow-inner overflow-hidden">
+          <div className="relative h-10 sm:h-12 w-full bg-black/40 rounded-full border border-white/5 shadow-inner overflow-hidden">
             {/* Zone de Perte */}
             <div 
               className={cn(
@@ -259,13 +262,13 @@ export default function DicePage() {
 
         {/* Panneau de Commandement */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-8">
-          <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[3rem] p-8 border border-white/5 space-y-8 shadow-2xl">
-            <div className="flex gap-4">
+          <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[2.5rem] sm:rounded-[3rem] p-6 sm:p-8 border border-white/5 space-y-8 shadow-2xl">
+            <div className="flex gap-3 sm:gap-4">
               <button
                 onClick={() => { haptic.light(); setMode('under'); }}
                 disabled={isRolling}
                 className={cn(
-                  "flex-1 h-16 rounded-2xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest border transition-all duration-500",
+                  "flex-1 h-14 sm:h-16 rounded-2xl flex items-center justify-center gap-2 sm:gap-3 font-black text-[10px] sm:text-xs uppercase tracking-widest border transition-all duration-500",
                   mode === 'under' ? "bg-primary text-primary-foreground border-primary shadow-xl" : "bg-white/5 border-white/5 opacity-40"
                 )}
               >
@@ -275,7 +278,7 @@ export default function DicePage() {
                 onClick={() => { haptic.light(); setMode('over'); }}
                 disabled={isRolling}
                 className={cn(
-                  "flex-1 h-16 rounded-2xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest border transition-all duration-500",
+                  "flex-1 h-14 sm:h-16 rounded-2xl flex items-center justify-center gap-2 sm:gap-3 font-black text-[10px] sm:text-xs uppercase tracking-widest border transition-all duration-500",
                   mode === 'over' ? "bg-primary text-primary-foreground border-primary shadow-xl" : "bg-white/5 border-white/5 opacity-40"
                 )}
               >
@@ -310,7 +313,7 @@ export default function DicePage() {
             <Button 
               onClick={handleRoll}
               disabled={isRolling}
-              className="w-full h-20 rounded-[2rem] bg-primary text-primary-foreground font-black text-sm uppercase tracking-[0.3em] shadow-2xl shadow-primary/20 relative overflow-hidden group active:scale-95 transition-all"
+              className="w-full h-16 sm:h-20 rounded-[1.75rem] sm:rounded-[2rem] bg-primary text-primary-foreground font-black text-xs sm:text-sm uppercase tracking-[0.3em] shadow-2xl shadow-primary/20 relative overflow-hidden group active:scale-95 transition-all"
             >
               <div className="relative z-10 flex items-center gap-3">
                 {isRolling ? <Loader2 className="h-5 w-5 animate-spin" /> : <Dices className="h-5 w-5" />}
@@ -324,7 +327,7 @@ export default function DicePage() {
             </Button>
           </Card>
 
-          <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[3rem] p-8 border border-white/5 space-y-6 shadow-2xl h-fit">
+          <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[2.5rem] sm:rounded-[3rem] p-6 sm:p-8 border border-white/5 space-y-6 shadow-2xl h-fit">
             <div className="flex items-center gap-2 px-2">
               <History className="h-4 w-4 text-primary opacity-40" />
               <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Derniers Lancers</span>
