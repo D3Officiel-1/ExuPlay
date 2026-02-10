@@ -16,9 +16,7 @@ import {
   History,
   TrendingUp,
   Target,
-  Timer,
-  Plus,
-  ArrowRight
+  Plus
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
@@ -29,15 +27,14 @@ import { getTileColorSync, type DoubleColor } from "@/lib/games/double";
 import confetti from "canvas-confetti";
 
 /**
- * @fileOverview Double de l'Éveil v2.2 - Arbitrage par l'Oracle.
- * Une arène de roulette horizontale dont le destin est scellé sur le serveur.
- * Mise à jour de l'ordre visuel : Jeu en haut, Mise en bas.
+ * @fileOverview Double de l'Éveil v3.0 - Immersion Totale.
+ * Arène de roulette où les phases de jeu se superposent à la roue pour un focus absolu.
  */
 
 type GamePhase = 'betting' | 'spinning' | 'result';
 
 const TILE_WIDTH = 100;
-const TOTAL_TILES_STRIP = 100; // Pour simuler l'infini
+const TOTAL_TILES_STRIP = 100; 
 const CHIPS = [10, 50, 100, 500, 1000];
 
 export default function DoublePage() {
@@ -46,7 +43,6 @@ export default function DoublePage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // États du Jeu
   const [phase, setPhase] = useState<GamePhase>('betting');
   const [timeLeft, setTimeLeft] = useState(15);
   const [betAmount, setBetAmount] = useState<number>(100);
@@ -55,14 +51,12 @@ export default function DoublePage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [winAmount, setWinAmount] = useState<number | null>(null);
   
-  // Animation de la roue
   const controls = useAnimation();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const userDocRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
 
-  // Initialisation de l'historique
   useEffect(() => {
     const initHistory = async () => {
       const hist = await getDoubleHistory(15);
@@ -71,7 +65,6 @@ export default function DoublePage() {
     initHistory();
   }, []);
 
-  // --- LOGIQUE DU CYCLE DE JEU ---
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (phase === 'betting') {
@@ -89,29 +82,23 @@ export default function DoublePage() {
     haptic.medium();
 
     try {
-      // 1. Invoquer le destin sur le serveur
       const round = await triggerNextDoubleRound();
       const { resultNumber, resultColor } = round;
 
-      // 2. Calcul de la position finale pour l'animation
       const containerWidth = containerRef.current?.offsetWidth || 0;
       const centerOffset = containerWidth / 2 - TILE_WIDTH / 2;
       
-      // On décale de 80 tuiles pour être sûr d'avoir de l'élan (effet de plusieurs tours)
       const targetTileIndex = 80 + resultNumber;
       const finalX = -(targetTileIndex * TILE_WIDTH) + centerOffset;
 
-      // 3. Lancer l'animation physique
       await controls.start({
         x: finalX,
         transition: { duration: 5, ease: [0.15, 0, 0.15, 1] }
       });
 
-      // 4. Révéler le verdict
       setPhase('result');
       setHistory(prev => [resultColor, ...prev].slice(0, 15));
       
-      // 5. Vérifier les gains via l'Oracle
       if (selectedColor) {
         const validation = await validateDoubleWin(betAmount, selectedColor, resultColor);
         
@@ -136,7 +123,6 @@ export default function DoublePage() {
         }
       }
 
-      // 6. Attendre 4s pour contempler le destin puis réinitialiser
       setTimeout(() => {
         resetBoard();
       }, 4000);
@@ -152,7 +138,7 @@ export default function DoublePage() {
     setTimeLeft(15);
     setWinAmount(null);
     setSelectedColor(null);
-    controls.set({ x: 0 }); // Reset visuel immédiat
+    controls.set({ x: 0 });
   };
 
   const handlePlaceBet = async (color: DoubleColor) => {
@@ -185,7 +171,6 @@ export default function DoublePage() {
     }
   };
 
-  // Génération de la bande de tuiles chromatiques
   const tilesStrip = useMemo(() => {
     const tiles = [];
     for (let i = 0; i < TOTAL_TILES_STRIP; i++) {
@@ -213,7 +198,6 @@ export default function DoublePage() {
 
       <main className="flex-1 flex flex-col lg:grid lg:grid-cols-[1fr_380px] pt-24 px-4 sm:px-8 gap-8 max-w-7xl mx-auto w-full">
         
-        {/* ZONE DE JEU (Maintenant en haut sur mobile, à gauche sur desktop) */}
         <div className="flex flex-col gap-8 order-1">
           {/* HISTORIQUE */}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
@@ -233,17 +217,18 @@ export default function DoublePage() {
             ))}
           </div>
 
-          {/* LA ROUE */}
+          {/* ARÈNE UNIFIÉE (ROUE + PHASES) */}
           <div className="relative">
             {/* Indicateurs fixes */}
             <div className="absolute left-1/2 -top-2 -translate-x-1/2 z-30 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[15px] border-t-white shadow-[0_0_10px_white]" />
             <div className="absolute left-1/2 -bottom-2 -translate-x-1/2 z-30 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[15px] border-b-white shadow-[0_0_10px_white]" />
 
-            <div className="relative h-48 bg-card/20 backdrop-blur-3xl rounded-[3rem] border border-white/10 shadow-[inset_0_0_40px_rgba(0,0,0,0.5)] overflow-hidden">
+            <div className="relative h-64 bg-card/20 backdrop-blur-3xl rounded-[3rem] border border-white/10 shadow-[inset_0_0_40px_rgba(0,0,0,0.5)] overflow-hidden">
+              {/* LA ROUE (Background) */}
               <motion.div 
                 ref={containerRef}
                 animate={controls}
-                className="flex absolute left-0 top-0 bottom-0 py-4"
+                className="flex absolute left-0 top-0 bottom-0 py-8"
                 style={{ width: TOTAL_TILES_STRIP * TILE_WIDTH }}
               >
                 {tilesStrip.map((tile, i) => (
@@ -252,7 +237,7 @@ export default function DoublePage() {
                     style={{ width: TILE_WIDTH }}
                     className={cn(
                       "h-full px-1.5 transition-opacity duration-500",
-                      phase === 'spinning' && "opacity-80"
+                      phase !== 'spinning' && "opacity-20"
                     )}
                   >
                     <div className={cn(
@@ -268,78 +253,79 @@ export default function DoublePage() {
                 ))}
               </motion.div>
 
-              {/* Effet de fondu */}
-              <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#020617] to-transparent z-20 pointer-events-none" />
-              <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#020617] to-transparent z-20 pointer-events-none" />
-            </div>
-          </div>
+              {/* Effet de fondu latéral */}
+              <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#020617] to-transparent z-10 pointer-events-none" />
+              <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#020617] to-transparent z-10 pointer-events-none" />
 
-          {/* ÉCRAN DE PHASE */}
-          <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
-            <AnimatePresence mode="wait">
-              {phase === 'betting' ? (
-                <motion.div 
-                  key="betting"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 1.1 }}
-                  className="space-y-6"
-                >
-                  <div className="relative inline-block">
-                    <motion.div animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }} className="absolute inset-[-20px] border border-dashed border-primary/20 rounded-full" />
-                    <div className="h-24 w-24 bg-card/40 backdrop-blur-3xl rounded-[2rem] flex items-center justify-center border border-primary/10 shadow-2xl">
-                      <span className="text-4xl font-black italic text-primary">{timeLeft}</span>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[11px] font-black uppercase tracking-[0.6em] text-primary/60">Phase de Mise</p>
-                    <p className="text-[9px] font-bold opacity-30 uppercase">L'Oracle attend votre pacte...</p>
-                  </div>
-                </motion.div>
-              ) : phase === 'spinning' ? (
-                <motion.div 
-                  key="spinning"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="space-y-6"
-                >
-                  <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 1, repeat: Infinity }} className="h-24 w-24 mx-auto flex items-center justify-center">
-                    <TrendingUp className="h-16 w-16 text-primary opacity-20" />
-                  </motion.div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.6em] text-primary animate-pulse">Rotation du Destin</p>
-                </motion.div>
-              ) : (
-                <motion.div 
-                  key="result"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-8"
-                >
-                  {winAmount ? (
-                    <div className="space-y-6">
-                      <div className="h-24 w-24 bg-green-500/10 rounded-[2.5rem] flex items-center justify-center mx-auto border border-green-500/20 shadow-[0_0_50px_rgba(34,197,94,0.3)]">
-                        <TrendingUp className="h-12 w-12 text-green-500" />
+              {/* CALQUE DE PHASE (Foreground Superposé) */}
+              <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+                <AnimatePresence mode="wait">
+                  {phase === 'betting' ? (
+                    <motion.div 
+                      key="betting"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 1.1 }}
+                      className="space-y-4 text-center bg-background/40 backdrop-blur-md p-8 rounded-[2.5rem] border border-white/10 shadow-2xl pointer-events-auto"
+                    >
+                      <div className="relative inline-block">
+                        <motion.div animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }} className="absolute inset-[-15px] border border-dashed border-primary/40 rounded-full" />
+                        <div className="h-20 w-20 bg-card rounded-[1.75rem] flex items-center justify-center border border-primary/20 shadow-xl">
+                          <span className="text-4xl font-black italic text-primary">{timeLeft}</span>
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <h2 className="text-5xl font-black italic uppercase tracking-tighter text-green-500">Triomphe !</h2>
-                        <p className="text-3xl font-black">+{winAmount} <span className="text-xs opacity-40">PTS</span></p>
+                      <div className="space-y-1">
+                        <p className="text-[11px] font-black uppercase tracking-[0.6em] text-primary/80">Phase de Mise</p>
+                        <p className="text-[9px] font-bold opacity-60 uppercase">L'Oracle attend votre pacte...</p>
                       </div>
-                    </div>
+                    </motion.div>
+                  ) : phase === 'spinning' ? (
+                    <motion.div 
+                      key="spinning"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="text-center"
+                    >
+                      <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }} className="h-24 w-24 mx-auto flex items-center justify-center">
+                        <TrendingUp className="h-12 w-12 text-primary shadow-[0_0_30px_rgba(var(--primary-rgb),0.5)]" />
+                      </motion.div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.6em] text-primary animate-pulse mt-2">Rotation du Destin</p>
+                    </motion.div>
                   ) : (
-                    <div className="space-y-6">
-                      <div className="h-24 w-24 bg-red-500/10 rounded-[2.5rem] flex items-center justify-center mx-auto border border-red-500/20 opacity-40">
-                        <Target className="h-12 w-12 text-red-500" />
-                      </div>
-                      <h2 className="text-5xl font-black italic uppercase tracking-tighter opacity-40">Stase</h2>
-                    </div>
+                    <motion.div 
+                      key="result"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-6 text-center bg-background/60 backdrop-blur-lg p-10 rounded-[3rem] border border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.5)]"
+                    >
+                      {winAmount ? (
+                        <div className="space-y-4">
+                          <div className="h-20 w-20 bg-green-500/20 rounded-[2rem] flex items-center justify-center mx-auto border border-green-500/30 shadow-[0_0_40px_rgba(34,197,94,0.4)]">
+                            <TrendingUp className="h-10 w-10 text-green-500" />
+                          </div>
+                          <div className="space-y-1">
+                            <h2 className="text-4xl font-black italic uppercase tracking-tighter text-green-500">Triomphe !</h2>
+                            <p className="text-2xl font-black tabular-nums">+{winAmount} <span className="text-xs opacity-40">PTS</span></p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="h-20 w-20 bg-red-500/20 rounded-[2rem] flex items-center justify-center mx-auto border border-red-500/30 opacity-60">
+                            <Target className="h-10 w-10 text-red-500" />
+                          </div>
+                          <h2 className="text-4xl font-black italic uppercase tracking-tighter opacity-40">Stase</h2>
+                        </div>
+                      )}
+                    </motion.div>
                   )}
-                </motion.div>
-              )}
-            </AnimatePresence>
+                </AnimatePresence>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* PANEL DE COMMANDE (Maintenant en bas sur mobile, à droite sur desktop) */}
+        {/* PANEL DE COMMANDE (Ancré en bas) */}
         <aside className="space-y-6 order-2">
           <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[2.5rem] p-8 border border-white/5 shadow-2xl space-y-8">
             <div className="space-y-4">
@@ -416,3 +402,4 @@ export default function DoublePage() {
       </div>
     </div>
   );
+}
