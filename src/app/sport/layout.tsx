@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo, useState } from "react";
@@ -29,9 +30,8 @@ import { useToast } from "@/hooks/use-toast";
 import { SportBetResolver } from "@/components/SportBetResolver";
 
 /**
- * @fileOverview Oracle du Sceau Global.
- * Gère le bouton de coupon fixe au sommet et l'état des sélections pour toutes les pages sportives.
- * Inclut la Sentinelle de Résolution pour un arbitrage automatique des pactes.
+ * @fileOverview Oracle du Sceau Global v2.1.
+ * Gère le coupon avec un calcul par multiplication (Parlay) strict et explicite.
  */
 
 function CouponOverlay() {
@@ -41,12 +41,15 @@ function CouponOverlay() {
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const userDocRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
+  const userDocRef = useMemo(() => (db && user?.uid) ? doc(db, "users", user.uid) : null, [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
 
+  // LA LOI DU MULTIPLICATEUR : Les cotes se multiplient, elles ne s'additionnent pas.
   const totalOdds = useMemo(() => {
     if (selections.length === 0) return 0;
-    return parseFloat(selections.reduce((acc, sel) => acc * sel.odd, 1).toFixed(2));
+    const product = selections.reduce((acc, sel) => acc * Number(sel.odd), 1);
+    // Arrondi de précision à 2 décimales pour l'Oracle
+    return Math.round(product * 100) / 100;
   }, [selections]);
 
   const currentStake = Math.max(5, parseInt(betAmount) || 0);
@@ -99,7 +102,7 @@ function CouponOverlay() {
                   <span className="text-sm font-black">{selections.length} Sélection{selections.length > 1 ? 's' : ''}</span>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-sm font-black italic tabular-nums">@{totalOdds.toFixed(2)}</span>
+                  <span className="text-sm font-black italic tabular-nums">× @{totalOdds.toFixed(2)}</span>
                   <ChevronRight className="h-5 w-5 opacity-60" />
                 </div>
               </button>
@@ -135,29 +138,37 @@ function CouponOverlay() {
             <div className="flex-1 min-h-0 px-8">
               <div className="h-full w-full overflow-y-auto no-scrollbar pr-1">
                 <div className="space-y-4 py-2">
-                  {selections.map((sel) => (
-                    <motion.div 
-                      key={sel.matchId} 
-                      layout 
-                      initial={{ opacity: 0, x: -20 }} 
-                      animate={{ opacity: 1, x: 0 }} 
-                      className="relative p-5 bg-primary/5 rounded-[2rem] border border-primary/5 overflow-hidden group"
-                    >
-                      <button 
-                        onClick={() => setSelections(prev => prev.filter(s => s.matchId !== sel.matchId))}
-                        className="absolute top-4 right-4 h-6 w-6 rounded-full bg-destructive/10 text-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  {selections.map((sel, idx) => (
+                    <React.Fragment key={sel.matchId}>
+                      <motion.div 
+                        layout 
+                        initial={{ opacity: 0, x: -20 }} 
+                        animate={{ opacity: 1, x: 0 }} 
+                        className="relative p-5 bg-primary/5 rounded-[2rem] border border-primary/5 overflow-hidden group"
                       >
-                        <X className="h-3 w-3" />
-                      </button>
-                      <p className="text-[9px] font-black uppercase tracking-widest opacity-40 mb-2">{sel.matchName}</p>
-                      <div className="flex justify-between items-end">
-                        <div className="space-y-1">
-                          <p className="text-[8px] font-bold uppercase opacity-30">Votre choix</p>
-                          <p className="font-black text-primary text-base truncate max-w-[180px]">{sel.outcomeLabel}</p>
+                        <button 
+                          onClick={() => setSelections(prev => prev.filter(s => s.matchId !== sel.matchId))}
+                          className="absolute top-4 right-4 h-6 w-6 rounded-full bg-destructive/10 text-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                        <p className="text-[9px] font-black uppercase tracking-widest opacity-40 mb-2">{sel.matchName}</p>
+                        <div className="flex justify-between items-end">
+                          <div className="space-y-1">
+                            <p className="text-[8px] font-bold uppercase opacity-30">Votre choix</p>
+                            <p className="font-black text-primary text-base truncate max-w-[180px]">{sel.outcomeLabel}</p>
+                          </div>
+                          <p className="text-2xl font-black tabular-nums italic">@{sel.odd.toFixed(2)}</p>
                         </div>
-                        <p className="text-2xl font-black tabular-nums italic">@{sel.odd.toFixed(2)}</p>
-                      </div>
-                    </motion.div>
+                      </motion.div>
+                      {idx < selections.length - 1 && (
+                        <div className="flex justify-center py-1">
+                          <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span className="text-[10px] font-black opacity-40 italic">×</span>
+                          </div>
+                        </div>
+                      )}
+                    </React.Fragment>
                   ))}
                 </div>
               </div>
@@ -167,8 +178,8 @@ function CouponOverlay() {
             <div className="p-8 pt-6 border-t border-primary/5 shrink-0 bg-card/50 space-y-6">
               <div className="flex justify-between items-center px-2">
                 <div className="flex flex-col">
-                  <p className="text-[8px] font-black uppercase opacity-30">Cote Totale</p>
-                  <p className="text-xl font-black italic text-primary tabular-nums">@{totalOdds.toFixed(2)}</p>
+                  <p className="text-[8px] font-black uppercase opacity-30">Multiplicateur Total</p>
+                  <p className="text-xl font-black italic text-primary tabular-nums">× @{totalOdds.toFixed(2)}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[8px] font-black uppercase opacity-30">Gain Potential</p>
