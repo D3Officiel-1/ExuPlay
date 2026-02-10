@@ -136,7 +136,6 @@ export default function PenaltiesPage() {
     let keeperDir: Direction;
     let scored: boolean;
 
-    // Logique : 50% de chance d'arrêter si on tire au même endroit
     if (roll < 0.50) {
       keeperDir = direction;
       scored = false;
@@ -174,7 +173,7 @@ export default function PenaltiesPage() {
           haptic.error();
         }
         setLoading(false);
-      }, 800);
+      }, 1000);
     } catch (e) {
       setLoading(false);
       setGameState('idle');
@@ -190,22 +189,30 @@ export default function PenaltiesPage() {
   };
 
   const ballVariants = {
-    idle: { y: "0%", x: "0%", scale: 1, filter: "blur(0px)", rotate: 0 },
+    idle: { 
+      top: "88%", 
+      left: "50%", 
+      scale: 1, 
+      filter: "blur(0px)", 
+      rotate: 0,
+      translateX: "-50%" 
+    },
     shooting: (direction: Direction) => {
-      // Calcul des coordonnées relatives en pourcentage de l'arène
+      // Coordonnées cibles précises en % du stade (container aspect 4/5)
+      // La cage occupe x: 7.5% -> 92.5% et y: 18% -> 60.5% (approx)
       const xMap: Record<Direction, string> = { 
-        "En haut à gauche": "-35%", "En haut": "0%", "En haut à droite": "35%", 
-        "À gauche": "-35%", "Centre": "0%", "À droite": "35%", 
-        "En bas à gauche": "-35%", "En bas": "0%", "En bas à droite": "35%" 
+        "En haut à gauche": "22%", "En haut": "50%", "En haut à droite": "78%", 
+        "À gauche": "22%", "Centre": "50%", "À droite": "78%", 
+        "En bas à gauche": "22%", "En bas": "50%", "En bas à droite": "78%" 
       };
       const yMap: Record<Direction, string> = { 
-        "En haut à gauche": "-75%", "En haut": "-75%", "En haut à droite": "-75%", 
-        "À gauche": "-60%", "Centre": "-60%", "À droite": "-60%", 
-        "En bas à gauche": "-45%", "En bas": "-45%", "En bas à droite": "-45%" 
+        "En haut à gauche": "25%", "En haut": "25%", "En haut à droite": "25%", 
+        "À gauche": "39%", "Centre": "39%", "À droite": "39%", 
+        "En bas à gauche": "53%", "En bas": "53%", "En bas à droite": "53%" 
       };
       return { 
-        y: yMap[direction], 
-        x: xMap[direction], 
+        top: yMap[direction], 
+        left: xMap[direction], 
         scale: 0.4, 
         rotate: 1080, 
         filter: "blur(2px)", 
@@ -215,18 +222,19 @@ export default function PenaltiesPage() {
   };
 
   const keeperVariants = {
-    idle: { x: "-50%", y: "0%", rotate: 0, scale: 1 },
+    idle: { left: "50%", top: "25%", translateX: "-50%", rotate: 0, scale: 1 },
     shooting: (direction: Direction | null) => {
       if (!direction) return {};
+      // Le gardien plonge pour intercepter le ballon aux mêmes coordonnées %
       const xMap: Record<Direction, string> = { 
-        "En haut à gauche": "-130%", "En haut": "0%", "En haut à droite": "130%", 
-        "À gauche": "-130%", "Centre": "0%", "À droite": "130%", 
-        "En bas à gauche": "-130%", "En bas": "0%", "En bas à droite": "130%" 
+        "En haut à gauche": "22%", "En haut": "50%", "En haut à droite": "78%", 
+        "À gauche": "22%", "Centre": "50%", "À droite": "78%", 
+        "En bas à gauche": "22%", "En bas": "50%", "En bas à droite": "78%" 
       };
       const yMap: Record<Direction, string> = { 
-        "En haut à gauche": "-15%", "En haut": "-15%", "En haut à droite": "-15%", 
-        "À gauche": "20%", "Centre": "10%", "À droite": "20%", 
-        "En bas à gauche": "50%", "En bas": "50%", "En bas à droite": "50%" 
+        "En haut à gauche": "22%", "En haut": "22%", "En haut à droite": "22%", 
+        "À gauche": "35%", "Centre": "30%", "À droite": "35%", 
+        "En bas à gauche": "48%", "En bas": "48%", "En bas à droite": "48%" 
       };
       const rotateMap: Record<Direction, number> = { 
         "En haut à gauche": -45, "En haut": 0, "En haut à droite": 45, 
@@ -234,10 +242,10 @@ export default function PenaltiesPage() {
         "En bas à gauche": -45, "En bas": 0, "En bas à droite": 45 
       };
       return { 
-        x: `calc(-50% + ${xMap[direction]})`, 
-        y: yMap[direction as keyof typeof yMap] || "0%", 
+        left: xMap[direction], 
+        top: yMap[direction as keyof typeof yMap] || "25%", 
         rotate: rotateMap[direction], 
-        transition: { duration: 0.6, type: "spring", stiffness: 120, damping: 12 } 
+        transition: { duration: 0.6, type: "spring", stiffness: 120, damping: 15 } 
       };
     }
   };
@@ -314,7 +322,7 @@ export default function PenaltiesPage() {
             </motion.div>
           )}
 
-          {/* Terrain de Jeu Adaptatif */}
+          {/* Terrain de Jeu Adaptatif avec Coordonnées Proportionnelles */}
           <div className="relative w-full aspect-[4/5] rounded-[2.5rem] sm:rounded-[3rem] bg-[#0a0a0a] border border-white/5 shadow-[0_32px_128px_-16px_rgba(0,0,0,0.8)] overflow-hidden">
             {/* Arrière-plan Stadium */}
             <div className="absolute inset-0 z-0">
@@ -369,19 +377,24 @@ export default function PenaltiesPage() {
               variants={keeperVariants} 
               animate={gameState === 'shooting' || gameState === 'result' ? "shooting" : "idle"} 
               custom={keeperChoice} 
-              className="absolute top-[25%] left-1/2 z-30 origin-bottom"
+              className="absolute z-30 origin-bottom"
             >
               <GlovesKeeper gameState={gameState} keeperChoice={keeperChoice} isScored={isScored} />
             </motion.div>
 
-            {/* Le Ballon et son Ombre */}
-            <div className="absolute bottom-[12%] left-1/2 -translate-x-1/2 z-40">
+            {/* Le Ballon et son Ombre Proportionnels */}
+            <motion.div 
+              variants={ballVariants} 
+              animate={gameState === 'shooting' || gameState === 'result' ? "shooting" : "idle"} 
+              custom={playerChoice} 
+              className="absolute z-40"
+            >
               <motion.div 
                 animate={gameState === 'idle' ? { scale: [1, 1.05, 1], opacity: [0.1, 0.3, 0.1] } : { scale: 0, opacity: 0 }}
                 transition={{ duration: 2, repeat: Infinity }}
-                className="w-10 h-3 sm:w-12 sm:h-4 bg-black/60 rounded-full blur-[6px] mb-[-8px] mx-auto" 
+                className="w-10 h-3 sm:w-12 sm:h-4 bg-black/60 rounded-full blur-[6px] mb-[-8px] mx-auto translate-y-12" 
               />
-              <motion.div variants={ballVariants} animate={gameState === 'shooting' || gameState === 'result' ? "shooting" : "idle"} custom={playerChoice} className="relative">
+              <div className="relative">
                 <div className="text-6xl sm:text-7xl drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)] filter brightness-110 select-none">⚽</div>
                 {gameState === 'idle' && (
                   <motion.div 
@@ -390,8 +403,8 @@ export default function PenaltiesPage() {
                     className="absolute inset-0 bg-white/10 rounded-full blur-2xl -z-10" 
                   />
                 )}
-              </motion.div>
-            </div>
+              </div>
+            </motion.div>
 
             {/* Overlay de Résultat Cinématique */}
             <AnimatePresence>
