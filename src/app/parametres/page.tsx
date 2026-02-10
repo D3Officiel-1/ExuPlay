@@ -44,7 +44,8 @@ import {
   Swords,
   Settings,
   Zap,
-  Hash
+  Hash,
+  Scale
 } from "lucide-react";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
