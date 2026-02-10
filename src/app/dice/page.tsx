@@ -160,57 +160,71 @@ export default function DicePage() {
       </header>
 
       <main className="flex-1 p-6 pt-28 flex flex-col gap-8 max-w-4xl mx-auto w-full">
-        {/* Zone de Révélation */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-          <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[3rem] p-10 flex flex-col items-center justify-center text-center space-y-4 border border-white/5 relative overflow-hidden h-64 shadow-2xl">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.05),transparent_70%)]" />
-            <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-30">Ton Numéro</p>
-            <span className="text-8xl font-black italic tracking-tighter tabular-nums text-white/90">{targetNumber}</span>
-          </Card>
+        {/* Zone de Révélation Unifiée - UNE SEULE LIGNE */}
+        <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[3rem] p-8 sm:p-12 border border-white/5 shadow-2xl relative overflow-hidden flex flex-col items-center justify-center min-h-[300px]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.05),transparent_70%)] pointer-events-none" />
+          
+          <div className="w-full flex flex-row items-center justify-around gap-4 sm:gap-8 relative z-10">
+            <div className="text-center space-y-2 flex-1">
+              <p className="text-[10px] sm:text-xs font-black uppercase tracking-[0.5em] opacity-30">Ton Numéro</p>
+              <span className="text-6xl sm:text-9xl font-black italic tracking-tighter tabular-nums text-white/90">{targetNumber}</span>
+            </div>
+            
+            <div className="h-24 sm:h-32 w-[1px] bg-white/10 shrink-0" />
 
-          <Card className={cn(
-            "border-none backdrop-blur-3xl rounded-[3rem] p-10 flex flex-col items-center justify-center text-center space-y-4 border transition-all duration-500 h-64 shadow-2xl",
-            rolledNumber === null ? "bg-card/20 border-white/5" : 
-            ( (mode === 'over' ? rolledNumber > targetNumber : rolledNumber < targetNumber) 
-              ? "bg-green-500/10 border-green-500/20" 
-              : "bg-red-500/10 border-red-500/20")
-          )}>
-            <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-30">Numéro Tombé</p>
-            <AnimatePresence mode="wait">
-              <motion.span 
-                key={rolledNumber ?? 'none'}
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                className={cn(
-                  "text-8xl font-black italic tracking-tighter tabular-nums",
-                  rolledNumber === null ? "opacity-10" : "opacity-100"
-                )}
-              >
-                {rolledNumber ?? "00"}
-              </motion.span>
-            </AnimatePresence>
+            <div className="text-center space-y-2 flex-1">
+              <p className="text-[10px] sm:text-xs font-black uppercase tracking-[0.5em] opacity-30">Résultat</p>
+              <AnimatePresence mode="wait">
+                <motion.span 
+                  key={rolledNumber ?? 'none'}
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  className={cn(
+                    "text-6xl sm:text-9xl font-black italic tracking-tighter tabular-nums block transition-colors duration-500",
+                    rolledNumber === null ? "opacity-10" : 
+                    ( (mode === 'over' ? rolledNumber > targetNumber : rolledNumber < targetNumber) 
+                      ? "text-green-500 drop-shadow-[0_0_30px_rgba(34,197,94,0.4)]" 
+                      : "text-red-500 opacity-60")
+                  )}
+                >
+                  {rolledNumber ?? "00"}
+                </motion.span>
+              </AnimatePresence>
+            </div>
+          </div>
+
+          <AnimatePresence>
             {rolledNumber !== null && !isRolling && (
-              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className={cn(
-                "px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                (mode === 'over' ? rolledNumber > targetNumber : rolledNumber < targetNumber) ? "bg-green-500 text-white" : "bg-red-500 text-white"
-              )}>
-                {(mode === 'over' ? rolledNumber > targetNumber : rolledNumber < targetNumber) ? "Triomphe" : "Dissonance"}
+              <motion.div 
+                initial={{ opacity: 0, y: 20, scale: 0.8 }} 
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.5 }}
+                className="mt-10 relative z-10"
+              >
+                <div className={cn(
+                  "px-8 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-[0.4em] shadow-2xl border backdrop-blur-md",
+                  (mode === 'over' ? rolledNumber > targetNumber : rolledNumber < targetNumber) 
+                    ? "bg-green-500/20 text-green-400 border-green-500/30" 
+                    : "bg-red-500/20 text-red-400 border-red-500/30"
+                )}>
+                  {(mode === 'over' ? rolledNumber > targetNumber : rolledNumber < targetNumber) ? "Triomphe" : "Dissonance"}
+                </div>
               </motion.div>
             )}
-          </Card>
-        </div>
+          </AnimatePresence>
+        </Card>
 
         {/* Statistiques du Flux */}
         <div className="grid grid-cols-3 gap-4">
-          <div className="bg-white/5 rounded-3xl p-4 text-center border border-white/5">
+          <div className="bg-white/5 rounded-3xl p-4 text-center border border-white/5 shadow-inner">
             <p className="text-[8px] font-black uppercase tracking-widest opacity-40 mb-1">Multiplicateur</p>
             <p className="text-xl font-black italic">x{multiplier}</p>
           </div>
-          <div className="bg-white/5 rounded-3xl p-4 text-center border border-white/5">
+          <div className="bg-white/5 rounded-3xl p-4 text-center border border-white/5 shadow-inner">
             <p className="text-[8px] font-black uppercase tracking-widest opacity-40 mb-1">Gain Possible</p>
             <p className="text-xl font-black text-primary">+{potentialWin} <span className="text-[10px] opacity-40">PTS</span></p>
           </div>
-          <div className="bg-white/5 rounded-3xl p-4 text-center border border-white/5">
+          <div className="bg-white/5 rounded-3xl p-4 text-center border border-white/5 shadow-inner">
             <p className="text-[8px] font-black uppercase tracking-widest opacity-40 mb-1">Chance</p>
             <p className="text-xl font-black tabular-nums">{winChance}%</p>
           </div>
@@ -218,7 +232,7 @@ export default function DicePage() {
 
         {/* Panneau de Commandement */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-8">
-          <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[3rem] p-8 border border-white/5 space-y-10">
+          <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[3rem] p-8 border border-white/5 space-y-10 shadow-2xl">
             <div className="space-y-6">
               <div className="flex items-center justify-between px-2">
                 <div className="flex items-center gap-2">
@@ -250,8 +264,8 @@ export default function DicePage() {
                 <button
                   onClick={() => { haptic.light(); setMode('under'); }}
                   className={cn(
-                    "h-16 rounded-2xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest border transition-all",
-                    mode === 'under' ? "bg-primary text-primary-foreground border-primary shadow-xl" : "bg-white/5 border-white/5 opacity-40"
+                    "h-16 rounded-2xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest border transition-all duration-500",
+                    mode === 'under' ? "bg-primary text-primary-foreground border-primary shadow-[0_0_30px_rgba(var(--primary-rgb),0.2)]" : "bg-white/5 border-white/5 opacity-40"
                   )}
                 >
                   <ChevronDown className="h-4 w-4" /> Inférieur
@@ -259,8 +273,8 @@ export default function DicePage() {
                 <button
                   onClick={() => { haptic.light(); setMode('over'); }}
                   className={cn(
-                    "h-16 rounded-2xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest border transition-all",
-                    mode === 'over' ? "bg-primary text-primary-foreground border-primary shadow-xl" : "bg-white/5 border-white/5 opacity-40"
+                    "h-16 rounded-2xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest border transition-all duration-500",
+                    mode === 'over' ? "bg-primary text-primary-foreground border-primary shadow-[0_0_30px_rgba(var(--primary-rgb),0.2)]" : "bg-white/5 border-white/5 opacity-40"
                   )}
                 >
                   <ChevronUp className="h-4 w-4" /> Supérieur
@@ -269,7 +283,7 @@ export default function DicePage() {
             </div>
           </Card>
 
-          <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[3rem] p-8 border border-white/5 space-y-8">
+          <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[3rem] p-8 border border-white/5 space-y-8 shadow-2xl">
             <div className="space-y-4">
               <div className="flex items-center justify-between px-2">
                 <div className="flex items-center gap-2">
@@ -313,7 +327,7 @@ export default function DicePage() {
           </Card>
         </div>
 
-        <div className="p-8 bg-primary/5 rounded-[3rem] border border-white/5 text-center space-y-3 relative overflow-hidden">
+        <div className="p-8 bg-primary/5 rounded-[3rem] border border-white/5 text-center space-y-3 relative overflow-hidden shadow-inner">
           <Sparkles className="h-6 w-6 mx-auto text-primary opacity-10" />
           <p className="text-[11px] leading-relaxed font-medium opacity-40 italic px-4">
             "Le hasard est un langage que seuls les esprits précis peuvent déchiffrer. Calibrez votre intention."
