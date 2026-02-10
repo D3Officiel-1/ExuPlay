@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -7,13 +6,13 @@ import { useUser, useFirestore, useCollection, useDoc } from "@/firebase";
 import { 
   collection, 
   doc, 
-  query,
+  query, 
   orderBy, 
   limit
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Zap, Users, Sparkles, Brain, Trophy, Swords, Flag, ChevronRight, Rocket, Bomb, Ticket, Coins, Dices, RefreshCw } from "lucide-react";
+import { Zap, Users, Sparkles, Brain, Trophy, Swords, Flag, ChevronRight, Rocket, Bomb, Ticket, Coins, Dices, RefreshCw, Hash } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -99,6 +98,15 @@ export default function HomePage() {
   const isRoyalActive = royalChallengeUntil && royalChallengeUntil > new Date();
 
   const GAMES = [
+    {
+      id: "loto",
+      title: "Loto de l'Éveil",
+      description: "La numérologie sacrée du 5/90. Invoquez la fortune.",
+      icon: Hash,
+      color: "text-green-400",
+      bg: "bg-green-400/5",
+      path: "/loto"
+    },
     {
       id: "sport",
       title: "Arènes Sportives",
