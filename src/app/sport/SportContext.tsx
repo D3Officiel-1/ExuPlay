@@ -1,10 +1,12 @@
+
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 
 /**
- * @fileOverview Oracle du Contexte Sportif.
+ * @fileOverview Oracle du Contexte Sportif v3.0.
  * Permet de partager l'état du coupon entre la liste et les pages de détails.
+ * Gère désormais le chargement des sélections partagées.
  */
 
 interface BetSelection {

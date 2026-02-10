@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserFavorite": {
@@ -198,6 +199,17 @@
         }
       },
       "required": ["userId", "stake", "status", "createdAt", "selections"]
+    },
+    "SharedCoupon": {
+      "title": "SharedCoupon",
+      "description": "Un coupon partagé via un code unique",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "selections": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["code", "selections", "createdAt"]
     }
   },
   "auth": {
@@ -239,6 +251,10 @@
     "/bets/{betId}": {
       "schema": "Bet",
       "description": "Registres des pactes sportifs"
+    },
+    "/sharedCoupons/{couponId}": {
+      "schema": "SharedCoupon",
+      "description": "Dépôt des coupons partagés"
     }
   }
 }

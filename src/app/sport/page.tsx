@@ -10,12 +10,14 @@ import {
   query, 
   where, 
   orderBy,
-  limit
+  limit,
+  getDocs
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { 
   ChevronLeft, 
   Zap, 
@@ -27,7 +29,8 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  Sparkles
+  Sparkles,
+  Download
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { useSport } from "./SportContext";
@@ -35,21 +38,26 @@ import { getDailyMatches, type GeneratedMatch } from "@/app/actions/sport";
 import { format } from "date-fns";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 /**
- * @fileOverview Liste des Rencontres et Historique des Paris v2.2.
- * Affiche les cotes cumulées par addition comme des multiplicateurs de flux explicites.
+ * @fileOverview Liste des Rencontres et Historique des Paris v3.0.
+ * Supporte l'invocation de coupons partagés.
  */
 
 export default function SportListPage() {
   const { user } = useUser();
   const db = useFirestore();
   const router = useRouter();
-  const { selections, toggleSelection } = useSport();
+  const { toast } = useToast();
+  const { selections, setSelections, setIsCouponOpen } = useSport();
 
   const [activeTab, setTab] = useState("matches");
   const [matches, setMatches] = useState<GeneratedMatch[]>([]);
   const [isLoadingMatches, setIsLoadingMatches] = useState(true);
+  
+  const [importCode, setImportCode] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
 
   const userDocRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
@@ -92,6 +100,33 @@ export default function SportListPage() {
     return () => clearInterval(interval);
   }, []);
 
+  const handleImport = async () => {
+    const code = importCode.trim().toUpperCase();
+    if (code.length !== 6 || isImporting || !db) return;
+    setIsImporting(true);
+    haptic.medium();
+
+    try {
+      const q = query(collection(db, "sharedCoupons"), where("code", "==", code), limit(1));
+      const snap = await getDocs(q);
+      
+      if (!snap.empty) {
+        const data = snap.docs[0].data();
+        setSelections(data.selections);
+        setIsCouponOpen(true);
+        setImportCode("");
+        toast({ title: "Coupon Invoqué !" });
+      } else {
+        haptic.error();
+        toast({ variant: "destructive", title: "Code inconnu" });
+      }
+    } catch (e) {
+      toast({ variant: "destructive", title: "Dissonance Système" });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const getFlagUrl = (code: string) => `https://www.drapeauxdespays.fr/data/flags/h80/${code}.png`;
 
   return (
@@ -111,6 +146,29 @@ export default function SportListPage() {
       </header>
 
       <main className="flex-1 p-6 pt-28 space-y-8 max-w-lg mx-auto w-full pb-48">
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 px-2">
+            <Download className="h-4 w-4 text-primary opacity-40" />
+            <h2 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Invocation de Pacte</h2>
+          </div>
+          <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[2rem] p-4 flex gap-3 border border-primary/5 shadow-xl">
+            <Input 
+              placeholder="Entrer Code Coupon (ex: XU79LK)" 
+              value={importCode}
+              onChange={e => setImportCode(e.target.value.toUpperCase())}
+              maxLength={6}
+              className="h-14 bg-primary/5 border-none rounded-xl text-center font-black text-xl tracking-widest"
+            />
+            <Button 
+              onClick={handleImport} 
+              disabled={importCode.length !== 6 || isImporting}
+              className="h-14 w-14 rounded-xl shrink-0 shadow-xl"
+            >
+              {isImporting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
+            </Button>
+          </Card>
+        </div>
+
         <Tabs value={activeTab} onValueChange={setTab} className="w-full">
           <TabsList className="grid grid-cols-2 bg-primary/5 p-1 h-12 rounded-2xl mb-8">
             <TabsTrigger value="matches" className="rounded-xl font-black text-[10px] uppercase tracking-widest gap-2">
