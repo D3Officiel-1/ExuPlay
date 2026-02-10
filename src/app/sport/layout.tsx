@@ -29,10 +29,12 @@ import { useUser, useFirestore, useDoc } from "@/firebase";
 import { doc, addDoc, updateDoc, increment, serverTimestamp, collection } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { SportBetResolver } from "@/components/SportBetResolver";
+import { FloatingCouponButton } from "@/components/FloatingCouponButton";
 
 /**
- * @fileOverview Oracle du Sceau Global v2.4.
+ * @fileOverview Oracle du Sceau Global v2.5.
  * Gère le coupon avec une liste scrollable et un calcul par ADDITION strict.
+ * Utilise désormais un composant dédié pour le bouton flottant.
  */
 
 function CouponOverlay() {
@@ -92,35 +94,12 @@ function CouponOverlay() {
 
   return (
     <>
-      <AnimatePresence>
-        {selections.length > 0 && !isCouponOpen && (
-          <div className="fixed top-24 left-0 right-0 z-[500] px-6 pointer-events-none flex justify-center">
-            <motion.div 
-              initial={{ y: -100, opacity: 0, scale: 0.8 }}
-              animate={{ y: 0, opacity: 1, scale: 1 }}
-              exit={{ y: -100, opacity: 0, scale: 0.8 }}
-              className="w-full max-w-sm pointer-events-auto"
-            >
-              <button 
-                onClick={() => { haptic.medium(); setIsCouponOpen(true); }}
-                className="w-full flex items-center justify-between px-8 h-16 bg-primary text-primary-foreground rounded-full shadow-2xl border border-white/10 active:scale-95 transition-all overflow-hidden"
-              >
-                <div className="flex flex-col items-start leading-none">
-                  <div className="flex items-center gap-2">
-                    <Activity className="h-2.5 w-2.5 text-green-500 animate-pulse" />
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Pacte Cumulé</span>
-                  </div>
-                  <span className="text-sm font-black">{selections.length} Sélection{selections.length > 1 ? 's' : ''}</span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-black italic tabular-nums">Σ {totalOdds.toFixed(2)}</span>
-                  <ChevronRight className="h-5 w-5 opacity-60" />
-                </div>
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <FloatingCouponButton 
+        selectionsCount={selections.length}
+        totalOdds={totalOdds}
+        isCouponOpen={isCouponOpen}
+        onOpen={() => setIsCouponOpen(true)}
+      />
 
       <Dialog open={isCouponOpen} onOpenChange={setIsCouponOpen}>
         <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-[45px] border-primary/10 rounded-[3rem] p-0 shadow-2xl overflow-hidden flex flex-col h-[85vh] max-h-[85vh]">
