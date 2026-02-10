@@ -27,9 +27,9 @@ import { getTileColorSync, type DoubleColor } from "@/lib/games/double";
 import confetti from "canvas-confetti";
 
 /**
- * @fileOverview Double de l'Éveil v3.1 - Immersion Totale & Épurée.
- * Arène de roulette où les phases de jeu se superposent à la roue pour un focus absolu.
- * La mention "Rotation du Destin" a été occultée pour plus de clarté visuelle.
+ * @fileOverview Double de l'Éveil v3.2 - Immersion Totale & Discrétion.
+ * Arène de roulette où les phases de jeu se superposent à la roue.
+ * Le résultat ne s'affiche désormais que si l'utilisateur a placé un pari.
  */
 
 type GamePhase = 'betting' | 'spinning' | 'result';
@@ -280,10 +280,7 @@ export default function DoublePage() {
                         <p className="text-[9px] font-bold opacity-60 uppercase">L'Oracle attend votre pacte...</p>
                       </div>
                     </motion.div>
-                  ) : phase === 'spinning' ? (
-                    /* L'animation textuelle "Rotation du Destin" a été supprimée selon le décret */
-                    null
-                  ) : (
+                  ) : (phase === 'result' && selectedColor) ? (
                     <motion.div 
                       key="result"
                       initial={{ opacity: 0, y: 20 }}
@@ -309,7 +306,7 @@ export default function DoublePage() {
                         </div>
                       )}
                     </motion.div>
-                  )}
+                  ) : null}
                 </AnimatePresence>
               </div>
             </div>
