@@ -47,8 +47,8 @@ import { SportBetResolver } from "@/components/SportBetResolver";
 import { FloatingCouponButton } from "@/components/FloatingCouponButton";
 
 /**
- * @fileOverview Oracle du Sceau Global v3.5.
- * Gère le coupon avec partage de code unique et chargement dynamique.
+ * @fileOverview Oracle du Sceau Global v4.0.
+ * Gère le coupon avec génération automatique de code unique lors du placement.
  */
 
 function CouponOverlay() {
@@ -58,11 +58,8 @@ function CouponOverlay() {
   const { toast } = useToast();
   
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isSharing, setIsSharing] = useState(false);
-  const [sharedCode, setSharedCode] = useState<string | null>(null);
   const [importCode, setImportCode] = useState("");
   const [isImporting, setIsImporting] = useState(false);
-  const [hasCopied, setHasCopied] = useState(false);
 
   const userDocRef = useMemo(() => (db && user?.uid) ? doc(db, "users", user.uid) : null, [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
@@ -77,7 +74,7 @@ function CouponOverlay() {
   const potentialWin = Math.floor(currentStake * totalOdds);
 
   const handlePlaceBet = async () => {
-    if (!userDocRef || !profile || selections.length === 0 || isProcessing) return;
+    if (!userDocRef || !profile || selections.length === 0 || isProcessing || !db) return;
     if (currentStake > (profile.totalPoints || 0)) { 
       haptic.error(); 
       toast({ variant: "destructive", title: "Lumière insuffisante" }); 
@@ -86,6 +83,9 @@ function CouponOverlay() {
     setIsProcessing(true); 
     haptic.medium();
     
+    // Génération automatique du code de partage
+    const shareCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    
     const betData = { 
       userId: user?.uid, 
       username: profile.username, 
@@ -93,42 +93,33 @@ function CouponOverlay() {
       stake: currentStake, 
       totalOdds, 
       potentialWin, 
+      shareCode,
       status: "pending", 
       createdAt: serverTimestamp() 
     };
 
     try {
+      // 1. Déduire les points
       await updateDoc(userDocRef, { totalPoints: increment(-currentStake), updatedAt: serverTimestamp() });
-      await addDoc(collection(db!, "bets"), betData);
+      
+      // 2. Enregistrer le pari
+      await addDoc(collection(db, "bets"), betData);
+      
+      // 3. Enregistrer le coupon partagé pour l'invocation par autrui
+      await addDoc(collection(db, "sharedCoupons"), {
+        code: shareCode,
+        selections,
+        createdAt: serverTimestamp()
+      });
+
       haptic.success(); 
-      toast({ title: "Pacte Scellé !" });
+      toast({ title: "Pacte Scellé !", description: `Code de partage : ${shareCode}` });
       setSelections([]); 
       setIsCouponOpen(false);
     } catch (e) { 
       toast({ variant: "destructive", title: "Dissonance Système" }); 
     } finally { 
       setIsProcessing(false); 
-    }
-  };
-
-  const handleShareCoupon = async () => {
-    if (selections.length === 0 || isSharing || !db) return;
-    setIsSharing(true);
-    haptic.medium();
-
-    try {
-      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-      await addDoc(collection(db, "sharedCoupons"), {
-        code,
-        selections,
-        createdAt: serverTimestamp()
-      });
-      setSharedCode(code);
-      toast({ title: "Code de Partage forgé !" });
-    } catch (e) {
-      toast({ variant: "destructive", title: "Échec du partage" });
-    } finally {
-      setIsSharing(false);
     }
   };
 
@@ -159,14 +150,6 @@ function CouponOverlay() {
     }
   };
 
-  const copyToClipboard = () => {
-    if (!sharedCode) return;
-    navigator.clipboard.writeText(sharedCode);
-    setHasCopied(true);
-    haptic.light();
-    setTimeout(() => setHasCopied(false), 2000);
-  };
-
   return (
     <>
       <FloatingCouponButton 
@@ -178,7 +161,6 @@ function CouponOverlay() {
 
       <Dialog open={isCouponOpen} onOpenChange={setIsCouponOpen}>
         <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-[45px] border-primary/10 rounded-[3rem] p-0 shadow-2xl overflow-hidden flex flex-col h-[85vh] max-h-[85vh]">
-          {/* Header Fixe */}
           <div className="p-8 pb-4 shrink-0 bg-card/50 border-b border-primary/5">
             <DialogHeader>
               <div className="flex items-center justify-between">
@@ -189,7 +171,7 @@ function CouponOverlay() {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  onClick={() => { haptic.light(); setSelections([]); setIsCouponOpen(false); setSharedCode(null); }} 
+                  onClick={() => { haptic.light(); setSelections([]); setIsCouponOpen(false); }} 
                   className="rounded-2xl h-12 w-12 text-destructive hover:bg-destructive/10"
                 >
                   <Trash2 className="h-5 w-5" />
@@ -198,10 +180,8 @@ function CouponOverlay() {
             </DialogHeader>
           </div>
 
-          {/* Zone de Sélection Scrollable */}
           <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-8 py-6">
             <div className="space-y-6">
-              {/* Import Section */}
               {selections.length === 0 && (
                 <div className="space-y-4 py-4">
                   <div className="flex items-center gap-2 px-2">
@@ -238,7 +218,7 @@ function CouponOverlay() {
                         className="relative p-5 bg-primary/5 rounded-[2rem] border border-primary/5 overflow-hidden group"
                       >
                         <button 
-                          onClick={() => { setSelections(prev => prev.filter(s => s.matchId !== sel.matchId)); setSharedCode(null); }}
+                          onClick={() => { setSelections(prev => prev.filter(s => s.matchId !== sel.matchId)); }}
                           className="absolute top-4 right-4 h-6 w-6 rounded-full bg-destructive/10 text-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <X className="h-3 w-3" />
@@ -264,51 +244,11 @@ function CouponOverlay() {
                       )}
                     </React.Fragment>
                   ))}
-
-                  {/* Share Section within scroll */}
-                  <div className="pt-4">
-                    <AnimatePresence mode="wait">
-                      {!sharedCode ? (
-                        <Button 
-                          variant="outline" 
-                          onClick={handleShareCoupon}
-                          disabled={isSharing}
-                          className="w-full h-14 rounded-2xl border-primary/10 bg-primary/5 font-black text-[10px] uppercase tracking-widest gap-2"
-                        >
-                          {isSharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
-                          Générer un Code de Partage
-                        </Button>
-                      ) : (
-                        <motion.div 
-                          initial={{ opacity: 0, scale: 0.9 }} 
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="p-6 bg-primary rounded-[2rem] text-primary-foreground flex flex-col items-center gap-4 shadow-2xl"
-                        >
-                          <p className="text-[9px] font-black uppercase tracking-[0.3em] opacity-60">Sceau de Partage</p>
-                          <div className="flex items-center gap-4">
-                            <span className="text-4xl font-black italic tracking-tighter">{sharedCode}</span>
-                            <Button 
-                              size="icon" 
-                              variant="secondary" 
-                              onClick={copyToClipboard}
-                              className="h-12 w-12 rounded-xl bg-white/20 hover:bg-white/30 border-none"
-                            >
-                              {hasCopied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
-                            </Button>
-                          </div>
-                          <p className="text-[8px] font-medium opacity-60 italic text-center">
-                            Transmettez ce code pour invoquer vos choix chez un autre esprit.
-                          </p>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Footer de Mise Consolidé */}
           <div className="p-8 pt-6 border-t border-primary/5 shrink-0 bg-card shadow-[0_-10px_40px_rgba(0,0,0,0.1)] space-y-6">
             <div className="flex items-center justify-between px-2">
               <div className="flex flex-col">

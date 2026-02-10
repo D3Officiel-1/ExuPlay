@@ -30,7 +30,10 @@ import {
   XCircle,
   Clock,
   Sparkles,
-  Download
+  Download,
+  Copy,
+  Check,
+  Share2
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { useSport } from "./SportContext";
@@ -41,8 +44,8 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 /**
- * @fileOverview Liste des Rencontres et Historique des Paris v3.0.
- * Supporte l'invocation de coupons partagés.
+ * @fileOverview Liste des Rencontres et Historique des Paris v4.0.
+ * Affiche les codes de coupon générés automatiquement sur chaque pari.
  */
 
 export default function SportListPage() {
@@ -58,6 +61,7 @@ export default function SportListPage() {
   
   const [importCode, setImportCode] = useState("");
   const [isImporting, setIsImporting] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   const userDocRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
@@ -125,6 +129,14 @@ export default function SportListPage() {
     } finally {
       setIsImporting(false);
     }
+  };
+
+  const copyToClipboard = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    haptic.light();
+    toast({ title: "Code capturé" });
+    setTimeout(() => setCopiedCode(null), 2000);
   };
 
   const getFlagUrl = (code: string) => `https://www.drapeauxdespays.fr/data/flags/h80/${code}.png`;
@@ -307,6 +319,29 @@ export default function SportListPage() {
                     {bet.status === "pending" ? "En Stase" : bet.status === "won" ? "Succès" : "Échec"}
                   </div>
                 </div>
+
+                {/* Sceau de Partage Automatique */}
+                {bet.shareCode && (
+                  <div className="mb-6 p-4 bg-primary/5 rounded-2xl border border-primary/5 flex items-center justify-between group">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-xl bg-background flex items-center justify-center border border-primary/10 shadow-sm">
+                        <Share2 className="h-4 w-4 text-primary opacity-40" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[8px] font-black uppercase tracking-widest opacity-30">Sceau de Partage</span>
+                        <span className="text-sm font-black italic tracking-wider text-primary">{bet.shareCode}</span>
+                      </div>
+                    </div>
+                    <Button 
+                      size="icon" 
+                      variant="ghost" 
+                      onClick={() => copyToClipboard(bet.shareCode)}
+                      className="h-10 w-10 rounded-xl hover:bg-primary/5"
+                    >
+                      {copiedCode === bet.shareCode ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4 opacity-40" />}
+                    </Button>
+                  </div>
+                )}
 
                 <div className="space-y-3 pb-6 border-b border-primary/5">
                   {bet.selections.map((sel: any, i: number) => (

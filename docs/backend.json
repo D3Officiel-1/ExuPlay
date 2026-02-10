@@ -182,6 +182,7 @@
         "totalOdds": { "type": "number" },
         "potentialWin": { "type": "integer" },
         "status": { "type": "string", "enum": ["pending", "won", "lost"] },
+        "shareCode": { "type": "string", "description": "Code unique de partage généré automatiquement" },
         "createdAt": { "type": "string", "format": "date-time" },
         "resolvedAt": { "type": "string", "format": "date-time" },
         "selections": {
