@@ -10,11 +10,24 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, Zap, Loader2, Sparkles, User, Trophy, Shield, Edit3 } from "lucide-react";
+import { 
+  ChevronLeft, 
+  Zap, 
+  Loader2, 
+  Trophy, 
+  Shield, 
+  Edit3, 
+  Crosshair, 
+  Hand,
+  Sparkles,
+  AlertTriangle
+} from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
+import Image from "next/image";
+import placeholderImages from "@/app/lib/placeholder-images.json";
 
 const MIN_BET = 5;
 const BET_PRESETS = [5, 50, 100, 200];
@@ -26,7 +39,7 @@ const DIRECTIONS = [
 
 type Direction = typeof DIRECTIONS[number];
 
-function OracleKeeper({ 
+function GlovesKeeper({ 
   gameState, 
   keeperChoice, 
   isScored 
@@ -39,38 +52,40 @@ function OracleKeeper({
   const isResult = gameState === 'result';
 
   return (
-    <div className="relative w-24 h-24 flex items-center justify-center">
+    <div className="relative w-32 h-24 flex items-center justify-center gap-4">
       <motion.div 
-        animate={{ scale: isIdle ? [1, 1.1, 1] : 1.2, opacity: isIdle ? [0.2, 0.4, 0.2] : 0.6, rotate: isIdle ? 0 : 180 }}
+        animate={{ 
+          scale: isIdle ? [1, 1.05, 1] : 1.1, 
+          opacity: isIdle ? [0.4, 0.6, 0.4] : 0.8 
+        }}
         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        className={cn("absolute inset-0 rounded-full blur-2xl -z-10 transition-colors duration-500", isResult && !isScored ? "bg-red-500/30" : "bg-primary/20")}
+        className={cn(
+          "absolute inset-0 rounded-full blur-3xl -z-10 transition-colors duration-500", 
+          isResult && isScored ? "bg-red-500/20" : isResult && !isScored ? "bg-green-500/20" : "bg-white/10"
+        )}
       />
-      <motion.div className="relative z-20 flex flex-col items-center" animate={isIdle ? { y: [0, -5, 0] } : {}} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}>
-        <motion.div className="w-10 h-10 bg-card rounded-2xl border-2 border-primary/20 flex flex-col items-center justify-center shadow-xl overflow-hidden relative mb-1">
-          <div className="w-full h-2 bg-primary/5 absolute top-2" />
-          <motion.div animate={{ opacity: isIdle ? [0.4, 1, 0.4] : 1, backgroundColor: isResult && isScored ? "hsl(var(--destructive))" : isResult && !isScored ? "#22c55e" : "hsl(var(--primary))" }} transition={{ duration: 2, repeat: isIdle ? Infinity : 0 }} className="w-6 h-1 rounded-full shadow-[0_0_10px_currentColor]" />
-        </motion.div>
-        <div className="w-14 h-16 bg-card rounded-[1.5rem] border-2 border-primary/10 shadow-2xl relative overflow-hidden flex items-center justify-center">
-          <Shield className="h-6 w-6 opacity-10" />
-          <motion.div animate={{ x: ["-100%", "200%"] }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent skew-x-12" />
+      
+      {/* Gant Gauche */}
+      <motion.div 
+        animate={isIdle ? { y: [0, -3, 0], x: [0, -2, 0], rotate: [-5, -8, -5] } : {}}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        className="relative"
+      >
+        <div className="w-12 h-14 bg-white rounded-xl shadow-2xl flex items-center justify-center border-b-4 border-gray-300">
+          <Hand className="h-8 w-8 text-primary/40 -scale-x-100" />
         </div>
       </motion.div>
-      <AnimatePresence>
-        {(!isResult || (isResult && !isScored)) && (
-          <>
-            <motion.div className="absolute -left-8 top-10 z-30" animate={isIdle ? { y: [0, 5, 0], x: [0, -2, 0] } : { scale: 1.2, x: -10, y: -5 }} transition={{ duration: 3, repeat: isIdle ? Infinity : 0 }}>
-              <div className="w-8 h-8 bg-card rounded-xl border-2 border-primary/20 shadow-lg flex items-center justify-center">
-                <Zap className="h-4 w-4 text-primary opacity-40" />
-              </div>
-            </motion.div>
-            <motion.div className="absolute -right-8 top-10 z-30" animate={isIdle ? { y: [0, 5, 0], x: [0, 2, 0] } : { scale: 1.2, x: 10, y: -5 }} transition={{ duration: 3, repeat: isIdle ? Infinity : 0, delay: 0.5 }}>
-              <div className="w-8 h-8 bg-card rounded-xl border-2 border-primary/20 shadow-lg flex items-center justify-center">
-                <Zap className="h-4 w-4 text-primary opacity-40" />
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+
+      {/* Gant Droit */}
+      <motion.div 
+        animate={isIdle ? { y: [0, -3, 0], x: [0, 2, 0], rotate: [5, 8, 5] } : {}}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
+        className="relative"
+      >
+        <div className="w-12 h-14 bg-white rounded-xl shadow-2xl flex items-center justify-center border-b-4 border-gray-300">
+          <Hand className="h-8 w-8 text-primary/40" />
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -87,9 +102,12 @@ export default function PenaltiesPage() {
   const [keeperChoice, setKeeperChoice] = useState<Direction | null>(null);
   const [isScored, setIsScored] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
+  const [hoveredTarget, setHoveredTarget] = useState<Direction | null>(null);
 
   const userDocRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
+
+  const civFlag = placeholderImages.placeholderImages.find(img => img.id === "flag-civ")?.imageUrl;
 
   const currentBet = Math.max(MIN_BET, parseInt(betInput) || 0);
 
@@ -120,6 +138,7 @@ export default function PenaltiesPage() {
     let keeperDir: Direction;
     let scored: boolean;
 
+    // Logique : 50% de chance d'arrêter si on tire au même endroit
     if (roll < 0.50) {
       keeperDir = direction;
       scored = false;
@@ -239,15 +258,29 @@ export default function PenaltiesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col pb-32">
+    <div className="min-h-screen bg-black flex flex-col pb-32">
       <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full overflow-hidden">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full h-10 w-10 hover:bg-primary/5">
-            <ChevronLeft className="h-6 w-6" />
+        {/* Header de Match Immersif */}
+        <div className="flex items-center justify-between px-4">
+          <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full bg-white/5 border border-white/10">
+            <ChevronLeft className="h-6 w-6 text-white" />
           </Button>
-          <div className="space-y-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Intuition</p>
-            <h1 className="text-3xl font-black tracking-tight italic">L'Arène Sacrée</h1>
+          
+          <div className="flex items-center gap-4 bg-white/5 backdrop-blur-xl px-6 py-2.5 rounded-2xl border border-white/10 shadow-2xl">
+            <div className="flex items-center gap-2">
+              <div className="h-6 w-6 bg-primary rounded flex items-center justify-center border border-white/20">
+                <span className="text-[8px] font-black text-white italic">1W</span>
+              </div>
+              <span className="text-[10px] font-black text-yellow-500 italic">VS</span>
+              <div className="relative h-6 w-8 rounded overflow-hidden shadow-sm border border-white/10">
+                {civFlag && <Image src={civFlag} alt="CIV" fill className="object-cover" unoptimized />}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-xl border border-primary/20">
+            <Zap className="h-3 w-3 text-primary" />
+            <span className="text-xs font-black text-white tabular-nums">{profile?.totalPoints?.toLocaleString()}</span>
           </div>
         </div>
 
@@ -255,33 +288,26 @@ export default function PenaltiesPage() {
           {gameState === 'idle' && (
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
               <div className="space-y-3">
-                <div className="flex items-center justify-between px-2">
-                  <div className="flex items-center gap-2">
-                    <Zap className="h-3 w-3 text-primary opacity-40" />
-                    <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Mise de Lumière</span>
-                  </div>
-                  <span className="text-[9px] font-black opacity-20 uppercase">Min: 5 PTS</span>
-                </div>
                 <div className="relative">
                   <Input 
                     type="number" 
                     value={betInput} 
                     onChange={(e) => setBetInput(e.target.value)} 
-                    className="h-14 text-2xl font-black text-center rounded-2xl bg-primary/5 border-none shadow-inner"
+                    className="h-14 text-2xl font-black text-center rounded-2xl bg-white/5 border-none shadow-inner text-white focus-visible:ring-1 focus-visible:ring-primary/20"
                   />
-                  <Edit3 className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-20" />
+                  <Edit3 className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-white opacity-20" />
                 </div>
-                <div className="flex justify-center gap-3">
+                <div className="flex justify-center gap-2">
                   {BET_PRESETS.map((amt) => (
                     <button 
                       key={amt} 
                       onClick={() => { haptic.light(); setBetInput(amt.toString()); }} 
                       className={cn(
-                        "px-6 py-3 rounded-2xl font-black text-sm transition-all border", 
-                        betInput === amt.toString() ? "bg-primary text-primary-foreground border-primary shadow-xl scale-105" : "bg-primary/5 border-transparent opacity-40"
+                        "flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all border", 
+                        betInput === amt.toString() ? "bg-primary text-primary-foreground border-primary shadow-xl" : "bg-white/5 border-white/5 text-white/40"
                       )}
                     >
-                      {amt}
+                      {amt} PTS
                     </button>
                   ))}
                 </div>
@@ -289,91 +315,150 @@ export default function PenaltiesPage() {
             </motion.div>
           )}
 
-          <div className="relative w-full aspect-[4/5] rounded-[3.5rem] bg-gradient-to-b from-primary/5 to-background border border-primary/5 shadow-2xl overflow-hidden perspective-[1200px]">
+          {/* Terrain de Jeu Style 1win */}
+          <div className="relative w-full aspect-[4/5] rounded-[3rem] bg-[#0a0a0a] border border-white/5 shadow-[0_32px_128px_-16px_rgba(0,0,0,0.8)] overflow-hidden">
+            {/* Arrière-plan Stadium */}
             <div className="absolute inset-0 z-0">
-              <div className="absolute top-[25%] left-0 right-0 h-[1px] bg-primary/10" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_100%,rgba(var(--primary-rgb),0.05),transparent_70%)]" />
+              {/* Projecteurs éthérés */}
+              <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.05),transparent_40%)]" />
+              <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.05),transparent_40%)]" />
+              
+              {/* Bande Horizontale "Exu Play" */}
+              <div className="absolute top-[45%] left-0 right-0 h-16 bg-[#0047AB]/40 backdrop-blur-sm border-y border-white/10 flex items-center overflow-hidden">
+                <div className="flex gap-12 animate-[scroll_20s_linear_infinite] whitespace-nowrap px-4">
+                  {[...Array(10)].map((_, i) => (
+                    <span key={i} className="text-[10px] font-black text-white/20 uppercase tracking-widest italic">Exu Play</span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Pelouse avec perspective */}
+              <div className="absolute bottom-0 left-0 right-0 h-[40%] bg-gradient-to-t from-white/[0.02] to-transparent border-t border-white/5" />
             </div>
-            <div className={cn("absolute top-[15%] left-1/2 -translate-x-1/2 w-72 h-40 border-x-4 border-t-4 border-primary/20 rounded-t-xl transition-all duration-300", gameState === 'idle' ? "z-[60]" : "z-10")}>
-              <div className="absolute inset-0 bg-primary/[0.02] backdrop-blur-[1px]" />
-              {gameState === 'idle' && DIRECTIONS.map((dir) => (
-                <button 
-                  key={dir} 
-                  onClick={() => handleShoot(dir)} 
-                  disabled={loading} 
-                  className={cn(
-                    "absolute opacity-0 bg-primary transition-opacity cursor-crosshair", 
-                    getTargetPosition(dir), 
-                    (dir.includes("Haut") || dir.includes("Bas")) && dir !== "Centre" ? "h-1/3" : "w-1/3 h-1/3"
-                  )} 
-                />
-              ))}
+
+            {/* La Cage de But */}
+            <div className="absolute top-[18%] left-1/2 -translate-x-1/2 w-80 h-48 z-10">
+              {/* Structure Métallique */}
+              <div className="absolute inset-0 border-[6px] border-[#e5e7eb] rounded-t-lg shadow-2xl z-20" />
+              <div className="absolute inset-0 bg-[#111] opacity-40 z-10" />
+              
+              {/* Le Filet (Maillage) */}
+              <div className="absolute inset-0 z-15 opacity-20" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '12px 12px' }} />
+
+              {/* Zones de Cibles Tactiles */}
+              <div className="absolute inset-0 z-[60]">
+                {gameState === 'idle' && DIRECTIONS.map((dir) => (
+                  <button 
+                    key={dir} 
+                    onPointerEnter={() => setHoveredTarget(dir)}
+                    onPointerLeave={() => setHoveredTarget(null)}
+                    onClick={() => handleShoot(dir)} 
+                    disabled={loading} 
+                    className={cn(
+                      "absolute transition-all duration-300 cursor-crosshair flex items-center justify-center", 
+                      getTargetPosition(dir), 
+                      (dir.includes("Haut") || dir.includes("Bas")) && dir !== "Centre" ? "h-1/3 w-[33.33%]" : "w-[33.33%] h-1/3"
+                    )}
+                  >
+                    {/* L'icône de cible style image de référence */}
+                    <div className={cn(
+                      "h-10 w-10 rounded-full border-2 border-dashed flex items-center justify-center transition-all duration-500",
+                      hoveredTarget === dir ? "border-primary bg-primary/10 scale-125" : "border-white/10 bg-transparent"
+                    )}>
+                      <Crosshair className={cn("h-5 w-5 transition-colors", hoveredTarget === dir ? "text-primary" : "text-white/5")} />
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {/* Le Gardien (Gants) */}
             <motion.div 
               variants={keeperVariants} 
               animate={gameState === 'shooting' || gameState === 'result' ? "shooting" : "idle"} 
               custom={keeperChoice} 
-              className="absolute top-[22%] left-1/2 z-20 origin-bottom"
+              className="absolute top-[25%] left-1/2 z-30 origin-bottom"
             >
-              <OracleKeeper gameState={gameState} keeperChoice={keeperChoice} isScored={isScored} />
+              <GlovesKeeper gameState={gameState} keeperChoice={keeperChoice} isScored={isScored} />
             </motion.div>
-            <div className="absolute bottom-[15%] left-1/2 -translate-x-1/2 z-30">
-              <div className="w-6 h-6 bg-primary/10 rounded-full blur-[2px] mb-[-12px] mx-auto" />
+
+            {/* Le Ballon et son Ombre */}
+            <div className="absolute bottom-[12%] left-1/2 -translate-x-1/2 z-40">
+              <motion.div 
+                animate={gameState === 'idle' ? { scale: [1, 1.05, 1], opacity: [0.1, 0.3, 0.1] } : { scale: 0, opacity: 0 }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="w-12 h-4 bg-black/60 rounded-full blur-[6px] mb-[-8px] mx-auto" 
+              />
               <motion.div variants={ballVariants} animate={gameState === 'shooting' || gameState === 'result' ? "shooting" : "idle"} custom={playerChoice} className="relative">
-                <div className="text-6xl drop-shadow-[0_10px_20px_rgba(0,0,0,0.3)] filter brightness-110 select-none">⚽</div>
+                <div className="text-7xl drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)] filter brightness-110 select-none">⚽</div>
                 {gameState === 'idle' && (
                   <motion.div 
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.5, 0.2] }} 
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.3, 0.1] }} 
                     transition={{ duration: 2, repeat: Infinity }} 
-                    className="absolute inset-0 bg-primary/20 rounded-full blur-xl -z-10" 
+                    className="absolute inset-0 bg-white/10 rounded-full blur-2xl -z-10" 
                   />
                 )}
               </motion.div>
             </div>
+
+            {/* Overlay de Résultat Cinématique */}
             <AnimatePresence>
               {gameState === 'result' && (
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.5, filter: "blur(20px)" }} 
                   animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }} 
-                  className="absolute inset-0 flex flex-col items-center justify-center z-[100] pointer-events-none bg-background/20 backdrop-blur-sm"
+                  className="absolute inset-0 flex flex-col items-center justify-center z-[100] pointer-events-none bg-black/40 backdrop-blur-sm"
                 >
                   <motion.h2 
                     initial={{ y: 20 }} 
                     animate={{ y: 0 }} 
                     className={cn(
-                      "text-8xl font-black uppercase italic tracking-tighter drop-shadow-2xl", 
-                      isScored ? "text-green-500" : "text-destructive"
+                      "text-8xl font-black uppercase italic tracking-tighter drop-shadow-[0_0_40px_rgba(0,0,0,0.5)]", 
+                      isScored ? "text-green-500" : "text-red-500"
                     )}
                   >
                     {isScored ? "BUT !" : "ARRÊT !"}
                   </motion.h2>
-                  <p className="text-2xl font-black mt-6 px-8 py-3 rounded-full bg-card border border-primary/10 shadow-2xl">
-                    {isScored ? `+${currentBet * 2} PTS` : `-${currentBet} PTS`}
-                  </p>
+                  <div className="mt-8 px-10 py-4 rounded-[2rem] bg-white/10 backdrop-blur-2xl border border-white/10 shadow-2xl flex items-center gap-3">
+                    <Zap className={cn("h-6 w-6", isScored ? "text-yellow-500" : "text-white/20")} />
+                    <span className="text-3xl font-black text-white tabular-nums">
+                      {isScored ? `+${currentBet * 2}` : `-${currentBet}`}
+                    </span>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
+          {/* Contrôles de Fin de Cycle */}
           <AnimatePresence mode="wait">
             {gameState === 'result' ? (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-4">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                 <Button 
                   onClick={resetGame} 
-                  className="w-full h-20 rounded-[2.5rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-primary/20"
+                  className="w-full h-20 rounded-[2.2rem] font-black text-xs uppercase tracking-[0.4em] shadow-2xl shadow-primary/20 bg-primary text-primary-foreground"
                 >
                   Nouvelle Frappe
                 </Button>
               </motion.div>
             ) : (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-6 bg-primary/5 rounded-[2.5rem] border border-primary/5 flex items-start gap-4">
+              <div className="p-8 bg-white/5 rounded-[3rem] border border-white/5 flex items-start gap-4 shadow-inner">
                 <Sparkles className="h-5 w-5 text-primary opacity-40 shrink-0 mt-1" />
-                <p className="text-[11px] font-medium opacity-40 italic">"L'équilibre est parfait. 50% de chance, 100% d'intuition."</p>
-              </motion.div>
+                <p className="text-[11px] font-medium text-white/40 italic leading-relaxed">
+                  "L'arène ne pardonne pas l'hésitation. Choisissez votre cible, scellez votre destin."
+                </p>
+              </div>
             )}
           </AnimatePresence>
         </div>
       </main>
+
+      <style jsx global>{`
+        @keyframes scroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+      `}</style>
     </div>
   );
 }
