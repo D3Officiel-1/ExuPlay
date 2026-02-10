@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "UserFavorite": {
@@ -75,7 +74,8 @@
         "transferFeePercent": { "type": "integer", "default": 10 },
         "exchangeFeePercent": { "type": "integer", "default": 1 },
         "dailyTransferLimitDefault": { "type": "integer", "default": 500 },
-        "dailyTransferLimitTrusted": { "type": "integer", "default": 2500 }
+        "dailyTransferLimitTrusted": { "type": "integer", "default": 2500 },
+        "lastAutoGenerationAt": { "type": "string", "format": "date-time" }
       }
     },
     "JetState": {
@@ -169,6 +169,35 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["challengerId", "participantIds", "wager", "status", "createdAt"]
+    },
+    "Bet": {
+      "title": "Bet",
+      "description": "Pacte sportif engagé par un esprit",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "stake": { "type": "integer" },
+        "totalOdds": { "type": "number" },
+        "potentialWin": { "type": "integer" },
+        "status": { "type": "string", "enum": ["pending", "won", "lost"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "resolvedAt": { "type": "string", "format": "date-time" },
+        "selections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "matchId": { "type": "string" },
+              "matchName": { "type": "string" },
+              "outcome": { "type": "string" },
+              "outcomeLabel": { "type": "string" },
+              "odd": { "type": "number" }
+            }
+          }
+        }
+      },
+      "required": ["userId", "stake", "status", "createdAt", "selections"]
     }
   },
   "auth": {
@@ -206,6 +235,10 @@
     "/duels/{duelId}": {
       "schema": "Duel",
       "description": "Arène de combat intellectuel"
+    },
+    "/bets/{betId}": {
+      "schema": "Bet",
+      "description": "Registres des pactes sportifs"
     }
   }
 }

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo, useState } from "react";
@@ -27,11 +26,12 @@ import { haptic } from "@/lib/haptics";
 import { useUser, useFirestore, useDoc } from "@/firebase";
 import { doc, addDoc, updateDoc, increment, serverTimestamp, collection } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
+import { SportBetResolver } from "@/components/SportBetResolver";
 
 /**
  * @fileOverview Oracle du Sceau Global.
  * Gère le bouton de coupon fixe au sommet et l'état des sélections pour toutes les pages sportives.
- * Le coupon est désormais strictement optimisé avec une mise sur une ligne.
+ * Inclut la Sentinelle de Résolution pour un arbitrage automatique des pactes.
  */
 
 function CouponOverlay() {
@@ -131,7 +131,7 @@ function CouponOverlay() {
               </DialogHeader>
             </div>
 
-            {/* Zone de Sélection Scrollable (Cœur du Confinement) */}
+            {/* Zone de Sélection Scrollable */}
             <div className="flex-1 min-h-0 px-8">
               <div className="h-full w-full overflow-y-auto no-scrollbar pr-1">
                 <div className="space-y-4 py-2">
@@ -163,9 +163,8 @@ function CouponOverlay() {
               </div>
             </div>
 
-            {/* Footer de Mise Consolidé (Une seule ligne pour Input + Bouton) */}
+            {/* Footer de Mise Consolidé */}
             <div className="p-8 pt-6 border-t border-primary/5 shrink-0 bg-card/50 space-y-6">
-              {/* Résumé des Gains */}
               <div className="flex justify-between items-center px-2">
                 <div className="flex flex-col">
                   <p className="text-[8px] font-black uppercase opacity-30">Cote Totale</p>
@@ -177,7 +176,6 @@ function CouponOverlay() {
                 </div>
               </div>
 
-              {/* Ligne Unique de Contrôle */}
               <div className="flex gap-3 items-end">
                 <div className="flex-1 space-y-2">
                   <div className="flex justify-between items-center px-1">
@@ -219,6 +217,7 @@ export default function SportLayout({ children }: { children: React.ReactNode })
   return (
     <SportProvider>
       <div className="min-h-screen bg-background">
+        <SportBetResolver />
         <CouponOverlay />
         {children}
       </div>

@@ -9,10 +9,7 @@ import {
   query, 
   where, 
   orderBy,
-  limit,
-  updateDoc,
-  increment,
-  serverTimestamp
+  limit
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -33,28 +30,25 @@ import {
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { useSport } from "./SportContext";
-import { getDailyMatches, type GeneratedMatch, checkOutcome, getMatchById } from "@/app/actions/sport";
+import { getDailyMatches, type GeneratedMatch } from "@/app/actions/sport";
 import { format } from "date-fns";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
 
 /**
  * @fileOverview Liste des Rencontres et Historique des Paris.
- * Gère désormais la résolution automatique des coupons terminés.
+ * La résolution des coupons est désormais gérée globalement par SportBetResolver.
  */
 
 export default function SportListPage() {
   const { user } = useUser();
   const db = useFirestore();
   const router = useRouter();
-  const { toast } = useToast();
   const { selections, toggleSelection } = useSport();
 
   const [activeTab, setTab] = useState("matches");
   const [matches, setMatches] = useState<GeneratedMatch[]>([]);
   const [isLoadingMatches, setIsLoadingMatches] = useState(true);
-  const [resolvingIds, setResolvingIds] = useState<Set<string>>(new Set());
 
   const userDocRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
@@ -65,61 +59,6 @@ export default function SportListPage() {
   }, [db, user?.uid]);
   
   const { data: userBets } = useCollection(betsQuery);
-
-  // --- LOGIQUE DE RÉSOLUTION DES COUPONS ---
-  useEffect(() => {
-    if (!userBets || activeTab !== 'history' || !db || !userDocRef) return;
-
-    const resolvePendingBets = async () => {
-      const pendingBets = userBets.filter(bet => bet.status === 'pending');
-      
-      for (const bet of pendingBets) {
-        if (resolvingIds.has(bet.id)) continue;
-
-        // Récupérer les états actuels des matchs du coupon
-        const matchPromises = bet.selections.map((s: any) => getMatchById(s.matchId));
-        const resolvedMatches = await Promise.all(matchPromises);
-
-        // Vérifier si TOUS les matchs du coupon sont terminés
-        const allFinished = resolvedMatches.every(m => m?.status === 'finished');
-        
-        if (allFinished) {
-          setResolvingIds(prev => new Set(prev).add(bet.id));
-          
-          // Vérifier chaque sélection
-          const results = await Promise.all(bet.selections.map(async (sel: any, idx: number) => {
-            const match = resolvedMatches[idx];
-            return match ? await checkOutcome(match, sel.outcome) : false;
-          }));
-
-          const isWon = results.every(r => r === true);
-          const newStatus = isWon ? 'won' : 'lost';
-
-          try {
-            const betRef = doc(db, "bets", bet.id);
-            await updateDoc(betRef, { status: newStatus, resolvedAt: serverTimestamp() });
-
-            if (isWon) {
-              haptic.success();
-              await updateDoc(userDocRef, {
-                totalPoints: increment(bet.potentialWin),
-                updatedAt: serverTimestamp()
-              });
-              toast({ 
-                title: "Triomphe Sportif !", 
-                description: `Votre pacte de ${bet.stake} PTS a généré ${bet.potentialWin} PTS.` 
-              });
-            }
-          } catch (e) {
-            console.error("Dissonance lors de l'arbitrage:", e);
-          }
-        }
-      }
-    };
-
-    resolvePendingBets();
-  }, [userBets, activeTab, db, userDocRef, resolvingIds]);
-  // -----------------------------------------
 
   useEffect(() => {
     const fetchMatches = async () => {
@@ -177,7 +116,7 @@ export default function SportListPage() {
               <Globe className="h-3.5 w-3.5" /> Nations
             </TabsTrigger>
             <TabsTrigger value="history" className="rounded-xl font-black text-[10px] uppercase tracking-widest gap-2">
-              <History className="h-3.5 w-3.5" /> Mes Paris
+              <History className="h-3.5 w-3.5" /> Mes Paris {userBets && userBets.filter(b => b.status === 'pending').length > 0 && `(${userBets.filter(b => b.status === 'pending').length})`}
             </TabsTrigger>
           </TabsList>
 
