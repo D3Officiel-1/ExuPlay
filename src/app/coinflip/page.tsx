@@ -14,14 +14,12 @@ import {
   Loader2, 
   History,
   TrendingUp,
-  Settings2,
-  Edit3,
-  RotateCcw,
   Coins,
-  ArrowRight,
   HandCoins,
-  ShieldCheck,
-  Sparkles
+  Sparkles,
+  ArrowRight,
+  Flame,
+  ShieldCheck
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
@@ -30,8 +28,8 @@ import { EmojiOracle } from "@/components/EmojiOracle";
 import confetti from "canvas-confetti";
 
 /**
- * @fileOverview Coinflip de l'Éveil v1.0.
- * Jeu de pile ou face avec mécanique de série et multiplicateurs cumulés.
+ * @fileOverview CoinFlip de l'Éveil v2.0 - L'Arène de la Dualité.
+ * Jeu de pile ou face ultra-immersif avec animation 3D et mécanique de série cumulative.
  */
 
 const MIN_BET = 5;
@@ -46,10 +44,9 @@ export default function CoinFlipPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [betInput, setBetInput] = useState("100");
+  const [betInput, setBetInput] = useState("50");
   const [status, setStatus] = useState<GameStatus>('idle');
   const [streak, setStreak] = useState(0);
-  const [isSeriesMode, setIsSeriesMode] = useState(true);
   const [lastResult, setLastResult] = useState<Side | null>(null);
   const [selectedSide, setSelectedSide] = useState<Side | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -60,15 +57,18 @@ export default function CoinFlipPage() {
 
   const currentBet = Math.max(MIN_BET, parseInt(betInput) || 0);
 
-  // Calcul des multiplicateurs de série
-  const multipliers = useMemo(() => {
-    return [1, 2, 3, 4].map(step => (Math.pow(MULTIPLIER_PER_WIN, step)).toFixed(2));
+  // Calcul des multiplicateurs de série pour la visualisation
+  const seriesPreview = useMemo(() => {
+    return [1, 2, 3, 4, 5].map(step => ({
+      multiplier: (Math.pow(MULTIPLIER_PER_WIN, step)).toFixed(2),
+      step
+    }));
   }, []);
 
   const handleFlip = async (side: Side) => {
     if (!profile || !userDocRef || isProcessing || status === 'flipping') return;
 
-    // Si on n'est pas en série ou si c'est le premier flip de la série
+    // Si on commence une nouvelle série
     if (streak === 0) {
       if (currentBet < MIN_BET) {
         haptic.error();
@@ -78,13 +78,16 @@ export default function CoinFlipPage() {
 
       if ((profile.totalPoints || 0) < currentBet) {
         haptic.error();
-        toast({ variant: "destructive", title: "Lumière insuffisante", description: "Accumulez plus d'énergie." });
+        toast({ variant: "destructive", title: "Lumière insuffisante", description: "Votre essence est trop faible." });
         return;
       }
 
       setIsProcessing(true);
       try {
-        await updateDoc(userDocRef, { totalPoints: increment(-currentBet), updatedAt: serverTimestamp() });
+        await updateDoc(userDocRef, { 
+          totalPoints: increment(-currentBet), 
+          updatedAt: serverTimestamp() 
+        });
       } catch (e) {
         setIsProcessing(false);
         return;
@@ -95,7 +98,7 @@ export default function CoinFlipPage() {
     setSelectedSide(side);
     setStatus('flipping');
 
-    // Simulation de la pièce
+    // Simulation du destin (le hasard est simulé ici pour la réactivité, mais le gain est ancré en DB au cashout)
     setTimeout(() => {
       const result: Side = Math.random() > 0.5 ? 'face' : 'pile';
       const isWon = result === side;
@@ -110,52 +113,57 @@ export default function CoinFlipPage() {
         
         const winAmount = Math.floor(currentBet * Math.pow(MULTIPLIER_PER_WIN, newStreak));
         setCurrentWin(winAmount);
-
-        if (!isSeriesMode) {
-          // Si pas de mode série, on cashout auto
-          handleCashout(winAmount);
-        }
       } else {
         haptic.error();
         setStreak(0);
         setCurrentWin(0);
         setIsProcessing(false);
-        setTimeout(() => setStatus('idle'), 2000);
+        // On laisse le résultat affiché un court instant avant de reset
+        setTimeout(() => {
+          setStatus('idle');
+          setSelectedSide(null);
+        }, 2000);
       }
-    }, 1500);
+    }, 1800); // Temps de l'animation de vol
   };
 
-  const handleCashout = async (amountOverride?: number) => {
-    const finalAmount = amountOverride || currentWin;
-    if (!userDocRef || finalAmount <= 0 || isProcessing) return;
+  const handleCashout = async () => {
+    if (!userDocRef || currentWin <= 0 || isProcessing) return;
 
     setIsProcessing(true);
     haptic.impact();
 
     try {
       await updateDoc(userDocRef, {
-        totalPoints: increment(finalAmount),
+        totalPoints: increment(currentWin),
         updatedAt: serverTimestamp()
       });
 
       confetti({
-        particleCount: 150,
-        spread: 70,
+        particleCount: 200,
+        spread: 90,
         origin: { y: 0.6 },
-        colors: ['#fbbf24', '#ffffff', '#3b82f6']
+        colors: ['#fbbf24', '#ffffff', '#3b82f6', '#10b981']
       });
 
-      toast({ title: "Lumière Matérialisée", description: `+${finalAmount} PTS ajoutés à votre essence.` });
+      toast({ 
+        title: "Lumière Matérialisée !", 
+        description: `+${currentWin.toLocaleString()} PTS ont rejoint votre essence.` 
+      });
+      
       setStreak(0);
       setCurrentWin(0);
       setStatus('idle');
+      setSelectedSide(null);
+    } catch (e) {
+      toast({ variant: "destructive", title: "Dissonance lors de l'extraction" });
     } finally {
       setIsProcessing(false);
     }
   };
 
   const adjustBet = (action: 'half' | 'double' | 'plus' | 'minus') => {
-    if (streak > 0) return;
+    if (streak > 0) return; // Verrouillage pendant la série
     haptic.light();
     let val = parseInt(betInput) || 0;
     if (action === 'half') val = Math.floor(val / 2);
@@ -166,14 +174,20 @@ export default function CoinFlipPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col pb-32">
+    <div className="min-h-screen bg-[#020617] text-white flex flex-col pb-32 overflow-hidden selection:bg-primary/30">
+      {/* Header Cinématique */}
       <header className="fixed top-0 left-0 right-0 z-50 p-6 flex items-center justify-between bg-background/5 backdrop-blur-xl border-b border-white/5">
-        <Button variant="ghost" size="icon" onClick={() => router.push("/home")} className="rounded-full bg-white/5 border border-white/10">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => router.push("/home")} 
+          className="rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
+        >
           <ChevronLeft className="h-6 w-6" />
         </Button>
         <div className="flex flex-col items-center">
-          <p className="text-[8px] font-black uppercase tracking-[0.4em] opacity-40">CoinFlip de l'Éveil</p>
-          <div className="flex items-center gap-2 px-4 py-1 bg-primary/10 rounded-full border border-primary/20">
+          <p className="text-[8px] font-black uppercase tracking-[0.5em] text-primary/60">Arène de la Dualité</p>
+          <div className="flex items-center gap-2 px-4 py-1.5 bg-primary/10 rounded-full border border-primary/20 mt-1">
             <Zap className="h-3.5 w-3.5 text-primary" />
             <span className="text-xs font-black tabular-nums">{(profile?.totalPoints || 0).toLocaleString()}</span>
           </div>
@@ -181,159 +195,261 @@ export default function CoinFlipPage() {
         <div className="w-10 h-10" />
       </header>
 
-      <main className="flex-1 p-6 pt-28 flex flex-col items-center gap-12 max-w-lg mx-auto w-full">
-        
-        {/* LA PIÈCE (COIN) */}
-        <div className="relative h-64 w-64 flex items-center justify-center">
-          <div className="absolute inset-0 bg-primary/5 blur-[100px] rounded-full animate-pulse" />
+      <main className="flex-1 p-6 pt-28 flex flex-col items-center gap-12 max-w-lg mx-auto w-full relative">
+        {/* Background Orbs */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/4 -left-20 w-64 h-64 bg-primary/5 rounded-full blur-[100px] animate-pulse" />
+          <div className="absolute bottom-1/4 -right-20 w-64 h-64 bg-blue-500/5 rounded-full blur-[100px] animate-pulse" />
+        </div>
+
+        {/* L'ARTEFACT 3D (PIÈCE) */}
+        <div className="relative h-72 w-72 flex items-center justify-center perspective-1000">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.1),transparent_70%)] animate-pulse" />
           
           <motion.div
             animate={status === 'flipping' ? {
-              rotateY: [0, 1800],
-              y: [0, -150, 0],
-              scale: [1, 1.2, 1]
+              rotateY: [0, 1800, 3600],
+              y: [0, -180, 0],
+              scale: [1, 1.2, 1],
+              transition: { duration: 1.8, ease: [0.45, 0.05, 0.55, 0.95] }
             } : {
               rotateY: lastResult === 'face' ? 180 : 0,
-              y: [0, -5, 0]
+              y: [0, -8, 0],
+              transition: { 
+                rotateY: { duration: 0.6, type: "spring", stiffness: 100, damping: 15 },
+                y: { duration: 4, repeat: Infinity, ease: "easeInOut" }
+              }
             }}
-            transition={status === 'flipping' ? {
-              duration: 1.5,
-              ease: "easeInOut"
-            } : {
-              y: { duration: 4, repeat: Infinity, ease: "easeInOut" },
-              rotateY: { duration: 0.5 }
-            }}
-            className="relative w-48 h-48 preserve-3d cursor-default"
+            className="relative w-52 h-52 preserve-3d"
             style={{ transformStyle: 'preserve-3d' }}
           >
-            {/* Face Pile (Yellow/Gold) */}
-            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-300 via-yellow-500 to-yellow-700 border-4 border-yellow-200/30 flex flex-col items-center justify-center shadow-[0_0_50px_rgba(234,179,8,0.4)] backface-hidden">
-              <span className="text-5xl font-black text-yellow-900/40 italic">PILE</span>
-              <Coins className="h-12 w-12 text-yellow-900/20 mt-2" />
+            {/* FACE PILE (OR) */}
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-200 via-yellow-500 to-yellow-700 border-4 border-yellow-300/30 flex flex-col items-center justify-center shadow-[0_0_60px_rgba(234,179,8,0.4)] backface-hidden">
+              <div className="absolute inset-2 border-2 border-dashed border-yellow-200/20 rounded-full" />
+              <span className="text-6xl font-black text-yellow-950/20 italic select-none">PILE</span>
+              <Coins className="h-14 w-14 text-yellow-950/10 mt-2" />
+              <motion.div 
+                animate={{ rotate: 360 }}
+                transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent pointer-events-none opacity-40"
+              />
             </div>
             
-            {/* Face Face (Blue/Silver) */}
-            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-slate-200 via-slate-400 to-slate-600 border-4 border-white/30 flex flex-col items-center justify-center shadow-[0_0_50px_rgba(255,255,255,0.2)] backface-hidden" style={{ transform: 'rotateY(180deg)' }}>
-              <span className="text-5xl font-black text-slate-900/40 italic">FACE</span>
-              <Coins className="h-12 w-12 text-slate-900/20 mt-2" />
+            {/* FACE FACE (ARGENT) */}
+            <div 
+              className="absolute inset-0 rounded-full bg-gradient-to-br from-slate-100 via-slate-400 to-slate-600 border-4 border-white/30 flex flex-col items-center justify-center shadow-[0_0_60px_rgba(255,255,255,0.2)] backface-hidden" 
+              style={{ transform: 'rotateY(180deg)' }}
+            >
+              <div className="absolute inset-2 border-2 border-dashed border-slate-200/20 rounded-full" />
+              <span className="text-6xl font-black text-slate-950/20 italic select-none">FACE</span>
+              <Coins className="h-14 w-14 text-slate-950/10 mt-2" />
             </div>
           </motion.div>
 
-          {/* Grille de fond éthérée */}
-          <div className="absolute inset-[-40px] opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+          {/* Halo de résultat */}
+          <AnimatePresence>
+            {status === 'result' && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1.2 }}
+                exit={{ opacity: 0, scale: 1.5 }}
+                className={cn(
+                  "absolute inset-0 blur-3xl rounded-full -z-10",
+                  lastResult === 'pile' ? "bg-yellow-500/20" : "bg-white/10"
+                )}
+              />
+            )}
+          </AnimatePresence>
         </div>
 
         {/* PANNEAU DE CONTRÔLE */}
-        <div className="w-full space-y-6">
-          <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2.5rem] p-6 border border-white/5 shadow-2xl space-y-6">
+        <div className="w-full space-y-8 relative z-10">
+          <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[3rem] p-8 border border-white/5 shadow-2xl space-y-8 relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
             
             {/* MISE & ACTIONS RAPIDES */}
-            <div className="space-y-3">
-              <div className="flex bg-black/40 rounded-2xl p-1.5 border border-white/5">
-                <Input 
-                  type="number" 
-                  value={betInput} 
-                  onChange={e => setBetInput(e.target.value)}
-                  disabled={streak > 0}
-                  className="flex-1 h-12 bg-transparent border-none text-xl font-black text-center focus-visible:ring-0"
-                />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-2">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-3 w-3 text-primary opacity-40" />
+                  <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Mise de Lumière</span>
+                </div>
+                <span className="text-[9px] font-black opacity-20 uppercase">Min: 5 PTS</span>
+              </div>
+              
+              <div className="flex bg-black/40 rounded-3xl p-2 border border-white/5 shadow-inner">
+                <div className="flex-1 flex flex-col justify-center pl-4">
+                  <input 
+                    type="number" 
+                    value={betInput} 
+                    onChange={e => setBetInput(e.target.value)}
+                    disabled={streak > 0 || status === 'flipping'}
+                    className="bg-transparent border-none text-2xl font-black focus:ring-0 focus:outline-none w-full tabular-nums"
+                  />
+                </div>
                 <div className="flex gap-1">
-                  <button onClick={() => adjustBet('minus')} className="h-12 w-12 rounded-xl hover:bg-white/5 transition-colors opacity-40">-</button>
-                  <button onClick={() => adjustBet('plus')} className="h-12 w-12 rounded-xl hover:bg-white/5 transition-colors opacity-40">+</button>
+                  <button 
+                    onClick={() => adjustBet('minus')} 
+                    disabled={streak > 0 || status === 'flipping'}
+                    className="h-12 w-12 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors font-bold text-xl flex items-center justify-center disabled:opacity-20"
+                  >
+                    -
+                  </button>
+                  <button 
+                    onClick={() => adjustBet('plus')} 
+                    disabled={streak > 0 || status === 'flipping'}
+                    className="h-12 w-12 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors font-bold text-xl flex items-center justify-center disabled:opacity-20"
+                  >
+                    +
+                  </button>
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" onClick={() => adjustBet('half')} disabled={streak > 0} className="h-12 rounded-xl bg-white/5 border-white/10 font-bold">/2</Button>
-                <Button variant="outline" onClick={() => adjustBet('double')} disabled={streak > 0} className="h-12 rounded-xl bg-white/5 border-white/10 font-bold">x2</Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => adjustBet('half')} 
+                  disabled={streak > 0 || status === 'flipping'} 
+                  className="h-12 rounded-2xl bg-white/5 border-white/5 font-black text-xs hover:bg-white/10 disabled:opacity-20"
+                >
+                  MOITIÉ
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => adjustBet('double')} 
+                  disabled={streak > 0 || status === 'flipping'} 
+                  className="h-12 rounded-2xl bg-white/5 border-white/5 font-black text-xs hover:bg-white/10 disabled:opacity-20"
+                >
+                  DOUBLE
+                </Button>
               </div>
             </div>
 
-            {/* BOUTONS DE CHOIX */}
+            {/* BOUTONS DE DESTIN */}
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => handleFlip('pile')}
                 disabled={status === 'flipping' || isProcessing}
                 className={cn(
-                  "h-20 rounded-[1.75rem] flex flex-col items-center justify-center gap-1 transition-all duration-500 active:scale-95 border-2",
-                  selectedSide === 'pile' && status !== 'idle' ? "bg-yellow-500 border-yellow-400 text-yellow-950 shadow-[0_0_30px_rgba(234,179,8,0.3)]" : "bg-yellow-500/10 border-yellow-500/20 text-yellow-500 hover:bg-yellow-500/20"
+                  "h-24 rounded-[2rem] flex flex-col items-center justify-center gap-1 transition-all duration-500 active:scale-95 border-2 relative overflow-hidden group/btn",
+                  selectedSide === 'pile' && status !== 'idle' 
+                    ? "bg-yellow-500 border-yellow-400 text-yellow-950 shadow-[0_0_40px_rgba(234,179,8,0.4)] scale-105 z-20" 
+                    : "bg-yellow-500/5 border-yellow-500/10 text-yellow-500 hover:bg-yellow-500/10"
                 )}
               >
-                <span className="text-lg font-black uppercase italic tracking-tighter">Pile</span>
-                <span className="text-[10px] font-bold opacity-60">x{MULTIPLIER_PER_WIN}</span>
+                <span className="text-xl font-black uppercase italic tracking-tighter relative z-10">Pile</span>
+                <span className="text-[10px] font-bold opacity-60 relative z-10">x{MULTIPLIER_PER_WIN}</span>
+                {selectedSide === 'pile' && status === 'flipping' && (
+                  <motion.div 
+                    animate={{ x: ["-100%", "200%"] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
+                  />
+                )}
               </button>
 
               <button
                 onClick={() => handleFlip('face')}
                 disabled={status === 'flipping' || isProcessing}
                 className={cn(
-                  "h-20 rounded-[1.75rem] flex flex-col items-center justify-center gap-1 transition-all duration-500 active:scale-95 border-2",
-                  selectedSide === 'face' && status !== 'idle' ? "bg-slate-200 border-white text-slate-900 shadow-[0_0_30px_rgba(255,255,255,0.2)]" : "bg-slate-500/10 border-slate-500/20 text-slate-300 hover:bg-slate-500/20"
+                  "h-24 rounded-[2rem] flex flex-col items-center justify-center gap-1 transition-all duration-500 active:scale-95 border-2 relative overflow-hidden group/btn",
+                  selectedSide === 'face' && status !== 'idle' 
+                    ? "bg-slate-200 border-white text-slate-900 shadow-[0_0_40px_rgba(255,255,255,0.2)] scale-105 z-20" 
+                    : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
                 )}
               >
-                <span className="text-lg font-black uppercase italic tracking-tighter">Face</span>
-                <span className="text-[10px] font-bold opacity-60">x{MULTIPLIER_PER_WIN}</span>
+                <span className="text-xl font-black uppercase italic tracking-tighter relative z-10">Face</span>
+                <span className="text-[10px] font-bold opacity-60 relative z-10">x{MULTIPLIER_PER_WIN}</span>
+                {selectedSide === 'face' && status === 'flipping' && (
+                  <motion.div 
+                    animate={{ x: ["-100%", "200%"] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
+                  />
+                )}
               </button>
             </div>
           </Card>
 
-          {/* INDICATEURS DE SÉRIE */}
-          <div className="flex items-center justify-between px-2">
-            <div className="flex gap-2">
-              {multipliers.map((m, i) => (
-                <div key={i} className={cn(
-                  "px-3 py-2 rounded-xl text-[10px] font-black border transition-all duration-500",
-                  streak > i ? "bg-primary/20 border-primary text-primary" : "bg-white/5 border-transparent opacity-20"
-                )}>
-                  x{m}
+          {/* BARRE DE SÉRIE / MULTIPLICATEURS */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between px-2">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-3.5 w-3.5 text-primary opacity-40" />
+                <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Flux de Série</span>
+              </div>
+              {streak > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <Flame className="h-3 w-3 text-orange-500 animate-bounce" />
+                  <span className="text-[10px] font-black text-orange-500 uppercase">{streak} VICTOIRES</span>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+              {seriesPreview.map((item) => (
+                <div 
+                  key={item.step} 
+                  className={cn(
+                    "flex-1 min-w-[80px] p-3 rounded-2xl flex flex-col items-center justify-center gap-1 border transition-all duration-700",
+                    streak >= item.step 
+                      ? "bg-primary/20 border-primary shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)] scale-105" 
+                      : "bg-white/5 border-white/5 opacity-30"
+                  )}
+                >
+                  <span className="text-[8px] font-bold opacity-40">ÉTAPE {item.step}</span>
+                  <span className="text-sm font-black tabular-nums">x{item.multiplier}</span>
                 </div>
               ))}
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] font-black uppercase tracking-widest opacity-40 italic">Série</span>
-              <button 
-                onClick={() => { haptic.light(); setIsSeriesMode(!isSeriesMode); }}
-                className={cn("w-12 h-6 rounded-full transition-colors relative", isSeriesMode ? "bg-primary" : "bg-white/10")}
-              >
-                <motion.div 
-                  animate={{ x: isSeriesMode ? 24 : 4 }}
-                  className="absolute top-1 h-4 w-4 bg-white rounded-full shadow-sm"
-                />
-              </button>
-            </div>
           </div>
 
-          {/* BOUTON RETIRER (CASHOUT) */}
+          {/* BOUTON RETIRER (CASHOUT) - L'ACTION FINALE */}
           <AnimatePresence>
-            {streak > 0 && (
+            {streak > 0 && status !== 'flipping' && (
               <motion.div
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                initial={{ opacity: 0, y: 40, scale: 0.9 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
+                exit={{ opacity: 0, scale: 0.9, filter: "blur(20px)" }}
+                className="w-full"
               >
                 <Button
-                  onClick={() => handleCashout()}
+                  onClick={handleCashout}
                   disabled={isProcessing}
-                  className="w-full h-20 rounded-[2rem] bg-green-600 hover:bg-green-700 text-white font-black text-lg uppercase tracking-[0.2em] shadow-2xl shadow-green-600/20 flex flex-col leading-none gap-1"
+                  className="w-full h-24 rounded-[2.5rem] bg-green-600 hover:bg-green-500 text-white font-black text-xl uppercase tracking-[0.2em] shadow-2xl shadow-green-600/30 flex flex-col items-center justify-center leading-none gap-2 relative overflow-hidden group"
                 >
-                  <div className="flex items-center gap-2">
-                    <HandCoins className="h-5 w-5" />
-                    Retirer
+                  <div className="flex items-center gap-3 relative z-10">
+                    {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : <HandCoins className="h-6 w-6 group-hover:scale-110 transition-transform" />}
+                    Matérialiser
                   </div>
-                  <span className="text-2xl tabular-nums">{currentWin.toLocaleString()} <span className="text-xs opacity-60">PTS</span></span>
+                  <div className="flex items-baseline gap-2 relative z-10">
+                    <span className="text-3xl tabular-nums">{currentWin.toLocaleString()}</span>
+                    <span className="text-xs opacity-60 font-black">PTS</span>
+                  </div>
+                  
+                  <motion.div 
+                    animate={{ x: ["-100%", "200%"] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
+                  />
                 </Button>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        <div className="p-8 bg-primary/5 rounded-[2.5rem] border border-primary/10 text-center space-y-3 relative overflow-hidden">
-          <p className="text-[10px] leading-relaxed font-medium opacity-40 italic">
-            "Chaque face est une vérité, chaque pile est un choix. L'équilibre est dans votre main."
+        {/* Footer Poétique */}
+        <div className="p-8 bg-primary/5 rounded-[3rem] border border-primary/10 text-center space-y-3 relative overflow-hidden w-full">
+          <ShieldCheck className="h-6 w-6 mx-auto text-primary opacity-10" />
+          <p className="text-[11px] leading-relaxed font-medium opacity-40 italic px-4">
+            "Le hasard est le seul langage que l'Oracle n'a pas encore traduit. Écoutez le chant de la pièce."
           </p>
+          <div className="absolute -bottom-10 -left-10 h-32 w-32 bg-primary/5 blur-[80px] rounded-full" />
         </div>
       </main>
 
       <style jsx global>{`
+        .perspective-1000 { perspective: 1000px; }
         .preserve-3d { transform-style: preserve-3d; }
         .backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
       `}</style>
