@@ -1,12 +1,11 @@
-
 'use server';
 
 /**
- * @fileOverview Oracle de la Dualité v1.0.
- * Gère la logique serveur pour le jeu Double (Roulette horizontale).
+ * @fileOverview Oracle de la Dualité v1.1.
+ * Gère la logique serveur asynchrone pour le jeu Double.
  */
 
-export type DoubleColor = 'red' | 'green' | 'blue';
+import { getTileColorSync, type DoubleColor } from '@/lib/games/double';
 
 export interface DoubleRound {
   id: string;
@@ -16,24 +15,13 @@ export interface DoubleRound {
 }
 
 /**
- * Détermine la couleur d'une tuile selon la loi du Double.
- * 0 = Bleu (Singularité x14)
- * 1-7 = Rouge (Force x2)
- * 8-14 = Vert (Force x2)
- */
-export const getTileColor = (n: number): DoubleColor => {
-  if (n === 0) return 'blue';
-  return n <= 7 ? 'red' : 'green';
-};
-
-/**
  * Invoque le prochain destin pour le Double.
  * Probabilité pure : 1/15 pour chaque numéro.
  */
 export async function triggerNextDoubleRound(): Promise<DoubleRound> {
   // Génération du nombre sacré (0 à 14)
   const resultNumber = Math.floor(Math.random() * 15);
-  const resultColor = getTileColor(resultNumber);
+  const resultColor = getTileColorSync(resultNumber);
   
   return {
     id: `DBL-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -49,7 +37,7 @@ export async function triggerNextDoubleRound(): Promise<DoubleRound> {
 export async function getDoubleHistory(count: number = 15): Promise<DoubleColor[]> {
   const history: DoubleColor[] = [];
   for (let i = 0; i < count; i++) {
-    history.push(getTileColor(Math.floor(Math.random() * 15)));
+    history.push(getTileColorSync(Math.floor(Math.random() * 15)));
   }
   return history;
 }

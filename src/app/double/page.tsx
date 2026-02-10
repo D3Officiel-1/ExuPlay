@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -24,11 +23,12 @@ import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { EmojiOracle } from "@/components/EmojiOracle";
-import { triggerNextDoubleRound, getTileColor, getDoubleHistory, validateDoubleWin, type DoubleColor } from "@/app/actions/double";
+import { triggerNextDoubleRound, getDoubleHistory, validateDoubleWin } from "@/app/actions/double";
+import { getTileColorSync, type DoubleColor } from "@/lib/games/double";
 import confetti from "canvas-confetti";
 
 /**
- * @fileOverview Double de l'Éveil v2.0 - Arbitrage par l'Oracle.
+ * @fileOverview Double de l'Éveil v2.1 - Arbitrage par l'Oracle.
  * Une arène de roulette horizontale dont le destin est scellé sur le serveur.
  */
 
@@ -188,7 +188,7 @@ export default function DoublePage() {
     const tiles = [];
     for (let i = 0; i < TOTAL_TILES_STRIP; i++) {
       const num = i % 15;
-      tiles.push({ num, color: getTileColor(num) });
+      tiles.push({ num, color: getTileColorSync(num) });
     }
     return tiles;
   }, []);
