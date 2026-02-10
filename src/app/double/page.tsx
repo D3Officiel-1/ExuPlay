@@ -27,8 +27,9 @@ import { getTileColorSync, type DoubleColor } from "@/lib/games/double";
 import confetti from "canvas-confetti";
 
 /**
- * @fileOverview Double de l'Éveil v3.0 - Immersion Totale.
+ * @fileOverview Double de l'Éveil v3.1 - Immersion Totale & Épurée.
  * Arène de roulette où les phases de jeu se superposent à la roue pour un focus absolu.
+ * La mention "Rotation du Destin" a été occultée pour plus de clarté visuelle.
  */
 
 type GamePhase = 'betting' | 'spinning' | 'result';
@@ -280,24 +281,14 @@ export default function DoublePage() {
                       </div>
                     </motion.div>
                   ) : phase === 'spinning' ? (
-                    <motion.div 
-                      key="spinning"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="text-center"
-                    >
-                      <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }} className="h-24 w-24 mx-auto flex items-center justify-center">
-                        <TrendingUp className="h-12 w-12 text-primary shadow-[0_0_30px_rgba(var(--primary-rgb),0.5)]" />
-                      </motion.div>
-                      <p className="text-[11px] font-black uppercase tracking-[0.6em] text-primary animate-pulse mt-2">Rotation du Destin</p>
-                    </motion.div>
+                    /* L'animation textuelle "Rotation du Destin" a été supprimée selon le décret */
+                    null
                   ) : (
                     <motion.div 
                       key="result"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="space-y-6 text-center bg-background/60 backdrop-blur-lg p-10 rounded-[3rem] border border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.5)]"
+                      className="space-y-6 text-center bg-background/60 backdrop-blur-lg p-10 rounded-[3rem] border border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.5)] pointer-events-auto"
                     >
                       {winAmount ? (
                         <div className="space-y-4">
