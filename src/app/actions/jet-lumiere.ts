@@ -1,8 +1,7 @@
-
 'use server';
 
 /**
- * @fileOverview Oracle du Jet de Lumière v2.5 - Arbitrage de Précision.
+ * @fileOverview Oracle du Jet de Lumière v3.0 - Arbitrage de Précision.
  * Gère la génération déterministe des points de rupture et la validation des flux.
  */
 
@@ -22,9 +21,9 @@ export async function triggerNextJetRound(): Promise<JetRound> {
   // 3% de chance de crash instantané à 1.00x (Instastase)
   let crashPoint = 1.00;
   if (r >= 0.03) {
-    // Formule de distribution standard avec avantage maison minimal (3%)
-    // val = (1 - HouseEdge) / (1 - Random)
-    const val = 0.97 / (1 - Math.random());
+    // Formule de distribution standard avec avantage maison minimal
+    // val = 1 / (1 - Random)
+    const val = 0.98 / (1 - Math.random());
     crashPoint = parseFloat(Math.min(val, 1000).toFixed(2));
   }
 
@@ -44,7 +43,7 @@ export async function triggerNextJetRound(): Promise<JetRound> {
 export async function getJetHistory(count: number = 10): Promise<number[]> {
   const history = [];
   for (let i = 0; i < count; i++) {
-    const val = 0.97 / (1 - Math.random());
+    const val = 0.98 / (1 - Math.random());
     history.push(parseFloat(Math.max(1.00, Math.min(val, 50)).toFixed(2)));
   }
   return history;
@@ -53,21 +52,17 @@ export async function getJetHistory(count: number = 10): Promise<number[]> {
 /**
  * Valide si un retrait (cashout) est légal.
  * LOI DE L'ORACLE : Le Jet doit dépasser STRICTEMENT la cible.
- * Si target >= crashPoint -> Perdu.
  */
 export async function validateJetCashout(
   betAmount: number, 
   targetMultiplier: number, 
   actualCrashPoint: number
 ): Promise<{ success: boolean; winAmount: number }> {
-  // Précision flottante pour éviter les erreurs d'arrondi
-  const target = parseFloat(targetMultiplier.toFixed(2));
-  const crash = parseFloat(actualCrashPoint.toFixed(2));
-
-  if (target >= crash) {
-    return { success: false, winAmount: 0 };
+  // Utilisation de valeurs brutes pour éviter les erreurs d'arrondi lors du calcul
+  if (actualCrashPoint > targetMultiplier) {
+    const winAmount = Math.floor(betAmount * targetMultiplier);
+    return { success: true, winAmount };
   }
 
-  const winAmount = Math.floor(betAmount * target);
-  return { success: true, winAmount };
+  return { success: false, winAmount: 0 };
 }

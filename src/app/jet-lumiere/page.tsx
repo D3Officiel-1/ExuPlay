@@ -20,7 +20,8 @@ import {
   TrendingUp,
   AlertCircle,
   Trophy,
-  ShieldCheck
+  ShieldCheck,
+  CheckCircle2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -30,7 +31,7 @@ import { doc, updateDoc, serverTimestamp, increment, setDoc, Timestamp, getDoc }
 import { motion, AnimatePresence } from "framer-motion";
 import { haptic } from '@/lib/haptics';
 import { EmojiOracle } from '@/components/EmojiOracle';
-import { triggerNextJetRound, getJetHistory, validateJetCashout } from '@/app/actions/jet-lumiere';
+import { triggerNextJetRound, getJetHistory } from '@/app/actions/jet-lumiere';
 import confetti from "canvas-confetti";
 
 type GameState = 'waiting' | 'betting' | 'in_progress' | 'crashed';
@@ -293,9 +294,9 @@ const BetPanel: FC<{
             )}
         </div>
 
-        {/* LIGNE DE COMMANDE UNIFIÉE */}
-        <div className="flex flex-col sm:flex-row items-end gap-3">
-            <div className="flex-1 w-full space-y-2">
+        {/* LIGNE DE COMMANDE UNIFIÉE - UNE SEULE LIGNE */}
+        <div className="flex flex-row items-end gap-3 w-full">
+            <div className="flex-1 space-y-2">
                 <Label className="text-[9px] font-black uppercase tracking-widest opacity-30 ml-2">Mise</Label>
                 <div className="relative">
                     <Input 
@@ -309,7 +310,7 @@ const BetPanel: FC<{
                 </div>
             </div>
 
-            <div className="flex-1 w-full space-y-2">
+            <div className="flex-1 space-y-2">
                 <Label className="text-[9px] font-black uppercase tracking-widest opacity-30 ml-2 text-primary">Cible</Label>
                 <div className="relative">
                     <Input 
@@ -328,7 +329,7 @@ const BetPanel: FC<{
                 onClick={handleAction}
                 disabled={isProcessing || (betState === 'IDLE' && gameState === 'in_progress') || betState === 'PLACED' || betState === 'CASHED_OUT' || betState === 'LOST'}
                 className={cn(
-                    "h-14 px-6 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl transition-all duration-500 active:scale-95 flex-[1.2] w-full sm:w-auto relative overflow-hidden shrink-0",
+                    "h-14 px-6 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl transition-all duration-500 active:scale-95 flex-1 relative overflow-hidden shrink-0",
                     betState === 'IDLE' ? "bg-primary text-primary-foreground shadow-primary/20" :
                     betState === 'PENDING' ? "bg-orange-500/10 text-orange-600 border border-orange-500/20" :
                     betState === 'PLACED' ? "bg-primary/5 text-primary/40 border border-primary/10" :
@@ -525,6 +526,7 @@ export default function JetLumierePage() {
         const growthLoop = () => {
             const now = Date.now();
             const elapsedMs = now - startTime;
+            // Courbe exponentielle : M = e^(0.00006 * t_ms)
             const currentMultiplier = Math.pow(1.002, elapsedMs / 10);
             
             if (currentMultiplier >= crashPoint) {
@@ -552,6 +554,7 @@ export default function JetLumierePage() {
         setMultiplier(status === 'crashed' ? crashPoint : 1.00);
         
         if (status === 'crashed' && betDataRef.current.betState === 'PLACED') {
+            // Vérification finale au crash : si crashPoint > cible -> Gain validé
             if (crashPoint > betDataRef.current.autoCashoutValue) {
                 handleCashout(betDataRef.current.autoCashoutValue);
             } else {
@@ -799,7 +802,7 @@ export default function JetLumierePage() {
                 </div>
             </main>
 
-            <div className="w-full max-w-xl mx-auto">
+            <div className="w-full">
                 <BetPanel 
                     balance={profile?.totalPoints || 0} 
                     gameState={gameState} 
