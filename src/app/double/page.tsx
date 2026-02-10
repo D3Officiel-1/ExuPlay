@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -28,8 +27,8 @@ import { getTileColorSync, type DoubleColor } from "@/lib/games/double";
 import confetti from "canvas-confetti";
 
 /**
- * @fileOverview Double de l'Éveil v5.1 - Logique de Gain Consolidée.
- * Gère l'arbitrage des pactes et la matérialisation des gains de Lumière.
+ * @fileOverview Double de l'Éveil v5.2 - Logique de Rétribution Scellée.
+ * Interface synchronisée avec l'Oracle de Rétribution (x2 pour R/V, x14 pour Bleu).
  */
 
 type GamePhase = 'betting' | 'spinning' | 'result';
@@ -112,7 +111,7 @@ export default function DoublePage() {
       // Mise à jour de l'historique local
       setHistory(prev => [round.resultColor, ...prev].slice(0, 15));
       
-      // LOGIQUE DE GAIN : Arbitrage du pacte
+      // LOGIQUE DE GAIN : Arbitrage du pacte via l'Oracle Serveur
       if (selectedColor && committedBetAmount > 0) {
         const validation = await validateDoubleWin(committedBetAmount, selectedColor, round.resultColor);
         
@@ -130,21 +129,30 @@ export default function DoublePage() {
 
           // Matérialisation des gains dans Firestore
           if (userDocRef) {
-            await updateDoc(userDocRef, { 
-              totalPoints: increment(validation.winAmount), 
-              updatedAt: serverTimestamp() 
-            });
-            toast({ 
-              title: "Triomphe Chromatique !", 
-              description: `+${validation.winAmount.toLocaleString()} PTS de Lumière.` 
-            });
+            try {
+              await updateDoc(userDocRef, { 
+                totalPoints: increment(validation.winAmount), 
+                updatedAt: serverTimestamp() 
+              });
+              toast({ 
+                title: "Triomphe Chromatique !", 
+                description: `+${validation.winAmount.toLocaleString()} PTS de Lumière (Multiplicateur x${validation.winAmount / committedBetAmount}).` 
+              });
+            } catch (error) {
+              console.error("Dissonance lors de la matérialisation:", error);
+              toast({ 
+                variant: "destructive",
+                title: "Dissonance de Flux", 
+                description: "Le Sanctuaire est instable. Votre gain sera synchronisé dès le retour de la lumière." 
+              });
+            }
           }
         } else {
           haptic.error();
           toast({ 
             variant: "destructive",
             title: "Dissonance", 
-            description: "Le flux a favorisé une autre nuance." 
+            description: `Le flux a favorisé le ${round.resultColor === 'blue' ? 'Bleu' : round.resultColor === 'red' ? 'Rouge' : 'Vert'}.` 
           });
         }
       }
