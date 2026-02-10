@@ -12,7 +12,7 @@ import {
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Zap, Users, Sparkles, Brain, Trophy, Swords, Flag, ChevronRight, Rocket, Bomb, Ticket, Coins } from "lucide-react";
+import { Zap, Users, Sparkles, Brain, Trophy, Swords, Flag, ChevronRight, Rocket, Bomb, Ticket, Coins, Dices } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -115,6 +115,15 @@ export default function HomePage() {
       color: "text-blue-500",
       bg: "bg-blue-500/5",
       path: "/quiz"
+    },
+    {
+      id: "dice",
+      title: "Dés de l'Éveil",
+      description: "Calibrez votre destin sur l'échelle de l'Oracle.",
+      icon: Dices,
+      color: "text-indigo-500",
+      bg: "bg-indigo-500/5",
+      path: "/dice"
     },
     {
       id: "coinflip",
