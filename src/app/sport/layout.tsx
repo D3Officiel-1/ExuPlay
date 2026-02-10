@@ -12,7 +12,8 @@ import {
   Trash2, 
   X, 
   ShieldCheck, 
-  Loader2 
+  Loader2,
+  Info
 } from "lucide-react";
 import { 
   Dialog,
@@ -30,8 +31,8 @@ import { useToast } from "@/hooks/use-toast";
 import { SportBetResolver } from "@/components/SportBetResolver";
 
 /**
- * @fileOverview Oracle du Sceau Global v2.1.
- * Gère le coupon avec un calcul par multiplication (Parlay) strict et explicite.
+ * @fileOverview Oracle du Sceau Global v2.2.
+ * Gère le coupon avec un calcul par multiplication (Parlay) strict et une interface pédagogique.
  */
 
 function CouponOverlay() {
@@ -176,9 +177,16 @@ function CouponOverlay() {
 
             {/* Footer de Mise Consolidé */}
             <div className="p-8 pt-6 border-t border-primary/5 shrink-0 bg-card/50 space-y-6">
+              <div className="flex items-start gap-3 p-4 bg-primary/5 rounded-2xl border border-primary/5">
+                <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                <p className="text-[9px] font-medium leading-relaxed opacity-60">
+                  Loi du Combiné : Les cotes se <span className="font-black">multiplient</span> entre elles pour décupler votre gain final.
+                </p>
+              </div>
+
               <div className="flex justify-between items-center px-2">
                 <div className="flex flex-col">
-                  <p className="text-[8px] font-black uppercase opacity-30">Multiplicateur Total</p>
+                  <p className="text-[8px] font-black uppercase opacity-30">Cote Totale (Produit)</p>
                   <p className="text-xl font-black italic text-primary tabular-nums">× @{totalOdds.toFixed(2)}</p>
                 </div>
                 <div className="text-right">
