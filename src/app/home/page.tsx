@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -12,7 +13,7 @@ import {
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Zap, Users, Sparkles, Brain, Trophy, Swords, Flag, ChevronRight, Rocket, Bomb, Ticket, Coins, Dices } from "lucide-react";
+import { Zap, Users, Sparkles, Brain, Trophy, Swords, Flag, ChevronRight, Rocket, Bomb, Ticket, Coins, Dices, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -106,6 +107,15 @@ export default function HomePage() {
       color: "text-orange-500",
       bg: "bg-orange-500/5",
       path: "/sport"
+    },
+    {
+      id: "double",
+      title: "Double de l'Éveil",
+      description: "Misez sur la trinité chromatique.",
+      icon: RefreshCw,
+      color: "text-rose-500",
+      bg: "bg-rose-500/5",
+      path: "/double"
     },
     {
       id: "quiz",

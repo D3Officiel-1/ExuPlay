@@ -1,3 +1,4 @@
+
 "use client";
 
 import "./globals.css";
@@ -148,8 +149,8 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div>;
   }
 
-  const excludedNavPaths = ["/login", "/autoriser", "/arcade", "/quiz", "/penalties", "/jet-lumiere", "/mines", "/sport", "/dice", "/coinflip"];
-  const excludedBottomNavPaths = ["/login", "/autoriser", "/transfert", "/echange", "/duels", "/arcade", "/quiz", "/penalties", "/jet-lumiere", "/mines", "/sport", "/dice", "/coinflip"];
+  const excludedNavPaths = ["/login", "/autoriser", "/arcade", "/quiz", "/penalties", "/jet-lumiere", "/mines", "/sport", "/dice", "/coinflip", "/double"];
+  const excludedBottomNavPaths = ["/login", "/autoriser", "/transfert", "/echange", "/duels", "/arcade", "/quiz", "/penalties", "/jet-lumiere", "/mines", "/sport", "/dice", "/coinflip", "/double"];
 
   const showNav = user && pathname !== "/" && !excludedNavPaths.some(p => pathname.startsWith(p));
   const showBottomNav = user && pathname !== "/" && !excludedBottomNavPaths.some(p => pathname.startsWith(p));
