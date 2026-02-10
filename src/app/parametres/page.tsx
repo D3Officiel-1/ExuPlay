@@ -56,15 +56,17 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 
 /**
- * @fileOverview Prisme Spectral v2.0 - Composant de sélection de couleur avec Hue, Saturation et Lightness.
+ * @fileOverview Prisme Spectral v2.1 - Composant de sélection de couleur avec prévisualisation en temps réel.
  */
 function SpectralPicker({ 
   initialColor, 
+  onChange,
   onApply, 
   onCancel,
   isUpdating 
 }: { 
   initialColor: string, 
+  onChange: (hex: string) => void,
   onApply: (hex: string) => void, 
   onCancel: () => void,
   isUpdating: boolean
@@ -124,7 +126,9 @@ function SpectralPicker({
     setH(newH);
     setS(newS);
     setL(newL);
-    setHex(hslToHex(newH, newS, newL));
+    const newHex = hslToHex(newH, newS, newL);
+    setHex(newHex);
+    onChange(newHex);
   };
 
   return (
@@ -207,9 +211,8 @@ function SpectralPicker({
             onChange={(e) => {
               const val = '#' + e.target.value.replace(/[^0-9a-fA-F]/g, '').slice(0, 6);
               setHex(val);
-              // Optionnel: resync HSL si hex valide
               if (val.length === 7) {
-                // Logic sync omitted for brevity, will sync on Apply
+                onChange(val);
               }
             }}
             className="h-14 bg-background/50 border-none rounded-2xl text-center font-black text-lg pl-10 tracking-widest"
@@ -245,6 +248,7 @@ export default function ParametresPage() {
   const [isUpdatingColor, setIsUpdatingColor] = useState(false);
   const [activeTab, setActiveTab] = useState("aura");
   const [isSpectralMode, setIsSpectralMode] = useState(false);
+  const [previewColor, setPreviewColor] = useState<string | null>(null);
   
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -252,6 +256,13 @@ export default function ParametresPage() {
   }, [db, user?.uid]);
 
   const { data: profile } = useDoc(userDocRef);
+
+  useEffect(() => {
+    if (isColorDialogOpen && profile) {
+      const base = activeTab === 'aura' ? (profile.customColor || 'default') : (profile.customBgColor || 'default');
+      setPreviewColor(base === 'default' ? (activeTab === 'aura' ? '#000000' : '#ffffff') : base);
+    }
+  }, [activeTab, isColorDialogOpen, profile]);
 
   const handleUpdateSetting = async (field: string, value: any) => {
     if (!userDocRef) return;
@@ -291,6 +302,7 @@ export default function ParametresPage() {
       });
       toast({ title: "Harmonie mise à jour", description: "L'essence a été infusée avec succès." });
       setIsSpectralMode(false);
+      setIsColorDialogOpen(false);
     } catch (e) {
       toast({ variant: "destructive", title: "Dissonance" });
     } finally {
@@ -314,10 +326,7 @@ export default function ParametresPage() {
   };
 
   const currentColor = profile?.customColor || 'default';
-  const currentBgColor = profile?.customBgColor || 'default';
   
-  const activeColorForPicker = activeTab === 'aura' ? currentColor : currentBgColor;
-
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
       <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full">
@@ -565,7 +574,7 @@ export default function ParametresPage() {
                     }}
                     transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
                     className="h-32 w-32 rounded-[3rem] shadow-2xl border-4 border-white/10 flex items-center justify-center relative overflow-hidden"
-                    style={{ backgroundColor: activeTab === 'aura' ? (currentColor === 'default' ? '#000000' : currentColor) : (currentBgColor === 'default' ? '#ffffff' : currentBgColor) }}
+                    style={{ backgroundColor: previewColor || '#000000' }}
                   >
                     <Sparkles className="h-12 w-12 text-white mix-blend-difference opacity-40" />
                     <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent pointer-events-none" />
@@ -574,7 +583,7 @@ export default function ParametresPage() {
                     animate={{ opacity: [0.2, 0.5, 0.2], scale: [1, 1.3, 1] }}
                     transition={{ duration: 3, repeat: Infinity }}
                     className="absolute inset-0 blur-3xl -z-10 rounded-full"
-                    style={{ backgroundColor: activeTab === 'aura' ? (currentColor === 'default' ? '#000000' : currentColor) : (currentBgColor === 'default' ? '#ffffff' : currentBgColor) }}
+                    style={{ backgroundColor: previewColor || '#000000' }}
                   />
                 </div>
 
@@ -582,7 +591,8 @@ export default function ParametresPage() {
                   {isSpectralMode ? (
                     <SpectralPicker 
                       key="spectral"
-                      initialColor={activeColorForPicker}
+                      initialColor={previewColor || '#3b82f6'}
+                      onChange={(hex) => setPreviewColor(hex)}
                       onApply={(hex) => handleApplyColor(activeTab as any, hex)}
                       onCancel={() => setIsSpectralMode(false)}
                       isUpdating={isUpdatingColor}
@@ -599,10 +609,13 @@ export default function ParametresPage() {
                         {PRESET_COLORS.map((color) => (
                           <button
                             key={color.id}
-                            onClick={() => handleApplyColor(activeTab as any, color.hex)}
+                            onClick={() => {
+                              setPreviewColor(color.hex);
+                              handleApplyColor(activeTab as any, color.hex);
+                            }}
                             className={cn(
                               "h-8 w-8 rounded-full border-2 transition-all",
-                              (activeTab === 'aura' ? currentColor : currentBgColor) === color.hex ? "border-primary scale-125 shadow-lg" : "border-transparent opacity-60 hover:opacity-100"
+                              previewColor === color.hex ? "border-primary scale-125 shadow-lg" : "border-transparent opacity-60 hover:opacity-100"
                             )}
                             style={{ backgroundColor: color.hex }}
                           />
