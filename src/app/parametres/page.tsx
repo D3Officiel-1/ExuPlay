@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
 import { useUser, useFirestore, useDoc } from "@/firebase";
@@ -30,21 +30,21 @@ import {
   Monitor, 
   ChevronRight, 
   Info, 
-  Scale,
+  ShieldCheck, 
+  EyeOff, 
+  Loader2, 
+  ZapOff, 
+  Eye, 
+  Palette, 
+  Sparkles, 
+  Check, 
+  Pipette, 
+  RotateCcw, 
+  Layout, 
+  Swords,
   Settings,
   Zap,
-  ShieldCheck,
-  EyeOff,
-  Loader2,
-  ZapOff,
-  Eye,
-  Palette,
-  Sparkles,
-  Check,
-  Pipette,
-  RotateCcw,
-  Layout,
-  Swords
+  Hash
 } from "lucide-react";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
@@ -52,6 +52,133 @@ import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
 import { PRESET_COLORS } from "@/lib/colors";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+
+/**
+ * @fileOverview Prisme Spectral - Composant de sélection de couleur personnalisé.
+ */
+function SpectralPicker({ 
+  initialColor, 
+  onApply, 
+  onCancel,
+  isUpdating 
+}: { 
+  initialColor: string, 
+  onApply: (hex: string) => void, 
+  onCancel: () => void,
+  isUpdating: boolean
+}) {
+  const [hue, setHue] = useState(0);
+  const [hex, setHex] = useState(initialColor === 'default' ? '#3b82f6' : initialColor);
+
+  // Convertir Hex en Hue au montage pour aligner le slider
+  useEffect(() => {
+    const hexToHue = (h: string) => {
+      let r = 0, g = 0, b = 0;
+      if (h.length === 4) {
+        r = parseInt(h[1] + h[1], 16);
+        g = parseInt(h[2] + h[2], 16);
+        b = parseInt(h[3] + h[3], 16);
+      } else if (h.length === 7) {
+        r = parseInt(h.substring(1, 3), 16);
+        g = parseInt(h.substring(3, 5), 16);
+        b = parseInt(h.substring(5, 7), 16);
+      }
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let hueVal = 0;
+      if (max !== min) {
+        const d = max - min;
+        switch (max) {
+          case r: hueVal = (g - b) / d + (g < b ? 6 : 0); break;
+          case g: hueVal = (b - r) / d + 2; break;
+          case b: hueVal = (r - g) / d + 4; break;
+        }
+        hueVal /= 6;
+      }
+      return Math.round(hueVal * 360);
+    };
+    setHue(hexToHue(hex));
+  }, []);
+
+  const handleHueChange = (newHue: number) => {
+    setHue(newHue);
+    // On garde une saturation et une luminosité fixes pour une esthétique cohérente avec le Sanctuaire
+    const hslToHex = (h: number, s: number, l: number) => {
+      l /= 100;
+      const a = s * Math.min(l, 1 - l) / 100;
+      const f = (n: number) => {
+        const k = (n + h / 30) % 12;
+        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+        return Math.round(255 * color).toString(16).padStart(2, '0');
+      };
+      return `#${f(0)}${f(8)}${f(4)}`;
+    };
+    setHex(hslToHex(newHue, 80, 60));
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="w-full space-y-8 p-4 bg-primary/5 rounded-[2.5rem] border border-primary/5"
+    >
+      <div className="space-y-4">
+        <div className="flex justify-between items-center px-2">
+          <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Prisme Spectral</p>
+          <span className="text-[10px] font-black tabular-nums text-primary">{hex.toUpperCase()}</span>
+        </div>
+
+        {/* Hue Slider Personnalisé */}
+        <div className="relative h-8 w-full rounded-xl overflow-hidden cursor-pointer">
+          <div 
+            className="absolute inset-0"
+            style={{ 
+              background: 'linear-gradient(to right, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%)' 
+            }}
+          />
+          <input 
+            type="range" 
+            min="0" 
+            max="360" 
+            value={hue} 
+            onChange={(e) => handleHueChange(parseInt(e.target.value))}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          />
+          <motion.div 
+            animate={{ left: `${(hue / 360) * 100}%` }}
+            className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_10px_rgba(0,0,0,0.5)] pointer-events-none"
+          />
+        </div>
+
+        {/* Hex Input */}
+        <div className="relative">
+          <Hash className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-20" />
+          <Input 
+            value={hex.replace('#', '')}
+            onChange={(e) => setHex('#' + e.target.value.replace(/[^0-9a-fA-F]/g, '').slice(0, 6))}
+            className="h-14 bg-background/50 border-none rounded-2xl text-center font-black text-lg pl-10"
+            placeholder="FFFFFF"
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-3">
+        <Button variant="ghost" onClick={onCancel} className="flex-1 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest">
+          Retour
+        </Button>
+        <Button 
+          onClick={() => onApply(hex)} 
+          disabled={isUpdating}
+          className="flex-[2] h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2 shadow-xl shadow-primary/20"
+        >
+          {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+          Invoquer cette Teinte
+        </Button>
+      </div>
+    </motion.div>
+  );
+}
 
 export default function ParametresPage() {
   const { theme, setTheme } = useTheme();
@@ -59,14 +186,11 @@ export default function ParametresPage() {
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
-  const colorInputRef = useRef<HTMLInputElement>(null);
-  const bgColorInputRef = useRef<HTMLInputElement>(null);
   
   const [isColorDialogOpen, setIsColorDialogOpen] = useState(false);
   const [isUpdatingColor, setIsUpdatingColor] = useState(false);
-  const [pendingColor, setPendingColor] = useState<string | null>(null);
-  const [pendingBgColor, setPendingBgColor] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("aura");
+  const [isSpectralMode, setIsSpectralMode] = useState(false);
   
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -112,8 +236,7 @@ export default function ParametresPage() {
         updatedAt: serverTimestamp()
       });
       toast({ title: "Harmonie mise à jour", description: "L'essence a été infusée avec succès." });
-      if (type === 'aura') setPendingColor(null);
-      else setPendingBgColor(null);
+      setIsSpectralMode(false);
     } catch (e) {
       toast({ variant: "destructive", title: "Dissonance" });
     } finally {
@@ -139,8 +262,7 @@ export default function ParametresPage() {
   const currentColor = profile?.customColor || 'default';
   const currentBgColor = profile?.customBgColor || 'default';
   
-  const displayAuraColor = pendingColor || (currentColor === 'default' ? '#000000' : currentColor);
-  const displayBgColor = pendingBgColor || (currentBgColor === 'default' ? '#ffffff' : currentBgColor);
+  const activeColorForPicker = activeTab === 'aura' ? currentColor : currentBgColor;
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
@@ -195,7 +317,6 @@ export default function ParametresPage() {
             </div>
             <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-xl rounded-[2.5rem] overflow-hidden">
               <CardContent className="p-4 space-y-1">
-                {/* Harmonie Visuelle */}
                 <div className="flex items-center justify-between p-3 rounded-2xl group hover:bg-primary/5 transition-colors cursor-pointer" onClick={() => { haptic.light(); setIsColorDialogOpen(true); }}>
                   <div className="flex items-center gap-4">
                     <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center relative overflow-hidden">
@@ -215,7 +336,6 @@ export default function ParametresPage() {
                   <ChevronRight className="h-4 w-4 opacity-20 group-hover:opacity-60 transition-opacity" />
                 </div>
 
-                {/* Animations (Eco mode) */}
                 <div className="flex items-center justify-between p-3 rounded-2xl">
                   <div className="flex items-center gap-4">
                     <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
@@ -232,7 +352,6 @@ export default function ParametresPage() {
                   />
                 </div>
 
-                {/* Thème */}
                 <div className="pt-4 border-t border-primary/5 mt-2">
                   <p className="text-[10px] font-black uppercase tracking-widest opacity-30 mb-4 px-2">Ambiance visuelle</p>
                   <RadioGroup 
@@ -362,8 +481,8 @@ export default function ParametresPage() {
         </motion.div>
       </main>
 
-      {/* Dialogue de sélection de couleur avec Onglets */}
-      <Dialog open={isColorDialogOpen} onOpenChange={setIsColorDialogOpen}>
+      {/* Dialogue de sélection de couleur */}
+      <Dialog open={isColorDialogOpen} onOpenChange={(open) => { setIsColorDialogOpen(open); if(!open) setIsSpectralMode(false); }}>
         <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-3xl border-white/5 rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
           <div className="p-8 space-y-8">
             <DialogHeader>
@@ -373,7 +492,7 @@ export default function ParametresPage() {
               </div>
             </DialogHeader>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setIsSpectralMode(false); }} className="w-full">
               <TabsList className="grid grid-cols-2 bg-primary/5 p-1 h-12 rounded-xl mb-8">
                 <TabsTrigger value="aura" className="rounded-lg font-black text-[10px] uppercase tracking-widest gap-2">
                   <Zap className="h-3 w-3" /> Aura Primaire
@@ -384,7 +503,6 @@ export default function ParametresPage() {
               </TabsList>
 
               <div className="space-y-8 flex flex-col items-center">
-                {/* Cristal de prévisualisation dynamique */}
                 <div className="relative">
                   <motion.div 
                     animate={{ 
@@ -393,7 +511,7 @@ export default function ParametresPage() {
                     }}
                     transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
                     className="h-32 w-32 rounded-[3rem] shadow-2xl border-4 border-white/10 flex items-center justify-center relative overflow-hidden"
-                    style={{ backgroundColor: activeTab === 'aura' ? displayAuraColor : displayBgColor }}
+                    style={{ backgroundColor: activeTab === 'aura' ? (currentColor === 'default' ? '#000000' : currentColor) : (currentBgColor === 'default' ? '#ffffff' : currentBgColor) }}
                   >
                     <Sparkles className="h-12 w-12 text-white mix-blend-difference opacity-40" />
                     <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent pointer-events-none" />
@@ -402,92 +520,68 @@ export default function ParametresPage() {
                     animate={{ opacity: [0.2, 0.5, 0.2], scale: [1, 1.3, 1] }}
                     transition={{ duration: 3, repeat: Infinity }}
                     className="absolute inset-0 blur-3xl -z-10 rounded-full"
-                    style={{ backgroundColor: activeTab === 'aura' ? displayAuraColor : displayBgColor }}
+                    style={{ backgroundColor: activeTab === 'aura' ? (currentColor === 'default' ? '#000000' : currentColor) : (currentBgColor === 'default' ? '#ffffff' : currentBgColor) }}
                   />
                 </div>
 
-                <TabsContent value="aura" className="w-full m-0 space-y-6">
-                  <div className="grid grid-cols-6 gap-3">
-                    {PRESET_COLORS.map((color) => (
-                      <button
-                        key={color.id}
-                        onClick={() => { haptic.light(); setPendingColor(color.hex); }}
-                        className={cn(
-                          "h-8 w-8 rounded-full border-2 transition-all",
-                          displayAuraColor === color.hex ? "border-primary scale-125 shadow-lg" : "border-transparent opacity-60 hover:opacity-100"
-                        )}
-                        style={{ backgroundColor: color.hex }}
-                      />
-                    ))}
-                    <button
-                      onClick={() => colorInputRef.current?.click()}
-                      className="h-8 w-8 rounded-full bg-primary/5 border-2 border-dashed border-primary/20 flex items-center justify-center hover:bg-primary/10"
+                <AnimatePresence mode="wait">
+                  {isSpectralMode ? (
+                    <SpectralPicker 
+                      key="spectral"
+                      initialColor={activeColorForPicker}
+                      onApply={(hex) => handleApplyColor(activeTab as any, hex)}
+                      onCancel={() => setIsSpectralMode(false)}
+                      isUpdating={isUpdatingColor}
+                    />
+                  ) : (
+                    <motion.div 
+                      key="presets"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="w-full space-y-6"
                     >
-                      <Pipette className="h-4 w-4 opacity-40" />
-                    </button>
-                  </div>
-                  <input type="color" ref={colorInputRef} value={displayAuraColor} onChange={(e) => setPendingColor(e.target.value)} className="sr-only" />
-                  
-                  <div className="flex gap-3">
-                    <Button variant="outline" onClick={() => handleApplyColor('aura', 'default')} disabled={currentColor === 'default' || isUpdatingColor} className="flex-1 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2">
-                      <RotateCcw className="h-4 w-4" /> Reset
-                    </Button>
-                    <Button onClick={() => handleApplyColor('aura', displayAuraColor)} disabled={isUpdatingColor || displayAuraColor === currentColor} className="flex-[2] h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2 shadow-xl">
-                      {isUpdatingColor ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                      Appliquer Aura
-                    </Button>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="bg" className="w-full m-0 space-y-6">
-                  <div className="grid grid-cols-6 gap-3">
-                    {/* Presets pour le fond (plus neutres) */}
-                    {['#ffffff', '#f8fafc', '#f1f5f9', '#0f172a', '#020617', '#000000'].map((hex) => (
-                      <button
-                        key={hex}
-                        onClick={() => { haptic.light(); setPendingBgColor(hex); }}
-                        className={cn(
-                          "h-8 w-8 rounded-full border-2 transition-all",
-                          displayBgColor === hex ? "border-primary scale-125 shadow-lg" : "border-primary/5 hover:opacity-100"
-                        )}
-                        style={{ backgroundColor: hex }}
-                      />
-                    ))}
-                    <button
-                      onClick={() => bgColorInputRef.current?.click()}
-                      className="h-8 w-8 rounded-full bg-primary/5 border-2 border-dashed border-primary/20 flex items-center justify-center hover:bg-primary/10"
-                    >
-                      <Pipette className="h-4 w-4 opacity-40" />
-                    </button>
-                  </div>
-                  <input type="color" ref={bgColorInputRef} value={displayBgColor} onChange={(e) => setPendingBgColor(e.target.value)} className="sr-only" />
-                  
-                  <div className="flex gap-3">
-                    <Button variant="outline" onClick={() => handleApplyColor('bg', 'default')} disabled={currentBgColor === 'default' || isUpdatingColor} className="flex-1 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2">
-                      <RotateCcw className="h-4 w-4" /> Reset
-                    </Button>
-                    <Button onClick={() => handleApplyColor('bg', displayBgColor)} disabled={isUpdatingColor || displayBgColor === currentBgColor} className="flex-[2] h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2 shadow-xl">
-                      {isUpdatingColor ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                      Appliquer Fond
-                    </Button>
-                  </div>
-                </TabsContent>
+                      <div className="grid grid-cols-6 gap-3">
+                        {PRESET_COLORS.map((color) => (
+                          <button
+                            key={color.id}
+                            onClick={() => handleApplyColor(activeTab as any, color.hex)}
+                            className={cn(
+                              "h-8 w-8 rounded-full border-2 transition-all",
+                              (activeTab === 'aura' ? currentColor : currentBgColor) === color.hex ? "border-primary scale-125 shadow-lg" : "border-transparent opacity-60 hover:opacity-100"
+                            )}
+                            style={{ backgroundColor: color.hex }}
+                          />
+                        ))}
+                        <button
+                          onClick={() => { haptic.light(); setIsSpectralMode(true); }}
+                          className="h-8 w-8 rounded-full bg-primary/5 border-2 border-dashed border-primary/20 flex items-center justify-center hover:bg-primary/10"
+                        >
+                          <Pipette className="h-4 w-4 opacity-40" />
+                        </button>
+                      </div>
+                      
+                      <div className="flex gap-3">
+                        <Button variant="outline" onClick={() => handleApplyColor(activeTab as any, 'default')} disabled={isUpdatingColor} className="flex-1 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest gap-2">
+                          <RotateCcw className="h-4 w-4" /> Reset
+                        </Button>
+                        <Button variant="ghost" onClick={() => setIsColorDialogOpen(false)} className="flex-1 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest opacity-40">
+                          Quitter
+                        </Button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </Tabs>
 
-            <div className="p-6 bg-primary/5 rounded-[2rem] border border-primary/5">
-              <p className="text-[10px] leading-relaxed font-medium opacity-40 text-center italic">
-                "Harmonisez votre espace pour qu'il résonne avec votre quête de Lumière."
-              </p>
-            </div>
-
-            <Button 
-              variant="ghost" 
-              onClick={() => setIsColorDialogOpen(false)}
-              className="w-full h-10 rounded-2xl font-black text-[10px] uppercase tracking-widest opacity-20"
-            >
-              Fermer
-            </Button>
+            {!isSpectralMode && (
+              <div className="p-6 bg-primary/5 rounded-[2rem] border border-primary/5">
+                <p className="text-[10px] leading-relaxed font-medium opacity-40 text-center italic">
+                  "Chaque nuance résonne avec votre quête de Lumière."
+                </p>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
