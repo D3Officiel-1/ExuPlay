@@ -16,38 +16,27 @@ import {
   History,
   TrendingUp,
   Target,
-  ShieldCheck,
   Timer,
   Plus,
-  Coins,
   ArrowRight
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { EmojiOracle } from "@/components/EmojiOracle";
+import { triggerNextDoubleRound, getTileColor, getDoubleHistory, validateDoubleWin, type DoubleColor } from "@/app/actions/double";
 import confetti from "canvas-confetti";
 
 /**
- * @fileOverview Double de l'Éveil v1.0.
- * Une arène de roulette horizontale inspirée de Blaze/1win Double.
- * Rouge (x2), Vert (x2), Bleu (x14).
+ * @fileOverview Double de l'Éveil v2.0 - Arbitrage par l'Oracle.
+ * Une arène de roulette horizontale dont le destin est scellé sur le serveur.
  */
 
-type ColorType = 'red' | 'green' | 'blue';
 type GamePhase = 'betting' | 'spinning' | 'result';
 
 const TILE_WIDTH = 100;
-const TILES_COUNT = 15; // 0 à 14
 const TOTAL_TILES_STRIP = 100; // Pour simuler l'infini
-
-// Distribution : 0 = Bleu, 1-7 = Rouge, 8-14 = Vert
-const getTileColor = (n: number): ColorType => {
-  if (n === 0) return 'blue';
-  return n <= 7 ? 'red' : 'green';
-};
-
-const CHIPS = [10, 50, 100, 500, 1000, 5000];
+const CHIPS = [10, 50, 100, 500, 1000];
 
 export default function DoublePage() {
   const { user } = useUser();
@@ -59,8 +48,8 @@ export default function DoublePage() {
   const [phase, setPhase] = useState<GamePhase>('betting');
   const [timeLeft, setTimeLeft] = useState(15);
   const [betAmount, setBetAmount] = useState<number>(100);
-  const [selectedColor, setSelectedColor] = useState<ColorType | null>(null);
-  const [history, setHistory] = useState<ColorType[]>(['red', 'green', 'red', 'blue', 'green']);
+  const [selectedColor, setSelectedColor] = useState<DoubleColor | null>(null);
+  const [history, setHistory] = useState<DoubleColor[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [winAmount, setWinAmount] = useState<number | null>(null);
   
@@ -70,6 +59,15 @@ export default function DoublePage() {
 
   const userDocRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
+
+  // Initialisation de l'historique
+  useEffect(() => {
+    const initHistory = async () => {
+      const hist = await getDoubleHistory(15);
+      setHistory(hist);
+    };
+    initHistory();
+  }, []);
 
   // --- LOGIQUE DU CYCLE DE JEU ---
   useEffect(() => {
@@ -88,51 +86,63 @@ export default function DoublePage() {
     setPhase('spinning');
     haptic.medium();
 
-    // Déterminer le résultat (0-14)
-    // Probabilités : 1/15 Bleu, 7/15 Rouge, 7/15 Vert
-    const resultNumber = Math.floor(Math.random() * 15);
-    const resultColor = getTileColor(resultNumber);
+    try {
+      // 1. Invoquer le destin sur le serveur
+      const round = await triggerNextDoubleRound();
+      const { resultNumber, resultColor } = round;
 
-    // Calcul de la position finale
-    // On veut que le resultNumber s'arrête au milieu du conteneur
-    // On spin de plusieurs tours (ex: 5 tours)
-    const containerWidth = containerRef.current?.offsetWidth || 0;
-    const centerOffset = containerWidth / 2 - TILE_WIDTH / 2;
-    
-    // On décale de 80 tuiles pour être sûr d'avoir de l'élan
-    const targetTileIndex = 80 + resultNumber;
-    const finalX = -(targetTileIndex * TILE_WIDTH) + centerOffset;
-
-    await controls.start({
-      x: finalX,
-      transition: { duration: 5, ease: [0.15, 0, 0.15, 1] }
-    });
-
-    setPhase('result');
-    setHistory(prev => [resultColor, ...prev].slice(0, 15));
-    
-    // Vérifier les gains
-    if (selectedColor === resultColor) {
-      const multiplier = resultColor === 'blue' ? 14 : 2;
-      const win = betAmount * multiplier;
-      setWinAmount(win);
-      haptic.success();
-      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+      // 2. Calcul de la position finale pour l'animation
+      const containerWidth = containerRef.current?.offsetWidth || 0;
+      const centerOffset = containerWidth / 2 - TILE_WIDTH / 2;
       
-      if (userDocRef) {
-        await updateDoc(userDocRef, {
-          totalPoints: increment(win),
-          updatedAt: serverTimestamp()
-        });
-      }
-    } else if (selectedColor) {
-      haptic.error();
-    }
+      // On décale de 80 tuiles pour être sûr d'avoir de l'élan (effet de plusieurs tours)
+      const targetTileIndex = 80 + resultNumber;
+      const finalX = -(targetTileIndex * TILE_WIDTH) + centerOffset;
 
-    // Attendre 3s puis réinitialiser
-    setTimeout(() => {
+      // 3. Lancer l'animation physique
+      await controls.start({
+        x: finalX,
+        transition: { duration: 5, ease: [0.15, 0, 0.15, 1] }
+      });
+
+      // 4. Révéler le verdict
+      setPhase('result');
+      setHistory(prev => [resultColor, ...prev].slice(0, 15));
+      
+      // 5. Vérifier les gains via l'Oracle
+      if (selectedColor) {
+        const validation = await validateDoubleWin(betAmount, selectedColor, resultColor);
+        
+        if (validation.success) {
+          setWinAmount(validation.winAmount);
+          haptic.success();
+          confetti({ 
+            particleCount: 150, 
+            spread: 70, 
+            origin: { y: 0.6 },
+            colors: ['#fbbf24', '#ffffff', '#3b82f6']
+          });
+          
+          if (userDocRef) {
+            await updateDoc(userDocRef, {
+              totalPoints: increment(validation.winAmount),
+              updatedAt: serverTimestamp()
+            });
+          }
+        } else {
+          haptic.error();
+        }
+      }
+
+      // 6. Attendre 4s pour contempler le destin puis réinitialiser
+      setTimeout(() => {
+        resetBoard();
+      }, 4000);
+
+    } catch (error) {
+      toast({ variant: "destructive", title: "Dissonance du Flux", description: "L'Oracle est momentanément indisponible." });
       resetBoard();
-    }, 4000);
+    }
   };
 
   const resetBoard = () => {
@@ -143,7 +153,7 @@ export default function DoublePage() {
     controls.set({ x: 0 }); // Reset visuel immédiat
   };
 
-  const handlePlaceBet = async (color: ColorType) => {
+  const handlePlaceBet = async (color: DoubleColor) => {
     if (phase !== 'betting' || isProcessing || !profile || !userDocRef) return;
     
     if (betAmount < 5) {
@@ -165,15 +175,15 @@ export default function DoublePage() {
         updatedAt: serverTimestamp()
       });
       setSelectedColor(color);
-      toast({ title: "Pacte Scellé", description: `Vous avez misé sur le ${color === 'blue' ? 'Bleu' : color === 'red' ? 'Rouge' : 'Vert'}.` });
+      toast({ title: "Pacte Scellé", description: `Mise sur le ${color === 'blue' ? 'Bleu' : color === 'red' ? 'Rouge' : 'Vert'}.` });
     } catch (e) {
-      toast({ variant: "destructive", title: "Dissonance Système" });
+      toast({ variant: "destructive", title: "Erreur de scellage" });
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Génération de la bande de tuiles
+  // Génération de la bande de tuiles chromatiques
   const tilesStrip = useMemo(() => {
     const tiles = [];
     for (let i = 0; i < TOTAL_TILES_STRIP; i++) {
@@ -190,7 +200,7 @@ export default function DoublePage() {
           <ChevronLeft className="h-6 w-6" />
         </Button>
         <div className="flex flex-col items-center">
-          <p className="text-[8px] font-black uppercase tracking-[0.4em] opacity-40">Arène du Double</p>
+          <p className="text-[8px] font-black uppercase tracking-[0.4em] opacity-40">Double de l'Éveil</p>
           <div className="flex items-center gap-2 px-4 py-1.5 bg-primary/10 rounded-full border border-primary/20 mt-1">
             <Zap className="h-3.5 w-3.5 text-primary" />
             <span className="text-xs font-black tabular-nums">{(profile?.totalPoints || 0).toLocaleString()}</span>
@@ -201,22 +211,22 @@ export default function DoublePage() {
 
       <main className="flex-1 flex flex-col lg:grid lg:grid-cols-[380px_1fr] pt-24 px-4 sm:px-8 gap-8 max-w-7xl mx-auto w-full">
         
-        {/* PANEL DE COMMANDE (GAUCHE) */}
+        {/* PANEL DE COMMANDE */}
         <aside className="space-y-6">
           <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[2.5rem] p-8 border border-white/5 shadow-2xl space-y-8">
             <div className="space-y-4">
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 text-center">Pari Total</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 text-center">Pari sur le Destin</p>
               
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { id: 'red', label: 'x2', color: 'bg-red-600', hover: 'hover:bg-red-500' },
-                  { id: 'blue', label: 'x14', color: 'bg-blue-600', hover: 'hover:bg-blue-500' },
-                  { id: 'green', label: 'x2', color: 'bg-green-600', hover: 'hover:bg-green-500' }
+                  { id: 'red', label: 'x2', color: 'bg-red-600' },
+                  { id: 'blue', label: 'x14', color: 'bg-blue-600' },
+                  { id: 'green', label: 'x2', color: 'bg-green-600' }
                 ].map((btn) => (
                   <button
                     key={btn.id}
                     disabled={phase !== 'betting' || isProcessing || !!selectedColor}
-                    onClick={() => handlePlaceBet(btn.id as ColorType)}
+                    onClick={() => handlePlaceBet(btn.id as DoubleColor)}
                     className={cn(
                       "aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 transition-all duration-500 border-2 shadow-lg group relative overflow-hidden",
                       btn.color,
@@ -235,7 +245,7 @@ export default function DoublePage() {
 
             <div className="space-y-4">
               <div className="flex justify-between items-center px-2">
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Mise de Lumière</span>
+                <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Mise</span>
                 <span className="text-[10px] font-black opacity-20">MIN: 5 PTS</span>
               </div>
               <div className="relative">
@@ -249,9 +259,9 @@ export default function DoublePage() {
                 <Zap className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 opacity-20" />
               </div>
               <div className="grid grid-cols-3 gap-2">
-                <button onClick={() => setBetAmount(prev => Math.floor(prev / 2))} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">MOITIÉ</button>
-                <button onClick={() => setBetAmount(prev => prev * 2)} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">DOUBLE</button>
-                <button onClick={() => setBetAmount(profile?.totalPoints || 0)} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">MAX</button>
+                <button onClick={() => { haptic.light(); setBetAmount(prev => Math.floor(prev / 2)); }} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">MOITIÉ</button>
+                <button onClick={() => { haptic.light(); setBetAmount(prev => prev * 2); }} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">DOUBLE</button>
+                <button onClick={() => { haptic.light(); setBetAmount(profile?.totalPoints || 0); }} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">MAX</button>
               </div>
             </div>
 
@@ -259,7 +269,7 @@ export default function DoublePage() {
               {CHIPS.map(val => (
                 <button 
                   key={val} 
-                  onClick={() => setBetAmount(prev => prev + val)}
+                  onClick={() => { haptic.light(); setBetAmount(prev => prev + val); }}
                   disabled={phase !== 'betting' || !!selectedColor}
                   className="h-12 w-12 rounded-full border-2 border-dashed border-white/10 flex items-center justify-center text-[10px] font-black hover:border-primary/40 hover:bg-primary/5 transition-all"
                 >
@@ -267,24 +277,15 @@ export default function DoublePage() {
                 </button>
               ))}
             </div>
-
-            <Button 
-              variant="outline" 
-              onClick={resetBoard} 
-              disabled={phase !== 'result'}
-              className="w-full h-14 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] opacity-40 hover:opacity-100"
-            >
-              Réinitialiser le Flux
-            </Button>
           </Card>
         </aside>
 
-        {/* ZONE DE JEU (DROITE) */}
+        {/* ZONE DE JEU */}
         <div className="flex flex-col gap-8">
           {/* HISTORIQUE */}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
             <History className="h-4 w-4 opacity-20 shrink-0" />
-            {history.map((color, i) => (
+            {history.length === 0 ? <span className="text-[10px] font-black opacity-10 uppercase tracking-widest">Initialisation...</span> : history.map((color, i) => (
               <motion.div 
                 key={i} 
                 initial={{ scale: 0, x: 20 }}
@@ -301,7 +302,7 @@ export default function DoublePage() {
 
           {/* LA ROUE */}
           <div className="relative">
-            {/* Indicateurs fixes (Triangles) */}
+            {/* Indicateurs fixes */}
             <div className="absolute left-1/2 -top-2 -translate-x-1/2 z-30 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[15px] border-t-white shadow-[0_0_10px_white]" />
             <div className="absolute left-1/2 -bottom-2 -translate-x-1/2 z-30 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[15px] border-b-white shadow-[0_0_10px_white]" />
 
@@ -322,19 +323,19 @@ export default function DoublePage() {
                     )}
                   >
                     <div className={cn(
-                      "w-full h-full rounded-2xl flex flex-col items-center justify-center gap-2 border-2 border-white/5 relative group",
+                      "w-full h-full rounded-2xl flex flex-col items-center justify-center gap-2 border-2 border-white/5 relative",
                       tile.color === 'red' ? 'bg-red-600' : tile.color === 'green' ? 'bg-green-600' : 'bg-blue-600'
                     )}>
                       <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center border border-white/10 shadow-inner">
-                        <span className="text-[10px] font-black text-white/40">1W</span>
+                        <span className="text-[10px] font-black text-white/40">EXU</span>
                       </div>
-                      {tile.color === 'blue' && <Zap className="h-4 w-4 text-white animate-pulse" />}
+                      {tile.color === 'blue' && <Plus className="h-4 w-4 text-white animate-pulse" />}
                     </div>
                   </div>
                 ))}
               </motion.div>
 
-              {/* Effet de fondu sur les côtés */}
+              {/* Effet de fondu */}
               <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#020617] to-transparent z-20 pointer-events-none" />
               <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#020617] to-transparent z-20 pointer-events-none" />
             </div>
