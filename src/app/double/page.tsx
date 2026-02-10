@@ -28,9 +28,8 @@ import { getTileColorSync, type DoubleColor } from "@/lib/games/double";
 import confetti from "canvas-confetti";
 
 /**
- * @fileOverview Double de l'Éveil v5.0 - Flux Local Libéré.
- * L'arène est désormais gérée localement pour chaque esprit.
- * La synchronisation globale a été révoquée pour une fluidité maximale.
+ * @fileOverview Double de l'Éveil v5.1 - Logique de Gain Consolidée.
+ * Gère l'arbitrage des pactes et la matérialisation des gains de Lumière.
  */
 
 type GamePhase = 'betting' | 'spinning' | 'result';
@@ -48,6 +47,7 @@ export default function DoublePage() {
   const [phase, setPhase] = useState<GamePhase>('betting');
   const [timeLeft, setTimeLeft] = useState(15);
   const [betAmount, setBetAmount] = useState<number>(100);
+  const [committedBetAmount, setCommittedBetAmount] = useState<number>(0);
   const [selectedColor, setSelectedColor] = useState<DoubleColor | null>(null);
   const [history, setHistory] = useState<DoubleColor[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -99,39 +99,60 @@ export default function DoublePage() {
       
       const containerWidth = containerRef.current?.offsetWidth || 0;
       const centerOffset = containerWidth / 2 - TILE_WIDTH / 2;
+      // On vise la fin du ruban pour un effet de vitesse, index entre 80 et 94
       const targetTileIndex = 80 + round.resultNumber;
       const finalX = -(targetTileIndex * TILE_WIDTH) + centerOffset;
 
-      // Animation cinématique
+      // Animation cinématique de la roue
       await controls.start({
         x: finalX,
         transition: { duration: 5, ease: [0.15, 0, 0.15, 1] }
       });
 
-      // Traitement du résultat
+      // Mise à jour de l'historique local
       setHistory(prev => [round.resultColor, ...prev].slice(0, 15));
       
-      if (selectedColor) {
-        const validation = await validateDoubleWin(betAmount, selectedColor, round.resultColor);
+      // LOGIQUE DE GAIN : Arbitrage du pacte
+      if (selectedColor && committedBetAmount > 0) {
+        const validation = await validateDoubleWin(committedBetAmount, selectedColor, round.resultColor);
+        
         if (validation.success) {
           setWinAmount(validation.winAmount);
           haptic.success();
+          
+          // Célébration visuelle
           confetti({ 
-            particleCount: 150, spread: 70, origin: { y: 0.6 },
-            colors: ['#fbbf24', '#ffffff', '#3b82f6']
+            particleCount: 150, 
+            spread: 70, 
+            origin: { y: 0.6 },
+            colors: ['#fbbf24', '#ffffff', '#3b82f6', '#10b981']
           });
+
+          // Matérialisation des gains dans Firestore
           if (userDocRef) {
-            await updateDoc(userDocRef, { totalPoints: increment(validation.winAmount), updatedAt: serverTimestamp() });
+            await updateDoc(userDocRef, { 
+              totalPoints: increment(validation.winAmount), 
+              updatedAt: serverTimestamp() 
+            });
+            toast({ 
+              title: "Triomphe Chromatique !", 
+              description: `+${validation.winAmount.toLocaleString()} PTS de Lumière.` 
+            });
           }
         } else {
           haptic.error();
+          toast({ 
+            variant: "destructive",
+            title: "Dissonance", 
+            description: "Le flux a favorisé une autre nuance." 
+          });
         }
       }
 
       setPhase('result');
-      setTimeLeft(5); // 5 secondes de stase pour voir le résultat
+      setTimeLeft(5); // 5 secondes de stase pour contempler le résultat
     } catch (e) {
-      toast({ variant: "destructive", title: "Dissonance lors du tirage" });
+      console.error("Dissonance lors du spin:", e);
       resetToBetting();
     }
   };
@@ -141,22 +162,44 @@ export default function DoublePage() {
     setTimeLeft(15);
     setWinAmount(null);
     setSelectedColor(null);
+    setCommittedBetAmount(0);
     controls.set({ x: 0 });
   };
 
   const handlePlaceBet = async (color: DoubleColor) => {
     if (phase !== 'betting' || isProcessing || !profile || !userDocRef || !!selectedColor) return;
-    if (betAmount < 5) { toast({ variant: "destructive", title: "Mise minimale : 5 PTS" }); return; }
-    if (profile.totalPoints < betAmount) { toast({ variant: "destructive", title: "Lumière insuffisante" }); return; }
+    
+    const amount = Math.max(0, Math.floor(betAmount));
+    
+    if (amount < 5) { 
+      toast({ variant: "destructive", title: "Mise minimale : 5 PTS" }); 
+      return; 
+    }
+    
+    if ((profile.totalPoints || 0) < amount) { 
+      toast({ variant: "destructive", title: "Lumière insuffisante" }); 
+      return; 
+    }
 
     setIsProcessing(true);
     haptic.light();
+    
     try {
-      await updateDoc(userDocRef, { totalPoints: increment(-betAmount), updatedAt: serverTimestamp() });
+      // Déduction immédiate de la mise (engagement de l'énergie)
+      await updateDoc(userDocRef, { 
+        totalPoints: increment(-amount), 
+        updatedAt: serverTimestamp() 
+      });
+      
       setSelectedColor(color);
-      toast({ title: "Pacte Scellé", description: `Mise sur le ${color === 'blue' ? 'Bleu' : color === 'red' ? 'Rouge' : 'Vert'}.` });
+      setCommittedBetAmount(amount);
+      
+      toast({ 
+        title: "Pacte Scellé", 
+        description: `Mise de ${amount} sur le ${color === 'blue' ? 'Bleu' : color === 'red' ? 'Rouge' : 'Vert'}.` 
+      });
     } catch (e) {
-      toast({ variant: "destructive", title: "Erreur de scellage" });
+      toast({ variant: "destructive", title: "Erreur de scellage du flux" });
     } finally {
       setIsProcessing(false);
     }
@@ -170,6 +213,15 @@ export default function DoublePage() {
     }
     return tiles;
   }, []);
+
+  const adjustBet = (action: 'half' | 'double' | 'max') => {
+    haptic.light();
+    let val = betAmount;
+    if (action === 'half') val = Math.floor(val / 2);
+    else if (action === 'double') val = val * 2;
+    else if (action === 'max') val = profile?.totalPoints || 0;
+    setBetAmount(Math.max(5, val));
+  };
 
   return (
     <div className="min-h-screen bg-[#020617] text-white flex flex-col pb-32">
@@ -190,10 +242,12 @@ export default function DoublePage() {
       <main className="flex-1 flex flex-col lg:grid lg:grid-cols-[1fr_380px] pt-24 px-4 sm:px-8 gap-8 max-w-7xl mx-auto w-full">
         
         <div className="flex flex-col gap-8 order-1">
-          {/* HISTORIQUE */}
+          {/* HISTORIQUE DES FLUX */}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
             <History className="h-4 w-4 opacity-20 shrink-0" />
-            {history.length === 0 ? <span className="text-[10px] font-black opacity-10 uppercase tracking-widest">Initialisation...</span> : history.map((color, i) => (
+            {history.length === 0 ? (
+              <span className="text-[10px] font-black opacity-10 uppercase tracking-widest">Initialisation...</span>
+            ) : history.map((color, i) => (
               <motion.div 
                 key={i} 
                 initial={{ scale: 0, x: 20 }}
@@ -210,6 +264,7 @@ export default function DoublePage() {
 
           {/* ARÈNE UNIFIÉE */}
           <div className="relative">
+            {/* Indexeurs de précision */}
             <div className="absolute left-1/2 -top-2 -translate-x-1/2 z-30 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[15px] border-t-white shadow-[0_0_10px_white]" />
             <div className="absolute left-1/2 -bottom-2 -translate-x-1/2 z-30 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[15px] border-b-white shadow-[0_0_10px_white]" />
 
@@ -232,9 +287,11 @@ export default function DoublePage() {
                 ))}
               </motion.div>
 
+              {/* Dégradés de profondeur latéraux */}
               <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#020617] to-transparent z-10 pointer-events-none" />
               <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#020617] to-transparent z-10 pointer-events-none" />
 
+              {/* Overlay de phase superposé */}
               <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
                 <AnimatePresence mode="wait">
                   {phase === 'betting' ? (
@@ -278,6 +335,7 @@ export default function DoublePage() {
           </div>
         </div>
 
+        {/* PANNEAU DE COMMANDE */}
         <aside className="space-y-6 order-2">
           <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[2.5rem] p-8 border border-white/5 shadow-2xl space-y-8">
             <div className="space-y-4">
@@ -300,7 +358,12 @@ export default function DoublePage() {
                     )}
                   >
                     <span className="text-2xl font-black italic">{btn.label}</span>
-                    {selectedColor === btn.id && <motion.div layoutId="active-selection" className="absolute inset-0 border-4 border-white/30 rounded-2xl animate-pulse" />}
+                    {selectedColor === btn.id && (
+                      <motion.div 
+                        layoutId="active-selection" 
+                        className="absolute inset-0 border-4 border-white/30 rounded-2xl animate-pulse" 
+                      />
+                    )}
                   </button>
                 ))}
               </div>
@@ -312,19 +375,30 @@ export default function DoublePage() {
                 <span className="text-[10px] font-black opacity-20">MIN: 5 PTS</span>
               </div>
               <div className="relative">
-                <Input type="number" value={betAmount} onChange={e => setBetAmount(Math.max(0, parseInt(e.target.value) || 0))} disabled={phase !== 'betting' || !!selectedColor} className="h-16 bg-black/40 border-none rounded-[1.5rem] text-center font-black text-2xl shadow-inner" />
+                <Input 
+                  type="number" 
+                  value={betAmount} 
+                  onChange={e => setBetAmount(Math.max(0, parseInt(e.target.value) || 0))} 
+                  disabled={phase !== 'betting' || !!selectedColor} 
+                  className="h-16 bg-black/40 border-none rounded-[1.5rem] text-center font-black text-2xl shadow-inner" 
+                />
                 <Zap className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 opacity-20" />
               </div>
               <div className="grid grid-cols-3 gap-2">
-                <button onClick={() => { haptic.light(); setBetAmount(prev => Math.floor(prev / 2)); }} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">MOITIÉ</button>
-                <button onClick={() => { haptic.light(); setBetAmount(prev => prev * 2); }} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">DOUBLE</button>
-                <button onClick={() => { haptic.light(); setBetAmount(profile?.totalPoints || 0); }} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">MAX</button>
+                <button onClick={() => adjustBet('half')} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">MOITIÉ</button>
+                <button onClick={() => adjustBet('double')} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">DOUBLE</button>
+                <button onClick={() => adjustBet('max')} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">MAX</button>
               </div>
             </div>
 
             <div className="flex flex-wrap justify-center gap-2">
               {CHIPS.map(val => (
-                <button key={val} onClick={() => { haptic.light(); setBetAmount(prev => prev + val); }} disabled={phase !== 'betting' || !!selectedColor} className="h-12 w-12 rounded-full border-2 border-dashed border-white/10 flex items-center justify-center text-[10px] font-black hover:border-primary/40 hover:bg-primary/5 transition-all">
+                <button 
+                  key={val} 
+                  onClick={() => { haptic.light(); setBetAmount(prev => prev + val); }} 
+                  disabled={phase !== 'betting' || !!selectedColor} 
+                  className="h-12 w-12 rounded-full border-2 border-dashed border-white/10 flex items-center justify-center text-[10px] font-black hover:border-primary/40 hover:bg-primary/5 transition-all"
+                >
                   {val >= 1000 ? `${val/1000}K` : val}
                 </button>
               ))}
@@ -335,8 +409,8 @@ export default function DoublePage() {
 
       <div className="p-10 bg-primary/5 rounded-[3rem] border border-primary/5 text-center space-y-3 relative overflow-hidden max-w-lg mx-auto w-full mt-8">
         <ShieldCheck className="h-6 w-6 mx-auto text-primary opacity-10 mb-2" />
-        <p className="text-[11px] leading-relaxed font-medium opacity-40 italic">
-          "Votre destin est entre vos mains. Écoutez votre intuition et scellez le pacte chromatique."
+        <p className="text-[11px] leading-relaxed font-medium opacity-40 italic px-4">
+          "La fortune sourit aux esprits audacieux. Scellez votre destin dans la trinité chromatique."
         </p>
       </div>
     </div>
