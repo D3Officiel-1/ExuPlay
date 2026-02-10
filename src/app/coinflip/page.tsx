@@ -28,9 +28,8 @@ import { EmojiOracle } from "@/components/EmojiOracle";
 import confetti from "canvas-confetti";
 
 /**
- * @fileOverview CoinFlip de l'Éveil v4.0 - L'Artéfact de la Dualité.
- * Logique de série cumulative et récupération de gains (Cashout).
- * Esthétique restaurée : une pièce 3D physique (Or/Argent) tournoyant dans le vide.
+ * @fileOverview CoinFlip de l'Éveil v4.5 - L'Artéfact de la Dualité.
+ * Logique de série cumulative et récupération de gains (Cashout) avec effets d'activation.
  */
 
 const MIN_BET = 5;
@@ -207,7 +206,7 @@ export default function CoinFlipPage() {
           <div className="absolute bottom-1/4 -right-20 w-64 h-64 bg-blue-500/5 rounded-full blur-[100px] animate-pulse" />
         </div>
 
-        {/* L'ARTEFACT 3D (Physique Restaurée) */}
+        {/* L'ARTEFACT 3D */}
         <div className="relative h-72 w-72 flex items-center justify-center perspective-1000">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.15),transparent_70%)] animate-pulse" />
           
@@ -402,15 +401,26 @@ export default function CoinFlipPage() {
           <AnimatePresence>
             {streak > 0 && status !== 'flipping' && (
               <motion.div
-                initial={{ opacity: 0, y: 40, scale: 0.9 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
+                initial={{ opacity: 0, y: 40, scale: 0.9, filter: "blur(10px)" }}
+                animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
                 exit={{ opacity: 0, scale: 0.9, filter: "blur(20px)" }}
-                className="w-full"
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                className="w-full relative"
               >
+                {/* Aura Pulsante d'Activation */}
+                <motion.div 
+                  animate={{ 
+                    scale: [1, 1.05, 1],
+                    opacity: [0.3, 0.6, 0.3],
+                  }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  className="absolute inset-0 bg-green-500/20 blur-3xl rounded-[2.5rem] -z-10"
+                />
+
                 <Button
                   onClick={handleCashout}
                   disabled={isProcessing}
-                  className="w-full h-24 rounded-[2.5rem] bg-green-600 hover:bg-green-500 text-white font-black text-xl uppercase tracking-[0.2em] shadow-2xl shadow-green-600/30 flex flex-col items-center justify-center leading-none gap-2 relative overflow-hidden group"
+                  className="w-full h-24 rounded-[2.5rem] bg-green-600 hover:bg-green-500 text-white font-black text-xl uppercase tracking-[0.2em] shadow-[0_20px_60px_-10px_rgba(22,163,74,0.5)] flex flex-col items-center justify-center leading-none gap-2 relative overflow-hidden group"
                 >
                   <div className="flex items-center gap-3 relative z-10">
                     {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : <HandCoins className="h-6 w-6 group-hover:scale-110 transition-transform" />}
@@ -421,10 +431,11 @@ export default function CoinFlipPage() {
                     <span className="text-xs opacity-60 font-black">PTS</span>
                   </div>
                   
+                  {/* Effet de Shimmer perpétuel lors de l'activation */}
                   <motion.div 
                     animate={{ x: ["-100%", "200%"] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12"
+                    transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
                   />
                 </Button>
               </motion.div>
