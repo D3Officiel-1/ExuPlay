@@ -28,9 +28,9 @@ import { EmojiOracle } from "@/components/EmojiOracle";
 import confetti from "canvas-confetti";
 
 /**
- * @fileOverview CoinFlip de l'Éveil v3.0 - L'Arène de la Dualité.
+ * @fileOverview CoinFlip de l'Éveil v4.0 - L'Artéfact de la Dualité.
  * Logique de série cumulative et récupération de gains (Cashout).
- * Esthétique minimaliste : seuls les symboles de lumière pivotent dans le vide.
+ * Esthétique restaurée : une pièce 3D physique (Or/Argent) tournoyant dans le vide.
  */
 
 const MIN_BET = 5;
@@ -192,7 +192,7 @@ export default function CoinFlipPage() {
           <ChevronLeft className="h-6 w-6" />
         </Button>
         <div className="flex flex-col items-center">
-          <p className="text-[8px] font-black uppercase tracking-[0.5em] text-primary/60">Arène de la Dualité</p>
+          <p className="text-[8px] font-black uppercase tracking-[0.5em] text-primary/60">L'Arène de la Dualité</p>
           <div className="flex items-center gap-2 px-4 py-1.5 bg-primary/10 rounded-full border border-primary/20 mt-1">
             <Zap className="h-3.5 w-3.5 text-primary" />
             <span className="text-xs font-black tabular-nums">{(profile?.totalPoints || 0).toLocaleString()}</span>
@@ -207,9 +207,9 @@ export default function CoinFlipPage() {
           <div className="absolute bottom-1/4 -right-20 w-64 h-64 bg-blue-500/5 rounded-full blur-[100px] animate-pulse" />
         </div>
 
-        {/* L'ARTEFACT 3D INVISIBLE (Seul l'esprit pivote) */}
+        {/* L'ARTEFACT 3D (Physique Restaurée) */}
         <div className="relative h-72 w-72 flex items-center justify-center perspective-1000">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.1),transparent_70%)] animate-pulse" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.15),transparent_70%)] animate-pulse" />
           
           <motion.div
             animate={status === 'flipping' ? {
@@ -225,22 +225,24 @@ export default function CoinFlipPage() {
                 y: { duration: 4, repeat: Infinity, ease: "easeInOut" }
               }
             }}
-            className="relative w-52 h-52 preserve-3d"
+            className="relative w-56 h-52 preserve-3d"
             style={{ transformStyle: 'preserve-3d' }}
           >
-            {/* FACE PILE (LUMIÈRE OR) */}
-            <div className="absolute inset-0 rounded-full bg-transparent flex flex-col items-center justify-center backface-hidden">
-              <span className="text-6xl font-black text-yellow-500 italic select-none drop-shadow-[0_0_20px_rgba(234,179,8,0.5)]">PILE</span>
-              <Coins className="h-14 w-14 text-yellow-500/30 mt-2" />
+            {/* FACE PILE (OR MASSIF) */}
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-200 via-yellow-500 to-yellow-700 border-4 border-yellow-300/30 flex flex-col items-center justify-center shadow-[0_0_60px_rgba(234,179,8,0.4),inset_0_0_20px_rgba(0,0,0,0.3)] backface-hidden">
+              <span className="text-6xl font-black text-yellow-950 italic select-none">PILE</span>
+              <Coins className="h-14 w-14 text-yellow-950/20 mt-2" />
+              <div className="absolute inset-2 border border-yellow-300/20 rounded-full" />
             </div>
             
-            {/* FACE FACE (LUMIÈRE ARGENT) */}
+            {/* FACE FACE (ARGENT MASSIF) */}
             <div 
-              className="absolute inset-0 rounded-full bg-transparent flex flex-col items-center justify-center backface-hidden" 
+              className="absolute inset-0 rounded-full bg-gradient-to-br from-slate-100 via-slate-400 to-slate-600 border-4 border-slate-300/30 flex flex-col items-center justify-center shadow-[0_0_60px_rgba(255,255,255,0.2),inset_0_0_20px_rgba(0,0,0,0.3)] backface-hidden" 
               style={{ transform: 'rotateY(180deg)' }}
             >
-              <span className="text-6xl font-black text-slate-200 italic select-none drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]">FACE</span>
-              <Coins className="h-14 w-14 text-slate-200/30 mt-2" />
+              <span className="text-6xl font-black text-slate-950 italic select-none">FACE</span>
+              <Coins className="h-14 w-14 text-slate-950/20 mt-2" />
+              <div className="absolute inset-2 border border-slate-300/20 rounded-full" />
             </div>
           </motion.div>
 
@@ -252,7 +254,7 @@ export default function CoinFlipPage() {
                 exit={{ opacity: 0, scale: 1.5 }}
                 className={cn(
                   "absolute inset-0 blur-3xl rounded-full -z-10",
-                  lastResult === 'pile' ? "bg-yellow-500/20" : "bg-white/10"
+                  lastResult === 'pile' ? "bg-yellow-500/30" : "bg-white/20"
                 )}
               />
             )}
@@ -433,7 +435,7 @@ export default function CoinFlipPage() {
         <div className="p-8 bg-primary/5 rounded-[3rem] border border-primary/10 text-center space-y-3 relative overflow-hidden w-full">
           <ShieldCheck className="h-6 w-6 mx-auto text-primary opacity-10" />
           <p className="text-[11px] leading-relaxed font-medium opacity-40 italic px-4">
-            "Le hasard est le seul langage que l'Oracle n'a pas encore traduit. Écoutez le chant de la pièce."
+            "Le hasard est le seul langage que l'Oracle n'a pas encore traduit. Ressentez le poids du destin entre vos mains."
           </p>
           <div className="absolute -bottom-10 -left-10 h-32 w-32 bg-primary/5 blur-[80px] rounded-full" />
         </div>
