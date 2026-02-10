@@ -50,7 +50,7 @@ export default function SportListPage() {
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
-  const { selections, setSelections, setIsCouponOpen } = useSport();
+  const { selections, setSelections, setIsCouponOpen, toggleSelection } = useSport();
 
   const [activeTab, setTab] = useState("matches");
   const [matches, setMatches] = useState<GeneratedMatch[]>([]);
