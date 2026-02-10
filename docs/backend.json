@@ -92,6 +92,20 @@
       },
       "required": ["status", "crashPoint", "startTime", "roundId"]
     },
+    "DoubleState": {
+      "title": "DoubleState",
+      "description": "État global synchronisé du jeu Double de l'Éveil",
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "enum": ["betting", "spinning", "result"] },
+        "startTime": { "type": "string", "format": "date-time" },
+        "roundId": { "type": "string" },
+        "resultNumber": { "type": "number" },
+        "resultColor": { "type": "string" },
+        "lastUpdate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["status", "startTime", "roundId"]
+    },
     "Quiz": {
       "title": "Quiz",
       "description": "Une question de quiz avec options et réponse",
@@ -232,6 +246,10 @@
     "/appConfig/jet": {
       "schema": "JetState",
       "description": "État synchronisé du Jet de Lumière"
+    },
+    "/appConfig/double": {
+      "schema": "DoubleState",
+      "description": "État synchronisé du Double de l'Éveil"
     },
     "/quizzes/{quizId}": {
       "schema": "Quiz",

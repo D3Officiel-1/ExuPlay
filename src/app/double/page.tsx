@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import { useUser, useFirestore, useDoc } from "@/firebase";
-import { doc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
+import { doc, updateDoc, increment, serverTimestamp, Timestamp, getDoc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,7 +16,8 @@ import {
   History,
   TrendingUp,
   Target,
-  Plus
+  Plus,
+  ShieldCheck
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
@@ -27,9 +28,9 @@ import { getTileColorSync, type DoubleColor } from "@/lib/games/double";
 import confetti from "canvas-confetti";
 
 /**
- * @fileOverview Double de l'Éveil v3.2 - Immersion Totale & Discrétion.
- * Arène de roulette où les phases de jeu se superposent à la roue.
- * Le résultat ne s'affiche désormais que si l'utilisateur a placé un pari.
+ * @fileOverview Double de l'Éveil v4.0 - Synchronisation Universelle.
+ * L'arène est désormais pilotée par un état global Firestore.
+ * Tous les esprits voient le même destin au même instant.
  */
 
 type GamePhase = 'betting' | 'spinning' | 'result';
@@ -44,19 +45,25 @@ export default function DoublePage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [phase, setPhase] = useState<GamePhase>('betting');
   const [timeLeft, setTimeLeft] = useState(15);
   const [betAmount, setBetAmount] = useState<number>(100);
   const [selectedColor, setSelectedColor] = useState<DoubleColor | null>(null);
   const [history, setHistory] = useState<DoubleColor[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [winAmount, setWinAmount] = useState<number | null>(null);
+  const [lastAnimatedRoundId, setLastRoundId] = useState<string>("");
   
   const controls = useAnimation();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const userDocRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
+  const doubleConfigRef = useMemo(() => (db ? doc(db, "appConfig", "double") : null), [db]);
+  
   const { data: profile } = useDoc(userDocRef);
+  const { data: globalState } = useDoc(doubleConfigRef);
+
+  const globalStateRef = useRef<any>(null);
+  useEffect(() => { globalStateRef.current = globalState; }, [globalState]);
 
   useEffect(() => {
     const initHistory = async () => {
@@ -66,103 +73,135 @@ export default function DoublePage() {
     initHistory();
   }, []);
 
+  // --- LOGIQUE DE SYNCHRONISATION ---
   useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (phase === 'betting') {
-      if (timeLeft > 0) {
-        timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
-      } else {
-        startSpin();
+    if (!db || !doubleConfigRef) return;
+
+    const initDoc = async () => {
+      const snap = await getDoc(doubleConfigRef);
+      if (!snap.exists()) {
+        await setDoc(doubleConfigRef, {
+          status: 'betting',
+          startTime: serverTimestamp(),
+          roundId: `DBL-INIT-${Date.now()}`,
+          resultNumber: 0,
+          resultColor: 'blue',
+          lastUpdate: serverTimestamp()
+        });
       }
-    }
-    return () => clearInterval(timer);
-  }, [phase, timeLeft]);
+    };
+    initDoc();
 
-  const startSpin = async () => {
-    setPhase('spinning');
-    haptic.medium();
+    if (!globalState) return;
 
-    try {
-      const round = await triggerNextDoubleRound();
-      const { resultNumber, resultColor } = round;
+    const status = globalState.status as GamePhase;
+    const startTime = (globalState.startTime instanceof Timestamp) 
+      ? globalState.startTime.toDate().getTime() 
+      : new Date(globalState.startTime).getTime();
 
-      const containerWidth = containerRef.current?.offsetWidth || 0;
-      const centerOffset = containerWidth / 2 - TILE_WIDTH / 2;
-      
-      const targetTileIndex = 80 + resultNumber;
-      const finalX = -(targetTileIndex * TILE_WIDTH) + centerOffset;
+    const handleTransition = async (nextStatus: GamePhase) => {
+      const lastUpdate = (globalStateRef.current.lastUpdate as Timestamp)?.toDate().getTime() || 0;
+      if (Date.now() - lastUpdate < 800) return;
 
-      await controls.start({
-        x: finalX,
-        transition: { duration: 5, ease: [0.15, 0, 0.15, 1] }
-      });
-
-      setPhase('result');
-      setHistory(prev => [resultColor, ...prev].slice(0, 15));
-      
-      if (selectedColor) {
-        const validation = await validateDoubleWin(betAmount, selectedColor, resultColor);
-        
-        if (validation.success) {
-          setWinAmount(validation.winAmount);
-          haptic.success();
-          confetti({ 
-            particleCount: 150, 
-            spread: 70, 
-            origin: { y: 0.6 },
-            colors: ['#fbbf24', '#ffffff', '#3b82f6']
+      try {
+        if (nextStatus === 'spinning' && globalStateRef.current.status === 'betting') {
+          const nextRound = await triggerNextDoubleRound();
+          await updateDoc(doubleConfigRef, {
+            status: 'spinning',
+            ...nextRound,
+            startTime: serverTimestamp(),
+            lastUpdate: serverTimestamp()
           });
-          
-          if (userDocRef) {
-            await updateDoc(userDocRef, {
-              totalPoints: increment(validation.winAmount),
-              updatedAt: serverTimestamp()
-            });
-          }
-        } else {
-          haptic.error();
+        } else if (nextStatus === 'result' && globalStateRef.current.status === 'spinning') {
+          await updateDoc(doubleConfigRef, { status: 'result', lastUpdate: serverTimestamp() });
+        } else if (nextStatus === 'betting' && globalStateRef.current.status === 'result') {
+          await updateDoc(doubleConfigRef, { 
+            status: 'betting', 
+            startTime: serverTimestamp(), 
+            roundId: `DBL-${Date.now()}`,
+            lastUpdate: serverTimestamp() 
+          });
         }
+      } catch (e) {}
+    };
+
+    const tick = () => {
+      const now = Date.now();
+      const elapsed = Math.floor((now - startTime) / 1000);
+
+      if (status === 'betting') {
+        const remaining = Math.max(0, 15 - elapsed);
+        setTimeLeft(remaining);
+        if (remaining === 0) handleTransition('spinning');
+      } else if (status === 'spinning') {
+        if (elapsed >= 6) handleTransition('result');
+      } else if (status === 'result') {
+        if (elapsed >= 5) handleTransition('betting');
       }
+    };
 
-      setTimeout(() => {
-        resetBoard();
-      }, 4000);
+    const timer = setInterval(tick, 1000);
+    tick();
 
-    } catch (error) {
-      toast({ variant: "destructive", title: "Dissonance du Flux", description: "L'Oracle est momentanément indisponible." });
-      resetBoard();
+    // Trigger animation si nouvelle rotation
+    if (status === 'spinning' && globalState.roundId !== lastAnimatedRoundId) {
+      runWheelAnimation(globalState.resultNumber, globalState.resultColor);
+      setLastRoundId(globalState.roundId);
     }
-  };
 
-  const resetBoard = () => {
-    setPhase('betting');
-    setTimeLeft(15);
-    setWinAmount(null);
-    setSelectedColor(null);
-    controls.set({ x: 0 });
+    // Reset local if new betting phase
+    if (status === 'betting' && globalState.roundId !== lastAnimatedRoundId) {
+      setWinAmount(null);
+      setSelectedColor(null);
+      controls.set({ x: 0 });
+      setLastRoundId(globalState.roundId);
+    }
+
+    return () => clearInterval(timer);
+  }, [globalState, db, doubleConfigRef, lastAnimatedRoundId, controls]);
+
+  const runWheelAnimation = async (resultNumber: number, resultColor: DoubleColor) => {
+    haptic.medium();
+    const containerWidth = containerRef.current?.offsetWidth || 0;
+    const centerOffset = containerWidth / 2 - TILE_WIDTH / 2;
+    const targetTileIndex = 80 + resultNumber;
+    const finalX = -(targetTileIndex * TILE_WIDTH) + centerOffset;
+
+    await controls.start({
+      x: finalX,
+      transition: { duration: 5, ease: [0.15, 0, 0.15, 1] }
+    });
+
+    setHistory(prev => [resultColor, ...prev].slice(0, 15));
+    
+    // Validation des gains si pari placé
+    if (selectedColor) {
+      const validation = await validateDoubleWin(betAmount, selectedColor, resultColor);
+      if (validation.success) {
+        setWinAmount(validation.winAmount);
+        haptic.success();
+        confetti({ 
+          particleCount: 150, spread: 70, origin: { y: 0.6 },
+          colors: ['#fbbf24', '#ffffff', '#3b82f6']
+        });
+        if (userDocRef) {
+          await updateDoc(userDocRef, { totalPoints: increment(validation.winAmount), updatedAt: serverTimestamp() });
+        }
+      } else {
+        haptic.error();
+      }
+    }
   };
 
   const handlePlaceBet = async (color: DoubleColor) => {
-    if (phase !== 'betting' || isProcessing || !profile || !userDocRef) return;
-    
-    if (betAmount < 5) {
-      toast({ variant: "destructive", title: "Mise minimale : 5 PTS" });
-      return;
-    }
-
-    if (profile.totalPoints < betAmount) {
-      toast({ variant: "destructive", title: "Lumière insuffisante" });
-      return;
-    }
+    if (!globalState || globalState.status !== 'betting' || isProcessing || !profile || !userDocRef) return;
+    if (betAmount < 5) { toast({ variant: "destructive", title: "Mise minimale : 5 PTS" }); return; }
+    if (profile.totalPoints < betAmount) { toast({ variant: "destructive", title: "Lumière insuffisante" }); return; }
 
     setIsProcessing(true);
     haptic.light();
-
     try {
-      await updateDoc(userDocRef, {
-        totalPoints: increment(-betAmount),
-        updatedAt: serverTimestamp()
-      });
+      await updateDoc(userDocRef, { totalPoints: increment(-betAmount), updatedAt: serverTimestamp() });
       setSelectedColor(color);
       toast({ title: "Pacte Scellé", description: `Mise sur le ${color === 'blue' ? 'Bleu' : color === 'red' ? 'Rouge' : 'Vert'}.` });
     } catch (e) {
@@ -180,6 +219,8 @@ export default function DoublePage() {
     }
     return tiles;
   }, []);
+
+  const currentStatus = globalState?.status || 'betting';
 
   return (
     <div className="min-h-screen bg-[#020617] text-white flex flex-col pb-32">
@@ -220,12 +261,10 @@ export default function DoublePage() {
 
           {/* ARÈNE UNIFIÉE (ROUE + PHASES) */}
           <div className="relative">
-            {/* Indicateurs fixes */}
             <div className="absolute left-1/2 -top-2 -translate-x-1/2 z-30 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[15px] border-t-white shadow-[0_0_10px_white]" />
             <div className="absolute left-1/2 -bottom-2 -translate-x-1/2 z-30 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[15px] border-b-white shadow-[0_0_10px_white]" />
 
             <div className="relative h-64 bg-card/20 backdrop-blur-3xl rounded-[3rem] border border-white/10 shadow-[inset_0_0_40px_rgba(0,0,0,0.5)] overflow-hidden">
-              {/* LA ROUE (Background) */}
               <motion.div 
                 ref={containerRef}
                 animate={controls}
@@ -233,18 +272,8 @@ export default function DoublePage() {
                 style={{ width: TOTAL_TILES_STRIP * TILE_WIDTH }}
               >
                 {tilesStrip.map((tile, i) => (
-                  <div 
-                    key={i} 
-                    style={{ width: TILE_WIDTH }}
-                    className={cn(
-                      "h-full px-1.5 transition-opacity duration-500",
-                      phase !== 'spinning' && "opacity-20"
-                    )}
-                  >
-                    <div className={cn(
-                      "w-full h-full rounded-2xl flex flex-col items-center justify-center gap-2 border-2 border-white/5 relative",
-                      tile.color === 'red' ? 'bg-red-600' : tile.color === 'green' ? 'bg-green-600' : 'bg-blue-600'
-                    )}>
+                  <div key={i} style={{ width: TILE_WIDTH }} className={cn("h-full px-1.5 transition-opacity duration-500", currentStatus !== 'spinning' && "opacity-20")}>
+                    <div className={cn("w-full h-full rounded-2xl flex flex-col items-center justify-center gap-2 border-2 border-white/5 relative", tile.color === 'red' ? 'bg-red-600' : tile.color === 'green' ? 'bg-green-600' : 'bg-blue-600')}>
                       <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center border border-white/10 shadow-inner">
                         <span className="text-[10px] font-black text-white/40">EXU</span>
                       </div>
@@ -254,21 +283,13 @@ export default function DoublePage() {
                 ))}
               </motion.div>
 
-              {/* Effet de fondu latéral */}
               <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#020617] to-transparent z-10 pointer-events-none" />
               <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#020617] to-transparent z-10 pointer-events-none" />
 
-              {/* CALQUE DE PHASE (Foreground Superposé) */}
               <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
                 <AnimatePresence mode="wait">
-                  {phase === 'betting' ? (
-                    <motion.div 
-                      key="betting"
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 1.1 }}
-                      className="space-y-4 text-center bg-background/40 backdrop-blur-md p-8 rounded-[2.5rem] border border-white/10 shadow-2xl pointer-events-auto"
-                    >
+                  {currentStatus === 'betting' ? (
+                    <motion.div key="betting" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.1 }} className="space-y-4 text-center bg-background/40 backdrop-blur-md p-8 rounded-[2.5rem] border border-white/10 shadow-2xl pointer-events-auto">
                       <div className="relative inline-block">
                         <motion.div animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }} className="absolute inset-[-15px] border border-dashed border-primary/40 rounded-full" />
                         <div className="h-20 w-20 bg-card rounded-[1.75rem] flex items-center justify-center border border-primary/20 shadow-xl">
@@ -280,13 +301,8 @@ export default function DoublePage() {
                         <p className="text-[9px] font-bold opacity-60 uppercase">L'Oracle attend votre pacte...</p>
                       </div>
                     </motion.div>
-                  ) : (phase === 'result' && selectedColor) ? (
-                    <motion.div 
-                      key="result"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="space-y-6 text-center bg-background/60 backdrop-blur-lg p-10 rounded-[3rem] border border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.5)] pointer-events-auto"
-                    >
+                  ) : (currentStatus === 'result' && selectedColor) ? (
+                    <motion.div key="result" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-center bg-background/60 backdrop-blur-lg p-10 rounded-[3rem] border border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.5)] pointer-events-auto">
                       {winAmount ? (
                         <div className="space-y-4">
                           <div className="h-20 w-20 bg-green-500/20 rounded-[2rem] flex items-center justify-center mx-auto border border-green-500/30 shadow-[0_0_40px_rgba(34,197,94,0.4)]">
@@ -313,12 +329,10 @@ export default function DoublePage() {
           </div>
         </div>
 
-        {/* PANEL DE COMMANDE (Ancré en bas) */}
         <aside className="space-y-6 order-2">
           <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[2.5rem] p-8 border border-white/5 shadow-2xl space-y-8">
             <div className="space-y-4">
               <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 text-center">Pari sur le Destin</p>
-              
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { id: 'red', label: 'x2', color: 'bg-red-600' },
@@ -327,19 +341,17 @@ export default function DoublePage() {
                 ].map((btn) => (
                   <button
                     key={btn.id}
-                    disabled={phase !== 'betting' || isProcessing || !!selectedColor}
+                    disabled={currentStatus !== 'betting' || isProcessing || !!selectedColor}
                     onClick={() => handlePlaceBet(btn.id as DoubleColor)}
                     className={cn(
                       "aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 transition-all duration-500 border-2 shadow-lg group relative overflow-hidden",
                       btn.color,
                       selectedColor === btn.id ? "border-white scale-105 shadow-white/20" : "border-transparent opacity-80 hover:opacity-100",
-                      (phase !== 'betting' || !!selectedColor) && selectedColor !== btn.id && "opacity-20 grayscale"
+                      (currentStatus !== 'betting' || !!selectedColor) && selectedColor !== btn.id && "opacity-20 grayscale"
                     )}
                   >
                     <span className="text-2xl font-black italic">{btn.label}</span>
-                    {selectedColor === btn.id && (
-                      <motion.div layoutId="active-selection" className="absolute inset-0 border-4 border-white/30 rounded-2xl animate-pulse" />
-                    )}
+                    {selectedColor === btn.id && <motion.div layoutId="active-selection" className="absolute inset-0 border-4 border-white/30 rounded-2xl animate-pulse" />}
                   </button>
                 ))}
               </div>
@@ -351,30 +363,19 @@ export default function DoublePage() {
                 <span className="text-[10px] font-black opacity-20">MIN: 5 PTS</span>
               </div>
               <div className="relative">
-                <Input 
-                  type="number" 
-                  value={betAmount} 
-                  onChange={e => setBetAmount(Math.max(0, parseInt(e.target.value) || 0))}
-                  disabled={phase !== 'betting' || !!selectedColor}
-                  className="h-16 bg-black/40 border-none rounded-[1.5rem] text-center font-black text-2xl shadow-inner"
-                />
+                <Input type="number" value={betAmount} onChange={e => setBetAmount(Math.max(0, parseInt(e.target.value) || 0))} disabled={currentStatus !== 'betting' || !!selectedColor} className="h-16 bg-black/40 border-none rounded-[1.5rem] text-center font-black text-2xl shadow-inner" />
                 <Zap className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 opacity-20" />
               </div>
               <div className="grid grid-cols-3 gap-2">
-                <button onClick={() => { haptic.light(); setBetAmount(prev => Math.floor(prev / 2)); }} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">MOITIÉ</button>
-                <button onClick={() => { haptic.light(); setBetAmount(prev => prev * 2); }} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">DOUBLE</button>
-                <button onClick={() => { haptic.light(); setBetAmount(profile?.totalPoints || 0); }} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">MAX</button>
+                <button onClick={() => { haptic.light(); setBetAmount(prev => Math.floor(prev / 2)); }} disabled={currentStatus !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">MOITIÉ</button>
+                <button onClick={() => { haptic.light(); setBetAmount(prev => prev * 2); }} disabled={currentStatus !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">DOUBLE</button>
+                <button onClick={() => { haptic.light(); setBetAmount(profile?.totalPoints || 0); }} disabled={currentStatus !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">MAX</button>
               </div>
             </div>
 
             <div className="flex flex-wrap justify-center gap-2">
               {CHIPS.map(val => (
-                <button 
-                  key={val} 
-                  onClick={() => { haptic.light(); setBetAmount(prev => prev + val); }}
-                  disabled={phase !== 'betting' || !!selectedColor}
-                  className="h-12 w-12 rounded-full border-2 border-dashed border-white/10 flex items-center justify-center text-[10px] font-black hover:border-primary/40 hover:bg-primary/5 transition-all"
-                >
+                <button key={val} onClick={() => { haptic.light(); setBetAmount(prev => prev + val); }} disabled={currentStatus !== 'betting' || !!selectedColor} className="h-12 w-12 rounded-full border-2 border-dashed border-white/10 flex items-center justify-center text-[10px] font-black hover:border-primary/40 hover:bg-primary/5 transition-all">
                   {val >= 1000 ? `${val/1000}K` : val}
                 </button>
               ))}
@@ -384,8 +385,9 @@ export default function DoublePage() {
       </main>
 
       <div className="p-10 bg-primary/5 rounded-[3rem] border border-primary/5 text-center space-y-3 relative overflow-hidden max-w-lg mx-auto w-full mt-8">
+        <ShieldCheck className="h-6 w-6 mx-auto text-primary opacity-10 mb-2" />
         <p className="text-[11px] leading-relaxed font-medium opacity-40 italic">
-          "Le destin tourne sur lui-même. Chaque couleur est une porte, chaque tour est un nouvel éveil."
+          "Le destin est synchronisé. Tous les esprits contemplent la même vérité, au même instant."
         </p>
       </div>
     </div>
