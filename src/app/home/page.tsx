@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -13,7 +12,7 @@ import {
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Zap, Users, Sparkles, Brain, Trophy, Swords, Flag, ChevronRight, Rocket, Bomb, Ticket } from "lucide-react";
+import { Zap, Users, Sparkles, Brain, Trophy, Swords, Flag, ChevronRight, Rocket, Bomb, Ticket, Coins } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -116,6 +115,15 @@ export default function HomePage() {
       color: "text-blue-500",
       bg: "bg-blue-500/5",
       path: "/quiz"
+    },
+    {
+      id: "coinflip",
+      title: "Pile ou Face",
+      description: "Défiez le destin avec la pièce de l'Oracle.",
+      icon: Coins,
+      color: "text-yellow-500",
+      bg: "bg-yellow-500/5",
+      path: "/coinflip"
     },
     {
       id: "mines",
