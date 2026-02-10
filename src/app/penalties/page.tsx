@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser, useFirestore, useDoc } from "@/firebase";
 import { doc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
@@ -25,7 +25,6 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 import Image from "next/image";
-import placeholderImages from "@/app/lib/placeholder-images.json";
 
 const MIN_BET = 5;
 const BET_PRESETS = [5, 50, 100, 200];
@@ -36,6 +35,20 @@ const DIRECTIONS = [
 ] as const;
 
 type Direction = typeof DIRECTIONS[number];
+
+const OPPONENTS = [
+  { name: "Côte d'Ivoire", code: "ci" },
+  { name: "France", code: "fr" },
+  { name: "Brésil", code: "br" },
+  { name: "Argentine", code: "ar" },
+  { name: "Maroc", code: "ma" },
+  { name: "Sénégal", code: "sn" },
+  { name: "Espagne", code: "es" },
+  { name: "Portugal", code: "pt" },
+  { name: "Angleterre", code: "gb-eng" },
+  { name: "Allemagne", code: "de" },
+  { name: "Nigeria", code: "ng" }
+];
 
 function GlovesKeeper({ 
   gameState, 
@@ -101,11 +114,17 @@ export default function PenaltiesPage() {
   const [isScored, setIsScored] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [hoveredTarget, setHoveredTarget] = useState<Direction | null>(null);
+  const [opponent, setOpponent] = useState(OPPONENTS[0]);
 
   const userDocRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
 
-  const civFlag = placeholderImages.placeholderImages.find(img => img.id === "flag-civ")?.imageUrl;
+  useEffect(() => {
+    // Initial random opponent
+    setOpponent(OPPONENTS[Math.floor(Math.random() * OPPONENTS.length)]);
+  }, []);
+
+  const getFlagUrl = (code: string) => `https://www.drapeauxdespays.fr/data/flags/h80/${code}.png`;
 
   const currentBet = Math.max(MIN_BET, parseInt(betInput) || 0);
 
@@ -186,6 +205,9 @@ export default function PenaltiesPage() {
     setPlayerChoice(null); 
     setKeeperChoice(null); 
     setIsScored(null); 
+    // Nouveau adversaire après chaque frappe
+    const nextOpponent = OPPONENTS[Math.floor(Math.random() * OPPONENTS.length)];
+    setOpponent(nextOpponent);
   };
 
   const ballVariants = {
@@ -198,8 +220,6 @@ export default function PenaltiesPage() {
       translateX: "-50%" 
     },
     shooting: (direction: Direction) => {
-      // Coordonnées cibles précises en % du stade (container aspect 4/5)
-      // La cage occupe x: 7.5% -> 92.5% et y: 18% -> 60.5% (approx)
       const xMap: Record<Direction, string> = { 
         "En haut à gauche": "22%", "En haut": "50%", "En haut à droite": "78%", 
         "À gauche": "22%", "Centre": "50%", "À droite": "78%", 
@@ -225,7 +245,6 @@ export default function PenaltiesPage() {
     idle: { left: "50%", top: "25%", translateX: "-50%", rotate: 0, scale: 1 },
     shooting: (direction: Direction | null) => {
       if (!direction) return {};
-      // Le gardien plonge pour intercepter le ballon aux mêmes coordonnées %
       const xMap: Record<Direction, string> = { 
         "En haut à gauche": "22%", "En haut": "50%", "En haut à droite": "78%", 
         "À gauche": "22%", "Centre": "50%", "À droite": "78%", 
@@ -267,7 +286,7 @@ export default function PenaltiesPage() {
   return (
     <div className="min-h-screen bg-black flex flex-col pb-32">
       <main className="flex-1 p-4 sm:p-6 pt-24 space-y-6 sm:space-y-8 max-w-md mx-auto w-full overflow-hidden">
-        {/* Header de Match Immersif */}
+        {/* Header de Match Immersif avec Adversaire Aléatoire */}
         <div className="flex items-center justify-between px-2 sm:px-4">
           <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full bg-white/5 border border-white/10 h-10 w-10 sm:h-12 sm:w-12">
             <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
@@ -279,9 +298,20 @@ export default function PenaltiesPage() {
                 <span className="text-[7px] sm:text-[8px] font-black text-white italic">1W</span>
               </div>
               <span className="text-[8px] sm:text-[10px] font-black text-yellow-500 italic">VS</span>
-              <div className="relative h-5 w-7 sm:h-6 sm:w-8 rounded overflow-hidden shadow-sm border border-white/10">
-                {civFlag && <Image src={civFlag} alt="CIV" fill className="object-cover" unoptimized />}
-              </div>
+              <AnimatePresence mode="wait">
+                <motion.div 
+                  key={opponent.code}
+                  initial={{ x: 10, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: -10, opacity: 0 }}
+                  className="flex items-center gap-2"
+                >
+                  <div className="relative h-5 w-7 sm:h-6 sm:w-8 rounded overflow-hidden shadow-sm border border-white/10">
+                    <Image src={getFlagUrl(opponent.code)} alt={opponent.name} fill className="object-cover" unoptimized />
+                  </div>
+                  <span className="text-[8px] sm:text-[9px] font-black text-white uppercase truncate max-w-[60px]">{opponent.name}</span>
+                </motion.div>
+              </AnimatePresence>
             </div>
           </div>
 
@@ -322,9 +352,7 @@ export default function PenaltiesPage() {
             </motion.div>
           )}
 
-          {/* Terrain de Jeu Adaptatif avec Coordonnées Proportionnelles */}
           <div className="relative w-full aspect-[4/5] rounded-[2.5rem] sm:rounded-[3rem] bg-[#0a0a0a] border border-white/5 shadow-[0_32px_128px_-16px_rgba(0,0,0,0.8)] overflow-hidden">
-            {/* Arrière-plan Stadium */}
             <div className="absolute inset-0 z-0">
               <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.05),transparent_40%)]" />
               <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.05),transparent_40%)]" />
@@ -340,13 +368,11 @@ export default function PenaltiesPage() {
               <div className="absolute bottom-0 left-0 right-0 h-[40%] bg-gradient-to-t from-white/[0.02] to-transparent border-t border-white/5" />
             </div>
 
-            {/* La Cage de But Responsive */}
             <div className="absolute top-[18%] left-1/2 -translate-x-1/2 w-[85%] aspect-[1.6] z-10">
               <div className="absolute inset-0 border-[4px] sm:border-[6px] border-[#e5e7eb] rounded-t-lg shadow-2xl z-20" />
               <div className="absolute inset-0 bg-[#111] opacity-40 z-10" />
               <div className="absolute inset-0 z-15 opacity-20" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '10px 10px' }} />
 
-              {/* Zones de Cibles Tactiles */}
               <div className="absolute inset-0 z-[60]">
                 {gameState === 'idle' && DIRECTIONS.map((dir) => (
                   <button 
@@ -372,7 +398,6 @@ export default function PenaltiesPage() {
               </div>
             </div>
 
-            {/* Le Gardien (Gants) Proportionnel */}
             <motion.div 
               variants={keeperVariants} 
               animate={gameState === 'shooting' || gameState === 'result' ? "shooting" : "idle"} 
@@ -382,7 +407,6 @@ export default function PenaltiesPage() {
               <GlovesKeeper gameState={gameState} keeperChoice={keeperChoice} isScored={isScored} />
             </motion.div>
 
-            {/* Le Ballon et son Ombre Proportionnels */}
             <motion.div 
               variants={ballVariants} 
               animate={gameState === 'shooting' || gameState === 'result' ? "shooting" : "idle"} 
@@ -406,7 +430,6 @@ export default function PenaltiesPage() {
               </div>
             </motion.div>
 
-            {/* Overlay de Résultat Cinématique */}
             <AnimatePresence>
               {gameState === 'result' && (
                 <motion.div 
@@ -435,7 +458,6 @@ export default function PenaltiesPage() {
             </AnimatePresence>
           </div>
 
-          {/* Contrôles de Fin de Cycle */}
           <AnimatePresence mode="wait">
             {gameState === 'result' ? (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
