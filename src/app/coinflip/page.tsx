@@ -28,8 +28,8 @@ import { EmojiOracle } from "@/components/EmojiOracle";
 import confetti from "canvas-confetti";
 
 /**
- * @fileOverview CoinFlip de l'Éveil v4.5 - L'Artéfact de la Dualité.
- * Logique de série cumulative et récupération de gains (Cashout) avec effets d'activation.
+ * @fileOverview CoinFlip de l'Éveil v4.6 - Rectification du Flux.
+ * Correction de la logique de verrouillage pour permettre la continuité des séries.
  */
 
 const MIN_BET = 5;
@@ -57,7 +57,6 @@ export default function CoinFlipPage() {
 
   const currentBet = Math.max(MIN_BET, parseInt(betInput) || 0);
 
-  // Calcul des multiplicateurs de série pour la visualisation
   const seriesPreview = useMemo(() => {
     return [1, 2, 3, 4, 5].map(step => ({
       multiplier: (Math.pow(MULTIPLIER_PER_WIN, step)).toFixed(2),
@@ -66,7 +65,7 @@ export default function CoinFlipPage() {
   }, []);
 
   const handleFlip = async (side: Side) => {
-    if (!profile || !userDocRef || isProcessing || status === 'flipping') return;
+    if (!profile || !userDocRef || isProcessing || status !== 'idle') return;
 
     // Si on commence une nouvelle série, on déduit la mise
     if (streak === 0) {
@@ -88,6 +87,8 @@ export default function CoinFlipPage() {
           totalPoints: increment(-currentBet), 
           updatedAt: serverTimestamp() 
         });
+        // On libère isProcessing immédiatement après la transaction pour permettre la suite
+        setIsProcessing(false);
       } catch (e) {
         setIsProcessing(false);
         return;
@@ -98,7 +99,7 @@ export default function CoinFlipPage() {
     setSelectedSide(side);
     setStatus('flipping');
 
-    // Simulation du destin après un délai de tension
+    // Simulation du destin
     setTimeout(() => {
       const result: Side = Math.random() > 0.5 ? 'face' : 'pile';
       const isWon = result === side;
@@ -110,12 +111,10 @@ export default function CoinFlipPage() {
         haptic.success();
         const newStreak = streak + 1;
         setStreak(newStreak);
-        
-        // Calcul du gain cumulé : Mise * (1.88 ^ n)
         const winAmount = Math.floor(currentBet * Math.pow(MULTIPLIER_PER_WIN, newStreak));
         setCurrentWin(winAmount);
         
-        // On repasse en idle après un court instant pour permettre le prochain clic
+        // Retour à l'état idle pour permettre le prochain flip
         setTimeout(() => {
           setStatus('idle');
         }, 800);
@@ -123,8 +122,6 @@ export default function CoinFlipPage() {
         haptic.error();
         setStreak(0);
         setCurrentWin(0);
-        setIsProcessing(false);
-        // On laisse le résultat d'échec affiché 2 secondes
         setTimeout(() => {
           setStatus('idle');
           setSelectedSide(null);
@@ -134,7 +131,7 @@ export default function CoinFlipPage() {
   };
 
   const handleCashout = async () => {
-    if (!userDocRef || currentWin <= 0 || isProcessing) return;
+    if (!userDocRef || currentWin <= 0 || isProcessing || status !== 'idle') return;
 
     setIsProcessing(true);
     haptic.impact();
@@ -159,8 +156,8 @@ export default function CoinFlipPage() {
       
       setStreak(0);
       setCurrentWin(0);
-      setStatus('idle');
       setSelectedSide(null);
+      setStatus('idle');
     } catch (e) {
       toast({ variant: "destructive", title: "Dissonance lors de l'extraction" });
     } finally {
@@ -206,7 +203,6 @@ export default function CoinFlipPage() {
           <div className="absolute bottom-1/4 -right-20 w-64 h-64 bg-blue-500/5 rounded-full blur-[100px] animate-pulse" />
         </div>
 
-        {/* L'ARTEFACT 3D */}
         <div className="relative h-72 w-72 flex items-center justify-center perspective-1000">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.15),transparent_70%)] animate-pulse" />
           
@@ -224,17 +220,15 @@ export default function CoinFlipPage() {
                 y: { duration: 4, repeat: Infinity, ease: "easeInOut" }
               }
             }}
-            className="relative w-56 h-52 preserve-3d"
+            className="relative w-56 h-56 preserve-3d"
             style={{ transformStyle: 'preserve-3d' }}
           >
-            {/* FACE PILE (OR MASSIF) */}
             <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-200 via-yellow-500 to-yellow-700 border-4 border-yellow-300/30 flex flex-col items-center justify-center shadow-[0_0_60px_rgba(234,179,8,0.4),inset_0_0_20px_rgba(0,0,0,0.3)] backface-hidden">
               <span className="text-6xl font-black text-yellow-950 italic select-none">PILE</span>
               <Coins className="h-14 w-14 text-yellow-950/20 mt-2" />
               <div className="absolute inset-2 border border-yellow-300/20 rounded-full" />
             </div>
             
-            {/* FACE FACE (ARGENT MASSIF) */}
             <div 
               className="absolute inset-0 rounded-full bg-gradient-to-br from-slate-100 via-slate-400 to-slate-600 border-4 border-slate-300/30 flex flex-col items-center justify-center shadow-[0_0_60px_rgba(255,255,255,0.2),inset_0_0_20px_rgba(0,0,0,0.3)] backface-hidden" 
               style={{ transform: 'rotateY(180deg)' }}
@@ -279,21 +273,21 @@ export default function CoinFlipPage() {
                     type="number" 
                     value={betInput} 
                     onChange={e => setBetInput(e.target.value)}
-                    disabled={streak > 0 || status === 'flipping'}
+                    disabled={streak > 0 || status !== 'idle'}
                     className="bg-transparent border-none text-2xl font-black focus:ring-0 focus:outline-none w-full tabular-nums"
                   />
                 </div>
                 <div className="flex gap-1">
                   <button 
                     onClick={() => adjustBet('minus')} 
-                    disabled={streak > 0 || status === 'flipping'}
+                    disabled={streak > 0 || status !== 'idle'}
                     className="h-12 w-12 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors font-bold text-xl flex items-center justify-center disabled:opacity-20"
                   >
                     -
                   </button>
                   <button 
                     onClick={() => adjustBet('plus')} 
-                    disabled={streak > 0 || status === 'flipping'}
+                    disabled={streak > 0 || status !== 'idle'}
                     className="h-12 w-12 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors font-bold text-xl flex items-center justify-center disabled:opacity-20"
                   >
                     +
@@ -305,7 +299,7 @@ export default function CoinFlipPage() {
                 <Button 
                   variant="outline" 
                   onClick={() => adjustBet('half')} 
-                  disabled={streak > 0 || status === 'flipping'} 
+                  disabled={streak > 0 || status !== 'idle'} 
                   className="h-12 rounded-2xl bg-white/5 border-white/5 font-black text-xs hover:bg-white/10 disabled:opacity-20"
                 >
                   MOITIÉ
@@ -313,7 +307,7 @@ export default function CoinFlipPage() {
                 <Button 
                   variant="outline" 
                   onClick={() => adjustBet('double')} 
-                  disabled={streak > 0 || status === 'flipping'} 
+                  disabled={streak > 0 || status !== 'idle'} 
                   className="h-12 rounded-2xl bg-white/5 border-white/5 font-black text-xs hover:bg-white/10 disabled:opacity-20"
                 >
                   DOUBLE
@@ -324,7 +318,7 @@ export default function CoinFlipPage() {
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => handleFlip('pile')}
-                disabled={status === 'flipping' || isProcessing}
+                disabled={status !== 'idle' || isProcessing}
                 className={cn(
                   "h-24 rounded-[2rem] flex flex-col items-center justify-center gap-1 transition-all duration-500 active:scale-95 border-2 relative overflow-hidden",
                   selectedSide === 'pile' && status !== 'idle' 
@@ -345,7 +339,7 @@ export default function CoinFlipPage() {
 
               <button
                 onClick={() => handleFlip('face')}
-                disabled={status === 'flipping' || isProcessing}
+                disabled={status !== 'idle' || isProcessing}
                 className={cn(
                   "h-24 rounded-[2rem] flex flex-col items-center justify-center gap-1 transition-all duration-500 active:scale-95 border-2 relative overflow-hidden",
                   selectedSide === 'face' && status !== 'idle' 
@@ -399,7 +393,7 @@ export default function CoinFlipPage() {
           </div>
 
           <AnimatePresence>
-            {streak > 0 && status !== 'flipping' && (
+            {streak > 0 && status === 'idle' && (
               <motion.div
                 initial={{ opacity: 0, y: 40, scale: 0.9, filter: "blur(10px)" }}
                 animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
@@ -407,7 +401,6 @@ export default function CoinFlipPage() {
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
                 className="w-full relative"
               >
-                {/* Aura Pulsante d'Activation */}
                 <motion.div 
                   animate={{ 
                     scale: [1, 1.05, 1],
@@ -431,7 +424,6 @@ export default function CoinFlipPage() {
                     <span className="text-xs opacity-60 font-black">PTS</span>
                   </div>
                   
-                  {/* Effet de Shimmer perpétuel lors de l'activation */}
                   <motion.div 
                     animate={{ x: ["-100%", "200%"] }}
                     transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
