@@ -37,8 +37,8 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 /**
- * @fileOverview Liste des Rencontres et Historique des Paris v2.1.
- * Affiche les cotes comme des multiplicateurs de flux explicites.
+ * @fileOverview Liste des Rencontres et Historique des Paris v2.2.
+ * Affiche les cotes cumulées par addition comme des multiplicateurs de flux explicites.
  */
 
 export default function SportListPage() {
@@ -202,7 +202,7 @@ export default function SportListPage() {
                             {isLocked ? (
                               <Lock className="h-3.5 w-3.5 opacity-40" />
                             ) : (
-                              <span className="text-sm font-black tabular-nums">@{odd.toFixed(2)}</span>
+                              <span className="text-sm font-black tabular-nums">{odd.toFixed(2)}</span>
                             )}
                           </button>
                         );
@@ -234,7 +234,7 @@ export default function SportListPage() {
                 
                 <div className="flex justify-between items-start mb-6">
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Combiné ({bet.selections.length})</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Cumulé ({bet.selections.length})</p>
                     <p className="text-base font-black tabular-nums">{bet.stake} PTS</p>
                   </div>
                   <div className={cn(
@@ -257,15 +257,15 @@ export default function SportListPage() {
                         <p className="text-[9px] font-bold opacity-40 uppercase truncate">{sel.matchName}</p>
                         <p className="text-xs font-black text-primary truncate">{sel.outcomeLabel}</p>
                       </div>
-                      <p className="text-xs font-black italic ml-4">@{parseFloat(sel.odd).toFixed(2)}</p>
+                      <p className="text-xs font-black italic ml-4">{parseFloat(sel.odd).toFixed(2)}</p>
                     </div>
                   ))}
                 </div>
 
                 <div className="flex justify-between items-center pt-6">
                   <div className="flex flex-col">
-                    <p className="text-[10px] font-black uppercase opacity-30">Cote Totale (Produit)</p>
-                    <p className="text-sm font-black italic tabular-nums">× @{bet.totalOdds?.toFixed(2)}</p>
+                    <p className="text-[10px] font-black uppercase opacity-30">Cote Totale (Somme)</p>
+                    <p className="text-sm font-black italic tabular-nums">Σ {bet.totalOdds?.toFixed(2)}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] font-black uppercase opacity-30">

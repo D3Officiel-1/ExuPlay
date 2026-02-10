@@ -13,7 +13,8 @@ import {
   X, 
   ShieldCheck, 
   Loader2,
-  Info
+  Info,
+  Plus
 } from "lucide-react";
 import { 
   Dialog,
@@ -31,8 +32,8 @@ import { useToast } from "@/hooks/use-toast";
 import { SportBetResolver } from "@/components/SportBetResolver";
 
 /**
- * @fileOverview Oracle du Sceau Global v2.2.
- * Gère le coupon avec un calcul par multiplication (Parlay) strict et une interface pédagogique.
+ * @fileOverview Oracle du Sceau Global v2.3.
+ * Gère le coupon avec un calcul par ADDITION (Somme) strict.
  */
 
 function CouponOverlay() {
@@ -45,12 +46,12 @@ function CouponOverlay() {
   const userDocRef = useMemo(() => (db && user?.uid) ? doc(db, "users", user.uid) : null, [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
 
-  // LA LOI DU MULTIPLICATEUR : Les cotes se multiplient, elles ne s'additionnent pas.
+  // LA LOI DE L'ADDITION : Les cotes s'additionnent désormais.
   const totalOdds = useMemo(() => {
     if (selections.length === 0) return 0;
-    const product = selections.reduce((acc, sel) => acc * Number(sel.odd), 1);
+    const sum = selections.reduce((acc, sel) => acc + Number(sel.odd), 0);
     // Arrondi de précision à 2 décimales pour l'Oracle
-    return Math.round(product * 100) / 100;
+    return Math.round(sum * 100) / 100;
   }, [selections]);
 
   const currentStake = Math.max(5, parseInt(betAmount) || 0);
@@ -98,12 +99,12 @@ function CouponOverlay() {
                 <div className="flex flex-col items-start leading-none">
                   <div className="flex items-center gap-2">
                     <Activity className="h-2.5 w-2.5 text-green-500 animate-pulse" />
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Pacte Combiné</span>
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">Pacte Cumulé</span>
                   </div>
                   <span className="text-sm font-black">{selections.length} Sélection{selections.length > 1 ? 's' : ''}</span>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-sm font-black italic tabular-nums">× @{totalOdds.toFixed(2)}</span>
+                  <span className="text-sm font-black italic tabular-nums">Σ {totalOdds.toFixed(2)}</span>
                   <ChevronRight className="h-5 w-5 opacity-60" />
                 </div>
               </button>
@@ -159,13 +160,13 @@ function CouponOverlay() {
                             <p className="text-[8px] font-bold uppercase opacity-30">Votre choix</p>
                             <p className="font-black text-primary text-base truncate max-w-[180px]">{sel.outcomeLabel}</p>
                           </div>
-                          <p className="text-2xl font-black tabular-nums italic">@{sel.odd.toFixed(2)}</p>
+                          <p className="text-2xl font-black tabular-nums italic">{sel.odd.toFixed(2)}</p>
                         </div>
                       </motion.div>
                       {idx < selections.length - 1 && (
                         <div className="flex justify-center py-1">
                           <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
-                            <span className="text-[10px] font-black opacity-40 italic">×</span>
+                            <Plus className="h-3 w-3 opacity-40" />
                           </div>
                         </div>
                       )}
@@ -180,14 +181,14 @@ function CouponOverlay() {
               <div className="flex items-start gap-3 p-4 bg-primary/5 rounded-2xl border border-primary/5">
                 <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                 <p className="text-[9px] font-medium leading-relaxed opacity-60">
-                  Loi du Combiné : Les cotes se <span className="font-black">multiplient</span> entre elles pour décupler votre gain final.
+                  Loi du Pacte : Les cotes s'<span className="font-black">additionnent</span> pour former votre multiplicateur final.
                 </p>
               </div>
 
               <div className="flex justify-between items-center px-2">
                 <div className="flex flex-col">
-                  <p className="text-[8px] font-black uppercase opacity-30">Cote Totale (Produit)</p>
-                  <p className="text-xl font-black italic text-primary tabular-nums">× @{totalOdds.toFixed(2)}</p>
+                  <p className="text-[8px] font-black uppercase opacity-30">Cote Totale (Somme)</p>
+                  <p className="text-xl font-black italic text-primary tabular-nums">Σ {totalOdds.toFixed(2)}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[8px] font-black uppercase opacity-30">Gain Potential</p>
