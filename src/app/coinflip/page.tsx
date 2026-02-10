@@ -28,9 +28,9 @@ import { EmojiOracle } from "@/components/EmojiOracle";
 import confetti from "canvas-confetti";
 
 /**
- * @fileOverview CoinFlip de l'Éveil v2.0 - L'Arène de la Dualité.
- * Jeu de pile ou face ultra-immersif avec animation 3D et mécanique de série cumulative.
- * Version purifiée : Seuls les symboles de lumière gravitent.
+ * @fileOverview CoinFlip de l'Éveil v3.0 - L'Arène de la Dualité.
+ * Logique de série cumulative et récupération de gains (Cashout).
+ * Esthétique minimaliste : seuls les symboles de lumière pivotent dans le vide.
  */
 
 const MIN_BET = 5;
@@ -69,7 +69,7 @@ export default function CoinFlipPage() {
   const handleFlip = async (side: Side) => {
     if (!profile || !userDocRef || isProcessing || status === 'flipping') return;
 
-    // Si on commence une nouvelle série
+    // Si on commence une nouvelle série, on déduit la mise
     if (streak === 0) {
       if (currentBet < MIN_BET) {
         haptic.error();
@@ -99,7 +99,7 @@ export default function CoinFlipPage() {
     setSelectedSide(side);
     setStatus('flipping');
 
-    // Simulation du destin
+    // Simulation du destin après un délai de tension
     setTimeout(() => {
       const result: Side = Math.random() > 0.5 ? 'face' : 'pile';
       const isWon = result === side;
@@ -112,14 +112,20 @@ export default function CoinFlipPage() {
         const newStreak = streak + 1;
         setStreak(newStreak);
         
+        // Calcul du gain cumulé : Mise * (1.88 ^ n)
         const winAmount = Math.floor(currentBet * Math.pow(MULTIPLIER_PER_WIN, newStreak));
         setCurrentWin(winAmount);
+        
+        // On repasse en idle après un court instant pour permettre le prochain clic
+        setTimeout(() => {
+          setStatus('idle');
+        }, 800);
       } else {
         haptic.error();
         setStreak(0);
         setCurrentWin(0);
         setIsProcessing(false);
-        // On laisse le résultat affiché un court instant avant de reset
+        // On laisse le résultat d'échec affiché 2 secondes
         setTimeout(() => {
           setStatus('idle');
           setSelectedSide(null);
@@ -201,7 +207,7 @@ export default function CoinFlipPage() {
           <div className="absolute bottom-1/4 -right-20 w-64 h-64 bg-blue-500/5 rounded-full blur-[100px] animate-pulse" />
         </div>
 
-        {/* L'ARTEFACT 3D PURIFIÉ (SANS FOND) */}
+        {/* L'ARTEFACT 3D INVISIBLE (Seul l'esprit pivote) */}
         <div className="relative h-72 w-72 flex items-center justify-center perspective-1000">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.1),transparent_70%)] animate-pulse" />
           
@@ -319,7 +325,7 @@ export default function CoinFlipPage() {
                 onClick={() => handleFlip('pile')}
                 disabled={status === 'flipping' || isProcessing}
                 className={cn(
-                  "h-24 rounded-[2rem] flex flex-col items-center justify-center gap-1 transition-all duration-500 active:scale-95 border-2 relative overflow-hidden group/btn",
+                  "h-24 rounded-[2rem] flex flex-col items-center justify-center gap-1 transition-all duration-500 active:scale-95 border-2 relative overflow-hidden",
                   selectedSide === 'pile' && status !== 'idle' 
                     ? "bg-yellow-500 border-yellow-400 text-yellow-950 shadow-[0_0_40px_rgba(234,179,8,0.4)] scale-105 z-20" 
                     : "bg-yellow-500/5 border-yellow-500/10 text-yellow-500 hover:bg-yellow-500/10"
@@ -340,7 +346,7 @@ export default function CoinFlipPage() {
                 onClick={() => handleFlip('face')}
                 disabled={status === 'flipping' || isProcessing}
                 className={cn(
-                  "h-24 rounded-[2rem] flex flex-col items-center justify-center gap-1 transition-all duration-500 active:scale-95 border-2 relative overflow-hidden group/btn",
+                  "h-24 rounded-[2rem] flex flex-col items-center justify-center gap-1 transition-all duration-500 active:scale-95 border-2 relative overflow-hidden",
                   selectedSide === 'face' && status !== 'idle' 
                     ? "bg-slate-200 border-white text-slate-900 shadow-[0_0_40px_rgba(255,255,255,0.2)] scale-105 z-20" 
                     : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
