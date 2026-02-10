@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -28,8 +29,9 @@ import { getTileColorSync, type DoubleColor } from "@/lib/games/double";
 import confetti from "canvas-confetti";
 
 /**
- * @fileOverview Double de l'Éveil v2.1 - Arbitrage par l'Oracle.
+ * @fileOverview Double de l'Éveil v2.2 - Arbitrage par l'Oracle.
  * Une arène de roulette horizontale dont le destin est scellé sur le serveur.
+ * Mise à jour de l'ordre visuel : Jeu en haut, Mise en bas.
  */
 
 type GamePhase = 'betting' | 'spinning' | 'result';
@@ -209,79 +211,10 @@ export default function DoublePage() {
         <div className="w-10 h-10" />
       </header>
 
-      <main className="flex-1 flex flex-col lg:grid lg:grid-cols-[380px_1fr] pt-24 px-4 sm:px-8 gap-8 max-w-7xl mx-auto w-full">
+      <main className="flex-1 flex flex-col lg:grid lg:grid-cols-[1fr_380px] pt-24 px-4 sm:px-8 gap-8 max-w-7xl mx-auto w-full">
         
-        {/* PANEL DE COMMANDE */}
-        <aside className="space-y-6">
-          <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[2.5rem] p-8 border border-white/5 shadow-2xl space-y-8">
-            <div className="space-y-4">
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 text-center">Pari sur le Destin</p>
-              
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { id: 'red', label: 'x2', color: 'bg-red-600' },
-                  { id: 'blue', label: 'x14', color: 'bg-blue-600' },
-                  { id: 'green', label: 'x2', color: 'bg-green-600' }
-                ].map((btn) => (
-                  <button
-                    key={btn.id}
-                    disabled={phase !== 'betting' || isProcessing || !!selectedColor}
-                    onClick={() => handlePlaceBet(btn.id as DoubleColor)}
-                    className={cn(
-                      "aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 transition-all duration-500 border-2 shadow-lg group relative overflow-hidden",
-                      btn.color,
-                      selectedColor === btn.id ? "border-white scale-105 shadow-white/20" : "border-transparent opacity-80 hover:opacity-100",
-                      (phase !== 'betting' || !!selectedColor) && selectedColor !== btn.id && "opacity-20 grayscale"
-                    )}
-                  >
-                    <span className="text-2xl font-black italic">{btn.label}</span>
-                    {selectedColor === btn.id && (
-                      <motion.div layoutId="active-selection" className="absolute inset-0 border-4 border-white/30 rounded-2xl animate-pulse" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex justify-between items-center px-2">
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Mise</span>
-                <span className="text-[10px] font-black opacity-20">MIN: 5 PTS</span>
-              </div>
-              <div className="relative">
-                <Input 
-                  type="number" 
-                  value={betAmount} 
-                  onChange={e => setBetAmount(Math.max(0, parseInt(e.target.value) || 0))}
-                  disabled={phase !== 'betting' || !!selectedColor}
-                  className="h-16 bg-black/40 border-none rounded-[1.5rem] text-center font-black text-2xl shadow-inner"
-                />
-                <Zap className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 opacity-20" />
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <button onClick={() => { haptic.light(); setBetAmount(prev => Math.floor(prev / 2)); }} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">MOITIÉ</button>
-                <button onClick={() => { haptic.light(); setBetAmount(prev => prev * 2); }} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">DOUBLE</button>
-                <button onClick={() => { haptic.light(); setBetAmount(profile?.totalPoints || 0); }} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">MAX</button>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap justify-center gap-2">
-              {CHIPS.map(val => (
-                <button 
-                  key={val} 
-                  onClick={() => { haptic.light(); setBetAmount(prev => prev + val); }}
-                  disabled={phase !== 'betting' || !!selectedColor}
-                  className="h-12 w-12 rounded-full border-2 border-dashed border-white/10 flex items-center justify-center text-[10px] font-black hover:border-primary/40 hover:bg-primary/5 transition-all"
-                >
-                  {val >= 1000 ? `${val/1000}K` : val}
-                </button>
-              ))}
-            </div>
-          </Card>
-        </aside>
-
-        {/* ZONE DE JEU */}
-        <div className="flex flex-col gap-8">
+        {/* ZONE DE JEU (Maintenant en haut sur mobile, à gauche sur desktop) */}
+        <div className="flex flex-col gap-8 order-1">
           {/* HISTORIQUE */}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
             <History className="h-4 w-4 opacity-20 shrink-0" />
@@ -405,6 +338,75 @@ export default function DoublePage() {
             </AnimatePresence>
           </div>
         </div>
+
+        {/* PANEL DE COMMANDE (Maintenant en bas sur mobile, à droite sur desktop) */}
+        <aside className="space-y-6 order-2">
+          <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[2.5rem] p-8 border border-white/5 shadow-2xl space-y-8">
+            <div className="space-y-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 text-center">Pari sur le Destin</p>
+              
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { id: 'red', label: 'x2', color: 'bg-red-600' },
+                  { id: 'blue', label: 'x14', color: 'bg-blue-600' },
+                  { id: 'green', label: 'x2', color: 'bg-green-600' }
+                ].map((btn) => (
+                  <button
+                    key={btn.id}
+                    disabled={phase !== 'betting' || isProcessing || !!selectedColor}
+                    onClick={() => handlePlaceBet(btn.id as DoubleColor)}
+                    className={cn(
+                      "aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 transition-all duration-500 border-2 shadow-lg group relative overflow-hidden",
+                      btn.color,
+                      selectedColor === btn.id ? "border-white scale-105 shadow-white/20" : "border-transparent opacity-80 hover:opacity-100",
+                      (phase !== 'betting' || !!selectedColor) && selectedColor !== btn.id && "opacity-20 grayscale"
+                    )}
+                  >
+                    <span className="text-2xl font-black italic">{btn.label}</span>
+                    {selectedColor === btn.id && (
+                      <motion.div layoutId="active-selection" className="absolute inset-0 border-4 border-white/30 rounded-2xl animate-pulse" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex justify-between items-center px-2">
+                <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Mise</span>
+                <span className="text-[10px] font-black opacity-20">MIN: 5 PTS</span>
+              </div>
+              <div className="relative">
+                <Input 
+                  type="number" 
+                  value={betAmount} 
+                  onChange={e => setBetAmount(Math.max(0, parseInt(e.target.value) || 0))}
+                  disabled={phase !== 'betting' || !!selectedColor}
+                  className="h-16 bg-black/40 border-none rounded-[1.5rem] text-center font-black text-2xl shadow-inner"
+                />
+                <Zap className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 opacity-20" />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <button onClick={() => { haptic.light(); setBetAmount(prev => Math.floor(prev / 2)); }} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">MOITIÉ</button>
+                <button onClick={() => { haptic.light(); setBetAmount(prev => prev * 2); }} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">DOUBLE</button>
+                <button onClick={() => { haptic.light(); setBetAmount(profile?.totalPoints || 0); }} disabled={phase !== 'betting' || !!selectedColor} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10">MAX</button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap justify-center gap-2">
+              {CHIPS.map(val => (
+                <button 
+                  key={val} 
+                  onClick={() => { haptic.light(); setBetAmount(prev => prev + val); }}
+                  disabled={phase !== 'betting' || !!selectedColor}
+                  className="h-12 w-12 rounded-full border-2 border-dashed border-white/10 flex items-center justify-center text-[10px] font-black hover:border-primary/40 hover:bg-primary/5 transition-all"
+                >
+                  {val >= 1000 ? `${val/1000}K` : val}
+                </button>
+              ))}
+            </div>
+          </Card>
+        </aside>
       </main>
 
       <div className="p-10 bg-primary/5 rounded-[3rem] border border-primary/5 text-center space-y-3 relative overflow-hidden max-w-lg mx-auto w-full mt-8">
@@ -414,4 +416,3 @@ export default function DoublePage() {
       </div>
     </div>
   );
-}
