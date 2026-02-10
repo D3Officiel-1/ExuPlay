@@ -11,15 +11,16 @@ import {
   increment, 
   serverTimestamp 
 } from "firebase/firestore";
-import { getDailyMatches, checkOutcome } from "@/app/actions/sport";
+import { getRecentMatches, checkOutcome } from "@/app/actions/sport";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 /**
- * @fileOverview Oracle de la Résolution Sportive.
- * Sentinelle invisible qui arbitre les coupons terminés dès que les matchs sont clos.
+ * @fileOverview Oracle de la Résolution Sportive v2.0.
+ * Sentinelle invisible qui arbitre les coupons terminés dès que les matches sont clos.
+ * Utilise désormais getRecentMatches pour éviter le blocage des gains lors du changement de jour.
  */
 export function SportBetResolver() {
   const { user } = useUser();
@@ -42,17 +43,21 @@ export function SportBetResolver() {
     if (!pendingBets || pendingBets.length === 0 || !db || !user?.uid) return;
 
     const resolveBets = async () => {
-      // 1. Récupérer l'état actuel de tous les matchs
-      const currentMatches = await getDailyMatches();
-      const finishedMatches = currentMatches.filter(m => m.status === 'finished');
+      // 1. Récupérer l'état actuel des matches récents (Hier + Aujourd'hui)
+      const currentMatches = await getRecentMatches();
 
       for (const bet of pendingBets) {
         if (resolvingIds.has(bet.id)) continue;
 
-        // 2. Vérifier si TOUS les matchs du coupon sont terminés
+        // 2. Vérifier si TOUS les matches du coupon sont terminés
         const betMatchIds = bet.selections.map((s: any) => s.matchId);
         const matchesInCoupon = currentMatches.filter(m => betMatchIds.includes(m.id));
-        const allFinished = matchesInCoupon.length > 0 && matchesInCoupon.every(m => m.status === 'finished');
+        
+        // Si on ne trouve pas tous les matches du coupon (ils datent peut-être de plus de 2 jours), 
+        // on ne peut pas encore résoudre ce coupon via cette sentinelle simplifiée.
+        if (matchesInCoupon.length < betMatchIds.length) continue;
+
+        const allFinished = matchesInCoupon.every(m => m.status === 'finished');
 
         if (allFinished) {
           setResolvingIds(prev => new Set(prev).add(bet.id));
@@ -106,8 +111,8 @@ export function SportBetResolver() {
       }
     };
 
-    // Cycle d'arbitrage toutes les 30 secondes
-    const interval = setInterval(resolveBets, 30000);
+    // Cycle d'arbitrage toutes les 20 secondes
+    const interval = setInterval(resolveBets, 20000);
     resolveBets(); // Premier lancement immédiat
 
     return () => clearInterval(interval);

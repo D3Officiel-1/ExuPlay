@@ -1,8 +1,9 @@
 'use server';
 
 /**
- * @fileOverview Oracle de la Destinée Sportive v6.0.
+ * @fileOverview Oracle de la Destinée Sportive v7.0.
  * Génère des rencontres internationales et fournit les outils de vérification des résultats.
+ * Supporte désormais la persistance sur plusieurs jours pour l'arbitrage des pactes.
  */
 
 export interface MatchEvent {
@@ -62,13 +63,19 @@ function seededRandom(seed: number) {
   return x - Math.floor(x);
 }
 
-export async function getDailyMatches(): Promise<GeneratedMatch[]> {
+/**
+ * Génère les matches pour une date spécifique.
+ * @param dayOffset 0 pour aujourd'hui, -1 pour hier, etc.
+ */
+export async function getDailyMatches(dayOffset: number = 0): Promise<GeneratedMatch[]> {
   const now = new Date();
-  const dateStr = now.toISOString().split('T')[0];
+  const targetDate = new Date(now);
+  targetDate.setDate(now.getDate() + dayOffset);
+  
+  const dateStr = targetDate.toISOString().split('T')[0];
   const dateSeed = dateStr.split('-').reduce((acc, val) => acc + parseInt(val), 0);
   
   const matches: GeneratedMatch[] = [];
-  // Étalement des heures de match pour couvrir la journée
   const hours = [0, 8, 10, 12, 14, 16, 18, 20, 21, 22];
 
   for (let i = 0; i < 10; i++) {
@@ -80,7 +87,7 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
     const home = COUNTRIES[homeIdx];
     const away = COUNTRIES[awayIdx];
 
-    const matchDate = new Date(now);
+    const matchDate = new Date(targetDate);
     matchDate.setHours(hours[i], 0, 0, 0);
     const startTimeTime = matchDate.getTime();
     
@@ -129,16 +136,6 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
       allPotentialEvents.push({ minute: min, type: "goal", player, team: side });
     }
 
-    const maxCards = Math.floor(seededRandom(matchSeed + 3) * 6);
-    for(let c = 0; c < maxCards; c++) {
-      const min = Math.floor(seededRandom(matchSeed + 40 + c) * 90);
-      const side = seededRandom(matchSeed + 50 + c) > 0.5 ? 'home' : 'away';
-      const type = seededRandom(matchSeed + 60 + c) > 0.85 ? "red_card" : "yellow_card";
-      const playerPool = side === 'home' ? home.players : away.players;
-      const player = playerPool[Math.floor(seededRandom(matchSeed + 70 + c) * playerPool.length)];
-      allPotentialEvents.push({ minute: min, type, player, team: side });
-    }
-
     const events: MatchEvent[] = [];
     const score = { home: 0, away: 0 };
     allPotentialEvents.sort((a, b) => a.minute - b.minute);
@@ -151,34 +148,6 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
         }
       }
     });
-
-    const matchMin = Math.min(90, currentMin);
-    const progressFactor = matchMin / 90;
-    const maxShotsHome = Math.floor(seededRandom(matchSeed + 41) * 18) + 5;
-    const maxShotsAway = Math.floor(seededRandom(matchSeed + 42) * 15) + 3;
-    const maxCornersHome = Math.floor(seededRandom(matchSeed + 43) * 10) + 2;
-    const maxCornersAway = Math.floor(seededRandom(matchSeed + 44) * 8) + 1;
-    const basePossessionHome = 40 + seededRandom(matchSeed + 40) * 20;
-    const timeForFluctuation = (now.getTime() - startTimeTime) / 10000;
-    const fluctuation = Math.sin(timeForFluctuation) * 3;
-    
-    let currentPossessionHome = Math.round(basePossessionHome + (status === 'live' ? fluctuation : 0));
-    currentPossessionHome = Math.max(30, Math.min(70, currentPossessionHome));
-
-    const stats: MatchStats = {
-      possession: { 
-        home: status === 'scheduled' ? 0 : currentPossessionHome,
-        away: status === 'scheduled' ? 0 : (100 - currentPossessionHome)
-      },
-      shots: {
-        home: status === 'scheduled' ? 0 : Math.floor(maxShotsHome * progressFactor),
-        away: status === 'scheduled' ? 0 : Math.floor(maxShotsAway * progressFactor)
-      },
-      corners: {
-        home: status === 'scheduled' ? 0 : Math.floor(maxCornersHome * progressFactor),
-        away: status === 'scheduled' ? 0 : Math.floor(maxCornersAway * progressFactor)
-      }
-    };
 
     const baseOdd = 1.1 + seededRandom(matchSeed + 50) * 3;
     const markets: BettingMarket[] = [
@@ -216,7 +185,7 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
       score,
       liveInfo,
       events,
-      stats,
+      stats: { possession: { home: 50, away: 50 }, shots: { home: 0, away: 0 }, corners: { home: 0, away: 0 } },
       markets
     });
   }
@@ -224,8 +193,17 @@ export async function getDailyMatches(): Promise<GeneratedMatch[]> {
   return matches;
 }
 
+/**
+ * Récupère les matches récents (Hier et Aujourd'hui) pour garantir la résolution des pactes.
+ */
+export async function getRecentMatches(): Promise<GeneratedMatch[]> {
+  const yesterday = await getDailyMatches(-1);
+  const today = await getDailyMatches(0);
+  return [...yesterday, ...today];
+}
+
 export async function getMatchById(id: string): Promise<GeneratedMatch | null> {
-  const matches = await getDailyMatches();
+  const matches = await getRecentMatches();
   return matches.find(m => m.id === id) || null;
 }
 
