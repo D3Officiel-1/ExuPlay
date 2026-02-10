@@ -13,8 +13,9 @@ interface FloatingCouponButtonProps {
 }
 
 /**
- * @fileOverview Oracle du Bouton Flottant.
- * Un artefact cinématique qui lévite au-dessus du contenu pour offrir un accès constant au coupon.
+ * @fileOverview Oracle du Bouton Flottant v2.0.
+ * Un artefact cinématique qui lévite au bas de l'écran, se superposant au contenu
+ * pour offrir un accès constant au coupon, similairement au bouton emoji.
  */
 export function FloatingCouponButton({ 
   selectionsCount, 
@@ -27,16 +28,17 @@ export function FloatingCouponButton({
   return (
     <AnimatePresence>
       {isVisible && (
-        <div className="fixed top-24 left-0 right-0 z-[500] px-6 pointer-events-none flex justify-center">
+        <div className="fixed bottom-10 left-0 right-0 z-[500] px-6 pointer-events-none flex justify-center">
           <motion.div 
-            initial={{ y: -100, opacity: 0, scale: 0.8 }}
+            initial={{ y: 100, opacity: 0, scale: 0.8 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: -100, opacity: 0, scale: 0.8 }}
+            exit={{ y: 100, opacity: 0, scale: 0.8 }}
+            transition={{ type: "spring", damping: 20, stiffness: 300 }}
             className="w-full max-w-sm pointer-events-auto"
           >
             <button 
               onClick={() => { haptic.medium(); onOpen(); }}
-              className="w-full flex items-center justify-between px-8 h-16 bg-primary text-primary-foreground rounded-full shadow-2xl border border-white/10 active:scale-95 transition-all overflow-hidden"
+              className="w-full flex items-center justify-between px-8 h-16 bg-primary text-primary-foreground rounded-full shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] border border-white/10 active:scale-95 transition-all overflow-hidden backdrop-blur-md"
             >
               <div className="flex flex-col items-start leading-none">
                 <div className="flex items-center gap-2">
@@ -49,6 +51,13 @@ export function FloatingCouponButton({
                 <span className="text-sm font-black italic tabular-nums">Σ {totalOdds.toFixed(2)}</span>
                 <ChevronRight className="h-5 w-5 opacity-60" />
               </div>
+              
+              {/* Effet de brillance interne type Oracle */}
+              <motion.div 
+                animate={{ x: ["-100%", "200%"] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 pointer-events-none"
+              />
             </button>
           </motion.div>
         </div>
