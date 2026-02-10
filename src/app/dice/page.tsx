@@ -20,15 +20,21 @@ import {
   ChevronDown,
   Sparkles,
   History,
-  Edit3
+  Edit3,
+  Hash
 } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 
+/**
+ * @fileOverview Harshad Dice v5.0 - L'Équilibre Pur.
+ * Interface de précision avec piste de flux horizontale et historique des sorts.
+ */
+
 const MIN_BET = 5;
-const RTP = 0.95; // 95% Retour au joueur
+const RTP = 0.97; // 97% Retour au joueur (Standard Harshad)
 
 type Mode = 'over' | 'under';
 
@@ -43,22 +49,22 @@ export default function DicePage() {
   const [mode, setMode] = useState<Mode>('over');
   const [rolledNumber, setRolledNumber] = useState<number | null>(null);
   const [isRolling, setIsRolling] = useState(false);
-  const [lastResult, setLastResult] = useState<{ win: boolean; amount: number } | null>(null);
+  const [rollHistory, setRollHistory] = useState<number[]>([]);
 
   const userDocRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
 
   const currentBet = Math.max(MIN_BET, parseInt(betInput) || 0);
 
-  // Calculs de probabilité
+  // Calculs de probabilité Harshad
   const winChance = useMemo(() => {
-    if (mode === 'over') return 99 - targetNumber;
+    if (mode === 'over') return 100 - targetNumber;
     return targetNumber;
   }, [targetNumber, mode]);
 
   const multiplier = useMemo(() => {
     if (winChance <= 0) return 0;
-    return parseFloat(( (100 * RTP) / winChance ).toFixed(2));
+    return parseFloat(( (100 * RTP) / winChance ).toFixed(4));
   }, [winChance]);
 
   const potentialWin = Math.floor(currentBet * multiplier);
@@ -79,7 +85,7 @@ export default function DicePage() {
     }
 
     setIsRolling(true);
-    setLastResult(null);
+    setRolledNumber(null);
     haptic.medium();
 
     try {
@@ -89,16 +95,10 @@ export default function DicePage() {
         updatedAt: serverTimestamp()
       });
 
-      // Simulation visuelle du roulement
-      let iterations = 0;
-      const interval = setInterval(() => {
-        setRolledNumber(Math.floor(Math.random() * 100));
-        iterations++;
-        if (iterations > 15) {
-          clearInterval(interval);
-          finalizeRoll();
-        }
-      }, 60);
+      // Simulation de la tension (Roulement)
+      setTimeout(() => {
+        finalizeRoll();
+      }, 600);
 
     } catch (e) {
       setIsRolling(false);
@@ -107,28 +107,27 @@ export default function DicePage() {
   };
 
   const finalizeRoll = async () => {
-    const result = Math.floor(Math.random() * 100);
+    const result = parseFloat((Math.random() * 100).toFixed(2));
     setRolledNumber(result);
+    setRollHistory(prev => [result, ...prev].slice(0, 10));
 
     const isWin = mode === 'over' ? result > targetNumber : result < targetNumber;
     
     if (isWin) {
       haptic.success();
       confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#3b82f6', '#10b981', '#fbbf24']
+        particleCount: 80,
+        spread: 60,
+        origin: { y: 0.7 },
+        colors: ['#3b82f6', '#10b981', '#ffffff']
       });
 
       await updateDoc(userDocRef!, {
         totalPoints: increment(potentialWin),
         updatedAt: serverTimestamp()
       });
-      setLastResult({ win: true, amount: potentialWin });
     } else {
       haptic.error();
-      setLastResult({ win: false, amount: currentBet });
     }
 
     setIsRolling(false);
@@ -146,13 +145,13 @@ export default function DicePage() {
   return (
     <div className="min-h-screen bg-[#020617] text-white flex flex-col pb-32 overflow-hidden">
       <header className="fixed top-0 left-0 right-0 z-50 p-6 flex items-center justify-between bg-background/5 backdrop-blur-xl border-b border-white/5">
-        <Button variant="ghost" size="icon" onClick={() => router.push("/home")} className="rounded-full bg-white/5 border border-white/10">
-          <ChevronLeft className="h-6 w-6" />
+        <Button variant="ghost" size="icon" onClick={() => router.push("/home")} className="rounded-full bg-white/5 border border-white/10 h-10 w-10">
+          <ChevronLeft className="h-5 w-5" />
         </Button>
         <div className="flex flex-col items-center">
-          <p className="text-[8px] font-black uppercase tracking-[0.4em] opacity-40">Les Dés de l'Éveil</p>
-          <div className="flex items-center gap-2 px-4 py-1.5 bg-primary/10 rounded-full border border-primary/20 mt-1">
-            <Zap className="h-3.5 w-3.5 text-primary" />
+          <p className="text-[8px] font-black uppercase tracking-[0.4em] opacity-40">Harshad Dice</p>
+          <div className="flex items-center gap-2 px-4 py-1 bg-primary/10 rounded-full border border-primary/20 mt-1">
+            <Zap className="h-3 w-3 text-primary" />
             <span className="text-xs font-black tabular-nums">{(profile?.totalPoints || 0).toLocaleString()}</span>
           </div>
         </div>
@@ -160,130 +159,130 @@ export default function DicePage() {
       </header>
 
       <main className="flex-1 p-6 pt-28 flex flex-col gap-8 max-w-4xl mx-auto w-full">
-        {/* Zone de Révélation Unifiée - UNE SEULE LIGNE */}
-        <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[3rem] p-8 sm:p-12 border border-white/5 shadow-2xl relative overflow-hidden flex flex-col items-center justify-center min-h-[300px]">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.05),transparent_70%)] pointer-events-none" />
+        {/* L'Arène de Piste Pure Harshad */}
+        <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[3rem] p-8 sm:p-12 border border-white/5 shadow-2xl relative overflow-hidden flex flex-col gap-12">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.05),transparent_70%)] pointer-events-none" />
           
-          <div className="w-full flex flex-row items-center justify-around gap-4 sm:gap-8 relative z-10">
-            <div className="text-center space-y-2 flex-1">
-              <p className="text-[10px] sm:text-xs font-black uppercase tracking-[0.5em] opacity-30">Ton Numéro</p>
-              <span className="text-6xl sm:text-9xl font-black italic tracking-tighter tabular-nums text-white/90">{targetNumber}</span>
+          <div className="flex justify-between items-end relative z-10 px-2">
+            <div className="space-y-1">
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-30">Multiplicateur</p>
+              <p className="text-4xl font-black italic tabular-nums text-white">x{multiplier.toFixed(2)}</p>
             </div>
-            
-            <div className="h-24 sm:h-32 w-[1px] bg-white/10 shrink-0" />
-
-            <div className="text-center space-y-2 flex-1">
-              <p className="text-[10px] sm:text-xs font-black uppercase tracking-[0.5em] opacity-30">Résultat</p>
+            <div className="text-center space-y-1 bg-white/5 px-6 py-2 rounded-2xl border border-white/5 backdrop-blur-md">
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-30">Résultat</p>
               <AnimatePresence mode="wait">
-                <motion.span 
+                <motion.p 
                   key={rolledNumber ?? 'none'}
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
                   className={cn(
-                    "text-6xl sm:text-9xl font-black italic tracking-tighter tabular-nums block transition-colors duration-500",
+                    "text-3xl font-black tabular-nums",
                     rolledNumber === null ? "opacity-10" : 
-                    ( (mode === 'over' ? rolledNumber > targetNumber : rolledNumber < targetNumber) 
-                      ? "text-green-500 drop-shadow-[0_0_30px_rgba(34,197,94,0.4)]" 
-                      : "text-red-500 opacity-60")
+                    ( (mode === 'over' ? rolledNumber > targetNumber : rolledNumber < targetNumber) ? "text-green-500" : "text-red-500")
                   )}
                 >
-                  {rolledNumber ?? "00"}
-                </motion.span>
+                  {rolledNumber !== null ? rolledNumber.toFixed(2) : "---"}
+                </motion.p>
               </AnimatePresence>
+            </div>
+            <div className="text-right space-y-1">
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-30">Chance</p>
+              <p className="text-4xl font-black italic tabular-nums text-white">{winChance.toFixed(2)}%</p>
             </div>
           </div>
 
-          <AnimatePresence>
-            {rolledNumber !== null && !isRolling && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20, scale: 0.8 }} 
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.5 }}
-                className="mt-10 relative z-10"
-              >
-                <div className={cn(
-                  "px-8 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-[0.4em] shadow-2xl border backdrop-blur-md",
-                  (mode === 'over' ? rolledNumber > targetNumber : rolledNumber < targetNumber) 
-                    ? "bg-green-500/20 text-green-400 border-green-500/30" 
-                    : "bg-red-500/20 text-red-400 border-red-500/30"
-                )}>
-                  {(mode === 'over' ? rolledNumber > targetNumber : rolledNumber < targetNumber) ? "Triomphe" : "Dissonance"}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </Card>
+          {/* La Piste Horizontale Harshad */}
+          <div className="relative h-12 w-full bg-black/40 rounded-full border border-white/5 shadow-inner overflow-hidden">
+            {/* Zone de Perte */}
+            <div 
+              className={cn(
+                "absolute inset-y-0 transition-all duration-500",
+                mode === 'over' ? "left-0 bg-red-500/20" : "right-0 bg-red-500/20"
+              )} 
+              style={{ width: mode === 'over' ? `${targetNumber}%` : `${100 - targetNumber}%` }}
+            />
+            {/* Zone de Victoire */}
+            <div 
+              className={cn(
+                "absolute inset-y-0 transition-all duration-500",
+                mode === 'over' ? "right-0 bg-green-500/20 shadow-[inset_0_0_20px_rgba(34,197,94,0.2)]" : "left-0 bg-green-500/20 shadow-[inset_0_0_20px_rgba(34,197,94,0.2)]"
+              )} 
+              style={{ width: mode === 'over' ? `${100 - targetNumber}%` : `${targetNumber}%` }}
+            />
 
-        {/* Statistiques du Flux */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-white/5 rounded-3xl p-4 text-center border border-white/5 shadow-inner">
-            <p className="text-[8px] font-black uppercase tracking-widest opacity-40 mb-1">Multiplicateur</p>
-            <p className="text-xl font-black italic">x{multiplier}</p>
+            {/* Le Curseur de Cible */}
+            <motion.div 
+              animate={{ left: `${targetNumber}%` }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="absolute inset-y-0 w-1 bg-white z-20 shadow-[0_0_15px_rgba(255,255,255,0.5)]"
+            />
+
+            {/* Marqueur de Résultat */}
+            <AnimatePresence>
+              {rolledNumber !== null && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "100%", opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className={cn(
+                    "absolute top-0 bottom-0 w-1.5 z-30 shadow-2xl",
+                    (mode === 'over' ? rolledNumber > targetNumber : rolledNumber < targetNumber) ? "bg-green-500" : "bg-red-500"
+                  )}
+                  style={{ left: `${rolledNumber}%` }}
+                >
+                  <div className="absolute top-[-12px] left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-current" style={{ color: 'inherit' }} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="absolute inset-0 flex justify-between px-4 items-center pointer-events-none opacity-10 text-[8px] font-black">
+              <span>0</span>
+              <span>25</span>
+              <span>50</span>
+              <span>75</span>
+              <span>100</span>
+            </div>
           </div>
-          <div className="bg-white/5 rounded-3xl p-4 text-center border border-white/5 shadow-inner">
-            <p className="text-[8px] font-black uppercase tracking-widest opacity-40 mb-1">Gain Possible</p>
-            <p className="text-xl font-black text-primary">+{potentialWin} <span className="text-[10px] opacity-40">PTS</span></p>
+
+          <div className="px-2 relative z-10">
+            <Slider 
+              value={[targetNumber]} 
+              onValueChange={(val) => { haptic.light(); setTargetNumber(val[0]); }}
+              min={2} 
+              max={98} 
+              step={1}
+              disabled={isRolling}
+              className="py-4"
+            />
           </div>
-          <div className="bg-white/5 rounded-3xl p-4 text-center border border-white/5 shadow-inner">
-            <p className="text-[8px] font-black uppercase tracking-widest opacity-40 mb-1">Chance</p>
-            <p className="text-xl font-black tabular-nums">{winChance}%</p>
-          </div>
-        </div>
+        </Card>
 
         {/* Panneau de Commandement */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-8">
-          <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[3rem] p-8 border border-white/5 space-y-10 shadow-2xl">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between px-2">
-                <div className="flex items-center gap-2">
-                  <Target className="h-4 w-4 text-primary opacity-40" />
-                  <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Ajuster le Destin</span>
-                </div>
-                <span className="text-xl font-black italic text-primary">{targetNumber}</span>
-              </div>
-              
-              <div className="px-2">
-                <Slider 
-                  value={[targetNumber]} 
-                  onValueChange={(val) => { haptic.light(); setTargetNumber(val[0]); }}
-                  min={1} 
-                  max={98} 
-                  step={1}
-                  className="py-4"
-                />
-                <div className="flex justify-between mt-2 opacity-20 text-[10px] font-black tabular-nums">
-                  <span>1</span>
-                  <span>25</span>
-                  <span>50</span>
-                  <span>75</span>
-                  <span>98</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={() => { haptic.light(); setMode('under'); }}
-                  className={cn(
-                    "h-16 rounded-2xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest border transition-all duration-500",
-                    mode === 'under' ? "bg-primary text-primary-foreground border-primary shadow-[0_0_30px_rgba(var(--primary-rgb),0.2)]" : "bg-white/5 border-white/5 opacity-40"
-                  )}
-                >
-                  <ChevronDown className="h-4 w-4" /> Inférieur
-                </button>
-                <button
-                  onClick={() => { haptic.light(); setMode('over'); }}
-                  className={cn(
-                    "h-16 rounded-2xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest border transition-all duration-500",
-                    mode === 'over' ? "bg-primary text-primary-foreground border-primary shadow-[0_0_30px_rgba(var(--primary-rgb),0.2)]" : "bg-white/5 border-white/5 opacity-40"
-                  )}
-                >
-                  <ChevronUp className="h-4 w-4" /> Supérieur
-                </button>
-              </div>
-            </div>
-          </Card>
-
           <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[3rem] p-8 border border-white/5 space-y-8 shadow-2xl">
+            <div className="flex gap-4">
+              <button
+                onClick={() => { haptic.light(); setMode('under'); }}
+                disabled={isRolling}
+                className={cn(
+                  "flex-1 h-16 rounded-2xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest border transition-all duration-500",
+                  mode === 'under' ? "bg-primary text-primary-foreground border-primary shadow-xl" : "bg-white/5 border-white/5 opacity-40"
+                )}
+              >
+                <ChevronDown className="h-4 w-4" /> Inférieur
+              </button>
+              <button
+                onClick={() => { haptic.light(); setMode('over'); }}
+                disabled={isRolling}
+                className={cn(
+                  "flex-1 h-16 rounded-2xl flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest border transition-all duration-500",
+                  mode === 'over' ? "bg-primary text-primary-foreground border-primary shadow-xl" : "bg-white/5 border-white/5 opacity-40"
+                )}
+              >
+                <ChevronUp className="h-4 w-4" /> Supérieur
+              </button>
+            </div>
+
             <div className="space-y-4">
               <div className="flex items-center justify-between px-2">
                 <div className="flex items-center gap-2">
@@ -291,21 +290,20 @@ export default function DicePage() {
                   <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Mise de Lumière</span>
                 </div>
               </div>
-              
               <div className="relative">
                 <Input 
                   type="number" 
                   value={betInput} 
                   onChange={e => setBetInput(e.target.value)}
+                  disabled={isRolling}
                   className="h-14 bg-black/40 border-none rounded-2xl text-center font-black text-xl shadow-inner"
                 />
                 <Edit3 className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-20" />
               </div>
-
               <div className="grid grid-cols-3 gap-2">
-                <button onClick={() => adjustBet('half')} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">/ 2</button>
-                <button onClick={() => adjustBet('double')} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">x 2</button>
-                <button onClick={() => adjustBet('max')} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">Max</button>
+                <button onClick={() => adjustBet('half')} disabled={isRolling} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10 transition-all">/ 2</button>
+                <button onClick={() => adjustBet('double')} disabled={isRolling} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10 transition-all">x 2</button>
+                <button onClick={() => adjustBet('max')} disabled={isRolling} className="h-10 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase hover:bg-white/10 transition-all">Max</button>
               </div>
             </div>
 
@@ -316,7 +314,7 @@ export default function DicePage() {
             >
               <div className="relative z-10 flex items-center gap-3">
                 {isRolling ? <Loader2 className="h-5 w-5 animate-spin" /> : <Dices className="h-5 w-5" />}
-                Lancer les Dés
+                Lancer le Sort
               </div>
               <motion.div 
                 animate={{ x: ["-100%", "200%"] }}
@@ -325,12 +323,33 @@ export default function DicePage() {
               />
             </Button>
           </Card>
+
+          <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[3rem] p-8 border border-white/5 space-y-6 shadow-2xl h-fit">
+            <div className="flex items-center gap-2 px-2">
+              <History className="h-4 w-4 text-primary opacity-40" />
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Derniers Lancers</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {rollHistory.length === 0 ? (
+                <p className="text-[9px] font-bold opacity-20 uppercase py-10 w-full text-center">Aucun flux enregistré</p>
+              ) : rollHistory.map((h, i) => (
+                <motion.div 
+                  key={i} 
+                  initial={{ scale: 0 }} 
+                  animate={{ scale: 1 }}
+                  className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/5 text-[10px] font-black tabular-nums opacity-60"
+                >
+                  {h.toFixed(2)}
+                </motion.div>
+              ))}
+            </div>
+          </Card>
         </div>
 
         <div className="p-8 bg-primary/5 rounded-[3rem] border border-white/5 text-center space-y-3 relative overflow-hidden shadow-inner">
           <Sparkles className="h-6 w-6 mx-auto text-primary opacity-10" />
           <p className="text-[11px] leading-relaxed font-medium opacity-40 italic px-4">
-            "Le hasard est un langage que seuls les esprits précis peuvent déchiffrer. Calibrez votre intention."
+            "Le Harshad Dice est la balance parfaite entre le risque et la raison. Domptez la piste."
           </p>
           <div className="absolute -bottom-10 -left-10 h-32 w-32 bg-primary/5 blur-[80px] rounded-full" />
         </div>
