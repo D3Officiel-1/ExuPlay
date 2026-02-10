@@ -30,6 +30,7 @@ import confetti from "canvas-confetti";
 /**
  * @fileOverview CoinFlip de l'Éveil v2.0 - L'Arène de la Dualité.
  * Jeu de pile ou face ultra-immersif avec animation 3D et mécanique de série cumulative.
+ * Version purifiée : Seuls les symboles de lumière gravitent.
  */
 
 const MIN_BET = 5;
@@ -98,7 +99,7 @@ export default function CoinFlipPage() {
     setSelectedSide(side);
     setStatus('flipping');
 
-    // Simulation du destin (le hasard est simulé ici pour la réactivité, mais le gain est ancré en DB au cashout)
+    // Simulation du destin
     setTimeout(() => {
       const result: Side = Math.random() > 0.5 ? 'face' : 'pile';
       const isWon = result === side;
@@ -124,7 +125,7 @@ export default function CoinFlipPage() {
           setSelectedSide(null);
         }, 2000);
       }
-    }, 1800); // Temps de l'animation de vol
+    }, 1800); 
   };
 
   const handleCashout = async () => {
@@ -163,7 +164,7 @@ export default function CoinFlipPage() {
   };
 
   const adjustBet = (action: 'half' | 'double' | 'plus' | 'minus') => {
-    if (streak > 0) return; // Verrouillage pendant la série
+    if (streak > 0) return; 
     haptic.light();
     let val = parseInt(betInput) || 0;
     if (action === 'half') val = Math.floor(val / 2);
@@ -175,7 +176,6 @@ export default function CoinFlipPage() {
 
   return (
     <div className="min-h-screen bg-[#020617] text-white flex flex-col pb-32 overflow-hidden selection:bg-primary/30">
-      {/* Header Cinématique */}
       <header className="fixed top-0 left-0 right-0 z-50 p-6 flex items-center justify-between bg-background/5 backdrop-blur-xl border-b border-white/5">
         <Button 
           variant="ghost" 
@@ -196,13 +196,12 @@ export default function CoinFlipPage() {
       </header>
 
       <main className="flex-1 p-6 pt-28 flex flex-col items-center gap-12 max-w-lg mx-auto w-full relative">
-        {/* Background Orbs */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-1/4 -left-20 w-64 h-64 bg-primary/5 rounded-full blur-[100px] animate-pulse" />
           <div className="absolute bottom-1/4 -right-20 w-64 h-64 bg-blue-500/5 rounded-full blur-[100px] animate-pulse" />
         </div>
 
-        {/* L'ARTEFACT 3D (PIÈCE) */}
+        {/* L'ARTEFACT 3D PURIFIÉ (SANS FOND) */}
         <div className="relative h-72 w-72 flex items-center justify-center perspective-1000">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.1),transparent_70%)] animate-pulse" />
           
@@ -223,30 +222,22 @@ export default function CoinFlipPage() {
             className="relative w-52 h-52 preserve-3d"
             style={{ transformStyle: 'preserve-3d' }}
           >
-            {/* FACE PILE (OR) */}
-            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-200 via-yellow-500 to-yellow-700 border-4 border-yellow-300/30 flex flex-col items-center justify-center shadow-[0_0_60px_rgba(234,179,8,0.4)] backface-hidden">
-              <div className="absolute inset-2 border-2 border-dashed border-yellow-200/20 rounded-full" />
-              <span className="text-6xl font-black text-yellow-950/20 italic select-none">PILE</span>
-              <Coins className="h-14 w-14 text-yellow-950/10 mt-2" />
-              <motion.div 
-                animate={{ rotate: 360 }}
-                transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent pointer-events-none opacity-40"
-              />
+            {/* FACE PILE (LUMIÈRE OR) */}
+            <div className="absolute inset-0 rounded-full bg-transparent flex flex-col items-center justify-center backface-hidden">
+              <span className="text-6xl font-black text-yellow-500 italic select-none drop-shadow-[0_0_20px_rgba(234,179,8,0.5)]">PILE</span>
+              <Coins className="h-14 w-14 text-yellow-500/30 mt-2" />
             </div>
             
-            {/* FACE FACE (ARGENT) */}
+            {/* FACE FACE (LUMIÈRE ARGENT) */}
             <div 
-              className="absolute inset-0 rounded-full bg-gradient-to-br from-slate-100 via-slate-400 to-slate-600 border-4 border-white/30 flex flex-col items-center justify-center shadow-[0_0_60px_rgba(255,255,255,0.2)] backface-hidden" 
+              className="absolute inset-0 rounded-full bg-transparent flex flex-col items-center justify-center backface-hidden" 
               style={{ transform: 'rotateY(180deg)' }}
             >
-              <div className="absolute inset-2 border-2 border-dashed border-slate-200/20 rounded-full" />
-              <span className="text-6xl font-black text-slate-950/20 italic select-none">FACE</span>
-              <Coins className="h-14 w-14 text-slate-950/10 mt-2" />
+              <span className="text-6xl font-black text-slate-200 italic select-none drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]">FACE</span>
+              <Coins className="h-14 w-14 text-slate-200/30 mt-2" />
             </div>
           </motion.div>
 
-          {/* Halo de résultat */}
           <AnimatePresence>
             {status === 'result' && (
               <motion.div
@@ -262,12 +253,10 @@ export default function CoinFlipPage() {
           </AnimatePresence>
         </div>
 
-        {/* PANNEAU DE CONTRÔLE */}
         <div className="w-full space-y-8 relative z-10">
           <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[3rem] p-8 border border-white/5 shadow-2xl space-y-8 relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
             
-            {/* MISE & ACTIONS RAPIDES */}
             <div className="space-y-4">
               <div className="flex items-center justify-between px-2">
                 <div className="flex items-center gap-2">
@@ -325,7 +314,6 @@ export default function CoinFlipPage() {
               </div>
             </div>
 
-            {/* BOUTONS DE DESTIN */}
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => handleFlip('pile')}
@@ -371,7 +359,6 @@ export default function CoinFlipPage() {
             </div>
           </Card>
 
-          {/* BARRE DE SÉRIE / MULTIPLICATEURS */}
           <div className="space-y-4">
             <div className="flex items-center justify-between px-2">
               <div className="flex items-center gap-2">
@@ -404,7 +391,6 @@ export default function CoinFlipPage() {
             </div>
           </div>
 
-          {/* BOUTON RETIRER (CASHOUT) - L'ACTION FINALE */}
           <AnimatePresence>
             {streak > 0 && status !== 'flipping' && (
               <motion.div
@@ -430,7 +416,7 @@ export default function CoinFlipPage() {
                   <motion.div 
                     animate={{ x: ["-100%", "200%"] }}
                     transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12"
                   />
                 </Button>
               </motion.div>
@@ -438,7 +424,6 @@ export default function CoinFlipPage() {
           </AnimatePresence>
         </div>
 
-        {/* Footer Poétique */}
         <div className="p-8 bg-primary/5 rounded-[3rem] border border-primary/10 text-center space-y-3 relative overflow-hidden w-full">
           <ShieldCheck className="h-6 w-6 mx-auto text-primary opacity-10" />
           <p className="text-[11px] leading-relaxed font-medium opacity-40 italic px-4">
