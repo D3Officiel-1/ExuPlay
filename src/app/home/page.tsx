@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -249,7 +248,7 @@ export default function HomePage() {
 
         <div className="p-8 bg-primary/5 rounded-[3rem] border border-primary/5 text-center space-y-3 relative overflow-hidden w-full">
           <p className="text-[11px] leading-relaxed font-medium opacity-40 italic">
-            "Le savoir n'est qu'un des chemins. L'adresse et la vitesse forgent aussi l'esprit."
+            "Le hasard n'est qu'une loi que l'on ne comprend pas encore."
           </p>
         </div>
       </main>

@@ -1,5 +1,12 @@
-import { redirect } from "next/navigation";
+"use client";
 
-export default function QuizRedirectPage() {
-  redirect("/home");
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+export default function QuizDissolutionPage() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/home");
+  }, [router]);
+  return null;
 }

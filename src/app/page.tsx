@@ -9,7 +9,7 @@ import { doc, getDoc } from "firebase/firestore";
 
 /**
  * @fileOverview Page de démarrage (Splash Screen) avec redirection intelligente.
- * Gère l'accueil des utilisateurs et les oriente selon leur état de connexion et d'autorisation.
+ * Reconstruction purifiée pour dissiper les erreurs de chunk.
  */
 
 export default function SplashPage() {
@@ -19,7 +19,6 @@ export default function SplashPage() {
   const [isMinDisplayTimeOver, setIsMinDisplayTimeOver] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
 
-  // Temps d'affichage minimal pour le branding et l'immersion
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsMinDisplayTimeOver(true);
@@ -27,7 +26,6 @@ export default function SplashPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Logique de navigation consolidée
   useEffect(() => {
     if (isMinDisplayTimeOver && !authLoading && !isNavigating) {
       const performNavigation = async () => {
@@ -39,23 +37,20 @@ export default function SplashPage() {
         }
 
         try {
-          // On vérifie l'état réel de l'utilisateur dans Firestore
           const userDoc = await getDoc(doc(db, "users", user.uid));
           
           if (!userDoc.exists()) {
-            // Cas rare: authentifié mais profil non créé
             router.push("/login");
             return;
           }
 
           const userData = userDoc.data();
-          // Désormais, seule la caméra est requise pour l'accès complet
           const isFullyAuthorized = userData?.cameraAuthorized === true;
 
           const nextPath = isFullyAuthorized ? "/home" : "/autoriser";
           router.push(nextPath);
         } catch (error) {
-          console.error("Erreur lors de la redirection du splash:", error);
+          console.error("Dissonance lors de la redirection:", error);
           router.push("/login");
         }
       };
@@ -93,7 +88,6 @@ export default function SplashPage() {
             }}
             className="flex flex-col items-center justify-center w-full h-full"
           >
-            {/* Arrière-plan éthéré et dynamique */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
               {[...Array(6)].map((_, i) => (
                 <motion.div
@@ -122,7 +116,6 @@ export default function SplashPage() {
               </motion.div>
             </div>
 
-            {/* Logo Central */}
             <div className="z-10 flex flex-col items-center px-6">
               <motion.div
                 initial={{ opacity: 0, scale: 0.8, y: 20, filter: "blur(10px)" }}
@@ -144,7 +137,6 @@ export default function SplashPage() {
                 </motion.div>
               </motion.div>
 
-              {/* Barre de chargement épurée */}
               <motion.div 
                 className="mt-16 w-40 h-[2px] bg-primary/5 relative overflow-hidden rounded-full"
                 initial={{ opacity: 0, width: 0 }}
