@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -16,7 +15,7 @@ import {
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Zap, Users, Sparkles, Trophy, Swords, Flag, ChevronRight, Rocket, Bomb, Ticket, Coins, Dices, RefreshCw, Gift } from "lucide-react";
+import { Zap, Users, Sparkles, Trophy, Swords, Flag, ChevronRight, Rocket, Bomb, Ticket, Coins, Dices, RefreshCw, Gift, Hash } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
