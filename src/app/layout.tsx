@@ -1,4 +1,3 @@
-
 "use client";
 
 import "./globals.css";
@@ -15,7 +14,6 @@ import { AdminPendingExchangeOverlay } from "@/components/AdminPendingExchangeOv
 import { DuelInvitationListener } from "@/components/DuelInvitationListener";
 import { IncomingTransferOverlay } from "@/components/IncomingTransferOverlay";
 import { TextSelectionMenu } from "@/components/TextSelectionMenu";
-import { QuizAutoGenerator } from "@/components/QuizAutoGenerator";
 import { doc, getDoc } from "firebase/firestore";
 import { useTheme } from "next-themes";
 import { Logo } from "@/components/Logo";
@@ -166,7 +164,6 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
         <AdminPendingExchangeOverlay />
         <IncomingTransferOverlay />
         <DuelInvitationListener />
-        <QuizAutoGenerator />
         <TextSelectionMenu />
         {showNav && <Header />}
         <PageTransition>{children}</PageTransition>

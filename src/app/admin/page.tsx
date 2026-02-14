@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -9,8 +8,6 @@ import {
   serverTimestamp,
   query,
   orderBy, 
-  addDoc,
-  deleteDoc,
   updateDoc,
   setDoc,
   increment,
@@ -36,7 +33,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter
 } from "@/components/ui/dialog";
 import { 
   Select,
@@ -51,28 +47,17 @@ import {
   Loader2, 
   ChevronLeft,
   Settings2,
-  Plus,
-  Trash2,
-  Edit3,
   Search,
-  Sparkles,
   ShieldCheck,
   Zap,
   ArrowUpRight,
-  CheckCircle2,
-  Circle,
   Save,
-  Wand2,
   Calendar,
   Smartphone,
   Shield,
   RefreshCw,
-  Database,
-  Banknote,
   Activity,
   Trophy,
-  Copy,
-  Filter,
   Megaphone,
   Percent,
   Lock,
@@ -83,7 +68,6 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
-import { generateQuiz } from "@/ai/flows/generate-quiz-flow";
 import { haptic } from "@/lib/haptics";
 import { 
   ResponsiveContainer,
@@ -104,21 +88,6 @@ export default function AdminPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [newQuiz, setNewQuiz] = useState({
-    question: "",
-    options: ["", "", "", ""],
-    correctIndex: 0,
-    points: 10
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  
-  const [selectedQuizForView, setSelectedQuizForView] = useState<any | null>(null);
-  const [isEditingQuiz, setIsEditingQuiz] = useState(false);
-  const [editedQuiz, setEditedQuiz] = useState<any>(null);
-
-  const [selectedUserForView, setSelectedUserForView] = useState<any | null>(null);
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
   
   // États Système
@@ -134,9 +103,8 @@ export default function AdminPage() {
   const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [isResettingGoal, setIsResettingGoal] = useState(false);
 
-  const [quizSearch, setQuizSearch] = useState("");
   const [userSearch, setUserSearch] = useState("");
-  const [pointsFilter, setPointsFilter] = useState("all");
+  const [selectedUserForView, setSelectedUserForView] = useState<any | null>(null);
 
   const userDocRef = useMemo(() => {
     if (!db || !user?.uid) return null;
@@ -156,31 +124,24 @@ export default function AdminPage() {
     return query(collection(db, "users"), orderBy("createdAt", "desc"));
   }, [db]);
 
-  const quizzesQuery = useMemo(() => {
-    if (!db) return null;
-    return query(collection(db, "quizzes"), orderBy("createdAt", "desc"));
-  }, [db]);
-
   const exchangesQuery = useMemo(() => {
     if (!db) return null;
     return query(collection(db, "exchanges"), orderBy("requestedAt", "desc"));
   }, [db]);
 
   const { data: users, loading: usersLoading } = useCollection(usersQuery);
-  const { data: quizzes, loading: quizzesLoading } = useCollection(quizzesQuery);
   const { data: exchanges, loading: exchangesLoading } = useCollection(exchangesQuery);
 
   const globalMetrics = useMemo(() => {
-    if (!users || !quizzes || !exchanges) return { totalUsers: 0, totalPoints: 0, totalQuizzes: 0, pendingExchanges: 0, totalExchangedFCFA: 0 };
+    if (!users || !exchanges) return { totalUsers: 0, totalPoints: 0, pendingExchanges: 0, totalExchangedFCFA: 0 };
     
     const totalUsers = users.length;
-    const totalQuizzes = quizzes.length;
     const totalPoints = users.reduce((acc, u) => acc + (u.totalPoints || 0), 0);
     const pendingExchanges = exchanges.filter(e => e.status === 'pending').length;
     const totalExchangedFCFA = exchanges.filter(e => e.status === 'completed').reduce((acc, e) => acc + (e.amount || 0), 0);
 
-    return { totalUsers, totalPoints, totalQuizzes, pendingExchanges, totalExchangedFCFA };
-  }, [users, quizzes, exchanges]);
+    return { totalUsers, totalPoints, pendingExchanges, totalExchangedFCFA };
+  }, [users, exchanges]);
 
   const topSpirits = useMemo(() => {
     if (!users) return [];
@@ -199,24 +160,6 @@ export default function AdminPage() {
       if (appStatus.dailyTransferLimitTrusted !== undefined) setTrustedLimitInput(appStatus.dailyTransferLimitTrusted.toString());
     }
   }, [appStatus]);
-
-  const filteredQuizzes = useMemo(() => {
-    if (!quizzes) return [];
-    let result = quizzes;
-    
-    const q = quizSearch.toLowerCase().trim();
-    if (q) {
-      result = result.filter(quiz => quiz.question.toLowerCase().includes(q));
-    }
-
-    if (pointsFilter !== "all") {
-      if (pointsFilter === "low") result = result.filter(quiz => quiz.points <= 3);
-      else if (pointsFilter === "med") result = result.filter(quiz => quiz.points > 3 && quiz.points <= 7);
-      else if (pointsFilter === "high") result = result.filter(quiz => quiz.points > 7);
-    }
-
-    return result;
-  }, [quizzes, quizSearch, pointsFilter]);
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
@@ -339,152 +282,6 @@ export default function AdminPage() {
     });
   };
 
-  const handleAiGenerate = async (isForEdit: boolean = false) => {
-    setIsGenerating(true);
-    haptic.light();
-    try {
-      const result = await generateQuiz({});
-      if (result) {
-        if (isForEdit) {
-          setEditedQuiz({
-            ...editedQuiz,
-            question: result.question,
-            options: result.options,
-            correctIndex: result.correctIndex,
-            points: result.points
-          });
-        } else {
-          setNewQuiz({
-            question: result.question,
-            options: result.options,
-            correctIndex: result.correctIndex,
-            points: result.points
-          });
-        }
-        haptic.success();
-      } else {
-        haptic.error();
-        toast({
-          variant: "destructive",
-          title: "Silence de l'Oracle",
-          description: "Le flux de pensée est temporairement saturé. Réessayez dans quelques instants."
-        });
-      }
-    } catch (error) {
-      haptic.error();
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleAddQuiz = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!db || isSubmitting) return;
-    
-    if (newQuiz.question.trim() === "" || newQuiz.options.some(o => o.trim() === "")) {
-      haptic.error();
-      return;
-    }
-
-    setIsSubmitting(true);
-    const quizData = {
-      ...newQuiz,
-      playedCount: 0,
-      createdAt: serverTimestamp()
-    };
-
-    addDoc(collection(db, "quizzes"), quizData)
-    .then(() => {
-      haptic.success();
-      setNewQuiz({ question: "", options: ["", "", "", ""], correctIndex: 0, points: 10 });
-      setIsAddDialogOpen(false);
-    })
-    .catch((error) => {
-      const permissionError = new FirestorePermissionError({
-        path: 'quizzes',
-        operation: 'create',
-        requestResourceData: quizData,
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
-    })
-    .finally(() => {
-      setIsSubmitting(false);
-    });
-  };
-
-  const handleDuplicateQuiz = (e: React.MouseEvent, q: any) => {
-    e.stopPropagation();
-    if (!db) return;
-    haptic.medium();
-    
-    const quizData = {
-      question: `${q.question} (Copie)`,
-      options: [...q.options],
-      correctIndex: q.correctIndex,
-      points: q.points,
-      playedCount: 0,
-      createdAt: serverTimestamp()
-    };
-
-    addDoc(collection(db, "quizzes"), quizData)
-    .then(() => {
-      toast({ title: "Défi dupliqué avec succès" });
-    })
-    .catch((error) => {
-      const permissionError = new FirestorePermissionError({
-        path: 'quizzes',
-        operation: 'create',
-        requestResourceData: quizData,
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
-    });
-  };
-
-  const handleSelectQuiz = (q: any) => {
-    haptic.light();
-    setSelectedQuizForView(q);
-    setIsEditingQuiz(false);
-  };
-
-  const handleStartEdit = () => {
-    haptic.light();
-    setEditedQuiz({ ...selectedQuizForView });
-    setIsEditingQuiz(true);
-  };
-
-  const handleSaveEdit = () => {
-    if (!db || !selectedQuizForView?.id || !editedQuiz || isSubmitting) return;
-    
-    setIsSubmitting(true);
-    haptic.medium();
-    const quizRef = doc(db, "quizzes", selectedQuizForView.id);
-    const updateData = {
-      question: editedQuiz.question,
-      options: editedQuiz.options,
-      correctIndex: editedQuiz.correctIndex,
-      points: editedQuiz.points,
-      updatedAt: serverTimestamp()
-    };
-
-    updateDoc(quizRef, updateData)
-    .then(() => {
-      haptic.success();
-      setSelectedQuizForView({ ...editedQuiz, id: selectedQuizForView.id });
-      setIsEditingQuiz(false);
-    })
-    .catch((error) => {
-      const permissionError = new FirestorePermissionError({
-        path: quizRef.path,
-        operation: 'update',
-        requestResourceData: updateData,
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
-    })
-    .finally(() => {
-      setIsSubmitting(false);
-    });
-  };
-
   const handleSelectUser = (u: any) => {
     haptic.light();
     setSelectedUserForView(u);
@@ -579,12 +376,9 @@ export default function AdminPage() {
         </div>
 
         <Tabs defaultValue="stats" className="space-y-6 md:space-y-8">
-          <TabsList className="bg-card/40 backdrop-blur-3xl border border-primary/5 p-1 h-12 md:h-14 rounded-2xl grid grid-cols-4">
+          <TabsList className="bg-card/40 backdrop-blur-3xl border border-primary/5 p-1 h-12 md:h-14 rounded-2xl grid grid-cols-3">
             <TabsTrigger value="stats" className="rounded-xl font-black text-xs uppercase tracking-wider">
               <BarChart3 className="h-4 w-4 mr-2" /> Stats
-            </TabsTrigger>
-            <TabsTrigger value="quizzes" className="rounded-xl font-black text-xs uppercase tracking-wider">
-              <Plus className="h-4 w-4 mr-2" /> Défis
             </TabsTrigger>
             <TabsTrigger value="system" className="rounded-xl font-black text-xs uppercase tracking-wider">
               <Settings2 className="h-4 w-4 mr-2" /> Système
@@ -595,11 +389,10 @@ export default function AdminPage() {
           </TabsList>
 
           <TabsContent value="stats" className="space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {[
                 { label: "Esprits", value: globalMetrics.totalUsers, icon: Users, color: "text-blue-500" },
                 { label: "Lumière", value: globalMetrics.totalPoints.toLocaleString(), icon: Zap, color: "text-yellow-500" },
-                { label: "Savoir", value: globalMetrics.totalQuizzes, icon: Database, color: "text-purple-500" },
                 { label: "Retraits", value: globalMetrics.pendingExchanges, icon: Banknote, color: "text-orange-500" }
               ].map((m, i) => (
                 <Card key={i} className="border-none bg-card/40 backdrop-blur-3xl rounded-[1.5rem] p-4 flex flex-col items-center justify-center text-center space-y-2">
@@ -660,153 +453,6 @@ export default function AdminPage() {
                   ))}
                 </CardContent>
               </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="quizzes" className="space-y-6 md:space-y-8">
-            <div className="flex flex-col gap-6 px-1">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <h3 className="text-xs font-black uppercase tracking-widest opacity-40">Base de Données</h3>
-                  <div className="bg-primary/5 px-2 py-0.5 rounded-full border border-primary/5">
-                    <span className="text-[10px] font-black text-primary">{quizzes?.length || 0} DÉFIS</span>
-                  </div>
-                </div>
-                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                  <Button onClick={() => { haptic.light(); setIsAddDialogOpen(true); }} className="h-10 px-4 rounded-2xl font-black text-xs uppercase tracking-widest gap-2">
-                    <Plus className="h-4 w-4" /> Nouveau défi
-                  </Button>
-                  <DialogContent className="sm:max-w-[600px] bg-card/95 backdrop-blur-2xl rounded-[2.5rem] p-8 border-none">
-                    <DialogHeader>
-                      <div className="flex justify-between items-start">
-                        <div className="space-y-1">
-                          <DialogTitle className="text-2xl font-black tracking-tight">Nouveau Défi</DialogTitle>
-                          <p className="text-sm font-medium opacity-60">Créez une nouvelle épreuve.</p>
-                        </div>
-                        <Button type="button" variant="secondary" onClick={() => handleAiGenerate(false)} disabled={isGenerating} className="h-10 px-4 rounded-xl font-black text-[10px] uppercase gap-2 bg-primary/5">
-                          {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3 text-primary" />}
-                          IA
-                        </Button>
-                      </div>
-                    </DialogHeader>
-                    <form onSubmit={handleAddQuiz} className="space-y-6 pt-6">
-                      <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest opacity-40">La Question</Label>
-                        <Textarea placeholder="Ex: Quelle est l'essence du désir ?" className="min-h-[100px] rounded-2xl" value={newQuiz.question} onChange={e => setNewQuiz({...newQuiz, question: e.target.value})} />
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {newQuiz.options.map((opt, idx) => (
-                          <div key={idx} className="space-y-2">
-                            <div className="flex justify-between items-center">
-                              <Label className="text-xs font-black uppercase tracking-widest opacity-40">Option {idx + 1}</Label>
-                              <input type="radio" name="correct" checked={newQuiz.correctIndex === idx} onChange={() => { haptic.light(); setNewQuiz({...newQuiz, correctIndex: idx}); }} />
-                            </div>
-                            <Input placeholder={`Réponse ${idx + 1}`} className="h-12 rounded-xl" value={opt} onChange={e => {
-                              const newOpts = [...newQuiz.options];
-                              newOpts[idx] = e.target.value;
-                              setNewQuiz({...newQuiz, options: newOpts});
-                            }} />
-                          </div>
-                        ))}
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest opacity-40">Points (0-10)</Label>
-                        <Input type="number" min="0" max="10" className="h-12 rounded-xl" value={newQuiz.points} onChange={e => setNewQuiz({...newQuiz, points: parseInt(e.target.value) || 0})} />
-                      </div>
-                      <DialogFooter className="pt-6">
-                        <Button type="submit" disabled={isSubmitting || isGenerating} className="w-full h-14 rounded-2xl font-black text-sm uppercase shadow-xl">
-                          {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Publier le défi"}
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 opacity-40" />
-                  <Input placeholder="Rechercher une question..." className="pl-12 h-12 bg-card/20 border-none rounded-2xl" value={quizSearch} onChange={(e) => setQuizSearch(e.target.value)} />
-                </div>
-                <div className="flex items-center gap-3">
-                  <Filter className="h-4 w-4 opacity-40 shrink-0" />
-                  <Select value={pointsFilter} onValueChange={setPointsFilter}>
-                    <SelectTrigger className="h-12 rounded-2xl bg-card/20 border-none px-6 font-bold">
-                      <SelectValue placeholder="Difficulté" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-card/95 backdrop-blur-2xl rounded-2xl border-primary/5">
-                      <SelectItem value="all" className="font-bold">Toute intensité</SelectItem>
-                      <SelectItem value="low" className="font-bold text-blue-500">Faible (0-3 PTS)</SelectItem>
-                      <SelectItem value="med" className="font-bold text-yellow-500">Modérée (4-7 PTS)</SelectItem>
-                      <SelectItem value="high" className="font-bold text-red-500">Élevée (8-10 PTS)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {quizzesLoading ? <div className="flex justify-center p-16"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div> : (
-                <div className="grid gap-4">
-                  <AnimatePresence mode="popLayout">
-                    {filteredQuizzes.map(q => {
-                      const difficultyColor = q.points <= 3 ? "text-blue-500" : q.points <= 7 ? "text-yellow-500" : "text-red-500";
-                      return (
-                        <motion.div
-                          key={q.id}
-                          layout
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.9 }}
-                        >
-                          <Card 
-                            onClick={() => handleSelectQuiz(q)}
-                            className="border-none bg-card/20 backdrop-blur-3xl rounded-2xl group hover:bg-card/40 transition-all cursor-pointer overflow-hidden relative"
-                          >
-                            <div className={cn("absolute left-0 top-0 bottom-0 w-1", difficultyColor.replace('text-', 'bg-'))} />
-                            <CardContent className="p-4 flex items-center justify-between gap-4">
-                              <div className="space-y-1 flex-1 overflow-hidden ml-2">
-                                <p className="text-sm font-black line-clamp-2">{q.question}</p>
-                                <div className="flex items-center gap-3">
-                                  <div className={cn("flex items-center gap-1 font-black text-[9px] uppercase", difficultyColor)}>
-                                    <Zap className="h-3 w-3" />
-                                    {q.points} PTS
-                                  </div>
-                                  <span className="text-[9px] font-bold opacity-30 uppercase">{q.playedCount || 0} RÉSONANCES</span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  onClick={(e) => handleDuplicateQuiz(e, q)}
-                                  className="h-10 w-10 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl hover:bg-primary/5"
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  onClick={(e) => { e.stopPropagation(); haptic.medium(); deleteDoc(doc(db, "quizzes", q.id)); }} 
-                                  className="h-10 w-10 text-destructive rounded-xl hover:bg-destructive/5"
-                                >
-                                  <Trash2 className="h-5 w-5" />
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </motion.div>
-                      );
-                    })}
-                  </AnimatePresence>
-                  {filteredQuizzes.length === 0 && (
-                    <div className="py-20 text-center opacity-20 space-y-4">
-                      <Search className="h-12 w-12 mx-auto" />
-                      <p className="text-xs font-black uppercase tracking-widest">Aucun défi ne résonne ici</p>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           </TabsContent>
 
@@ -1004,221 +650,6 @@ export default function AdminPage() {
         </Tabs>
       </main>
 
-      <Dialog open={!!selectedQuizForView} onOpenChange={(open) => !open && (setSelectedQuizForView(null), setIsEditingQuiz(false))}>
-        <DialogContent className="sm:max-w-[600px] bg-card/95 backdrop-blur-2xl rounded-[2.5rem] p-8 max-h-[90vh] overflow-y-auto border-none">
-          <DialogHeader>
-            <div className="flex justify-between items-center w-full">
-              <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">
-                  {isEditingQuiz ? "Édition du Défi" : "Fiche d'Épreuve"}
-                </p>
-                <DialogTitle className="text-2xl font-black tracking-tight">
-                  {isEditingQuiz ? "Harmonisation" : "Détails du Défi"}
-                </DialogTitle>
-              </div>
-              {isEditingQuiz && (
-                <Button 
-                  type="button" 
-                  variant="secondary" 
-                  onClick={() => handleAiGenerate(true)} 
-                  disabled={isGenerating} 
-                  className="h-10 px-4 rounded-xl font-black text-[10px] uppercase gap-2 bg-primary/5 shrink-0"
-                >
-                  {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3 text-primary" />}
-                  Inspiration IA
-                </Button>
-              )}
-            </div>
-          </DialogHeader>
-
-          {selectedQuizForView && (
-            <div className="space-y-8 py-6">
-              <AnimatePresence mode="wait">
-                {isEditingQuiz ? (
-                  <motion.div 
-                    key="edit-form"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="space-y-6"
-                  >
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">La Question</Label>
-                      <div className="relative">
-                        <Textarea 
-                          className="min-h-[120px] rounded-2xl bg-primary/5 border-none text-lg font-bold p-6 pr-12"
-                          value={editedQuiz?.question}
-                          onChange={e => setEditedQuiz({...editedQuiz, question: e.target.value})}
-                        />
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleAiGenerate(true)} 
-                          disabled={isGenerating}
-                          className="absolute right-4 bottom-4 h-8 w-8 rounded-lg bg-background shadow-sm border border-primary/5"
-                        >
-                          <Wand2 className="h-4 w-4 text-primary" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Options de Résonance</Label>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {editedQuiz?.options.map((opt: string, idx: number) => {
-                          return (
-                            <div key={idx} className="relative group">
-                              <Input 
-                                className={`h-14 rounded-2xl bg-primary/5 border-none pl-12 font-bold ${editedQuiz.correctIndex === idx ? 'ring-2 ring-green-500/30' : ''}`}
-                                value={opt}
-                                onChange={e => {
-                                  const newOpts = [...editedQuiz.options];
-                                  newOpts[idx] = e.target.value;
-                                  setEditedQuiz({...editedQuiz, options: newOpts});
-                                }}
-                              />
-                              <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                                <input 
-                                  type="radio" 
-                                  name="edit-correct" 
-                                  checked={editedQuiz.correctIndex === idx} 
-                                  onChange={() => { haptic.light(); setEditedQuiz({...editedQuiz, correctIndex: idx}); }}
-                                  className="h-4 w-4 accent-primary"
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Points (0-10)</Label>
-                      <Input 
-                        type="number"
-                        min="0"
-                        max="10"
-                        className="h-14 rounded-2xl bg-primary/5 border-none font-black text-xl text-center"
-                        value={editedQuiz?.points}
-                        onChange={e => setEditedQuiz({...editedQuiz, points: parseInt(e.target.value) || 0})}
-                      />
-                    </div>
-                  </motion.div>
-                ) : (
-                  <motion.div 
-                    key="view-content"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="space-y-8"
-                  >
-                    <div className="p-6 bg-primary/5 rounded-[2rem] border border-primary/5 shadow-inner">
-                      <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3">La Question</p>
-                      <p className="text-xl font-black leading-tight tracking-tight">{selectedQuizForView.question}</p>
-                    </div>
-
-                    <div className="space-y-4">
-                      <p className="text-[10px] font-black uppercase tracking-widest opacity-40 px-2">Options de Résonance</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {selectedQuizForView.options.map((opt: string, idx: number) => {
-                          const isCorrect = idx === selectedQuizForView.correctIndex;
-                          return (
-                            <div 
-                              key={idx} 
-                              className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
-                                isCorrect 
-                                  ? "bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400" 
-                                  : "bg-background/40 border-primary/5 opacity-60"
-                              }`}
-                            >
-                              {isCorrect ? <CheckCircle2 className="h-5 w-5 shrink-0" /> : <Circle className="h-5 w-5 shrink-0 opacity-20" />}
-                              <span className="font-bold text-sm leading-tight">{opt}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-6 bg-background rounded-[2rem] border border-primary/5 shadow-inner">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 bg-primary/5 rounded-xl flex items-center justify-center">
-                          <Zap className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Récompense</p>
-                          <p className="text-lg font-black">{selectedQuizForView.points} PTS <span className="text-[10px] opacity-30 tracking-normal">de Lumière</span></p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={(e) => handleDuplicateQuiz(e, selectedQuizForView)}
-                          className="h-12 w-12 rounded-2xl hover:bg-primary/5"
-                        >
-                          <Copy className="h-5 w-5" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => {
-                            haptic.medium();
-                            deleteDoc(doc(db, "quizzes", selectedQuizForView.id));
-                            setSelectedQuizForView(null);
-                          }}
-                          className="h-12 w-12 rounded-2xl text-destructive hover:bg-destructive/5"
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </Button>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-
-          <div className="pt-4 flex gap-3">
-            {isEditingQuiz ? (
-              <>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsEditingQuiz(false)}
-                  className="flex-1 h-14 rounded-2xl font-black text-xs uppercase tracking-widest"
-                >
-                  Annuler
-                </Button>
-                <Button 
-                  onClick={handleSaveEdit}
-                  disabled={isSubmitting || isGenerating}
-                  className="flex-[2] h-14 rounded-2xl font-black text-xs uppercase tracking-widest gap-2 shadow-xl shadow-primary/20"
-                >
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  Sauvegarder
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button 
-                  variant="outline"
-                  onClick={() => setSelectedQuizForView(null)}
-                  className="flex-1 h-14 rounded-2xl font-black text-xs uppercase tracking-widest"
-                >
-                  Fermer
-                </Button>
-                <Button 
-                  onClick={handleStartEdit}
-                  className="flex-[2] h-14 rounded-2xl font-black text-xs uppercase tracking-widest gap-2 shadow-xl shadow-primary/20"
-                >
-                  <Edit3 className="h-4 w-4" /> Modifier le défi
-                </Button>
-              </>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={!!selectedUserForView} onOpenChange={(open) => !open && setSelectedUserForView(null)}>
         <DialogContent className="sm:max-w-[500px] bg-card/95 backdrop-blur-2xl rounded-[2.5rem] p-8 max-h-[90vh] overflow-y-auto border-none">
           <DialogHeader>
@@ -1280,19 +711,15 @@ export default function AdminPage() {
                         <p className="text-sm font-black">Rôle Hiérarchique</p>
                         <p className="text-[10px] opacity-40">Pouvoirs administratifs</p>
                       </div>
-                      <Select 
+                      <select 
                         value={selectedUserForView.role || 'user'} 
-                        onValueChange={(val) => handleUpdateUserField(selectedUserForView.id, 'role', val)}
+                        onChange={(e) => handleUpdateUserField(selectedUserForView.id, 'role', e.target.value)}
                         disabled={isUpdatingUser}
+                        className="w-32 h-10 rounded-xl bg-background border-none font-black text-[10px] uppercase outline-none px-3"
                       >
-                        <SelectTrigger className="w-32 h-10 rounded-xl bg-background border-none font-black text-[10px] uppercase">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card/95 backdrop-blur-xl border-primary/5 rounded-xl">
-                          <SelectItem value="user" className="font-bold text-[10px] uppercase">Adepte</SelectItem>
-                          <SelectItem value="admin" className="font-bold text-[10px] uppercase">Maître</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        <option value="user">Adepte</option>
+                        <option value="admin">Maître</option>
+                      </select>
                     </div>
 
                     <div className="h-px bg-primary/5" />

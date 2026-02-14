@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
@@ -27,15 +26,10 @@ import {
   Check,
   X,
   Share2,
-  ShieldAlert,
   ChevronRight,
-  Users,
   QrCode,
   Zap,
-  History,
   Shield,
-  ShieldCheck,
-  Eye,
   Settings,
   Palette,
   Sparkles,
@@ -82,12 +76,6 @@ export default function ProfilPage() {
   const userDocRef = useMemo(() => (db && user?.uid) ? doc(db, "users", user.uid) : null, [db, user?.uid]);
   const { data: profile, loading } = useDoc(userDocRef);
 
-  const recentActivitiesQuery = useMemo(() => {
-    if (!db || !user?.uid) return null;
-    return query(collection(db, "transfers"), where("toId", "==", user.uid), orderBy("timestamp", "desc"), limit(3));
-  }, [db, user?.uid]);
-
-  const { data: recentActivities } = useCollection(recentActivitiesQuery);
   const currentTitle = useMemo(() => getHonorTitle(profile?.totalPoints || 0), [profile?.totalPoints]);
 
   useEffect(() => {
@@ -440,9 +428,8 @@ export default function ProfilPage() {
             <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-30">Lumière Totale</p>
             <h2 className="text-6xl font-black tabular-nums">{profile?.totalPoints?.toLocaleString() || 0}</h2>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Button onClick={() => router.push("/transfert")} className="h-20 rounded-[2.2rem] font-black text-[10px] uppercase gap-3 shadow-xl"><QrCode className="h-5 w-5" /> Transférer</Button>
-            <div className="bg-primary/5 rounded-[2.2rem] flex items-center justify-center gap-4"><span className="text-2xl font-black">{profile?.hintCount || 0}</span><Eye className="h-6 w-6 opacity-20" /></div>
+          <div className="flex justify-center">
+            <Button onClick={() => router.push("/transfert")} className="h-20 w-full rounded-[2.2rem] font-black text-[10px] uppercase gap-3 shadow-xl"><QrCode className="h-5 w-5" /> Transférer de la Lumière</Button>
           </div>
         </Card>
 
