@@ -63,6 +63,7 @@ import {
   Lock,
   ArrowRightLeft,
   Crown,
+  Banknote,
   X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
