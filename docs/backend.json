@@ -1,29 +1,6 @@
 
 {
   "entities": {
-    "UserFavorite": {
-      "title": "UserFavorite",
-      "description": "Favoris d'un utilisateur (Quiz ou défis)",
-      "type": "object",
-      "properties": {
-        "quizId": { "type": "string" },
-        "addedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["quizId", "addedAt"]
-    },
-    "QuizAttempt": {
-      "title": "QuizAttempt",
-      "description": "Enregistrement d'une tentative de quiz par l'utilisateur",
-      "type": "object",
-      "properties": {
-        "quizId": { "type": "string" },
-        "status": { "type": "string", "enum": ["started", "completed"] },
-        "score": { "type": "integer" },
-        "userAnswerIndex": { "type": "integer", "description": "Index de la réponse choisie par l'utilisateur" },
-        "attemptedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["quizId", "status", "attemptedAt"]
-    },
     "UserProfile": {
       "title": "UserProfile",
       "description": "Profil utilisateur avec informations personnelles et parrainage",
@@ -37,13 +14,10 @@
         "referredBy": { "type": "string", "description": "Code du parrain si applicable" },
         "referralRewardClaimed": { "type": "boolean", "description": "Si la prime de parrainage a été versée au parrain", "default": false },
         "totalPoints": { "type": "integer", "description": "Points totaux accumulés par l'utilisateur", "default": 0 },
-        "hintCount": { "type": "integer", "description": "Nombre d'indices de perception", "default": 0 },
-        "timeBoostCount": { "type": "integer", "description": "Nombre de sabliers d'éternité", "default": 0 },
-        "shieldCount": { "type": "integer", "description": "Nombre de sceaux de protection", "default": 0 },
-        "multiplierCount": { "type": "integer", "description": "Nombre de prismes de lumière", "default": 0 },
         "ownedThemes": { "type": "array", "items": { "type": "string" }, "description": "Liste des thèmes visuels possédés" },
         "profileImage": { "type": "string", "description": "Image de profil en format Base64" },
         "theme": { "type": "string", "description": "Préférence de thème de l'utilisateur", "enum": ["light", "dark", "system"] },
+        "activeTheme": { "type": "string", "description": "ID du thème visuel actif", "default": "default" },
         "customColor": { "type": "string", "description": "Couleur primaire personnalisée de l'utilisateur", "default": "default" },
         "customBgColor": { "type": "string", "description": "Couleur de fond personnalisée de l'utilisateur", "default": "default" },
         "createdAt": { "type": "string", "format": "date-time" },
@@ -75,53 +49,8 @@
         "transferFeePercent": { "type": "integer", "default": 10 },
         "exchangeFeePercent": { "type": "integer", "default": 1 },
         "dailyTransferLimitDefault": { "type": "integer", "default": 500 },
-        "dailyTransferLimitTrusted": { "type": "integer", "default": 2500 },
-        "lastAutoGenerationAt": { "type": "string", "format": "date-time" }
+        "dailyTransferLimitTrusted": { "type": "integer", "default": 2500 }
       }
-    },
-    "JetState": {
-      "title": "JetState",
-      "description": "État global synchronisé du jeu Jet de Lumière",
-      "type": "object",
-      "properties": {
-        "status": { "type": "string", "enum": ["waiting", "betting", "in_progress", "crashed"] },
-        "crashPoint": { "type": "number" },
-        "startTime": { "type": "string", "format": "date-time" },
-        "roundId": { "type": "string" },
-        "lastUpdate": { "type": "string", "format": "date-time" }
-      },
-      "required": ["status", "crashPoint", "startTime", "roundId"]
-    },
-    "DoubleState": {
-      "title": "DoubleState",
-      "description": "État global synchronisé du jeu Double de l'Éveil",
-      "type": "object",
-      "properties": {
-        "status": { "type": "string", "enum": ["betting", "spinning", "result"] },
-        "startTime": { "type": "string", "format": "date-time" },
-        "roundId": { "type": "string" },
-        "resultNumber": { "type": "number" },
-        "resultColor": { "type": "string" },
-        "lastUpdate": { "type": "string", "format": "date-time" }
-      },
-      "required": ["status", "startTime", "roundId"]
-    },
-    "Quiz": {
-      "title": "Quiz",
-      "description": "Une question de quiz avec options et réponse",
-      "type": "object",
-      "properties": {
-        "question": { "type": "string" },
-        "options": { 
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "correctIndex": { "type": "integer" },
-        "points": { "type": "integer", "default": 100 },
-        "playedCount": { "type": "integer", "default": 0, "description": "Nombre de fois que ce quiz a été terminé par des utilisateurs" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["question", "options", "correctIndex", "points"]
     },
     "Transfer": {
       "title": "Transfer",
@@ -161,26 +90,11 @@
       "properties": {
         "challengerId": { "type": "string" },
         "challengerName": { "type": "string" },
-        "challengerPhoto": { "type": "string" },
-        "participantIds": { "type": "array", "items": { "type": "string" }, "description": "Liste de tous les IDs incluant le challenger et les opposants" },
-        "participants": { 
-          "type": "object",
-          "description": "Map des états des participants",
-          "additionalProperties": {
-            "type": "object",
-            "properties": {
-              "name": { "type": "string" },
-              "photo": { "type": "string" },
-              "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
-              "result": { "type": "object", "properties": { "answered": { "type": "boolean" }, "correct": { "type": "boolean" }, "time": { "type": "number" } } }
-            }
-          }
-        },
+        "participantIds": { "type": "array", "items": { "type": "string" } },
+        "participants": { "type": "object" },
         "wager": { "type": "integer" },
-        "quizId": { "type": "string" },
         "status": { "type": "string", "enum": ["pending", "accepted", "active", "finished", "cancelled"] },
         "winnerId": { "type": "string" },
-        "round": { "type": "integer", "default": 1 },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["challengerId", "participantIds", "wager", "status", "createdAt"]
@@ -196,35 +110,11 @@
         "totalOdds": { "type": "number" },
         "potentialWin": { "type": "integer" },
         "status": { "type": "string", "enum": ["pending", "won", "lost"] },
-        "shareCode": { "type": "string", "description": "Code unique de partage généré automatiquement" },
+        "shareCode": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
-        "resolvedAt": { "type": "string", "format": "date-time" },
-        "selections": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "matchId": { "type": "string" },
-              "matchName": { "type": "string" },
-              "outcome": { "type": "string" },
-              "outcomeLabel": { "type": "string" },
-              "odd": { "type": "number" }
-            }
-          }
-        }
+        "selections": { "type": "array" }
       },
       "required": ["userId", "stake", "status", "createdAt", "selections"]
-    },
-    "SharedCoupon": {
-      "title": "SharedCoupon",
-      "description": "Un coupon partagé via un code unique",
-      "type": "object",
-      "properties": {
-        "code": { "type": "string" },
-        "selections": { "type": "array" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["code", "selections", "createdAt"]
     }
   },
   "auth": {
@@ -235,25 +125,9 @@
       "schema": "UserProfile",
       "description": "Profil de l'utilisateur"
     },
-    "/users/{userId}/attempts/{quizId}": {
-      "schema": "QuizAttempt",
-      "description": "Historique des quiz tentés par l'utilisateur"
-    },
     "/appConfig/status": {
       "schema": "AppStatus",
-      "description": "Statut global du système (Maintenance, objectifs communautaires, etc.)"
-    },
-    "/appConfig/jet": {
-      "schema": "JetState",
-      "description": "État synchronisé du Jet de Lumière"
-    },
-    "/appConfig/double": {
-      "schema": "DoubleState",
-      "description": "État synchronisé du Double de l'Éveil"
-    },
-    "/quizzes/{quizId}": {
-      "schema": "Quiz",
-      "description": "Collection des questions de quiz"
+      "description": "Statut global du système"
     },
     "/transfers/{transferId}": {
       "schema": "Transfer",
@@ -270,10 +144,6 @@
     "/bets/{betId}": {
       "schema": "Bet",
       "description": "Registres des pactes sportifs"
-    },
-    "/sharedCoupons/{couponId}": {
-      "schema": "SharedCoupon",
-      "description": "Dépôt des coupons partagés"
     }
   }
 }

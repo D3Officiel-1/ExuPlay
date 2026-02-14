@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
-import { useUser, useFirestore, useDoc, useCollection } from "@/firebase";
+import { useUser, useFirestore, useDoc } from "@/firebase";
 import { 
   doc, 
   updateDoc, 
@@ -11,25 +12,20 @@ import {
   query, 
   where, 
   getDocs, 
-  limit,
-  orderBy
+  limit
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { 
-  Copy, 
   Camera,
   Loader2,
   Edit2,
   Check,
   X,
   Share2,
-  ChevronRight,
   QrCode,
   Zap,
-  Shield,
   Settings,
   Palette,
   Sparkles,
@@ -40,7 +36,6 @@ import {
   User
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import Image from "next/image";
 import { haptic } from "@/lib/haptics";
 import { ProfilePhotoDialog } from "@/components/ProfilePhotoDialog";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
@@ -207,11 +202,9 @@ export default function ProfilPage() {
               ) : (
                 <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-3 w-full">
                   <div className="relative w-full max-w-[240px] h-14">
-                    {/* Calque visuel animé derrière l'input */}
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-xl font-black italic">
                       <EmojiOracle text={editedUsername} />
                     </div>
-                    {/* Input réel transparent */}
                     <input 
                       value={editedUsername} 
                       onChange={(e) => setEditedUsername(e.target.value.toLowerCase().replace(/[\s.,]/g, ''))} 
