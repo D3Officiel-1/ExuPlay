@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -28,14 +29,8 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 
-/**
- * @fileOverview Harshad Dice v5.1 - L'Équilibre Pur & Responsive.
- * Interface de précision avec piste de flux horizontale et historique des sorts.
- * Optimisé pour une lisibilité parfaite sur tous les terminaux.
- */
-
 const MIN_BET = 5;
-const RTP = 0.97; // 97% Retour au joueur (Standard Harshad)
+const RTP = 0.97; 
 
 type Mode = 'over' | 'under';
 
@@ -57,7 +52,6 @@ export default function DicePage() {
 
   const currentBet = Math.max(MIN_BET, parseInt(betInput) || 0);
 
-  // Calculs de probabilité Harshad
   const winChance = useMemo(() => {
     if (mode === 'over') return 100 - targetNumber;
     return targetNumber;
@@ -89,14 +83,15 @@ export default function DicePage() {
     setRolledNumber(null);
     haptic.medium();
 
+    const bonusReduction = Math.min(currentBet, profile.bonusBalance || 0);
+
     try {
-      // Déduire la mise
       await updateDoc(userDocRef, {
         totalPoints: increment(-currentBet),
+        bonusBalance: increment(-bonusReduction),
         updatedAt: serverTimestamp()
       });
 
-      // Simulation de la tension (Roulement)
       setTimeout(() => {
         finalizeRoll();
       }, 600);
@@ -160,7 +155,6 @@ export default function DicePage() {
       </header>
 
       <main className="flex-1 p-4 sm:p-6 pt-28 flex flex-col gap-8 max-w-4xl mx-auto w-full">
-        {/* L'Arène de Piste Pure Harshad */}
         <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[2.5rem] sm:rounded-[3rem] p-6 sm:p-12 border border-white/5 shadow-2xl relative overflow-hidden flex flex-col gap-8 sm:gap-12">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.05),transparent_70%)] pointer-events-none" />
           
@@ -194,9 +188,7 @@ export default function DicePage() {
             </div>
           </div>
 
-          {/* La Piste Horizontale Harshad */}
           <div className="relative h-10 sm:h-12 w-full bg-black/40 rounded-full border border-white/5 shadow-inner overflow-hidden">
-            {/* Zone de Perte */}
             <div 
               className={cn(
                 "absolute inset-y-0 transition-all duration-500",
@@ -204,7 +196,6 @@ export default function DicePage() {
               )} 
               style={{ width: mode === 'over' ? `${targetNumber}%` : `${100 - targetNumber}%` }}
             />
-            {/* Zone de Victoire */}
             <div 
               className={cn(
                 "absolute inset-y-0 transition-all duration-500",
@@ -213,14 +204,12 @@ export default function DicePage() {
               style={{ width: mode === 'over' ? `${100 - targetNumber}%` : `${targetNumber}%` }}
             />
 
-            {/* Le Curseur de Cible */}
             <motion.div 
               animate={{ left: `${targetNumber}%` }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
               className="absolute inset-y-0 w-1 bg-white z-20 shadow-[0_0_15px_rgba(255,255,255,0.5)]"
             />
 
-            {/* Marqueur de Résultat */}
             <AnimatePresence>
               {rolledNumber !== null && (
                 <motion.div
@@ -260,7 +249,6 @@ export default function DicePage() {
           </div>
         </Card>
 
-        {/* Panneau de Commandement */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-8">
           <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[2.5rem] sm:rounded-[3rem] p-6 sm:p-8 border border-white/5 space-y-8 shadow-2xl">
             <div className="flex gap-3 sm:gap-4">

@@ -46,11 +46,6 @@ import { useToast } from "@/hooks/use-toast";
 import { SportBetResolver } from "@/components/SportBetResolver";
 import { FloatingCouponButton } from "@/components/FloatingCouponButton";
 
-/**
- * @fileOverview Oracle du Sceau Global v4.0.
- * Gère le coupon avec génération automatique de code unique lors du placement.
- */
-
 function CouponOverlay() {
   const { selections, setSelections, isCouponOpen, setIsCouponOpen, betAmount, setBetAmount } = useSport();
   const { user } = useUser();
@@ -83,9 +78,10 @@ function CouponOverlay() {
     setIsProcessing(true); 
     haptic.medium();
     
-    // Génération automatique du code de partage
     const shareCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     
+    const bonusReduction = Math.min(currentStake, profile.bonusBalance || 0);
+
     const betData = { 
       userId: user?.uid, 
       username: profile.username, 
@@ -99,13 +95,14 @@ function CouponOverlay() {
     };
 
     try {
-      // 1. Déduire les points
-      await updateDoc(userDocRef, { totalPoints: increment(-currentStake), updatedAt: serverTimestamp() });
+      await updateDoc(userDocRef, { 
+        totalPoints: increment(-currentStake), 
+        bonusBalance: increment(-bonusReduction),
+        updatedAt: serverTimestamp() 
+      });
       
-      // 2. Enregistrer le pari
       await addDoc(collection(db, "bets"), betData);
       
-      // 3. Enregistrer le coupon partagé pour l'invocation par autrui
       await addDoc(collection(db, "sharedCoupons"), {
         code: shareCode,
         selections,

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState } from "react";
@@ -22,7 +23,6 @@ import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
 const STORE_ITEMS = [
-  // --- PRESTIGE ---
   {
     id: "verified_badge",
     type: "upgrade",
@@ -35,7 +35,6 @@ const STORE_ITEMS = [
     bg: "bg-primary/10",
     gradient: "from-primary/20 via-primary/5 to-transparent"
   },
-  // --- THÈMES ---
   {
     id: "theme_ruby",
     type: "theme",
@@ -100,9 +99,12 @@ export default function EchoppePage() {
     setBuyingId(item.id);
     haptic.medium();
 
+    const bonusReduction = Math.min(item.price, profile.bonusBalance || 0);
+
     try {
       let updatePayload: any = {
         totalPoints: increment(-item.price),
+        bonusBalance: increment(-bonusReduction),
         updatedAt: serverTimestamp()
       };
 
@@ -143,7 +145,6 @@ export default function EchoppePage() {
   return (
     <div className="min-h-screen bg-background flex flex-col pb-32">
       <main className="flex-1 p-6 pt-24 space-y-12 max-w-lg mx-auto w-full">
-        {/* Header Dynamique */}
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-40">Arsenal</p>
@@ -171,7 +172,6 @@ export default function EchoppePage() {
           animate="visible"
           className="space-y-16"
         >
-          {/* SECTION PRESTIGE (Badge Vérifié) */}
           <section className="space-y-6">
             <div className="flex items-center gap-3 px-2">
               <Medal className="h-4 w-4 opacity-40" />
@@ -213,7 +213,6 @@ export default function EchoppePage() {
             })}
           </section>
 
-          {/* SECTION THÈMES */}
           <section className="space-y-6">
             <div className="flex items-center gap-3 px-4">
               <Palette className="h-4 w-4 opacity-40" />
@@ -254,7 +253,6 @@ export default function EchoppePage() {
           </section>
         </motion.div>
 
-        {/* Footer Poétique */}
         <div className="p-10 bg-primary/5 rounded-[3rem] border border-primary/5 text-center space-y-3 relative overflow-hidden">
           <p className="text-[11px] leading-relaxed font-medium opacity-40 italic px-4">
             "Chaque acquisition résonne avec votre quête de Lumière."

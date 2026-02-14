@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -26,11 +27,6 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { EmojiOracle } from "@/components/EmojiOracle";
 import confetti from "canvas-confetti";
-
-/**
- * @fileOverview CoinFlip de l'Éveil v4.6 - Rectification du Flux.
- * Correction de la logique de verrouillage pour permettre la continuité des séries.
- */
 
 const MIN_BET = 5;
 const MULTIPLIER_PER_WIN = 1.88;
@@ -67,7 +63,6 @@ export default function CoinFlipPage() {
   const handleFlip = async (side: Side) => {
     if (!profile || !userDocRef || isProcessing || status !== 'idle') return;
 
-    // Si on commence une nouvelle série, on déduit la mise
     if (streak === 0) {
       if (currentBet < MIN_BET) {
         haptic.error();
@@ -82,12 +77,15 @@ export default function CoinFlipPage() {
       }
 
       setIsProcessing(true);
+      
+      const bonusReduction = Math.min(currentBet, profile.bonusBalance || 0);
+
       try {
         await updateDoc(userDocRef, { 
           totalPoints: increment(-currentBet), 
+          bonusBalance: increment(-bonusReduction),
           updatedAt: serverTimestamp() 
         });
-        // On libère isProcessing immédiatement après la transaction pour permettre la suite
         setIsProcessing(false);
       } catch (e) {
         setIsProcessing(false);
@@ -99,7 +97,6 @@ export default function CoinFlipPage() {
     setSelectedSide(side);
     setStatus('flipping');
 
-    // Simulation du destin
     setTimeout(() => {
       const result: Side = Math.random() > 0.5 ? 'face' : 'pile';
       const isWon = result === side;
@@ -114,7 +111,6 @@ export default function CoinFlipPage() {
         const winAmount = Math.floor(currentBet * Math.pow(MULTIPLIER_PER_WIN, newStreak));
         setCurrentWin(winAmount);
         
-        // Retour à l'état idle pour permettre le prochain flip
         setTimeout(() => {
           setStatus('idle');
         }, 800);

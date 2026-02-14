@@ -94,8 +94,11 @@ export default function ArcadePage() {
     setIsProcessing(true);
     haptic.medium();
 
+    const bonusReduction = Math.min(currentBet, profile.bonusBalance || 0);
+
     updateDoc(userDocRef, {
       totalPoints: increment(-currentBet),
+      bonusBalance: increment(-bonusReduction),
       updatedAt: serverTimestamp()
     })
     .then(() => {
@@ -133,7 +136,6 @@ export default function ArcadePage() {
     const interval = setInterval(() => {
       setCarProgress(prev => {
         const newProgress = prev.map(p => {
-          // Simulation de nitro aléatoire
           const boost = Math.random() > 0.9 ? 2.5 : 1;
           const step = (Math.random() * 2.2 + 0.3) * boost;
           return p + step;
@@ -217,13 +219,11 @@ export default function ArcadePage() {
       </header>
 
       <main className="flex-1 p-6 pt-24 space-y-8 max-w-lg mx-auto w-full relative">
-        {/* Background Decorative Orbs */}
         <div className="absolute inset-0 pointer-events-none opacity-20">
           <div className="absolute top-1/4 -left-20 w-64 h-64 bg-primary/10 rounded-full blur-[100px]" />
           <div className="absolute bottom-1/4 -right-20 w-64 h-64 bg-primary/10 rounded-full blur-[100px]" />
         </div>
 
-        {/* La Piste - Vue Immersive */}
         <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[3rem] p-8 shadow-[0_32px_128px_-16px_rgba(0,0,0,0.5)] border border-primary/5 overflow-hidden relative min-h-[440px]">
           <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.02] to-transparent pointer-events-none" />
           
@@ -244,7 +244,6 @@ export default function ArcadePage() {
                 </div>
 
                 <div className="h-12 bg-background/40 rounded-2xl flex items-center relative overflow-hidden px-4 border border-primary/5 shadow-inner group">
-                  {/* Speed Lines */}
                   <div className="absolute inset-0 opacity-10 flex items-center">
                     {[...Array(10)].map((_, i) => (
                       <motion.div 
@@ -257,7 +256,6 @@ export default function ArcadePage() {
                     ))}
                   </div>
 
-                  {/* Ligne d'arrivée stylisée à gauche */}
                   <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-primary/10 to-transparent flex items-center justify-center opacity-40">
                     <div className="flex flex-col gap-1">
                       <div className="w-1 h-1 bg-white rounded-full" />
@@ -266,7 +264,6 @@ export default function ArcadePage() {
                     </div>
                   </div>
 
-                  {/* Le Bolide */}
                   <motion.div 
                     initial={{ x: 0 }}
                     animate={{ x: `-${Math.min(carProgress[idx], 100)}%` }}
@@ -275,7 +272,6 @@ export default function ArcadePage() {
                     style={{ marginRight: '-60px' }}
                   >
                     <div className="relative">
-                      {/* Traînée de flammes */}
                       <AnimatePresence>
                         {gameState === 'racing' && (
                           <motion.div 
@@ -308,7 +304,6 @@ export default function ArcadePage() {
                         </div>
                       </motion.div>
                       
-                      {/* Halo d'aura */}
                       <motion.div 
                         animate={gameState === 'racing' ? { scale: [1, 1.5, 1], opacity: [0.3, 0.6, 0.3] } : {}}
                         transition={{ duration: 1, repeat: Infinity }}
@@ -355,7 +350,6 @@ export default function ArcadePage() {
           </AnimatePresence>
         </Card>
 
-        {/* Panneau de Contrôle Moderne */}
         <Card className="border-none bg-card/40 backdrop-blur-3xl rounded-[2.5rem] p-8 shadow-2xl border border-primary/5">
           <AnimatePresence mode="wait">
             {gameState === 'betting' ? (
@@ -501,7 +495,7 @@ export default function ArcadePage() {
           </AnimatePresence>
         </Card>
 
-        <div className="p-8 bg-primary/5 rounded-[3rem] border border-primary/5 text-center space-y-3 relative overflow-hidden">
+        <div className="p-8 bg-primary/5 rounded-[3rem] border border-primary/5 text-center space-y-3 relative overflow-hidden w-full">
           <div className="flex justify-center gap-4 mb-2">
             <Rocket className="h-4 w-4 opacity-10" />
             <Flag className="h-4 w-4 opacity-10" />

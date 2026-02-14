@@ -69,7 +69,6 @@ export default function TransfertPage() {
   const { data: profile, loading: profileLoading } = useDoc(userDocRef);
   const { data: appStatus, loading: configLoading } = useDoc(appStatusRef);
 
-  // --- LOGIQUE DES LIMITES QUOTIDIENNES ---
   const today = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -97,7 +96,6 @@ export default function TransfertPage() {
     : (appStatus?.dailyTransferLimitDefault ?? 500);
 
   const remainingLimit = Math.max(0, dailyLimit - sentToday);
-  // -----------------------------------------
 
   const transferAmount = parseInt(amount) || 0;
   const transferFeePercent = appStatus?.transferFeePercent ?? 10;
@@ -198,7 +196,6 @@ export default function TransfertPage() {
   const handleAction = async () => {
     if (!transferAmount || transferAmount <= 0 || !firebaseUser?.uid || !recipient?.id) return;
     
-    // Vérification de la solvabilité de l'opposant pour le duel
     if (mode === 'duel' && (recipient.totalPoints || 0) < transferAmount) {
       haptic.error();
       toast({ 
@@ -209,7 +206,6 @@ export default function TransfertPage() {
       return;
     }
 
-    // Vérification de la limite de flux cumulée
     if (transferAmount > remainingLimit && mode === 'transfer') { 
       haptic.error();
       toast({ 
@@ -231,11 +227,19 @@ export default function TransfertPage() {
     }
 
     setIsProcessing(true); haptic.medium();
+    
+    // Réduction du bonus floor
+    const bonusReduction = Math.min(totalCost, profile?.bonusBalance || 0);
+
     try {
       const senderRef = doc(db, "users", firebaseUser.uid);
       if (mode === 'transfer') {
         const receiverRef = doc(db, "users", recipient.id);
-        await updateDoc(senderRef, { totalPoints: increment(-totalCost), updatedAt: serverTimestamp() });
+        await updateDoc(senderRef, { 
+          totalPoints: increment(-totalCost), 
+          bonusBalance: increment(-bonusReduction),
+          updatedAt: serverTimestamp() 
+        });
         await updateDoc(receiverRef, { totalPoints: increment(transferAmount), updatedAt: serverTimestamp() });
         await addDoc(collection(db, "transfers"), {
           fromId: isAnonymous ? "anonymous" : firebaseUser.uid,
@@ -249,7 +253,11 @@ export default function TransfertPage() {
           toast({ variant: "destructive", title: "Action impossible", description: "Cet esprit est sous le Sceau de Paix." });
           return;
         }
-        await updateDoc(senderRef, { totalPoints: increment(-transferAmount), updatedAt: serverTimestamp() });
+        await updateDoc(senderRef, { 
+          totalPoints: increment(-transferAmount), 
+          bonusBalance: increment(-Math.min(transferAmount, profile?.bonusBalance || 0)),
+          updatedAt: serverTimestamp() 
+        });
         
         const participants: Record<string, any> = {
           [firebaseUser.uid]: {

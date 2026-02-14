@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -26,12 +27,6 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { triggerLotoDraw, validateLotoWin, getLotoHistory } from "@/app/actions/loto";
 import confetti from "canvas-confetti";
-
-/**
- * @fileOverview Arène Exu Loto v1.0.
- * Interface inspirée du Loto Bonheur (LONACI).
- * Cycle de jeu : Sélection (2-5 numéros) -> Tirage cinématique -> Rétribution.
- */
 
 const NUMBERS = Array.from({ length: 90 }, (_, i) => i + 1);
 const MIN_BET = 5;
@@ -94,20 +89,20 @@ export default function LotoPage() {
     setIsProcessing(true);
     haptic.medium();
 
+    const bonusReduction = Math.min(stake, profile.bonusBalance || 0);
+
     try {
-      // 1. Déduction de la mise
       await updateDoc(userDocRef, {
         totalPoints: increment(-stake),
+        bonusBalance: increment(-bonusReduction),
         updatedAt: serverTimestamp()
       });
 
-      // 2. Invoquer le tirage serveur
       const drawResult = await triggerLotoDraw();
       setCurrentDraw(drawResult.numbers);
       setGameState('drawing');
       setRevealedCount(0);
 
-      // 3. Animation cinématique du tirage
       const interval = setInterval(() => {
         setRevealedCount(prev => {
           if (prev >= 5) {
@@ -180,7 +175,6 @@ export default function LotoPage() {
       </header>
 
       <main className="flex-1 p-4 pt-28 space-y-8 max-w-lg mx-auto w-full">
-        {/* L'ARÈNE DU TIRAGE */}
         <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[3rem] p-8 border border-white/5 shadow-2xl relative overflow-hidden flex flex-col items-center justify-center min-h-[240px]">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.05),transparent_70%)] pointer-events-none" />
           
@@ -241,7 +235,6 @@ export default function LotoPage() {
           )}
         </Card>
 
-        {/* PANNEAU DE CONTRÔLE */}
         <div className="space-y-6">
           <AnimatePresence mode="wait">
             {gameState === 'betting' ? (
@@ -311,7 +304,6 @@ export default function LotoPage() {
           </AnimatePresence>
         </div>
 
-        {/* HISTORIQUE */}
         <div className="space-y-4">
           <div className="flex items-center gap-2 px-2">
             <History className="h-4 w-4 text-primary opacity-40" />

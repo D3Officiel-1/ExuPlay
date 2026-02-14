@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -26,11 +27,6 @@ import { triggerNextDoubleRound, getDoubleHistory, validateDoubleWin } from "@/a
 import { getTileColorSync, type DoubleColor } from "@/lib/games/double";
 import confetti from "canvas-confetti";
 
-/**
- * @fileOverview Double de l'Éveil v5.2 - Logique de Rétribution Scellée.
- * Interface synchronisée avec l'Oracle de Rétribution (x2 pour R/V, x14 pour Bleu).
- */
-
 type GamePhase = 'betting' | 'spinning' | 'result';
 
 const TILE_WIDTH = 100;
@@ -58,7 +54,6 @@ export default function DoublePage() {
   const userDocRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
   const { data: profile } = useDoc(userDocRef);
 
-  // Initialisation des annales
   useEffect(() => {
     const initHistory = async () => {
       const hist = await getDoubleHistory(15);
@@ -67,7 +62,6 @@ export default function DoublePage() {
     initHistory();
   }, []);
 
-  // --- MOTEUR DE JEU LOCAL ---
   useEffect(() => {
     let timer: NodeJS.Timeout;
 
@@ -93,25 +87,20 @@ export default function DoublePage() {
     haptic.medium();
 
     try {
-      // Invoquer le destin depuis le serveur
       const round = await triggerNextDoubleRound();
       
       const containerWidth = containerRef.current?.offsetWidth || 0;
       const centerOffset = containerWidth / 2 - TILE_WIDTH / 2;
-      // On vise la fin du ruban pour un effet de vitesse, index entre 80 et 94
       const targetTileIndex = 80 + round.resultNumber;
       const finalX = -(targetTileIndex * TILE_WIDTH) + centerOffset;
 
-      // Animation cinématique de la roue
       await controls.start({
         x: finalX,
         transition: { duration: 5, ease: [0.15, 0, 0.15, 1] }
       });
 
-      // Mise à jour de l'historique local
       setHistory(prev => [round.resultColor, ...prev].slice(0, 15));
       
-      // LOGIQUE DE GAIN : Arbitrage du pacte via l'Oracle Serveur
       if (selectedColor && committedBetAmount > 0) {
         const validation = await validateDoubleWin(committedBetAmount, selectedColor, round.resultColor);
         
@@ -119,7 +108,6 @@ export default function DoublePage() {
           setWinAmount(validation.winAmount);
           haptic.success();
           
-          // Célébration visuelle
           confetti({ 
             particleCount: 150, 
             spread: 70, 
@@ -127,7 +115,6 @@ export default function DoublePage() {
             colors: ['#fbbf24', '#ffffff', '#3b82f6', '#10b981']
           });
 
-          // Matérialisation des gains dans Firestore
           if (userDocRef) {
             try {
               await updateDoc(userDocRef, { 
@@ -136,15 +123,10 @@ export default function DoublePage() {
               });
               toast({ 
                 title: "Triomphe Chromatique !", 
-                description: `+${validation.winAmount.toLocaleString()} PTS de Lumière (Multiplicateur x${validation.winAmount / committedBetAmount}).` 
+                description: `+${validation.winAmount.toLocaleString()} PTS de Lumière.` 
               });
             } catch (error) {
               console.error("Dissonance lors de la matérialisation:", error);
-              toast({ 
-                variant: "destructive",
-                title: "Dissonance de Flux", 
-                description: "Le Sanctuaire est instable. Votre gain sera synchronisé dès le retour de la lumière." 
-              });
             }
           }
         } else {
@@ -158,7 +140,7 @@ export default function DoublePage() {
       }
 
       setPhase('result');
-      setTimeLeft(5); // 5 secondes de stase pour contempler le résultat
+      setTimeLeft(5);
     } catch (e) {
       console.error("Dissonance lors du spin:", e);
       resetToBetting();
@@ -192,10 +174,12 @@ export default function DoublePage() {
     setIsProcessing(true);
     haptic.light();
     
+    const bonusReduction = Math.min(amount, profile.bonusBalance || 0);
+
     try {
-      // Déduction immédiate de la mise (engagement de l'énergie)
       await updateDoc(userDocRef, { 
         totalPoints: increment(-amount), 
+        bonusBalance: increment(-bonusReduction),
         updatedAt: serverTimestamp() 
       });
       
@@ -250,7 +234,6 @@ export default function DoublePage() {
       <main className="flex-1 flex flex-col lg:grid lg:grid-cols-[1fr_380px] pt-24 px-4 sm:px-8 gap-8 max-w-7xl mx-auto w-full">
         
         <div className="flex flex-col gap-8 order-1">
-          {/* HISTORIQUE DES FLUX */}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
             <History className="h-4 w-4 opacity-20 shrink-0" />
             {history.length === 0 ? (
@@ -270,9 +253,7 @@ export default function DoublePage() {
             ))}
           </div>
 
-          {/* ARÈNE UNIFIÉE */}
           <div className="relative">
-            {/* Indexeurs de précision */}
             <div className="absolute left-1/2 -top-2 -translate-x-1/2 z-30 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[15px] border-t-white shadow-[0_0_10px_white]" />
             <div className="absolute left-1/2 -bottom-2 -translate-x-1/2 z-30 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[15px] border-b-white shadow-[0_0_10px_white]" />
 
@@ -295,11 +276,9 @@ export default function DoublePage() {
                 ))}
               </motion.div>
 
-              {/* Dégradés de profondeur latéraux */}
               <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#020617] to-transparent z-10 pointer-events-none" />
               <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#020617] to-transparent z-10 pointer-events-none" />
 
-              {/* Overlay de phase superposé */}
               <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
                 <AnimatePresence mode="wait">
                   {phase === 'betting' ? (
@@ -343,7 +322,6 @@ export default function DoublePage() {
           </div>
         </div>
 
-        {/* PANNEAU DE COMMANDE */}
         <aside className="space-y-6 order-2">
           <Card className="border-none bg-card/20 backdrop-blur-3xl rounded-[2.5rem] p-8 border border-white/5 shadow-2xl space-y-8">
             <div className="space-y-4">

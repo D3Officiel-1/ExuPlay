@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -8,15 +9,20 @@ import {
   doc, 
   query, 
   orderBy, 
-  limit
+  limit,
+  updateDoc,
+  increment,
+  serverTimestamp
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Zap, Users, Sparkles, Trophy, Swords, Flag, ChevronRight, Rocket, Bomb, Ticket, Coins, Dices, RefreshCw, Hash } from "lucide-react";
+import { Zap, Users, Sparkles, Trophy, Swords, Flag, ChevronRight, Rocket, Bomb, Ticket, Coins, Dices, RefreshCw, Gift } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 import { EmojiOracle } from "@/components/EmojiOracle";
+import { useToast } from "@/hooks/use-toast";
+import confetti from "canvas-confetti";
 
 function GlobalActivityTicker() {
   const db = useFirestore();
@@ -87,12 +93,37 @@ export default function HomePage() {
   const router = useRouter();
   const { user } = useUser();
   const db = useFirestore();
+  const { toast } = useToast();
 
   const userRef = useMemo(() => (db && user?.uid ? doc(db, "users", user.uid) : null), [db, user?.uid]);
   const appStatusRef = useMemo(() => (db ? doc(db, "appConfig", "status") : null), [db]);
   
   const { data: profile } = useDoc(userRef);
   const { data: appStatus } = useDoc(appStatusRef);
+
+  useEffect(() => {
+    if (profile && !profile.hasReceivedWelcomeBonus && userRef) {
+      haptic.success();
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#fbbf24', '#ffffff', '#3b82f6']
+      });
+
+      updateDoc(userRef, {
+        totalPoints: increment(1000),
+        bonusBalance: increment(1000),
+        hasReceivedWelcomeBonus: true,
+        updatedAt: serverTimestamp()
+      }).then(() => {
+        toast({
+          title: "Cadeau de Bienvenue",
+          description: "L'Oracle vous offre 1000 PTS pour commencer votre éveil !",
+        });
+      });
+    }
+  }, [profile, userRef, toast]);
 
   const royalChallengeUntil = appStatus?.royalChallengeActiveUntil?.toDate?.() || null;
   const isRoyalActive = royalChallengeUntil && royalChallengeUntil > new Date();

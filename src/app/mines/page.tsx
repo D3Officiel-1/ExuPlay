@@ -44,6 +44,8 @@ function calculateMultiplier(totalCells: number, totalMines: number, gemsFound: 
   return Math.max(1, multiplier * 0.97);
 }
 
+type CellState = 'hidden' | 'gem' | 'mine';
+
 export default function MinesPage() {
   const { user } = useUser();
   const db = useFirestore();
@@ -97,9 +99,13 @@ export default function MinesPage() {
     setIsProcessing(true);
     haptic.medium();
 
+    // Calcul de la réduction du bonus
+    const bonusReduction = Math.min(currentBet, profile.bonusBalance || 0);
+
     try {
       await updateDoc(userDocRef, {
         totalPoints: increment(-currentBet),
+        bonusBalance: increment(-bonusReduction),
         updatedAt: serverTimestamp()
       });
 

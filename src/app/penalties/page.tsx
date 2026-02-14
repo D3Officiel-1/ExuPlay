@@ -76,7 +76,6 @@ function GlovesKeeper({
         )}
       />
       
-      {/* Gant Gauche */}
       <motion.div 
         animate={isIdle ? { y: [0, -3, 0], x: [0, -2, 0], rotate: [-5, -8, -5] } : {}}
         transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
@@ -87,7 +86,6 @@ function GlovesKeeper({
         </div>
       </motion.div>
 
-      {/* Gant Droit */}
       <motion.div 
         animate={isIdle ? { y: [0, -3, 0], x: [0, 2, 0], rotate: [5, 8, 5] } : {}}
         transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
@@ -120,7 +118,6 @@ export default function PenaltiesPage() {
   const { data: profile } = useDoc(userDocRef);
 
   useEffect(() => {
-    // Initial random opponent
     setOpponent(OPPONENTS[Math.floor(Math.random() * OPPONENTS.length)]);
   }, []);
 
@@ -168,9 +165,12 @@ export default function PenaltiesPage() {
     setIsScored(scored);
     setGameState('shooting');
 
+    const bonusReduction = Math.min(currentBet, profile.bonusBalance || 0);
+
     try {
       await updateDoc(userDocRef, {
         totalPoints: increment(-currentBet),
+        bonusBalance: increment(-bonusReduction),
         updatedAt: serverTimestamp()
       });
 
@@ -205,7 +205,6 @@ export default function PenaltiesPage() {
     setPlayerChoice(null); 
     setKeeperChoice(null); 
     setIsScored(null); 
-    // Nouveau adversaire après chaque frappe
     const nextOpponent = OPPONENTS[Math.floor(Math.random() * OPPONENTS.length)];
     setOpponent(nextOpponent);
   };
@@ -286,8 +285,7 @@ export default function PenaltiesPage() {
   return (
     <div className="min-h-screen bg-black flex flex-col pb-32">
       <main className="flex-1 p-4 sm:p-6 pt-24 space-y-6 sm:space-y-8 max-w-md mx-auto w-full overflow-hidden">
-        {/* Header de Match Immersif avec Adversaire Aléatoire */}
-        <div className="flex items-center justify-between px-2 sm:px-4">
+        <div className="flex items-center justify-between px-2 px-4">
           <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full bg-white/5 border border-white/10 h-10 w-10 sm:h-12 sm:w-12">
             <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
           </Button>

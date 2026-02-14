@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState } from "react";
@@ -22,7 +23,8 @@ import {
   TrendingUp,
   Banknote,
   Clock,
-  ShieldCheck
+  ShieldCheck,
+  Gift
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -72,19 +74,23 @@ export default function EchangePage() {
       pendingCount: userExchanges.filter(e => e.status === 'pending').length
     };
   }, [userExchanges]);
-  // -----------------------------------------
   
   const waveIcon = placeholderImages.placeholderImages.find(img => img.id === "wave-icon")?.imageUrl;
 
-  const points = profile?.totalPoints || 0;
+  const totalPoints = profile?.totalPoints || 0;
+  const bonusBalance = profile?.bonusBalance || 0;
+  
+  // LOGIQUE DE RETRAIT : On ne peut retirer que les points qui ne sont pas dans le solde bonus
+  const withdrawablePoints = Math.max(0, totalPoints - bonusBalance);
+  
   const conversionRate = appStatus?.pointConversionRate ?? 0.5; 
   const feeRate = (appStatus?.exchangeFeePercent ?? 1) / 100;
   
-  const grossMoneyValue = Math.floor(points * conversionRate);
+  const grossMoneyValue = Math.floor(withdrawablePoints * conversionRate);
   const exchangeFees = Math.ceil(grossMoneyValue * feeRate);
   const netMoneyValue = Math.max(0, grossMoneyValue - exchangeFees);
   
-  const minPoints = 100; // Oracle: Seuil abaissé à 100 PTS
+  const minWithdrawable = 100; 
   const isExchangeGloballyEnabled = appStatus?.exchangeEnabled === true;
 
   const handleExchange = async () => {
@@ -98,12 +104,12 @@ export default function EchangePage() {
       return;
     }
 
-    if (points < minPoints) {
+    if (withdrawablePoints < minWithdrawable) {
       haptic.error();
       toast({
         variant: "destructive",
         title: "Lumière insuffisante",
-        description: `Vous devez accumuler au moins ${minPoints} points pour initier un échange.`
+        description: `Vous devez avoir au moins ${minWithdrawable} points retirable pour initier un échange.`
       });
       return;
     }
@@ -139,14 +145,14 @@ export default function EchangePage() {
         userId: user.uid,
         username: profile?.username || "Anonyme",
         phoneNumber: profile?.phoneNumber || "Non lié",
-        points: points,
+        points: withdrawablePoints,
         amount: netMoneyValue,
         status: "pending",
         requestedAt: serverTimestamp()
       };
 
       updateDoc(userDocRef, {
-        totalPoints: increment(-points),
+        totalPoints: increment(-withdrawablePoints),
         updatedAt: serverTimestamp()
       }).then(() => {
         addDoc(collection(db, "exchanges"), exchangeData)
@@ -160,7 +166,7 @@ export default function EchangePage() {
           })
           .catch(async (error) => {
             updateDoc(userDocRef, {
-              totalPoints: increment(points)
+              totalPoints: increment(withdrawablePoints)
             });
             const permissionError = new FirestorePermissionError({
               path: 'exchanges',
@@ -177,7 +183,7 @@ export default function EchangePage() {
         const permissionError = new FirestorePermissionError({
           path: userDocRef.path,
           operation: 'update',
-          requestResourceData: { totalPoints: `decrement ${points}` },
+          requestResourceData: { totalPoints: `decrement ${withdrawablePoints}` },
         } satisfies SecurityRuleContext);
         errorEmitter.emit('permission-error', permissionError);
       });
@@ -257,12 +263,22 @@ export default function EchangePage() {
             className="space-y-6"
           >
             <Card className="border-none bg-card/40 backdrop-blur-3xl shadow-2xl rounded-[2.5rem] overflow-hidden relative">
-              {/* Effet visuel de fond pour la carte principale */}
               <div className="absolute inset-0 pointer-events-none opacity-5">
                 <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_0%,rgba(var(--primary-rgb),0.5),transparent_70%)]" />
               </div>
 
               <CardHeader className="text-center pt-10 pb-6 relative z-10">
+                <div className="flex justify-center gap-8 mb-4">
+                  <div className="text-center space-y-1">
+                    <p className="text-[8px] font-black uppercase tracking-widest opacity-30">Solde Total</p>
+                    <p className="text-2xl font-black tabular-nums">{totalPoints.toLocaleString()}</p>
+                  </div>
+                  <div className="text-center space-y-1">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-primary/60">Bonus Restant</p>
+                    <p className="text-2xl font-black tabular-nums text-primary/40">{bonusBalance.toLocaleString()}</p>
+                  </div>
+                </div>
+
                 <div className="mx-auto w-20 h-20 bg-primary/5 rounded-[2rem] flex items-center justify-center mb-4 relative">
                   <Zap className="h-10 w-10 text-primary" />
                   <motion.div 
@@ -271,9 +287,9 @@ export default function EchangePage() {
                     className="absolute inset-0 bg-primary/10 rounded-[2rem] blur-xl"
                   />
                 </div>
-                <CardTitle className="text-sm font-black uppercase tracking-[0.3em] opacity-40">Votre Lumière</CardTitle>
+                <CardTitle className="text-sm font-black uppercase tracking-[0.3em] opacity-40">Lumière Retirable</CardTitle>
                 <div className="mt-2">
-                  <span className="text-5xl font-black tracking-tighter tabular-nums">{points.toLocaleString()}</span>
+                  <span className="text-5xl font-black tracking-tighter tabular-nums">{withdrawablePoints.toLocaleString()}</span>
                   <span className="text-xs font-bold opacity-30 ml-2">PTS</span>
                 </div>
                 <p className="text-[9px] font-black uppercase tracking-widest opacity-20 mt-2">Taux actuel : 1 PTS = {conversionRate} FCFA</p>
@@ -312,6 +328,15 @@ export default function EchangePage() {
                   </div>
 
                   <div className="space-y-2">
+                    {bonusBalance > 0 && (
+                      <div className="flex gap-3 p-4 bg-primary/5 rounded-2xl border border-primary/10 items-center">
+                        <Gift className="h-4 w-4 text-primary shrink-0 opacity-40" />
+                        <p className="text-[9px] leading-relaxed font-bold opacity-40 uppercase">
+                          Le solde bonus ({bonusBalance} PTS) est réservé aux arènes et sera libéré au fil de vos jeux.
+                        </p>
+                      </div>
+                    )}
+
                     {!isExchangeGloballyEnabled && (
                       <div className="flex gap-3 p-4 bg-red-500/10 rounded-2xl border border-red-500/20 items-center">
                         <Lock className="h-4 w-4 text-red-500 shrink-0" />
@@ -330,14 +355,14 @@ export default function EchangePage() {
                       </div>
                     )}
 
-                    {points < minPoints && (
+                    {withdrawablePoints < minWithdrawable && (
                       <div className="flex gap-3 p-4 bg-orange-500/5 rounded-2xl border border-orange-500/10 items-start">
                         <AlertCircle className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
                         <div className="space-y-1">
                           <p className="text-[10px] font-bold text-orange-600/80 uppercase">
-                            Concentration de Lumière Insuffisante.
+                            Prospérité Retirable Insuffisante.
                           </p>
-                          <p className="text-[8px] font-medium opacity-40 uppercase">Seuil requis : {minPoints} PTS</p>
+                          <p className="text-[8px] font-medium opacity-40 uppercase">Seuil requis : {minWithdrawable} PTS</p>
                         </div>
                       </div>
                     )}
@@ -348,10 +373,10 @@ export default function EchangePage() {
               <CardFooter className="px-8 pb-10 relative z-10">
                 <Button 
                   onClick={handleExchange}
-                  disabled={isProcessing || points < minPoints || !isExchangeGloballyEnabled}
+                  disabled={isProcessing || withdrawablePoints < minWithdrawable || !isExchangeGloballyEnabled}
                   className={cn(
                     "w-full h-16 rounded-2xl font-black text-sm uppercase tracking-widest gap-3 shadow-xl transition-all duration-500",
-                    isExchangeGloballyEnabled && points >= minPoints ? "shadow-primary/20" : "opacity-50"
+                    isExchangeGloballyEnabled && withdrawablePoints >= minWithdrawable ? "shadow-primary/20" : "opacity-50"
                   )}
                 >
                   {isProcessing ? (
