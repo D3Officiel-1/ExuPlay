@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
@@ -33,7 +32,9 @@ import {
   Smartphone,
   Mars,
   Venus,
-  User
+  User,
+  ChevronRight,
+  ShieldCheck
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { haptic } from "@/lib/haptics";
