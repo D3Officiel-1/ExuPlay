@@ -15,7 +15,7 @@ import {
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Zap, Users, Sparkles, Trophy, Swords, Flag, ChevronRight, Rocket, Bomb, Ticket, Coins, Dices, RefreshCw, Gift, Hash } from "lucide-react";
+import { Zap, Users, Sparkles, Trophy, Swords, Flag, ChevronRight, Rocket, Bomb, Ticket, Coins, Dices, RefreshCw, Gift, Hash, Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -128,6 +128,15 @@ export default function HomePage() {
   const isRoyalActive = royalChallengeUntil && royalChallengeUntil > new Date();
 
   const GAMES = [
+    {
+      id: "miroir",
+      title: "Miroir de l'Âme",
+      description: "Un seul reflet détient la vérité. Défi x5.5.",
+      icon: Heart,
+      color: "text-pink-400",
+      bg: "bg-pink-400/5",
+      path: "/miroir"
+    },
     {
       id: "loto",
       title: "Loto de l'Éveil",
