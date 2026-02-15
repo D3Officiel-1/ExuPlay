@@ -204,7 +204,7 @@ export default function MiroirPage() {
                         </div>
                       ) : (
                         <div className="flex flex-col items-center gap-2 opacity-20">
-                          <EmojiOracle text="💨" forceStatic className="text-3xl" />
+                          <EmojiOracle text="🌫️" forceStatic className="text-3xl" />
                           <span className="text-[8px] font-black uppercase tracking-widest">Illusion</span>
                         </div>
                       )}
@@ -332,7 +332,7 @@ export default function MiroirPage() {
           <p className="text-[11px] leading-relaxed font-medium text-pink-200/40 italic px-4">
             "Le Miroir ne ment jamais, il ne fait que refléter la profondeur de votre intuition."
           </p>
-          <div className="absolute -bottom-10 -right-10 h-32 w-32 bg-pink-500/5 blur-[80px] rounded-full" />
+          <div className="absolute -bottom-10 -left-10 h-32 w-32 bg-pink-500/5 blur-[80px] rounded-full" />
         </div>
       </main>
     </div>
