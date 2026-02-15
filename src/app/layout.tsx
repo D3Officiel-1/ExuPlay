@@ -1,3 +1,4 @@
+
 "use client";
 
 import "./globals.css";
@@ -6,7 +7,7 @@ import { FirebaseClientProvider, useUser, useFirestore, useDoc } from "@/firebas
 import { Toaster } from "@/components/ui/toaster";
 import { ToastProvider } from "@/components/ui/toast";
 import { useEffect, useState, useMemo } from "react";
-import { motion, MotionConfig } from "framer-motion";
+import { motion, AnimatePresence, MotionConfig } from "framer-motion";
 import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
 import { BiometricLock } from "@/components/BiometricLock";
 import { SuccessfulExchangeOverlay } from "@/components/SuccessfulExchangeOverlay";
@@ -26,7 +27,7 @@ import { hexToHsl, hexToRgb, getContrastColor } from "@/lib/colors";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { Loader2 } from "lucide-react";
+import { Loader2, Wrench, Sparkles } from "lucide-react";
 
 function SystemBarSync() {
   const { resolvedTheme } = useTheme();
@@ -117,6 +118,51 @@ function ColorInjector() {
   return <style dangerouslySetInnerHTML={{ __html: cssVariables }} />;
 }
 
+function MaintenanceOverlay({ message }: { message?: string }) {
+  return (
+    <div className="fixed inset-0 z-[10005] bg-background flex flex-col items-center justify-center p-8 text-center overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-20">
+        <motion.div 
+          animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }}
+          transition={{ duration: 8, repeat: Infinity }}
+          className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-primary/10 blur-[120px]" 
+        />
+      </div>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-12 max-w-sm z-10"
+      >
+        <Logo className="scale-110 mb-8" />
+        <div className="relative mx-auto w-24 h-24">
+          <motion.div 
+            animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.4, 0.2] }}
+            transition={{ duration: 3, repeat: Infinity }}
+            className="absolute inset-0 bg-primary/20 rounded-[2.5rem] blur-2xl" 
+          />
+          <div className="relative h-full w-full bg-card/40 backdrop-blur-2xl border border-primary/10 rounded-[2.5rem] flex items-center justify-center shadow-2xl">
+            <Wrench className="h-10 w-10 text-primary opacity-40 animate-pulse" />
+          </div>
+        </div>
+        <div className="space-y-4">
+          <h2 className="text-3xl font-black tracking-tight uppercase italic leading-none">Sanctuaire en Stase</h2>
+          <p className="text-sm font-medium opacity-60 leading-relaxed px-4">
+            {message || "L'Oracle procède à une harmonisation des flux. Le portail rouvrira bientôt ses portes."}
+          </p>
+        </div>
+        <div className="pt-8 flex flex-col items-center gap-4 opacity-20">
+          <div className="flex gap-1.5">
+            {[0, 1, 2].map(i => (
+              <motion.div key={i} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 2, repeat: Infinity, delay: i * 0.4 }} className="h-1 w-1 rounded-full bg-primary" />
+            ))}
+          </div>
+          <p className="text-[8px] font-black uppercase tracking-[0.5em] italic">Harmonisation en cours</p>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const { user, isLoading: isAuthLoading } = useUser();
   const db = useFirestore();
@@ -125,7 +171,10 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();
 
   const userDocRef = useMemo(() => (db && user?.uid) ? doc(db, "users", user.uid) : null, [db, user?.uid]);
+  const appConfigRef = useMemo(() => (db ? doc(db, "appConfig", "status") : null), [db]);
+
   const { data: profile } = useDoc(userDocRef);
+  const { data: appStatus } = useDoc(appConfigRef);
 
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => e.preventDefault();
@@ -142,6 +191,8 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
   }, [user, isAuthLoading, pathname, router]);
 
   const isEcoMode = profile?.reducedMotion === true;
+  const isAdmin = profile?.role === 'admin';
+  const isMaintenance = appStatus?.maintenanceMode === true && !isAdmin;
 
   if (isAuthLoading && !["/", "/login", "/autoriser"].includes(pathname)) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div>;
@@ -165,6 +216,13 @@ function SecurityWrapper({ children }: { children: React.ReactNode }) {
         <IncomingTransferOverlay />
         <DuelInvitationListener />
         <TextSelectionMenu />
+        
+        <AnimatePresence>
+          {isMaintenance && (
+            <MaintenanceOverlay message={appStatus?.maintenanceMessage} />
+          )}
+        </AnimatePresence>
+
         {showNav && <Header />}
         <PageTransition>{children}</PageTransition>
         {showBottomNav && <BottomNav />}
